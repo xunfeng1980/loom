@@ -4,9 +4,10 @@
 //! This module is part of the D-02 isolation: it is the "reference truth"
 //! side that loom-core must match. It is only used in tests.
 
+use vortex_array::accessor::ArrayAccessor;
 use vortex_array::arrays::bool::BoolArrayExt;
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
-use vortex_array::arrays::{BoolArray, PrimitiveArray};
+use vortex_array::arrays::{BoolArray, PrimitiveArray, VarBinViewArray};
 use vortex_array::validity::Validity;
 use vortex_array::ArrayRef;
 use vortex_array::VortexSessionExecute;
@@ -63,6 +64,32 @@ pub fn decode_bool_oracle(array: &ArrayRef) -> (Vec<bool>, Vec<bool>) {
     (values, null_flags)
 }
 
+/// Decode a Vortex `ArrayRef` to UTF-8 strings via Vortex's canonical path.
+///
+/// Returns `(values, null_flags)`:
+/// - `values[i]` is `Some(decoded_string)` for valid rows and `None` for nulls.
+/// - `null_flags[i]` is `true` if position `i` is null.
+pub fn decode_utf8_oracle(array: &ArrayRef) -> (Vec<Option<String>>, Vec<bool>) {
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = array
+        .clone()
+        .execute::<VarBinViewArray>(&mut ctx)
+        .expect("oracle execute::<VarBinViewArray> failed");
+
+    let values: Vec<Option<String>> = canonical.with_iterator(|iter| {
+        iter.map(|value| {
+            value.map(|bytes| {
+                std::str::from_utf8(bytes)
+                    .expect("Vortex Utf8 oracle returned invalid UTF-8")
+                    .to_owned()
+            })
+        })
+        .collect()
+    });
+    let null_flags = values.iter().map(Option::is_none).collect();
+    (values, null_flags)
+}
+
 /// Build a null flags vector from a Vortex `Validity` (true = null).
 ///
 /// Converts the enum into a per-row `Vec<bool>` so callers can compare
@@ -81,5 +108,52 @@ pub fn extract_null_flags(validity: &Validity, len: usize) -> Vec<bool> {
             // Bit = 1 means VALID in Vortex (same as Arrow); invert for null flag.
             bit_buf.iter().take(len).map(|valid| !valid).collect()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vortex_array::arrays::VarBinArray;
+    use vortex_array::dtype::{DType, Nullability};
+    use vortex_array::IntoArray;
+
+    fn make_fsst(rows: &[Option<&str>]) -> ArrayRef {
+        let varbin =
+            VarBinArray::from_iter(rows.iter().copied(), DType::Utf8(Nullability::Nullable));
+        let compressor = vortex_fsst::fsst_train_compressor(&varbin);
+        let mut ctx = LEGACY_SESSION.create_execution_ctx();
+        vortex_fsst::fsst_compress(&varbin, varbin.len(), varbin.dtype(), &compressor, &mut ctx)
+            .into_array()
+    }
+
+    #[test]
+    fn utf8_oracle_decodes_fsst_strings() {
+        let array = make_fsst(&[Some("alpha"), Some("beta"), Some("")]);
+
+        let (values, nulls) = decode_utf8_oracle(&array);
+
+        assert_eq!(
+            values,
+            vec![
+                Some("alpha".to_owned()),
+                Some("beta".to_owned()),
+                Some("".to_owned())
+            ]
+        );
+        assert_eq!(nulls, vec![false, false, false]);
+    }
+
+    #[test]
+    fn utf8_oracle_preserves_nulls() {
+        let array = make_fsst(&[Some("alpha"), None, Some("beta")]);
+
+        let (values, nulls) = decode_utf8_oracle(&array);
+
+        assert_eq!(
+            values,
+            vec![Some("alpha".to_owned()), None, Some("beta".to_owned())]
+        );
+        assert_eq!(nulls, vec![false, true, false]);
     }
 }
