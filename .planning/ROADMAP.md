@@ -132,6 +132,6 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 |-------|----------------|--------|-----------|
 | 1. Scaffold and FFI Boundary | 2/2 | Complete    | 2026-06-07 |
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
-| 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete   | 2026-06-07 |
+| 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete    | 2026-06-07 |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
 | 5. FSST L2 Kernel and Full Verification | 0/TBD | Not started | - |
