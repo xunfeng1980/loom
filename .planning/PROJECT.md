@@ -23,7 +23,8 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- ✓ Sound FFI foundation — multi-crate Rust workspace (loom-core / loom-ffi / loom-fixtures), single unified arrow-rs version, `panic="unwind"` + boundary `catch_unwind` (live panic safety), System allocator, cbindgen-generated `loom.h` — Phase 1
+- ✓ Rust core exports a real Arrow array across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`, correct release ownership), verified by an outside-DuckDB roundtrip + release test — Phase 1
 
 ### Active
 
@@ -34,7 +35,6 @@ If only one thing works, it is this end-to-end chain.
 - [ ] L2 escape mechanism: an L1 segment can reference an L2 kernel by id
 - [ ] One L2 total-function kernel: FSST string decompression
 - [ ] Decoder produces well-formed Arrow via typed builder operations (append_value / append_null / list / struct), materialized as ArrowArray + ArrowSchema
-- [ ] Rust core exposes its Arrow output across FFI via the Arrow C Data Interface (C ABI)
 - [ ] Thin C++ DuckDB extension (table function) that invokes the Rust decoder and exposes the decoded column as a DuckDB-queryable table
 - [ ] Input: a single serialized Vortex encoded array/column (one of the L1-expressible encodings, or FSST-encoded strings)
 - [ ] Verification harness: DuckDB SELECT/aggregate over the Loom-decoded column matches Vortex's official decoder row-for-row
@@ -103,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-07 after initialization*
+*Last updated: 2026-06-07 after Phase 1 (Scaffold and FFI Boundary) — verification passed; one code-review BLOCKER (CR-01: panic strategy) found and fixed before completion.*
