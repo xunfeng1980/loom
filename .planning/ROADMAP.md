@@ -21,7 +21,7 @@ other decoders write into), L1 dict+RLE+L2 escape fourth (incremental completion
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Scaffold and FFI Boundary** - Establish Rust workspace invariants, Arrow version pinning, panic-safety contract, and cbindgen header generation
-- [ ] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain
+- [x] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain (completed 2026-06-07)
 - [ ] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling
 - [ ] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists
 - [ ] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings Ã¢ÂÂ the MVP0 acceptance gate

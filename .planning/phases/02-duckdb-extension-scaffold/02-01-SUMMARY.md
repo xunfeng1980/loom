@@ -1,3 +1,12 @@
+<!--
+⚠ POST-EXECUTION CORRECTION (2026-06-07): This summary narrates the ORIGINAL D-01
+path (OneShotStream + arrow_scan delegation). That path was abandoned during 02-02
+execution (arrow_scan requires a record-batch schema loom_decode doesn't emit) and
+formally REVISED to direct DataChunk population; the dead arrow_scan/OneShotStream
+code was deleted. The shipped duckdb-ext/loom_extension.cpp is the source of truth and
+matches "D-01 REVISED" (see 02-CONTEXT.md). References to OneShotStream/arrow_scan
+below are historical and superseded.
+-->
 ---
 phase: 02-duckdb-extension-scaffold
 plan: "01"
