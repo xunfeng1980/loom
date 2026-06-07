@@ -26,7 +26,7 @@
 //! [`finish`](OutputBuilder::finish) method is intentionally identical to the
 //! `into_data()` call in `ffi.rs:138` so the two code paths stay in sync.
 
-use arrow::array::{Array, BooleanBuilder, Int32Builder, Int64Builder};
+use arrow::array::{Array, BooleanBuilder, Int32Builder, Int64Builder, StringBuilder};
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
@@ -52,6 +52,8 @@ pub enum OutputBuilder {
     Int32(Int32Builder),
     /// Wraps `arrow::array::Int64Builder`.
     Int64(Int64Builder),
+    /// Wraps `arrow::array::StringBuilder`.
+    Utf8(StringBuilder),
 }
 
 impl OutputBuilder {
@@ -68,6 +70,7 @@ impl OutputBuilder {
             DataType::Boolean => OutputBuilder::Boolean(BooleanBuilder::new()),
             DataType::Int32 => OutputBuilder::Int32(Int32Builder::new()),
             DataType::Int64 => OutputBuilder::Int64(Int64Builder::new()),
+            DataType::Utf8 => OutputBuilder::Utf8(StringBuilder::new()),
             other => panic!("OutputBuilder: unsupported DataType {other:?}"),
         }
     }
@@ -78,6 +81,7 @@ impl OutputBuilder {
             OutputBuilder::Boolean(_) => DataType::Boolean,
             OutputBuilder::Int32(_) => DataType::Int32,
             OutputBuilder::Int64(_) => DataType::Int64,
+            OutputBuilder::Utf8(_) => DataType::Utf8,
         }
     }
 
@@ -89,7 +93,7 @@ impl OutputBuilder {
     pub fn append_bool(&mut self, v: bool) {
         match self {
             OutputBuilder::Boolean(b) => b.append_value(v),
-            OutputBuilder::Int32(_) | OutputBuilder::Int64(_) => {
+            OutputBuilder::Int32(_) | OutputBuilder::Int64(_) | OutputBuilder::Utf8(_) => {
                 panic!("append_bool called on integer builder")
             }
         }
@@ -104,7 +108,7 @@ impl OutputBuilder {
     pub fn append_i32(&mut self, v: i32) {
         match self {
             OutputBuilder::Int32(b) => b.append_value(v),
-            OutputBuilder::Boolean(_) | OutputBuilder::Int64(_) => {
+            OutputBuilder::Boolean(_) | OutputBuilder::Int64(_) | OutputBuilder::Utf8(_) => {
                 panic!("append_i32 called on non-Int32 builder")
             }
         }
@@ -119,8 +123,22 @@ impl OutputBuilder {
     pub fn append_i64(&mut self, v: i64) {
         match self {
             OutputBuilder::Int64(b) => b.append_value(v),
-            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) => {
+            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) | OutputBuilder::Utf8(_) => {
                 panic!("append_i64 called on non-Int64 builder")
+            }
+        }
+    }
+
+    /// Append a non-null UTF-8 value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder is not `Utf8`.
+    pub fn append_string(&mut self, v: &str) {
+        match self {
+            OutputBuilder::Utf8(b) => b.append_value(v),
+            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) | OutputBuilder::Int64(_) => {
+                panic!("append_string called on non-Utf8 builder")
             }
         }
     }
@@ -135,6 +153,7 @@ impl OutputBuilder {
             OutputBuilder::Boolean(b) => b.append_null(),
             OutputBuilder::Int32(b) => b.append_null(),
             OutputBuilder::Int64(b) => b.append_null(),
+            OutputBuilder::Utf8(b) => b.append_null(),
         }
     }
 
@@ -149,8 +168,8 @@ impl OutputBuilder {
     /// encodings in MVP0; boolean RunEnd expansion must not call this method.
     pub fn t_bits(&self) -> usize {
         match self {
-            OutputBuilder::Boolean(_) => {
-                panic!("t_bits called on Boolean builder; only integer builders have t_bits")
+            OutputBuilder::Boolean(_) | OutputBuilder::Utf8(_) => {
+                panic!("t_bits called on non-integer builder; only integer builders have t_bits")
             }
             OutputBuilder::Int32(_) => 32,
             OutputBuilder::Int64(_) => 64,
@@ -172,6 +191,7 @@ impl OutputBuilder {
             OutputBuilder::Boolean(mut b) => b.finish().into_data(),
             OutputBuilder::Int32(mut b) => b.finish().into_data(),
             OutputBuilder::Int64(mut b) => b.finish().into_data(),
+            OutputBuilder::Utf8(mut b) => b.finish().into_data(),
         }
     }
 }
@@ -278,6 +298,22 @@ mod tests {
         assert_eq!(array.value(0), i64::MAX);
         assert!(array.is_null(1));
         assert_eq!(array.value(2), -1);
+    }
+
+    #[test]
+    fn utf8_builder_values_and_null() {
+        use arrow::array::StringArray;
+        let mut b = OutputBuilder::new(&DataType::Utf8);
+        b.append_string("alpha");
+        b.append_null();
+        b.append_string("beta");
+        let data = b.finish();
+        let array = StringArray::from(data);
+        assert_eq!(array.len(), 3);
+        assert_eq!(array.null_count(), 1);
+        assert_eq!(array.value(0), "alpha");
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), "beta");
     }
 
     /// t_bits returns 32 for Int32 and 64 for Int64.

@@ -19,7 +19,7 @@
 
 pub mod bitpack;
 
-use arrow::array::{Array, BooleanArray, Int32Array, Int64Array};
+use arrow::array::{Array, BooleanArray, Int32Array, Int64Array, StringArray};
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
@@ -200,6 +200,14 @@ pub fn synthesized_read_loop(
     node: &LayoutNode,
     builder: &mut OutputBuilder,
 ) -> Result<(), LoomDecodeError> {
+    synthesized_read_loop_with_registry(node, builder, None)
+}
+
+fn synthesized_read_loop_with_registry(
+    node: &LayoutNode,
+    builder: &mut OutputBuilder,
+    registry: Option<&L2KernelRegistry>,
+) -> Result<(), LoomDecodeError> {
     match node {
         // ----------------------------------------------------------------
         // Raw: little-endian values, `elem_size` bytes each.
@@ -236,17 +244,21 @@ pub fn synthesized_read_loop(
         // Validity lives in the inner BitPack node (Pitfall 3). This arm
         // does not carry a validity field.
         // ----------------------------------------------------------------
-        LayoutNode::FrameOfReference { reference, inner } => decode_for(*reference, inner, builder),
+        LayoutNode::FrameOfReference { reference, inner } => {
+            decode_for(*reference, inner, builder, registry)
+        }
 
         // ----------------------------------------------------------------
         // Deferred arms — return a typed error, never panic (D-04, T-03-03).
         // ----------------------------------------------------------------
-        LayoutNode::Dictionary { codes, values } => decode_dictionary(codes, values, builder),
+        LayoutNode::Dictionary { codes, values } => {
+            decode_dictionary(codes, values, builder, registry)
+        }
         LayoutNode::RunEnd {
             run_ends,
             values,
             count,
-        } => decode_run_end(run_ends, values, *count, builder),
+        } => decode_run_end(run_ends, values, *count, builder, registry),
         LayoutNode::KernelEscape { .. } => {
             Err(LoomDecodeError::UnimplementedEncoding("KernelEscape"))
         }
@@ -263,19 +275,7 @@ pub fn decode_layout_to_array_data(
     desc: &LayoutDescription,
     registry: &L2KernelRegistry,
 ) -> Result<ArrayData, LoomDecodeError> {
-    match &desc.root {
-        LayoutNode::KernelEscape {
-            kernel_id,
-            params,
-            count,
-        } => {
-            let kernel = registry
-                .get(*kernel_id)
-                .ok_or(LoomDecodeError::UnknownKernel(*kernel_id))?;
-            kernel.decode(params, *count)
-        }
-        node => decode_node_to_array_data(node, &desc.data_type),
-    }
+    decode_node_to_array_data_with_registry(&desc.root, &desc.data_type, Some(registry))
 }
 
 // ---------------------------------------------------------------------------
@@ -415,6 +415,7 @@ fn decode_for(
     reference: i128,
     inner: &LayoutNode,
     builder: &mut OutputBuilder,
+    registry: Option<&L2KernelRegistry>,
 ) -> Result<(), LoomDecodeError> {
     // The inner node must be a BitPack (Phase 3 contract).
     let (values_buf, bit_width, offset, count, validity, all_null) = match inner {
@@ -438,7 +439,7 @@ fn decode_for(
             // reference broadcast while preserving the child's nulls. Recursive
             // dict/RLE paths in Phase 4 make this reachable.
             let dtype = builder.data_type();
-            let data = decode_node_to_array_data(inner, &dtype)?;
+            let data = decode_node_to_array_data_with_registry(inner, &dtype, registry)?;
             let decoded = DecodedArray::from_array_data(data, &dtype)?;
             for i in 0..decoded.len() {
                 decoded.append_value_plus_reference(i, reference, builder)?;
@@ -512,13 +513,14 @@ fn decode_dictionary(
     codes: &LayoutNode,
     values: &LayoutNode,
     builder: &mut OutputBuilder,
+    registry: Option<&L2KernelRegistry>,
 ) -> Result<(), LoomDecodeError> {
     let codes_dtype = dictionary_code_data_type(codes);
-    let codes_data = decode_node_to_array_data(codes, &codes_dtype)?;
+    let codes_data = decode_node_to_array_data_with_registry(codes, &codes_dtype, registry)?;
     let codes = DecodedArray::from_array_data(codes_data, &codes_dtype)?;
 
     let values_dtype = builder.data_type();
-    let values_data = decode_node_to_array_data(values, &values_dtype)?;
+    let values_data = decode_node_to_array_data_with_registry(values, &values_dtype, registry)?;
     let values = DecodedArray::from_array_data(values_data, &values_dtype)?;
 
     for row in 0..codes.len() {
@@ -544,12 +546,14 @@ fn decode_run_end(
     values: &LayoutNode,
     count: usize,
     builder: &mut OutputBuilder,
+    registry: Option<&L2KernelRegistry>,
 ) -> Result<(), LoomDecodeError> {
-    let run_ends_data = decode_node_to_array_data(run_ends, &DataType::Int64)?;
+    let run_ends_data =
+        decode_node_to_array_data_with_registry(run_ends, &DataType::Int64, registry)?;
     let run_ends = DecodedArray::from_array_data(run_ends_data, &DataType::Int64)?;
 
     let values_dtype = builder.data_type();
-    let values_data = decode_node_to_array_data(values, &values_dtype)?;
+    let values_data = decode_node_to_array_data_with_registry(values, &values_dtype, registry)?;
     let values = DecodedArray::from_array_data(values_data, &values_dtype)?;
 
     let mut previous = 0usize;
@@ -598,12 +602,26 @@ fn decode_run_end(
     Ok(())
 }
 
-fn decode_node_to_array_data(
+fn decode_node_to_array_data_with_registry(
     node: &LayoutNode,
     data_type: &DataType,
+    registry: Option<&L2KernelRegistry>,
 ) -> Result<ArrayData, LoomDecodeError> {
+    if let LayoutNode::KernelEscape {
+        kernel_id,
+        params,
+        count,
+    } = node
+    {
+        let registry = registry.ok_or(LoomDecodeError::UnimplementedEncoding("KernelEscape"))?;
+        let kernel = registry
+            .get(*kernel_id)
+            .ok_or(LoomDecodeError::UnknownKernel(*kernel_id))?;
+        return kernel.decode(params, *count);
+    }
+
     let mut builder = OutputBuilder::new(data_type);
-    synthesized_read_loop(node, &mut builder)?;
+    synthesized_read_loop_with_registry(node, &mut builder, registry)?;
     Ok(builder.finish())
 }
 
@@ -618,6 +636,7 @@ enum DecodedArray {
     Boolean(BooleanArray),
     Int32(Int32Array),
     Int64(Int64Array),
+    Utf8(StringArray),
 }
 
 impl DecodedArray {
@@ -626,6 +645,7 @@ impl DecodedArray {
             DataType::Boolean => Ok(DecodedArray::Boolean(BooleanArray::from(data))),
             DataType::Int32 => Ok(DecodedArray::Int32(Int32Array::from(data))),
             DataType::Int64 => Ok(DecodedArray::Int64(Int64Array::from(data))),
+            DataType::Utf8 => Ok(DecodedArray::Utf8(StringArray::from(data))),
             other => Err(LoomDecodeError::UnsupportedBuilderType {
                 operation: "materialize decoded child",
                 data_type: data_type_name(other),
@@ -638,6 +658,7 @@ impl DecodedArray {
             DecodedArray::Boolean(a) => a.len(),
             DecodedArray::Int32(a) => a.len(),
             DecodedArray::Int64(a) => a.len(),
+            DecodedArray::Utf8(a) => a.len(),
         }
     }
 
@@ -646,6 +667,7 @@ impl DecodedArray {
             DecodedArray::Boolean(a) => a.is_null(index),
             DecodedArray::Int32(a) => a.is_null(index),
             DecodedArray::Int64(a) => a.is_null(index),
+            DecodedArray::Utf8(a) => a.is_null(index),
         }
     }
 
@@ -656,10 +678,12 @@ impl DecodedArray {
         match self {
             DecodedArray::Int32(a) => Ok(Some(a.value(index) as i64)),
             DecodedArray::Int64(a) => Ok(Some(a.value(index))),
-            DecodedArray::Boolean(_) => Err(LoomDecodeError::UnsupportedBuilderType {
-                operation: "read integer code",
-                data_type: data_type_name(&DataType::Boolean),
-            }),
+            DecodedArray::Boolean(_) | DecodedArray::Utf8(_) => {
+                Err(LoomDecodeError::UnsupportedBuilderType {
+                    operation: "read integer code",
+                    data_type: data_type_name(&self.data_type()),
+                })
+            }
         }
     }
 
@@ -676,6 +700,7 @@ impl DecodedArray {
             (DecodedArray::Boolean(a), DataType::Boolean) => builder.append_bool(a.value(index)),
             (DecodedArray::Int32(a), DataType::Int32) => builder.append_i32(a.value(index)),
             (DecodedArray::Int64(a), DataType::Int64) => builder.append_i64(a.value(index)),
+            (DecodedArray::Utf8(a), DataType::Utf8) => builder.append_string(a.value(index)),
             (DecodedArray::Int32(a), DataType::Int64) => builder.append_i64(a.value(index) as i64),
             (DecodedArray::Int64(a), DataType::Int32) => builder.append_i32(a.value(index) as i32),
             (_, other) => {
@@ -686,6 +711,15 @@ impl DecodedArray {
             }
         }
         Ok(())
+    }
+
+    fn data_type(&self) -> DataType {
+        match self {
+            DecodedArray::Boolean(_) => DataType::Boolean,
+            DecodedArray::Int32(_) => DataType::Int32,
+            DecodedArray::Int64(_) => DataType::Int64,
+            DecodedArray::Utf8(_) => DataType::Utf8,
+        }
     }
 
     fn append_value_plus_reference(
@@ -740,12 +774,51 @@ fn data_type_name(data_type: &DataType) -> &'static str {
 mod tests {
     use super::*;
     use crate::arrow_builder_output::OutputBuilder;
+    use crate::fsst_params::FsstParams;
 
     use arrow::array::Array;
 
     // Helper: build a dummy OutputBuilder for Int32.
     fn int32_builder() -> OutputBuilder {
         OutputBuilder::new(&DataType::Int32)
+    }
+
+    fn fsst_params_for_strings(rows: &[&str]) -> Vec<u8> {
+        let mut codes_offsets = Vec::with_capacity(rows.len() + 1);
+        let mut uncompressed_lengths = Vec::with_capacity(rows.len());
+        let mut codes_bytes = Vec::new();
+
+        codes_offsets.push(0);
+        for row in rows {
+            uncompressed_lengths.push(row.len() as u64);
+            for byte in row.as_bytes() {
+                codes_bytes.push(fsst::ESCAPE_CODE);
+                codes_bytes.push(*byte);
+            }
+            codes_offsets.push(codes_bytes.len() as u64);
+        }
+
+        FsstParams {
+            symbols: vec![],
+            symbol_lengths: vec![],
+            codes_offsets,
+            uncompressed_lengths,
+            validity: None,
+            codes_bytes,
+        }
+        .encode()
+    }
+
+    fn empty_fsst_params() -> Vec<u8> {
+        FsstParams {
+            symbols: vec![],
+            symbol_lengths: vec![],
+            codes_offsets: vec![0],
+            uncompressed_lengths: vec![],
+            validity: None,
+            codes_bytes: vec![],
+        }
+        .encode()
     }
 
     /// Direct read-loop KernelEscape remains unsupported because kernels own
@@ -1139,7 +1212,7 @@ mod tests {
             data_type: DataType::Utf8,
             root: LayoutNode::KernelEscape {
                 kernel_id: 0,
-                params: vec![],
+                params: empty_fsst_params(),
                 count: 0,
             },
             row_count: 0,
@@ -1148,6 +1221,39 @@ mod tests {
         let data = decode_layout_to_array_data(&desc, &registry).unwrap();
         assert_eq!(data.data_type(), &DataType::Utf8);
         assert_eq!(data.len(), 0);
+    }
+
+    #[test]
+    fn dictionary_over_fsst_gathers_utf8_values() {
+        let codes = LayoutNode::Raw {
+            data: vec![1i64, 0, 1]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 8,
+            count: 3,
+        };
+        let values = LayoutNode::KernelEscape {
+            kernel_id: 0,
+            params: fsst_params_for_strings(&["alpha", "beta"]),
+            count: 2,
+        };
+        let desc = LayoutDescription {
+            data_type: DataType::Utf8,
+            root: LayoutNode::Dictionary {
+                codes: Box::new(codes),
+                values: Box::new(values),
+            },
+            row_count: 3,
+        };
+        let registry = crate::l2_kernel_registry::L2KernelRegistry::default_for_mvp0();
+
+        let data = decode_layout_to_array_data(&desc, &registry).unwrap();
+        let array = arrow::array::StringArray::from(data);
+
+        assert_eq!(array.value(0), "beta");
+        assert_eq!(array.value(1), "alpha");
+        assert_eq!(array.value(2), "beta");
     }
 
     #[test]
