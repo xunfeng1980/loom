@@ -62,9 +62,13 @@ target_link_libraries(loom_loadable_extension PRIVATE
 # Step 3: Symbol resolution and hiding.
 #
 # macOS: -undefined dynamic_lookup lets DuckDB symbols resolve from the CLI at
-#        runtime (PITFALLS P6).  -exported_symbol hides all non-API symbols
-#        exported from the Rust staticlib so no rogue allocator symbols leak
-#        into the extension's export table.
+#        runtime (PITFALLS P6).  -exported_symbol restricts the export list to
+#        the named entry symbol (it is the inverse of -unexported_symbol). The
+#        actual allocator-clash risk (PITFALLS P5) is already neutralized by the
+#        System global allocator set in loom-ffi; the no-rogue-allocator-symbols
+#        invariant is verified independently by check-core-invariants.sh (nm grep).
+#        (WR-04: do not rely on this flag alone for exhaustive hiding — use
+#        -exported_symbols_list if a full allowlist is ever required.)
 #
 # Linux: -fvisibility=hidden + --exclude-libs,ALL achieves the same hiding.
 #        DuckDB symbols resolve from the CLI ELF at dlopen (no -lduckdb needed).

@@ -164,6 +164,17 @@ static void LoomScan(
         return;
     }
 
+    // Defensive guards (CR-01/WR-03): the Arrow C Data Interface permits a null
+    // `buffers` pointer in degenerate cases, and a primitive array must expose at
+    // least [validity, values]. The Phase-2 hardcoded array always satisfies this
+    // (pinned by the Wave-0 buffer_layout test), but guard so the pattern is safe
+    // when Phase 3 feeds real decoded buffers here.
+    if (arr.buffers == nullptr || arr.n_buffers < 2) {
+        throw IOException(
+            "loom_scan: decoded Arrow array has no value buffer (n_buffers=%lld)",
+            static_cast<long long>(arr.n_buffers));
+    }
+
     output.SetCardinality(count);
     auto &vec      = output.data[0];
     auto *out_data = FlatVector::GetData<int32_t>(vec);
@@ -171,6 +182,11 @@ static void LoomScan(
 
     const auto *validity_buf = static_cast<const uint8_t *>(arr.buffers[0]);
     const auto *values_buf   = static_cast<const int32_t *>(arr.buffers[1]);
+
+    // The values buffer is required for a non-empty Int32 array.
+    if (values_buf == nullptr) {
+        throw IOException("loom_scan: decoded Arrow array values buffer is null");
+    }
 
     for (idx_t i = 0; i < count; i++) {
         if (validity_buf != nullptr) {

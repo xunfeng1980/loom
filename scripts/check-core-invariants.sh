@@ -66,8 +66,11 @@ echo "--- CORE-01: Arrow version unification (no arrow-* version conflicts) ---"
 # A `cargo tree` failure (network, lockfile, etc.) must surface as FAIL, not be
 # silently swallowed into a green check. `|| true` keeps `set -e` from aborting
 # the whole script so we can report the failure ourselves.
-arrow_dupes_raw=$(cargo tree -d 2>&1) || arrow_dupes_raw=""
-arrow_tree_exit=$?
+# WR-02 fix: capture the REAL exit code. `x=$(cmd) || x=""; e=$?` always yields
+# e=0 because the `|| x=""` branch resets $?. Instead seed e=0 and let the `||`
+# capture cmd's failure status directly into the exit var.
+arrow_tree_exit=0
+arrow_dupes_raw=$(cargo tree -d 2>&1) || arrow_tree_exit=$?
 if [ "$arrow_tree_exit" -ne 0 ]; then
     fail "cargo tree -d failed (exit $arrow_tree_exit) — cannot verify arrow version unification (CORE-01):"
     echo "$arrow_dupes_raw" | head -5 >&2
@@ -112,12 +115,21 @@ echo ""
 # CORE-01 (D-02): loom-core must have zero vortex-* dependencies.
 # ---------------------------------------------------------------------------
 echo "--- CORE-01 (D-02): loom-core has no vortex dependency ---"
-loom_core_vortex=$(cargo tree -p loom-core 2>/dev/null | grep -v '^#' | grep 'vortex' || true)
-if [ -z "$loom_core_vortex" ]; then
-    pass "cargo tree -p loom-core | grep vortex → clean"
+# CR-02 fix: do NOT discard stderr / absorb failure into a clean PASS. A failed
+# `cargo tree -p loom-core` must FAIL the gate, not silently report "clean".
+loom_core_tree_exit=0
+loom_core_out=$(cargo tree -p loom-core 2>&1) || loom_core_tree_exit=$?
+if [ "$loom_core_tree_exit" -ne 0 ]; then
+    fail "cargo tree -p loom-core failed (exit $loom_core_tree_exit) — cannot verify D-02 isolation:"
+    echo "$loom_core_out" | head -5 >&2
 else
-    fail "loom-core has a vortex dependency — breaks D-02 isolation:"
-    echo "$loom_core_vortex" >&2
+    loom_core_vortex=$(printf '%s\n' "$loom_core_out" | grep -v '^#' | grep 'vortex' || true)
+    if [ -z "$loom_core_vortex" ]; then
+        pass "cargo tree -p loom-core | grep vortex → clean"
+    else
+        fail "loom-core has a vortex dependency — breaks D-02 isolation:"
+        echo "$loom_core_vortex" >&2
+    fi
 fi
 echo ""
 
