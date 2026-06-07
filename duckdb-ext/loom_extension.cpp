@@ -34,6 +34,18 @@ extern "C" {
 #include <cstring>   // memcpy
 #include <memory>    // unique_ptr / make_unique via duckdb:: wrappers
 
+// ---------------------------------------------------------------------------
+// Forward-declare ArrowStreamParameters (duckdb namespace, defined in duckdb.cpp
+// implementation; not exported in the amalgamated duckdb.hpp public header).
+// Our produce callback only receives it by reference and ignores it (Phase 2
+// one-shot stub — no projection or filter pushdown needed), so the incomplete
+// type is sufficient to satisfy the function-pointer typedef that DuckDB uses
+// when invoking the callback via arrow_scan.
+// ---------------------------------------------------------------------------
+namespace duckdb {
+struct ArrowStreamParameters;
+}
+
 using namespace duckdb;
 
 // ===========================================================================
