@@ -513,8 +513,9 @@ fn decode_dictionary(
     values: &LayoutNode,
     builder: &mut OutputBuilder,
 ) -> Result<(), LoomDecodeError> {
-    let codes_data = decode_node_to_array_data(codes, &DataType::Int64)?;
-    let codes = DecodedArray::from_array_data(codes_data, &DataType::Int64)?;
+    let codes_dtype = dictionary_code_data_type(codes);
+    let codes_data = decode_node_to_array_data(codes, &codes_dtype)?;
+    let codes = DecodedArray::from_array_data(codes_data, &codes_dtype)?;
 
     let values_dtype = builder.data_type();
     let values_data = decode_node_to_array_data(values, &values_dtype)?;
@@ -604,6 +605,13 @@ fn decode_node_to_array_data(
     let mut builder = OutputBuilder::new(data_type);
     synthesized_read_loop(node, &mut builder)?;
     Ok(builder.finish())
+}
+
+fn dictionary_code_data_type(codes: &LayoutNode) -> DataType {
+    match codes {
+        LayoutNode::Raw { elem_size: 8, .. } => DataType::Int64,
+        _ => DataType::Int32,
+    }
 }
 
 enum DecodedArray {

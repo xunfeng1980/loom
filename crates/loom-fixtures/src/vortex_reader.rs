@@ -13,16 +13,21 @@
 //! by `cargo tree -p loom-core | grep -c -E 'vortex|fastlanes'` == 0.
 
 use loom_core::l1_model::LayoutNode;
-use vortex_array::LEGACY_SESSION;
-use vortex_array::VortexSessionExecute;
-use vortex_array::arrays::BoolArray;
 use vortex_array::arrays::bool::BoolArrayExt;
+use vortex_array::arrays::dict::DictArraySlotsExt;
+use vortex_array::arrays::primitive::PrimitiveArrayExt;
+use vortex_array::arrays::{Bool, BoolArray, Dict, DictArray, Primitive, PrimitiveArray};
+use vortex_array::dtype::PType;
 use vortex_array::scalar::PValue;
 use vortex_array::validity::Validity;
+use vortex_array::ArrayRef;
+use vortex_array::VortexSessionExecute;
+use vortex_array::LEGACY_SESSION;
 use vortex_fastlanes::BitPackedArray;
 use vortex_fastlanes::BitPackedArrayExt;
 use vortex_fastlanes::FoRArray;
 use vortex_fastlanes::FoRArrayExt;
+use vortex_fastlanes::{RLEArray, RLEArrayExt};
 
 // ---------------------------------------------------------------------------
 // packed_bytes — confirmed BufferHandle accessor (Wave-0 check: Pitfall 5)
@@ -152,6 +157,48 @@ pub fn from_for_array(arr: &FoRArray) -> LayoutNode {
 }
 
 // ---------------------------------------------------------------------------
+// from_dict_array — DictArray -> LayoutNode::Dictionary
+// ---------------------------------------------------------------------------
+
+/// Inspect a Vortex [`DictArray`] and emit `LayoutNode::Dictionary`.
+///
+/// Codes and values are recursively bridged through [`from_array_ref`], so
+/// encoded children such as `BitPackedArray` stay encoded in the Loom layout.
+pub fn from_dict_array(arr: &DictArray) -> LayoutNode {
+    from_dict_view(arr)
+}
+
+// ---------------------------------------------------------------------------
+// from_rle_array — RLEArray -> LayoutNode::RunEnd
+// ---------------------------------------------------------------------------
+
+/// Inspect a Vortex [`RLEArray`] and emit `LayoutNode::RunEnd`.
+///
+/// Vortex FastLanes RLE stores chunk-local value indices plus per-chunk value
+/// offsets, not literal run-end positions. For Phase 4 fixture coverage, this
+/// bridge canonicalizes through Vortex's own in-memory execute path and scans
+/// the decoded primitive rows back into simple Loom run ends. The paired tests
+/// still compare Loom output row-for-row with the live Vortex oracle.
+pub fn from_rle_array(arr: &RLEArray) -> LayoutNode {
+    // Touch the real RLE slots so accidental API drift is caught by compile
+    // errors even though the Phase 4 bridge canonicalizes to simple run ends.
+    let _ = (
+        arr.values(),
+        arr.indices(),
+        arr.values_idx_offsets(),
+        arr.offset(),
+    );
+
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = arr
+        .as_array()
+        .clone()
+        .execute::<PrimitiveArray>(&mut ctx)
+        .expect("RLE execute::<PrimitiveArray> failed");
+    primitive_to_run_end(&canonical)
+}
+
+// ---------------------------------------------------------------------------
 // Private helper: from an ArrayView<'_, BitPacked>
 // ---------------------------------------------------------------------------
 
@@ -178,6 +225,179 @@ fn from_bitpacked_view<T: BitPackedArrayExt>(view: &T) -> LayoutNode {
     }
 }
 
+fn from_dict_view<T: DictArraySlotsExt>(view: &T) -> LayoutNode {
+    LayoutNode::Dictionary {
+        codes: Box::new(from_array_ref(view.codes())),
+        values: Box::new(from_array_ref(view.values())),
+    }
+}
+
+fn from_array_ref(array: &ArrayRef) -> LayoutNode {
+    if let Some(view) = array.as_opt::<vortex_fastlanes::BitPacked>() {
+        return from_bitpacked_view(&view);
+    }
+    if let Some(view) = array.as_opt::<vortex_fastlanes::FoR>() {
+        return from_for_view(&view);
+    }
+    if let Some(view) = array.as_opt::<Dict>() {
+        return from_dict_view(&view);
+    }
+    if let Some(view) = array.as_opt::<Primitive>() {
+        let mut ctx = LEGACY_SESSION.create_execution_ctx();
+        let canonical = view
+            .as_ref()
+            .clone()
+            .execute::<PrimitiveArray>(&mut ctx)
+            .expect("primitive execute failed");
+        return primitive_to_raw(&canonical);
+    }
+    if let Some(view) = array.as_opt::<Bool>() {
+        let mut ctx = LEGACY_SESSION.create_execution_ctx();
+        let canonical = view
+            .as_ref()
+            .clone()
+            .execute::<BoolArray>(&mut ctx)
+            .expect("bool execute failed");
+        return bool_to_raw(&canonical);
+    }
+    panic!("unsupported Vortex array encoding for Loom fixture bridge");
+}
+
+fn from_for_view<T: FoRArrayExt>(view: &T) -> LayoutNode {
+    let ref_scalar = view.reference_scalar();
+    let pvalue = ref_scalar
+        .as_primitive()
+        .pvalue()
+        .expect("FoR reference must be non-null");
+    let reference: i128 = pvalue_to_i128(pvalue);
+
+    let inner_array_ref = view.encoded();
+    let inner = from_array_ref(inner_array_ref);
+
+    LayoutNode::FrameOfReference {
+        reference,
+        inner: Box::new(inner),
+    }
+}
+
+fn primitive_to_raw(arr: &PrimitiveArray) -> LayoutNode {
+    assert!(
+        !has_nulls(&PrimitiveArrayExt::validity(arr), arr.as_ref().len()),
+        "nullable primitive arrays must stay in an encoding that carries validity"
+    );
+
+    match arr.ptype() {
+        PType::U8 => raw_i32(arr.as_slice::<u8>().iter().map(|&v| v as i32)),
+        PType::U16 => raw_i32(arr.as_slice::<u16>().iter().map(|&v| v as i32)),
+        PType::U32 => raw_i32(arr.as_slice::<u32>().iter().map(|&v| v as i32)),
+        PType::I32 => raw_i32(arr.as_slice::<i32>().iter().copied()),
+        PType::I64 => LayoutNode::Raw {
+            data: arr
+                .as_slice::<i64>()
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 8,
+            count: arr.as_ref().len(),
+        },
+        other => panic!("unsupported primitive ptype for Loom fixture bridge: {other:?}"),
+    }
+}
+
+fn primitive_to_run_end(arr: &PrimitiveArray) -> LayoutNode {
+    assert!(
+        !has_nulls(&PrimitiveArrayExt::validity(arr), arr.as_ref().len()),
+        "nullable FastLanes RLE is covered by the hand-written Loom RunEnd fallback test"
+    );
+
+    match arr.ptype() {
+        PType::U8 => run_end_i32(arr.as_slice::<u8>().iter().map(|&v| v as i32)),
+        PType::U16 => run_end_i32(arr.as_slice::<u16>().iter().map(|&v| v as i32)),
+        PType::U32 => run_end_i32(arr.as_slice::<u32>().iter().map(|&v| v as i32)),
+        PType::I32 => run_end_i32(arr.as_slice::<i32>().iter().copied()),
+        other => panic!("unsupported RLE ptype for Loom fixture bridge: {other:?}"),
+    }
+}
+
+fn bool_to_raw(arr: &BoolArray) -> LayoutNode {
+    assert!(
+        !has_nulls(&BoolArrayExt::validity(arr), arr.as_ref().len()),
+        "nullable BoolArray cannot be represented as Loom Raw"
+    );
+    let values: Vec<u8> = arr
+        .to_bit_buffer()
+        .iter()
+        .take(arr.as_ref().len())
+        .map(u8::from)
+        .collect();
+    LayoutNode::Raw {
+        data: values,
+        elem_size: 1,
+        count: arr.as_ref().len(),
+    }
+}
+
+fn raw_i32<I>(values: I) -> LayoutNode
+where
+    I: IntoIterator<Item = i32>,
+{
+    let values: Vec<i32> = values.into_iter().collect();
+    LayoutNode::Raw {
+        data: values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+        elem_size: 4,
+        count: values.len(),
+    }
+}
+
+fn run_end_i32<I>(values: I) -> LayoutNode
+where
+    I: IntoIterator<Item = i32>,
+{
+    let values: Vec<i32> = values.into_iter().collect();
+    if values.is_empty() {
+        return LayoutNode::RunEnd {
+            run_ends: Box::new(LayoutNode::Raw {
+                data: vec![],
+                elem_size: 8,
+                count: 0,
+            }),
+            values: Box::new(raw_i32([])),
+            count: 0,
+        };
+    }
+
+    let mut run_values = Vec::new();
+    let mut run_ends = Vec::new();
+    let mut current = values[0];
+    for (idx, value) in values.iter().copied().enumerate().skip(1) {
+        if value != current {
+            run_values.push(current);
+            run_ends.push(idx as i64);
+            current = value;
+        }
+    }
+    run_values.push(current);
+    run_ends.push(values.len() as i64);
+
+    LayoutNode::RunEnd {
+        run_ends: Box::new(LayoutNode::Raw {
+            data: run_ends.iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 8,
+            count: run_ends.len(),
+        }),
+        values: Box::new(raw_i32(run_values)),
+        count: values.len(),
+    }
+}
+
+fn has_nulls(validity: &Validity, len: usize) -> bool {
+    match validity {
+        Validity::NonNullable | Validity::AllValid => false,
+        Validity::AllInvalid => len > 0,
+        Validity::Array(_) => true,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
@@ -190,11 +410,11 @@ fn from_bitpacked_view<T: BitPackedArrayExt>(view: &T) -> LayoutNode {
 /// `synthesized_read_loop` handles the arithmetic correctly regardless.
 fn pvalue_to_i128(pv: PValue) -> i128 {
     match pv {
-        PValue::U8(v)  => v as i128,
+        PValue::U8(v) => v as i128,
         PValue::U16(v) => v as i128,
         PValue::U32(v) => v as i128,
         PValue::U64(v) => v as i128,
-        PValue::I8(v)  => v as i128,
+        PValue::I8(v) => v as i128,
         PValue::I16(v) => v as i128,
         PValue::I32(v) => v as i128,
         PValue::I64(v) => v as i128,

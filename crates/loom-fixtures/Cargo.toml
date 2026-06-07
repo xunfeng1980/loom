@@ -10,7 +10,7 @@ description = "Reference fixtures and oracle decoder — the ONLY crate permitte
 #   2. Decode them via Vortex's own decoder for row-for-row comparison against
 #      the Loom output in the verification harness (Phase 5).
 #
-# FORBIDDEN: vortex-file, vortex-serde, vortex-ipc (PITFALLS P8).
+# FORBIDDEN: file-backed Vortex IO/serde crates (PITFALLS P8).
 #
 # Note: vortex-dict was removed because vortex-dict =0.74.0 does not exist on
 # crates.io (merged into vortex-array in the 0.7x series). Dictionary encoding

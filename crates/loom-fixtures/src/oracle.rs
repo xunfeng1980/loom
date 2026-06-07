@@ -4,12 +4,13 @@
 //! This module is part of the D-02 isolation: it is the "reference truth"
 //! side that loom-core must match. It is only used in tests.
 
-use vortex_array::LEGACY_SESSION;
-use vortex_array::VortexSessionExecute;
-use vortex_array::ArrayRef;
-use vortex_array::arrays::PrimitiveArray;
+use vortex_array::arrays::bool::BoolArrayExt;
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
+use vortex_array::arrays::{BoolArray, PrimitiveArray};
 use vortex_array::validity::Validity;
+use vortex_array::ArrayRef;
+use vortex_array::VortexSessionExecute;
+use vortex_array::LEGACY_SESSION;
 
 /// Decode a Vortex `ArrayRef` to a `Vec<i32>` via Vortex's own execution path.
 ///
@@ -44,6 +45,24 @@ pub fn decode_u32_oracle(array: &ArrayRef) -> (Vec<u32>, Vec<bool>) {
     (values, null_flags)
 }
 
+/// Decode a Vortex `ArrayRef` to boolean values via Vortex's own execution path.
+pub fn decode_bool_oracle(array: &ArrayRef) -> (Vec<bool>, Vec<bool>) {
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = array
+        .clone()
+        .execute::<BoolArray>(&mut ctx)
+        .expect("oracle execute::<BoolArray> failed");
+
+    let values: Vec<bool> = canonical
+        .to_bit_buffer()
+        .iter()
+        .take(canonical.as_ref().len())
+        .collect();
+    let validity = BoolArrayExt::validity(&canonical);
+    let null_flags = extract_null_flags(&validity, canonical.as_ref().len());
+    (values, null_flags)
+}
+
 /// Build a null flags vector from a Vortex `Validity` (true = null).
 ///
 /// Converts the enum into a per-row `Vec<bool>` so callers can compare
@@ -53,8 +72,6 @@ pub fn extract_null_flags(validity: &Validity, len: usize) -> Vec<bool> {
         Validity::NonNullable | Validity::AllValid => vec![false; len],
         Validity::AllInvalid => vec![true; len],
         Validity::Array(bool_arr) => {
-            use vortex_array::arrays::BoolArray;
-            use vortex_array::arrays::bool::BoolArrayExt;
             let mut ctx = LEGACY_SESSION.create_execution_ctx();
             let canonical = bool_arr
                 .clone()

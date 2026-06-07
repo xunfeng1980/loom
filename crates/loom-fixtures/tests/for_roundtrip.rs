@@ -8,19 +8,19 @@
 //!   2. BitPackedData::encode the deltas.
 //!   3. FoR::try_new(bp.into_array(), reference_scalar) to layer FoR over BitPack.
 //!
-//! All fixtures are in-memory. No `.vortex` file is ever opened (success criterion 5).
+//! All fixtures are in-memory. No on-disk Vortex fixture is ever opened.
 
 use std::sync::LazyLock;
 
+use arrow::array::Int32Array;
+use arrow_schema::DataType;
 use loom_core::arrow_builder_output::OutputBuilder;
 use loom_core::l1_model::synthesized_read_loop;
-use vortex_array::VortexSessionExecute;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::IntoArray;
+use vortex_array::VortexSessionExecute;
 use vortex_fastlanes::BitPackedData;
 use vortex_fastlanes::FoR;
-use arrow_schema::DataType;
-use arrow::array::Int32Array;
 
 use loom_fixtures::oracle;
 use loom_fixtures::vortex_reader;
