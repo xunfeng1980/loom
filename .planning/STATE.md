@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: Ready to gather Phase 05 context
+status: planning
 stopped_at: Phase 05 context gathered
 last_updated: "2026-06-07T16:26:58.368Z"
-last_activity: 2026-06-08 -- Entered Phase 05
+last_activity: 2026-06-08 -- Phase 05 context gathered
 progress:
   total_phases: 5
   completed_phases: 4
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 ## Current Position
 
-Phase: 05 (fsst-l2-kernel-and-full-verification) — READY TO DISCUSS
+Phase: 05 (fsst-l2-kernel-and-full-verification) — READY TO PLAN
 Plan: Not started
-Status: Ready to gather Phase 05 context
-Last activity: 2026-06-08 -- Entered Phase 05
+Status: Context gathered; ready to plan Phase 05
+Last activity: 2026-06-08 -- Phase 05 context gathered
 
 Progress: [████████░░] 80%
 
