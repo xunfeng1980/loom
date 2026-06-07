@@ -71,7 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md - Hand-rolled CMake (cargo build + link + footer-stamp POST_BUILD), duckdb -unsigned load smoke-test, allocator-symbol guard, CI wiring (DUCK-01, DUCK-03)
+- [x] 02-02-PLAN.md - Hand-rolled CMake (cargo build + link + footer-stamp POST_BUILD), duckdb -unsigned load smoke-test, allocator-symbol guard, CI wiring (DUCK-01, DUCK-03)
 
 ### Phase 3: L1 Bitpack, FOR, and Arrow Builders
 
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scaffold and FFI Boundary | 2/2 | Complete    | 2026-06-07 |
-| 2. DuckDB Extension Scaffold | 1/2 | In Progress|  |
+| 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 0/TBD | Not started | - |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
 | 5. FSST L2 Kernel and Full Verification | 0/TBD | Not started | - |
