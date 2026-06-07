@@ -42,9 +42,9 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### DuckDB — Engine Integration
 
-- [ ] **DUCK-01**: A C++ DuckDB extension pinned to DuckDB v1.5.3 builds and loads
-- [ ] **DUCK-02**: A `loom_scan` table function invokes the Rust decoder and adopts the imported Arrow array zero-copy
-- [ ] **DUCK-03**: The extension releases the imported Arrow array on every teardown path (no leak, no double-free)
+- [x] **DUCK-01**: A C++ DuckDB extension pinned to DuckDB v1.5.3 builds and loads
+- [x] **DUCK-02**: A `loom_scan` table function invokes the Rust decoder and adopts the imported Arrow array zero-copy
+- [x] **DUCK-03**: The extension releases the imported Arrow array on every teardown path (no leak, no double-free)
 - [x] **DUCK-04**: Every `extern "C"` entry point is wrapped in `catch_unwind` so a decoder panic cannot abort the DuckDB process
 
 ### Verify — Verification & Acceptance
@@ -94,9 +94,9 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | CORE-03 | Phase 1 | Complete |
 | ARROW-03 | Phase 1 | Complete |
 | DUCK-04 | Phase 1 | Complete |
-| DUCK-01 | Phase 2 | Pending |
-| DUCK-02 | Phase 2 | Pending |
-| DUCK-03 | Phase 2 | Pending |
+| DUCK-01 | Phase 2 | Complete |
+| DUCK-02 | Phase 2 | Complete |
+| DUCK-03 | Phase 2 | Complete |
 | INPUT-01 | Phase 3 | Pending |
 | INPUT-02 | Phase 3 | Pending |
 | L1-01 | Phase 3 | Pending |
