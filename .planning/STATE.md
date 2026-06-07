@@ -5,7 +5,7 @@ milestone_name: milestone
 status: ready
 stopped_at: Phase 2 complete — ready for Phase 3
 last_updated: "2026-06-07T12:55:00.000Z"
-last_activity: 2026-06-07 -- Phase 2 plan 02-02 complete
+last_activity: 2026-06-07 -- Completed quick task 260607-taf: translate design.md to README.md + README-zh.md
 progress:
   total_phases: 5
   completed_phases: 2
@@ -90,6 +90,12 @@ None yet.
 - Phase 3 planning: **arrow_scan / ArrowArrayStream import path (D-01 deferred from Phase 2).** Phase 2 used direct DataChunk population because `arrow_scan` needs a top-level struct/record-batch schema and `loom_decode` emitted a bare primitive Int32 array. When Phase 3's real columnar decode produces record-batch-shaped output, replace `LoomScan`'s direct population with the `arrow_scan`/stream path. See 02-CONTEXT.md "D-01 REVISED".
 - Phase 4 planning: confirm `DictArray` sub-array accessor names in vortex-dict 0.74 source before planning (flagged in research/SUMMARY.md)
 - Phase 5 planning: confirm `FsstArray` internal field names in vortex-fsst 0.74 and `ArrowToDuckDB` include path/signature before planning (flagged in research/SUMMARY.md)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260607-taf | Translate design.md (Chinese) into English README.md and create README-zh.md as the consistent Chinese version | 2026-06-07 | 5f8b8e7 | [260607-taf-translate-design-md-chinese-into-english](./quick/260607-taf-translate-design-md-chinese-into-english/) |
 
 ## Deferred Items
 
