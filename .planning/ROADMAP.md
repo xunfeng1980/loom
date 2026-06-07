@@ -107,7 +107,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A run-length-encoded boolean column and a run-length-encoded integer column both expand correctly via run-end expansion, with nulls preserved
   3. A `LayoutNode::KernelEscape { kernel_id: 0, ... }` node routes to `L2KernelRegistry::get(0)` without panicking (stub kernel returns empty output; the routing path is the deliverable)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 04-01-PLAN.md - loom-core implementation: Boolean OutputBuilder, dictionary lookup, RunEnd expansion, L2KernelRegistry + FSST stub, KernelEscape routing, and FOR-over-Raw fix (L1-05, L1-06, L2-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md - loom-fixtures bridge + oracle tests for dict/RLE and public KernelEscape routing verification (L1-05, L1-06, L2-01)
 
 ### Phase 5: FSST L2 Kernel and Full Verification
 
@@ -133,5 +141,5 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 | 1. Scaffold and FFI Boundary | 2/2 | Complete    | 2026-06-07 |
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete    | 2026-06-07 |
-| 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
+| 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/2 | Planned | - |
 | 5. FSST L2 Kernel and Full Verification | 0/TBD | Not started | - |
