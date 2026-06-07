@@ -1,0 +1,10 @@
+[toolchain]
+# Pinned stable Rust toolchain (D-03). Recorded here so all machines and CI
+# build against exactly this version. Upgrade intentionally; do not use "stable"
+# unqualified, which floats and breaks reproducibility.
+#
+# 1.87.0 is the minimum version required by cbindgen 0.29.3 (STACK.md compatibility
+# matrix). Current CI toolchain is 1.96.0 (rustc 1.96.0, 2026-05-25) which satisfies
+# this MSRV. Pin to 1.87.0 so this workspace compiles on any stable >= 1.87.0.
+channel    = "1.87.0"
+components = ["rustfmt", "clippy"]

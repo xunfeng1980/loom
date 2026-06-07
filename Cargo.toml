@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/loom-core",
+    "crates/loom-ffi",
+    "crates/loom-fixtures",
+]
+
+# Shared dependency versions — all downstream crates reference these via `.workspace = true`.
+# Pinned to exact versions from STACK.md to prevent version skew (PITFALLS P9).
+[workspace.dependencies]
+# Arrow family — must be a single version across the entire workspace (CORE-01).
+arrow        = { version = "=58.3.0", features = ["ffi"] }
+arrow-array  = { version = "=58.3.0" }
+arrow-schema = { version = "=58.3.0" }
+arrow-data   = { version = "=58.3.0" }
+
+# Vortex family — 0.74.0 pinned; only loom-fixtures may use these (D-02).
+vortex-array      = { version = "=0.74.0" }
+vortex-fastlanes  = { version = "=0.74.0" }
+vortex-dict       = { version = "=0.74.0" }
+vortex-fsst       = { version = "=0.74.0" }
+
+# Build tooling — used in loom-ffi's build.rs in Plan 02.
+cbindgen = { version = "=0.29.3" }
+
+# Force every arrow-* sub-crate (including transitive ones pulled by vortex-array)
+# to resolve to exactly 58.3.0. Without this, vortex-array's transitive arrow-*
+# may select a different patch, producing two distinct Rust types for the same
+# Arrow struct — invisible at link time but catastrophic at the FFI boundary (PITFALLS P9).
+[patch.crates-io]
+arrow        = { version = "=58.3.0" }
+arrow-array  = { version = "=58.3.0" }
+arrow-schema = { version = "=58.3.0" }
+arrow-data   = { version = "=58.3.0" }
+arrow-buffer = { version = "=58.3.0" }
+arrow-cast   = { version = "=58.3.0" }
+arrow-ipc    = { version = "=58.3.0" }
+
+[profile.release]
+# Required before any extern "C" surface is added (Plan 02).
+# Unwinding past an FFI boundary is undefined behavior; aborting is the correct
+# mitigation. catch_unwind wrappers are added in Plan 02 (CORE-02, PITFALLS P3, T-01-03).
+panic = "abort"
