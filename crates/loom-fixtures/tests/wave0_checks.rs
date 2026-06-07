@@ -32,16 +32,16 @@
 
 use std::sync::LazyLock;
 
+use arrow::array::Int32Array;
+use arrow_schema::DataType;
 use fastlanes::transpose;
 use loom_core::arrow_builder_output::OutputBuilder;
 use loom_core::l1_model::bitpack::fl_transpose_index;
 use loom_core::l1_model::synthesized_read_loop;
-use vortex_array::VortexSessionExecute;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::IntoArray;
+use vortex_array::VortexSessionExecute;
 use vortex_fastlanes::BitPackedData;
-use arrow_schema::DataType;
-use arrow::array::Int32Array;
 
 use loom_fixtures::oracle;
 use loom_fixtures::vortex_reader;
@@ -96,10 +96,12 @@ fn bitpack_11bit_roundtrip() {
         .expect("BitPackedData::encode failed for 11-bit test");
 
     // Oracle: Vortex decode.
-    let (oracle_values, oracle_nulls) =
-        oracle::decode_i32_oracle(&packed.as_array().clone());
+    let (oracle_values, oracle_nulls) = oracle::decode_i32_oracle(&packed.as_array().clone());
     assert_eq!(oracle_values.len(), 1025, "oracle length mismatch");
-    assert!(oracle_nulls.iter().all(|&n| !n), "oracle has unexpected nulls");
+    assert!(
+        oracle_nulls.iter().all(|&n| !n),
+        "oracle has unexpected nulls"
+    );
 
     // loom-core decode.
     let node = vortex_reader::from_bitpacked_array(&packed);
@@ -108,7 +110,11 @@ fn bitpack_11bit_roundtrip() {
     let array_data = builder.finish();
 
     assert_eq!(array_data.len(), 1025, "loom-core output length mismatch");
-    assert_eq!(array_data.null_count(), 0, "unexpected nulls in loom-core output");
+    assert_eq!(
+        array_data.null_count(),
+        0,
+        "unexpected nulls in loom-core output"
+    );
 
     let decoded = Int32Array::from(array_data);
     for i in 0..1025 {
@@ -158,9 +164,7 @@ fn nullable_roundtrip() {
     let decoded = Int32Array::from(array_data.clone());
     // Check null positions bit-for-bit.
     for i in 0..count {
-        let loom_is_null = array_data
-            .nulls()
-            .map_or(false, |nulls| nulls.is_null(i));
+        let loom_is_null = array_data.nulls().map_or(false, |nulls| nulls.is_null(i));
         let oracle_is_null = oracle_nulls[i];
         assert_eq!(
             loom_is_null, oracle_is_null,

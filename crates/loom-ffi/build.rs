@@ -23,23 +23,21 @@ fn main() {
     println!("cargo:rerun-if-changed=cbindgen.toml");
 
     // Locate the crate root.
-    let crate_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR is set by cargo");
+    let crate_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set by cargo");
 
     // Ensure the output directory exists.
     let include_dir = std::path::PathBuf::from(&crate_dir).join("include");
-    std::fs::create_dir_all(&include_dir)
-        .expect("failed to create include/ directory");
+    std::fs::create_dir_all(&include_dir).expect("failed to create include/ directory");
 
     let out_file = include_dir.join("loom.h");
 
     // Build and generate.  `cbindgen::generate_with_config` picks up
     // `cbindgen.toml` from the crate root automatically when we pass the
     // manifest dir as the crate location.
-    let config = cbindgen::Config::from_file(
-        std::path::PathBuf::from(&crate_dir).join("cbindgen.toml"),
-    )
-    .expect("failed to read cbindgen.toml");
+    let config =
+        cbindgen::Config::from_file(std::path::PathBuf::from(&crate_dir).join("cbindgen.toml"))
+            .expect("failed to read cbindgen.toml");
 
     cbindgen::Builder::new()
         .with_crate(&crate_dir)

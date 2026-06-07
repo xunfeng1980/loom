@@ -205,16 +205,12 @@ pub fn unpack_all(
                 // Helper: load a native-type word at word index `word_idx` for
                 // this lane, from the current chunk.
                 let load_word = |word_idx: usize| -> u64 {
-                    let byte_off =
-                        chunk_bytes_start + (word_idx * lanes + lane) * byte_per_elem;
+                    let byte_off = chunk_bytes_start + (word_idx * lanes + lane) * byte_per_elem;
                     if t_bits == 32 {
-                        u32::from_le_bytes(
-                            packed[byte_off..byte_off + 4].try_into().unwrap(),
-                        ) as u64
+                        u32::from_le_bytes(packed[byte_off..byte_off + 4].try_into().unwrap())
+                            as u64
                     } else {
-                        u64::from_le_bytes(
-                            packed[byte_off..byte_off + 8].try_into().unwrap(),
-                        )
+                        u64::from_le_bytes(packed[byte_off..byte_off + 8].try_into().unwrap())
                     }
                 };
 
@@ -441,10 +437,18 @@ pub(crate) mod tests {
             if next_word > curr_word {
                 let remaining = ((found_row + 1) * bit_width) % t_bits;
                 let current_bits = bit_width - remaining;
-                let lo_mask: u64 =
-                    if current_bits == 64 { u64::MAX } else { (1u64 << current_bits) - 1 };
-                let hi_mask: u64 =
-                    if remaining == 64 { u64::MAX } else if remaining == 0 { 0 } else { (1u64 << remaining) - 1 };
+                let lo_mask: u64 = if current_bits == 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << current_bits) - 1
+                };
+                let hi_mask: u64 = if remaining == 64 {
+                    u64::MAX
+                } else if remaining == 0 {
+                    0
+                } else {
+                    (1u64 << remaining) - 1
+                };
 
                 let lo = val & lo_mask;
                 let curr_byte_off =
@@ -460,9 +464,17 @@ pub(crate) mod tests {
             } else {
                 let curr_byte_off =
                     chunk_bytes_start + (curr_word * lanes + found_lane) * byte_size;
-                let mask_all: u64 =
-                    if bit_width == 64 { u64::MAX } else { (1u64 << bit_width) - 1 };
-                or_word_le(&mut packed, curr_byte_off, t_bits, (val & mask_all) << shift);
+                let mask_all: u64 = if bit_width == 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << bit_width) - 1
+                };
+                or_word_le(
+                    &mut packed,
+                    curr_byte_off,
+                    t_bits,
+                    (val & mask_all) << shift,
+                );
             }
         }
 
@@ -483,16 +495,12 @@ pub(crate) mod tests {
     fn or_word_le(buf: &mut Vec<u8>, byte_off: usize, t_bits: usize, val: u64) {
         match t_bits {
             32 => {
-                let existing = u32::from_le_bytes(
-                    buf[byte_off..byte_off + 4].try_into().unwrap(),
-                );
+                let existing = u32::from_le_bytes(buf[byte_off..byte_off + 4].try_into().unwrap());
                 let new_val = existing | (val as u32);
                 buf[byte_off..byte_off + 4].copy_from_slice(&new_val.to_le_bytes());
             }
             64 => {
-                let existing = u64::from_le_bytes(
-                    buf[byte_off..byte_off + 8].try_into().unwrap(),
-                );
+                let existing = u64::from_le_bytes(buf[byte_off..byte_off + 8].try_into().unwrap());
                 let new_val = existing | val;
                 buf[byte_off..byte_off + 8].copy_from_slice(&new_val.to_le_bytes());
             }

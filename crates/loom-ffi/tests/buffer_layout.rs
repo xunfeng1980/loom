@@ -59,12 +59,18 @@ fn buffer_layout_n_buffers_validity_values() {
     // A flat Int32Array with a validity bitmap has exactly 2 buffers:
     //   buffers[0] = validity bitmap (non-null because there is a null element)
     //   buffers[1] = int32 values
-    assert_eq!(array.n_buffers, 2, "expected n_buffers==2 (validity + values)");
+    assert_eq!(
+        array.n_buffers, 2,
+        "expected n_buffers==2 (validity + values)"
+    );
 
     // Dereference the C pointer array to confirm each slot is non-null.
     // Safety: loom_decode returned 0 and n_buffers==2, so `array.buffers`
     // points to a valid C array of 2 const-void pointers.
-    assert!(!array.buffers.is_null(), "buffers pointer itself must be non-null");
+    assert!(
+        !array.buffers.is_null(),
+        "buffers pointer itself must be non-null"
+    );
 
     let buf0 = unsafe { *array.buffers.add(0) };
     let buf1 = unsafe { *array.buffers.add(1) };

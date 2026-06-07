@@ -152,7 +152,7 @@ fn loom_decode_inner(
     // non-null and properly aligned for their respective types before calling
     // this inner function.
     unsafe {
-        std::ptr::write(out_array, ffi_array);  // one write for array  (ARROW-03)
+        std::ptr::write(out_array, ffi_array); // one write for array  (ARROW-03)
         std::ptr::write(out_schema, ffi_schema); // one write for schema (ARROW-03)
     }
 
