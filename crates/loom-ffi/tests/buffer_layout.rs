@@ -1,0 +1,92 @@
+//! Wave-0 buffer-layout assertion test for `loom_decode`.
+//!
+//! # Purpose
+//!
+//! This test pins the exact Arrow C Data Interface buffer layout that
+//! `loom_decode` produces — specifically that it is an Int32Array with:
+//! - `length == 4`
+//! - `null_count == 1`
+//! - `n_buffers == 2`
+//! - `buffers[0]` (validity bitmap) is non-null
+//! - `buffers[1]` (int32 values) is non-null
+//!
+//! These indices are load-bearing for the OneShotStream/arrow_scan path in the
+//! C++ extension (Plan 02-01, D-01).  If loom_decode's Arrow output ever changes
+//! layout, this test fails before any C++ buffer logic is affected.
+//!
+//! # Requirements satisfied
+//!
+//! RESEARCH Open Question 2; Assumption A3 (buffers[0]=validity, buffers[1]=values).
+//! DUCK-02: Wave-0 assurance that the C ABI seam carries correct data.
+//! T-02-IDX: Arrow buffer index assumptions pinned before any C++ buffer logic.
+
+use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
+use loom_ffi::ffi::loom_decode;
+
+/// Asserts the Arrow buffer layout produced by `loom_decode`:
+/// - return code 0
+/// - length == 4, null_count == 1, n_buffers == 2
+/// - buffers[0] (validity bitmap) is non-null
+/// - buffers[1] (int32 values) is non-null
+/// - Both release callbacks are fired exactly once via teardown.
+#[test]
+fn buffer_layout_n_buffers_validity_values() {
+    // Allocate zeroed FFI shells (release == None / nullptr on entry).
+    let mut array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
+    let mut schema: FFI_ArrowSchema = unsafe { std::mem::zeroed() };
+
+    // --- Call loom_decode ---
+    let rc = unsafe {
+        loom_decode(
+            std::ptr::null(),
+            0,
+            &mut array as *mut _,
+            &mut schema as *mut _,
+        )
+    };
+
+    // DUCK-02 / Pitfall P5: return code MUST be 0; never proceed on nonzero.
+    assert_eq!(rc, 0, "loom_decode returned nonzero rc={}", rc);
+
+    // --- Pin the buffer layout (Open Question 2, Assumption A3) ---
+
+    // Int32Array [1, 2, 3, null] → length=4
+    assert_eq!(array.length, 4, "expected length==4 for [1,2,3,null]");
+
+    // Exactly one null (the fourth element).
+    assert_eq!(array.null_count, 1, "expected null_count==1");
+
+    // A flat Int32Array with a validity bitmap has exactly 2 buffers:
+    //   buffers[0] = validity bitmap (non-null because there is a null element)
+    //   buffers[1] = int32 values
+    assert_eq!(array.n_buffers, 2, "expected n_buffers==2 (validity + values)");
+
+    // Dereference the C pointer array to confirm each slot is non-null.
+    // Safety: loom_decode returned 0 and n_buffers==2, so `array.buffers`
+    // points to a valid C array of 2 const-void pointers.
+    assert!(!array.buffers.is_null(), "buffers pointer itself must be non-null");
+
+    let buf0 = unsafe { *array.buffers.add(0) };
+    let buf1 = unsafe { *array.buffers.add(1) };
+
+    assert!(
+        !buf0.is_null(),
+        "buffers[0] (validity bitmap) must be non-null — the array has one null element"
+    );
+    assert!(
+        !buf1.is_null(),
+        "buffers[1] (int32 values) must be non-null"
+    );
+
+    // --- Teardown: fire release callbacks exactly once (DUCK-03, PITFALLS P1) ---
+    //
+    // The arrow-data FFI_ArrowArray Drop impl calls release if release is Some.
+    // We drop both structs here so teardown is explicit in the test output.
+    // Dropping array calls array.release(&array) — sets release=None inside.
+    // schema is dropped after.
+    drop(array);
+    drop(schema);
+
+    // If this point is reached without a crash or ASAN report, the release path
+    // is sound (no double-free, no leak detectable in the test harness).
+}

@@ -1,0 +1,12 @@
+# Build output
+build/
+
+# DuckDB CLI binary (downloaded separately in smoke-test step)
+duckdb
+duckdb.exe
+
+# Compiled extension output (produced by CMake build — not committed)
+*.duckdb_extension
+
+# OS artifacts
+.DS_Store
