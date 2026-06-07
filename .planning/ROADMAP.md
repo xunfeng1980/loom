@@ -86,7 +86,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `arrow_builder_output::finish()` produces `ArrayData` that can be exported via `to_ffi` without compile errors (arrow-rs version conflict would surface here)
   5. No `.vortex` file is read or written; all test inputs are constructed via `vortex-array` builder APIs in Rust
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — loom-core L1 core: full LayoutNode enum, FastLanes unpack, OutputBuilder, read loop (Raw/BitPack/FOR + validity) (L1-01, L1-02, L1-03, L1-04, L1-07, ARROW-01, ARROW-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — vortex_reader + oracle + 4 Wave-0 BLOCKING checks + bitpack/FOR/nullable roundtrip vs Vortex oracle (INPUT-01, INPUT-02, L1-03, L1-04, L1-07)
 
 ### Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure
 
@@ -124,6 +132,6 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 |-------|----------------|--------|-----------|
 | 1. Scaffold and FFI Boundary | 2/2 | Complete    | 2026-06-07 |
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
-| 3. L1 Bitpack, FOR, and Arrow Builders | 0/TBD | Not started | - |
+| 3. L1 Bitpack, FOR, and Arrow Builders | 0/2 | Not started | - |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
 | 5. FSST L2 Kernel and Full Verification | 0/TBD | Not started | - |
