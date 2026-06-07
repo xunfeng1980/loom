@@ -91,9 +91,9 @@ Phase mapping finalized by roadmapper 2026-06-07.
 |-------------|-------|--------|
 | CORE-01 | Phase 1 | Complete |
 | CORE-02 | Phase 1 | Complete |
-| CORE-03 | Phase 1 | Pending |
-| ARROW-03 | Phase 1 | Pending |
-| DUCK-04 | Phase 1 | Pending |
+| CORE-03 | Phase 1 | Complete |
+| ARROW-03 | Phase 1 | Complete |
+| DUCK-04 | Phase 1 | Complete |
 | DUCK-01 | Phase 2 | Pending |
 | DUCK-02 | Phase 2 | Pending |
 | DUCK-03 | Phase 2 | Pending |
