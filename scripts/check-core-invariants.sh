@@ -62,21 +62,36 @@ echo ""
 # Correct state: each arrow-* name appears at exactly one version in the output.
 # ---------------------------------------------------------------------------
 echo "--- CORE-01: Arrow version unification (no arrow-* version conflicts) ---"
-# Strip tree-drawing characters (box-drawing Unicode), retain name + version.
-# Then for each arrow-* name, confirm it resolves to only ONE version string.
-arrow_versions=$(cargo tree -d 2>/dev/null \
-    | sed 's/^[^a-zA-Z]*//' \
-    | grep '^arrow' \
-    | awk '{print $1, $2}' \
-    | sort -u)
-# Count distinct (name, version) pairs; any count > unique-names means conflict.
-arrow_name_count=$(echo "$arrow_versions" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
-arrow_pair_count=$(echo "$arrow_versions" | wc -l | tr -d ' ')
-if [ -z "$arrow_versions" ] || [ "$arrow_pair_count" -eq "$arrow_name_count" ]; then
-    pass "cargo tree -d: all arrow-* crates resolve to a single version (PITFALLS P9)"
+# WR-02 fix: do NOT discard cargo stderr and do NOT let an empty result PASS.
+# A `cargo tree` failure (network, lockfile, etc.) must surface as FAIL, not be
+# silently swallowed into a green check. `|| true` keeps `set -e` from aborting
+# the whole script so we can report the failure ourselves.
+arrow_dupes_raw=$(cargo tree -d 2>&1) || arrow_dupes_raw=""
+arrow_tree_exit=$?
+if [ "$arrow_tree_exit" -ne 0 ]; then
+    fail "cargo tree -d failed (exit $arrow_tree_exit) — cannot verify arrow version unification (CORE-01):"
+    echo "$arrow_dupes_raw" | head -5 >&2
 else
-    fail "Duplicate arrow-* version conflict detected (PITFALLS P9):"
-    echo "$arrow_versions" >&2
+    # Strip tree-drawing characters (box-drawing Unicode), retain name + version.
+    arrow_versions=$(printf '%s\n' "$arrow_dupes_raw" \
+        | sed 's/^[^a-zA-Z]*//' \
+        | grep '^arrow' \
+        | awk '{print $1, $2}' \
+        | sort -u)
+    # The workspace MUST depend on arrow (loom-ffi uses it). An empty arrow set
+    # means the query is broken or the dep vanished — fail closed, never PASS.
+    if [ -z "$arrow_versions" ]; then
+        fail "No arrow-* crates found in dependency tree — expected at least one (CORE-01 query suspect)"
+    else
+        arrow_name_count=$(echo "$arrow_versions" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
+        arrow_pair_count=$(echo "$arrow_versions" | wc -l | tr -d ' ')
+        if [ "$arrow_pair_count" -eq "$arrow_name_count" ]; then
+            pass "cargo tree -d: all arrow-* crates resolve to a single version (PITFALLS P9)"
+        else
+            fail "Duplicate arrow-* version conflict detected (PITFALLS P9):"
+            echo "$arrow_versions" >&2
+        fi
+    fi
 fi
 echo ""
 
@@ -109,12 +124,19 @@ echo ""
 # ---------------------------------------------------------------------------
 # CORE-02: panic = "abort" must be present in the workspace Cargo.toml.
 # ---------------------------------------------------------------------------
-echo "--- CORE-02: panic=\"abort\" in [profile.release] ---"
-panic_line=$(grep 'panic = "abort"' Cargo.toml || true)
-if [ -n "$panic_line" ]; then
-    pass 'grep panic = "abort" Cargo.toml → found'
+# CORE-02 (revised, 01-REVIEW.md CR-01): release uses panic = "unwind" so the
+# extern "C" catch_unwind wrapper can actually catch panics (DUCK-04). With
+# "abort" the catch would be a no-op. We assert "unwind" and additionally assert
+# "abort" is NOT present (guards against a regression back to the no-op state).
+echo "--- CORE-02: panic=\"unwind\" in [profile.release] (enables catch_unwind, CR-01) ---"
+panic_unwind_line=$(grep 'panic = "unwind"' Cargo.toml || true)
+panic_abort_line=$(grep -v '^\s*#' Cargo.toml | grep 'panic = "abort"' || true)
+if [ -n "$panic_abort_line" ]; then
+    fail 'panic = "abort" present in Cargo.toml — catch_unwind becomes a no-op, defeating DUCK-04 (CR-01)'
+elif [ -n "$panic_unwind_line" ]; then
+    pass 'grep panic = "unwind" Cargo.toml → found (catch_unwind is live)'
 else
-    fail 'panic = "abort" not found in Cargo.toml — CORE-02 missing (PITFALLS P3)'
+    fail 'panic = "unwind" not found in Cargo.toml — CORE-02 missing (CR-01)'
 fi
 echo ""
 

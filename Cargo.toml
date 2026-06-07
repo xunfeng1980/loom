@@ -33,7 +33,18 @@ vortex-fsst      = { version = "=0.74.0" }
 cbindgen = { version = "=0.29.3" }
 
 [profile.release]
-# Required before any extern "C" surface is added (Plan 02).
-# Unwinding past an FFI boundary is undefined behavior; aborting is the correct
-# mitigation. catch_unwind wrappers are added in Plan 02 (CORE-02, PITFALLS P3, T-01-03).
-panic = "abort"
+# Panic strategy for the FFI boundary (CORE-02, revised — see 01-REVIEW.md CR-01).
+#
+# Unwinding *past* an `extern "C"` frame is undefined behavior. The mitigation
+# is a mandatory `std::panic::catch_unwind` wrapper at every `extern "C"` entry
+# point (DUCK-04, see crates/loom-ffi/src/ffi.rs): it catches the panic BEFORE
+# it reaches the FFI frame and converts it to an error code, so no unwind ever
+# crosses the boundary.
+#
+# For `catch_unwind` to catch anything, unwinding must be ENABLED. With
+# `panic = "abort"` the runtime aborts immediately and `catch_unwind` is a
+# no-op — which silently defeats DUCK-04 (a decoder panic would kill the
+# in-process DuckDB host instead of returning an error code). So we use
+# `panic = "unwind"` and rely on the boundary catch for soundness. This is the
+# Rust-RFC-2945 pattern for FFI panic safety.
+panic = "unwind"

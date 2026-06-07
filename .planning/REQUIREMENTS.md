@@ -10,7 +10,7 @@ Requirements for MVP0. Each maps to a roadmap phase.
 ### Core — Decoder Build & FFI Soundness
 
 - [x] **CORE-01**: The decoder builds as a Rust `staticlib` with all `arrow-*` sub-crates resolved to a single version (`cargo tree -d` shows zero arrow duplicates)
-- [x] **CORE-02**: The release profile enforces `panic = "abort"` and a `System` global allocator so the FFI boundary is sound against panics and allocator clashes
+- [x] **CORE-02**: The release profile enforces `panic = "unwind"` (revised from `abort` per 01-REVIEW.md CR-01 — so the boundary `catch_unwind` can actually catch panics and convert them to error codes per DUCK-04 rather than aborting the host) and a `System` global allocator, keeping the FFI boundary sound against unwind-across-FFI UB and allocator clashes
 - [x] **CORE-03**: `cbindgen` generates the C header (`loom.h`) from the `extern "C"` surface during the build
 
 ### Input — Vortex Source

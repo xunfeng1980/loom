@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Establish the Rust workspace as a **sound FFI `staticlib`** — the load-bearing foundation every later phase depends on. Concretely: a Cargo workspace that compiles, with Arrow sub-crates pinned to a single version, `panic = "abort"` and a `System` allocator enforced, `cbindgen` generating `loom.h`, and the Arrow C Data Interface export contract (`to_ffi` + `ptr::write` + correct release ownership) wired through a tiny `extern "C"` surface wrapped in `catch_unwind`.
+Establish the Rust workspace as a **sound FFI `staticlib`** — the load-bearing foundation every later phase depends on. Concretely: a Cargo workspace that compiles, with Arrow sub-crates pinned to a single version, `panic = "unwind"` (revised from `abort` per 01-REVIEW.md CR-01) and a `System` allocator enforced, `cbindgen` generating `loom.h`, and the Arrow C Data Interface export contract (`to_ffi` + `ptr::write` + correct release ownership) wired through a tiny `extern "C"` surface wrapped in `catch_unwind`.
 
 Requirements: CORE-01 (single arrow version, staticlib), CORE-02 (panic=abort + System allocator), CORE-03 (cbindgen loom.h), ARROW-03 (Arrow C Data Interface export with release ownership), DUCK-04 (catch_unwind on every extern "C").
 

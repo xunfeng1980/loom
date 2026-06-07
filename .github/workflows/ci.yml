@@ -6,7 +6,7 @@
 #
 # Phase 1 CORE invariants verified by this workflow (ROADMAP criterion 5):
 #   CORE-01: Zero arrow-* version conflicts; vortex-file absent; loom-core clean
-#   CORE-02: panic="abort" + System global_allocator present
+#   CORE-02: panic="unwind" (so catch_unwind works — CR-01) + System global_allocator present
 #   CORE-03: cbindgen generates loom.h with loom_decode signature
 #   ARROW-03: real Arrow array exported via to_ffi + ptr::write; release test passes
 #   DUCK-04: catch_unwind on extern "C"; panic-safety test passes
@@ -62,6 +62,14 @@ jobs:
       # Applies to the whole workspace; any new warning fails the build.
       - name: Clippy
         run: cargo clippy --workspace -- -D warnings
+
+      # Step 5b: Run the FFI tests under the RELEASE profile (CR-01 prevention).
+      # The panic-safety test (panic_does_not_abort) must run under the same
+      # panic strategy the shipped staticlib uses. Running only the default
+      # (dev) profile previously gave false assurance when release was
+      # panic="abort". This step exercises the real shipped behavior.
+      - name: Test loom-ffi (release profile)
+        run: cargo test -p loom-ffi --release
 
       # Step 6: Run the CORE invariant script.
       # This is the gate referenced by ROADMAP criterion 5:

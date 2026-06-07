@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* Self-contained forward declarations for the Arrow C Data Interface structs. */
+typedef struct ArrowArray FFI_ArrowArray;
+typedef struct ArrowSchema FFI_ArrowSchema;
+
 /**
  * Export a minimal Arrow array across the C Data Interface.
  *
