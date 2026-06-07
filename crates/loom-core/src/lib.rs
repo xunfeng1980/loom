@@ -32,4 +32,4 @@ pub mod l1_model;
 /// Dispatches L2 kernel identifiers to total-function kernel implementations.
 /// The first (and for MVP0 only) registered kernel is FSST string decompression.
 /// Implemented in Phase 4+.
-pub mod l2_kernel_registry {}
+pub mod l2_kernel_registry;

@@ -19,10 +19,13 @@
 
 pub mod bitpack;
 
+use arrow::array::{Array, BooleanArray, Int32Array, Int64Array};
+use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
 use crate::arrow_builder_output::OutputBuilder;
 use crate::error::LoomDecodeError;
+use crate::l2_kernel_registry::L2KernelRegistry;
 
 // ---------------------------------------------------------------------------
 // LayoutNode — pure-data physical layout description (D-04)
@@ -201,9 +204,11 @@ pub fn synthesized_read_loop(
         // ----------------------------------------------------------------
         // Raw: little-endian values, `elem_size` bytes each.
         // ----------------------------------------------------------------
-        LayoutNode::Raw { data, elem_size, count } => {
-            decode_raw(data, *elem_size, *count, builder)
-        }
+        LayoutNode::Raw {
+            data,
+            elem_size,
+            count,
+        } => decode_raw(data, *elem_size, *count, builder),
 
         // ----------------------------------------------------------------
         // BitPack: FastLanes transposed bit-packing with validity routing.
@@ -215,17 +220,15 @@ pub fn synthesized_read_loop(
             count,
             validity,
             all_null,
-        } => {
-            decode_bitpack(
-                values_buf,
-                *bit_width,
-                *offset,
-                *count,
-                validity.as_deref(),
-                *all_null,
-                builder,
-            )
-        }
+        } => decode_bitpack(
+            values_buf,
+            *bit_width,
+            *offset,
+            *count,
+            validity.as_deref(),
+            *all_null,
+            builder,
+        ),
 
         // ----------------------------------------------------------------
         // FrameOfReference: wrapping-add the reference after inner decode.
@@ -233,22 +236,45 @@ pub fn synthesized_read_loop(
         // Validity lives in the inner BitPack node (Pitfall 3). This arm
         // does not carry a validity field.
         // ----------------------------------------------------------------
-        LayoutNode::FrameOfReference { reference, inner } => {
-            decode_for(*reference, inner, builder)
-        }
+        LayoutNode::FrameOfReference { reference, inner } => decode_for(*reference, inner, builder),
 
         // ----------------------------------------------------------------
         // Deferred arms — return a typed error, never panic (D-04, T-03-03).
         // ----------------------------------------------------------------
-        LayoutNode::Dictionary { .. } => {
-            Err(LoomDecodeError::UnimplementedEncoding("Dictionary"))
-        }
-        LayoutNode::RunEnd { .. } => {
-            Err(LoomDecodeError::UnimplementedEncoding("RunEnd"))
-        }
+        LayoutNode::Dictionary { codes, values } => decode_dictionary(codes, values, builder),
+        LayoutNode::RunEnd {
+            run_ends,
+            values,
+            count,
+        } => decode_run_end(run_ends, values, *count, builder),
         LayoutNode::KernelEscape { .. } => {
             Err(LoomDecodeError::UnimplementedEncoding("KernelEscape"))
         }
+    }
+}
+
+/// Decode a top-level layout into Arrow [`ArrayData`].
+///
+/// Builder-backed L1 nodes flow through [`synthesized_read_loop`]. A top-level
+/// [`LayoutNode::KernelEscape`] is different: its L2 kernel owns the output
+/// array, so this helper dispatches through [`L2KernelRegistry`] and returns the
+/// kernel-produced `ArrayData` directly.
+pub fn decode_layout_to_array_data(
+    desc: &LayoutDescription,
+    registry: &L2KernelRegistry,
+) -> Result<ArrayData, LoomDecodeError> {
+    match &desc.root {
+        LayoutNode::KernelEscape {
+            kernel_id,
+            params,
+            count,
+        } => {
+            let kernel = registry
+                .get(*kernel_id)
+                .ok_or(LoomDecodeError::UnknownKernel(*kernel_id))?;
+            kernel.decode(params, *count)
+        }
+        node => decode_node_to_array_data(node, &desc.data_type),
     }
 }
 
@@ -281,26 +307,40 @@ fn decode_raw(
     }
     for i in 0..count {
         let bytes = &data[i * stride..(i + 1) * stride];
-        match elem_size {
-            4 => {
-                let v = i32::from_le_bytes(bytes.try_into().unwrap());
-                builder.append_i32(v);
+        match builder.data_type() {
+            DataType::Boolean => {
+                if elem_size != 1 {
+                    return Err(LoomDecodeError::UnsupportedBuilderType {
+                        operation: "decode_raw boolean",
+                        data_type: data_type_name(&DataType::Boolean),
+                    });
+                }
+                builder.append_bool(bytes[0] != 0);
             }
-            8 => {
-                let v = i64::from_le_bytes(bytes.try_into().unwrap());
-                builder.append_i64(v);
-            }
-            _ => {
-                // For other widths, attempt i32 promotion.
-                // Widen to 4-byte signed little-endian for i32 builders.
+            DataType::Int32 => {
                 let v = match elem_size {
                     1 => i8::from_le_bytes([bytes[0]]) as i32,
                     2 => i16::from_le_bytes(bytes.try_into().unwrap()) as i32,
-                    _ => {
-                        return Err(LoomDecodeError::UnsupportedWidth(elem_size));
-                    }
+                    4 => i32::from_le_bytes(bytes.try_into().unwrap()),
+                    _ => return Err(LoomDecodeError::UnsupportedWidth(elem_size)),
                 };
                 builder.append_i32(v);
+            }
+            DataType::Int64 => {
+                let v = match elem_size {
+                    1 => i8::from_le_bytes([bytes[0]]) as i64,
+                    2 => i16::from_le_bytes(bytes.try_into().unwrap()) as i64,
+                    4 => i32::from_le_bytes(bytes.try_into().unwrap()) as i64,
+                    8 => i64::from_le_bytes(bytes.try_into().unwrap()),
+                    _ => return Err(LoomDecodeError::UnsupportedWidth(elem_size)),
+                };
+                builder.append_i64(v);
+            }
+            other => {
+                return Err(LoomDecodeError::UnsupportedBuilderType {
+                    operation: "decode_raw",
+                    data_type: data_type_name(&other),
+                });
             }
         }
     }
@@ -385,11 +425,25 @@ fn decode_for(
             count,
             validity,
             all_null,
-        } => (values_buf, *bit_width, *offset, *count, validity.as_deref(), *all_null),
+        } => (
+            values_buf,
+            *bit_width,
+            *offset,
+            *count,
+            validity.as_deref(),
+            *all_null,
+        ),
         _ => {
-            // Non-BitPack inner: apply the full loop (supports nested FOR trees).
-            // For Phase 3 this path is unreachable in practice; delegate for correctness.
-            return synthesized_read_loop(inner, builder);
+            // Non-BitPack inner: decode the child first, then apply the same
+            // reference broadcast while preserving the child's nulls. Recursive
+            // dict/RLE paths in Phase 4 make this reachable.
+            let dtype = builder.data_type();
+            let data = decode_node_to_array_data(inner, &dtype)?;
+            let decoded = DecodedArray::from_array_data(data, &dtype)?;
+            for i in 0..decoded.len() {
+                decoded.append_value_plus_reference(i, reference, builder)?;
+            }
+            return Ok(());
         }
     };
 
@@ -454,6 +508,222 @@ fn decode_for(
     Ok(())
 }
 
+fn decode_dictionary(
+    codes: &LayoutNode,
+    values: &LayoutNode,
+    builder: &mut OutputBuilder,
+) -> Result<(), LoomDecodeError> {
+    let codes_data = decode_node_to_array_data(codes, &DataType::Int64)?;
+    let codes = DecodedArray::from_array_data(codes_data, &DataType::Int64)?;
+
+    let values_dtype = builder.data_type();
+    let values_data = decode_node_to_array_data(values, &values_dtype)?;
+    let values = DecodedArray::from_array_data(values_data, &values_dtype)?;
+
+    for row in 0..codes.len() {
+        let Some(code) = codes.value_as_i64(row)? else {
+            builder.append_null();
+            continue;
+        };
+        if code < 0 || code as usize >= values.len() {
+            return Err(LoomDecodeError::InvalidDictionaryCode {
+                index: row,
+                code,
+                values_len: values.len(),
+            });
+        }
+        values.append_value_to_builder(code as usize, builder)?;
+    }
+
+    Ok(())
+}
+
+fn decode_run_end(
+    run_ends: &LayoutNode,
+    values: &LayoutNode,
+    count: usize,
+    builder: &mut OutputBuilder,
+) -> Result<(), LoomDecodeError> {
+    let run_ends_data = decode_node_to_array_data(run_ends, &DataType::Int64)?;
+    let run_ends = DecodedArray::from_array_data(run_ends_data, &DataType::Int64)?;
+
+    let values_dtype = builder.data_type();
+    let values_data = decode_node_to_array_data(values, &values_dtype)?;
+    let values = DecodedArray::from_array_data(values_data, &values_dtype)?;
+
+    let mut previous = 0usize;
+    for run_idx in 0..run_ends.len() {
+        let Some(run_end) = run_ends.value_as_i64(run_idx)? else {
+            return Err(LoomDecodeError::NonMonotonicRunEnd {
+                index: run_idx,
+                previous,
+                current: previous,
+            });
+        };
+        if run_end <= previous as i64 {
+            return Err(LoomDecodeError::NonMonotonicRunEnd {
+                index: run_idx,
+                previous,
+                current: run_end.max(0) as usize,
+            });
+        }
+        let current = run_end as usize;
+        if current > count {
+            return Err(LoomDecodeError::RunEndOutOfBounds {
+                index: run_idx,
+                run_end: current,
+                count,
+            });
+        }
+        if run_idx >= values.len() {
+            return Err(LoomDecodeError::InsufficientRunValues {
+                run_index: run_idx,
+                values_len: values.len(),
+            });
+        }
+        for _ in previous..current {
+            values.append_value_to_builder(run_idx, builder)?;
+        }
+        previous = current;
+    }
+
+    if previous != count {
+        return Err(LoomDecodeError::RunEndTooShort {
+            last_run_end: previous,
+            count,
+        });
+    }
+
+    Ok(())
+}
+
+fn decode_node_to_array_data(
+    node: &LayoutNode,
+    data_type: &DataType,
+) -> Result<ArrayData, LoomDecodeError> {
+    let mut builder = OutputBuilder::new(data_type);
+    synthesized_read_loop(node, &mut builder)?;
+    Ok(builder.finish())
+}
+
+enum DecodedArray {
+    Boolean(BooleanArray),
+    Int32(Int32Array),
+    Int64(Int64Array),
+}
+
+impl DecodedArray {
+    fn from_array_data(data: ArrayData, data_type: &DataType) -> Result<Self, LoomDecodeError> {
+        match data_type {
+            DataType::Boolean => Ok(DecodedArray::Boolean(BooleanArray::from(data))),
+            DataType::Int32 => Ok(DecodedArray::Int32(Int32Array::from(data))),
+            DataType::Int64 => Ok(DecodedArray::Int64(Int64Array::from(data))),
+            other => Err(LoomDecodeError::UnsupportedBuilderType {
+                operation: "materialize decoded child",
+                data_type: data_type_name(other),
+            }),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            DecodedArray::Boolean(a) => a.len(),
+            DecodedArray::Int32(a) => a.len(),
+            DecodedArray::Int64(a) => a.len(),
+        }
+    }
+
+    fn is_null(&self, index: usize) -> bool {
+        match self {
+            DecodedArray::Boolean(a) => a.is_null(index),
+            DecodedArray::Int32(a) => a.is_null(index),
+            DecodedArray::Int64(a) => a.is_null(index),
+        }
+    }
+
+    fn value_as_i64(&self, index: usize) -> Result<Option<i64>, LoomDecodeError> {
+        if self.is_null(index) {
+            return Ok(None);
+        }
+        match self {
+            DecodedArray::Int32(a) => Ok(Some(a.value(index) as i64)),
+            DecodedArray::Int64(a) => Ok(Some(a.value(index))),
+            DecodedArray::Boolean(_) => Err(LoomDecodeError::UnsupportedBuilderType {
+                operation: "read integer code",
+                data_type: data_type_name(&DataType::Boolean),
+            }),
+        }
+    }
+
+    fn append_value_to_builder(
+        &self,
+        index: usize,
+        builder: &mut OutputBuilder,
+    ) -> Result<(), LoomDecodeError> {
+        if self.is_null(index) {
+            builder.append_null();
+            return Ok(());
+        }
+        match (self, builder.data_type()) {
+            (DecodedArray::Boolean(a), DataType::Boolean) => builder.append_bool(a.value(index)),
+            (DecodedArray::Int32(a), DataType::Int32) => builder.append_i32(a.value(index)),
+            (DecodedArray::Int64(a), DataType::Int64) => builder.append_i64(a.value(index)),
+            (DecodedArray::Int32(a), DataType::Int64) => builder.append_i64(a.value(index) as i64),
+            (DecodedArray::Int64(a), DataType::Int32) => builder.append_i32(a.value(index) as i32),
+            (_, other) => {
+                return Err(LoomDecodeError::UnsupportedBuilderType {
+                    operation: "append decoded child",
+                    data_type: data_type_name(&other),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn append_value_plus_reference(
+        &self,
+        index: usize,
+        reference: i128,
+        builder: &mut OutputBuilder,
+    ) -> Result<(), LoomDecodeError> {
+        if self.is_null(index) {
+            builder.append_null();
+            return Ok(());
+        }
+        match (self, builder.data_type()) {
+            (DecodedArray::Int32(a), DataType::Int32) => {
+                builder.append_i32((a.value(index) as i128).wrapping_add(reference) as i32)
+            }
+            (DecodedArray::Int64(a), DataType::Int64) => {
+                builder.append_i64((a.value(index) as i128).wrapping_add(reference) as i64)
+            }
+            (DecodedArray::Int32(a), DataType::Int64) => {
+                builder.append_i64((a.value(index) as i128).wrapping_add(reference) as i64)
+            }
+            (DecodedArray::Int64(a), DataType::Int32) => {
+                builder.append_i32((a.value(index) as i128).wrapping_add(reference) as i32)
+            }
+            (_, other) => {
+                return Err(LoomDecodeError::UnsupportedBuilderType {
+                    operation: "FrameOfReference over non-integer child",
+                    data_type: data_type_name(&other),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+fn data_type_name(data_type: &DataType) -> &'static str {
+    match data_type {
+        DataType::Boolean => "Boolean",
+        DataType::Int32 => "Int32",
+        DataType::Int64 => "Int64",
+        DataType::Utf8 => "Utf8",
+        _ => "unsupported",
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -470,52 +740,11 @@ mod tests {
         OutputBuilder::new(&DataType::Int32)
     }
 
-    /// The three deferred arms must return a typed UnimplementedEncoding error,
-    /// never panic (D-04, T-03-03).
+    /// Direct read-loop KernelEscape remains unsupported because kernels own
+    /// their own ArrayData. Use decode_layout_to_array_data for registry-backed
+    /// top-level KernelEscape routing.
     #[test]
-    fn unimplemented_arms_return_typed_error() {
-        // Dictionary
-        let dict = LayoutNode::Dictionary {
-            codes: Box::new(LayoutNode::Raw {
-                data: vec![],
-                elem_size: 4,
-                count: 0,
-            }),
-            values: Box::new(LayoutNode::Raw {
-                data: vec![],
-                elem_size: 4,
-                count: 0,
-            }),
-        };
-        let mut b = int32_builder();
-        let result = synthesized_read_loop(&dict, &mut b);
-        assert!(
-            matches!(result, Err(LoomDecodeError::UnimplementedEncoding("Dictionary"))),
-            "expected Dictionary error, got {result:?}"
-        );
-
-        // RunEnd
-        let run_end = LayoutNode::RunEnd {
-            run_ends: Box::new(LayoutNode::Raw {
-                data: vec![],
-                elem_size: 4,
-                count: 0,
-            }),
-            values: Box::new(LayoutNode::Raw {
-                data: vec![],
-                elem_size: 4,
-                count: 0,
-            }),
-            count: 0,
-        };
-        let mut b = int32_builder();
-        let result = synthesized_read_loop(&run_end, &mut b);
-        assert!(
-            matches!(result, Err(LoomDecodeError::UnimplementedEncoding("RunEnd"))),
-            "expected RunEnd error, got {result:?}"
-        );
-
-        // KernelEscape
+    fn direct_kernel_escape_returns_typed_error() {
         let escape = LayoutNode::KernelEscape {
             kernel_id: 0,
             params: vec![],
@@ -524,7 +753,10 @@ mod tests {
         let mut b = int32_builder();
         let result = synthesized_read_loop(&escape, &mut b);
         assert!(
-            matches!(result, Err(LoomDecodeError::UnimplementedEncoding("KernelEscape"))),
+            matches!(
+                result,
+                Err(LoomDecodeError::UnimplementedEncoding("KernelEscape"))
+            ),
             "expected KernelEscape error, got {result:?}"
         );
     }
@@ -547,10 +779,7 @@ mod tests {
     #[test]
     fn raw_i32_decodes_values() {
         let values: Vec<i32> = vec![1, -2, 3, -4];
-        let data: Vec<u8> = values
-            .iter()
-            .flat_map(|v| v.to_le_bytes())
-            .collect();
+        let data: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
         let node = LayoutNode::Raw {
             data,
             elem_size: 4,
@@ -705,6 +934,267 @@ mod tests {
         }
     }
 
+    #[test]
+    fn dictionary_i32_lookup_preserves_nulls() {
+        let code_values = [0u64, 0, 0, 0];
+        let codes = LayoutNode::BitPack {
+            values_buf: encode_test_values(&code_values, 2, 32),
+            bit_width: 2,
+            offset: 0,
+            count: code_values.len(),
+            validity: Some(vec![true, false, true, true]),
+            all_null: false,
+        };
+        let value_values: Vec<i32> = vec![10, 20, 30];
+        let values = LayoutNode::Raw {
+            data: value_values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 4,
+            count: value_values.len(),
+        };
+        let node = LayoutNode::Dictionary {
+            codes: Box::new(codes),
+            values: Box::new(values),
+        };
+
+        let mut b = int32_builder();
+        synthesized_read_loop(&node, &mut b).unwrap();
+        let data = b.finish();
+        assert_eq!(data.len(), 4);
+        assert_eq!(data.null_count(), 1);
+        let array = arrow::array::Int32Array::from(data);
+        assert_eq!(array.value(0), 10);
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), 10);
+        assert_eq!(array.value(3), 10);
+    }
+
+    #[test]
+    fn dictionary_i32_raw_codes_lookup_values() {
+        let codes = LayoutNode::Raw {
+            data: vec![0i64, 1, 2, 1]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 8,
+            count: 4,
+        };
+        let values = LayoutNode::Raw {
+            data: vec![10i32, 20, 30]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 4,
+            count: 3,
+        };
+        let node = LayoutNode::Dictionary {
+            codes: Box::new(codes),
+            values: Box::new(values),
+        };
+
+        let mut b = int32_builder();
+        synthesized_read_loop(&node, &mut b).unwrap();
+        let array = arrow::array::Int32Array::from(b.finish());
+        assert_eq!(array.values(), &[10, 20, 30, 20]);
+    }
+
+    #[test]
+    fn dictionary_i32_invalid_code_returns_typed_error() {
+        let codes = LayoutNode::Raw {
+            data: vec![0i64, 3].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 8,
+            count: 2,
+        };
+        let values = LayoutNode::Raw {
+            data: vec![10i32, 20]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 4,
+            count: 2,
+        };
+        let node = LayoutNode::Dictionary {
+            codes: Box::new(codes),
+            values: Box::new(values),
+        };
+
+        let mut b = int32_builder();
+        let result = synthesized_read_loop(&node, &mut b);
+        assert!(matches!(
+            result,
+            Err(LoomDecodeError::InvalidDictionaryCode {
+                index: 1,
+                code: 3,
+                values_len: 2
+            })
+        ));
+    }
+
+    #[test]
+    fn run_end_i32_expands_values_and_nulls() {
+        let run_ends = LayoutNode::Raw {
+            data: vec![2i64, 5, 6]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 8,
+            count: 3,
+        };
+        let values = LayoutNode::Dictionary {
+            codes: Box::new(LayoutNode::BitPack {
+                values_buf: encode_test_values(&[0u64, 0, 0], 2, 32),
+                bit_width: 2,
+                offset: 0,
+                count: 3,
+                validity: Some(vec![true, false, true]),
+                all_null: false,
+            }),
+            values: Box::new(LayoutNode::Raw {
+                data: vec![10i32].iter().flat_map(|v| v.to_le_bytes()).collect(),
+                elem_size: 4,
+                count: 1,
+            }),
+        };
+        let node = LayoutNode::RunEnd {
+            run_ends: Box::new(run_ends),
+            values: Box::new(values),
+            count: 6,
+        };
+
+        let mut b = int32_builder();
+        synthesized_read_loop(&node, &mut b).unwrap();
+        let data = b.finish();
+        assert_eq!(data.len(), 6);
+        assert_eq!(data.null_count(), 3);
+        let array = arrow::array::Int32Array::from(data);
+        assert_eq!(array.value(0), 10);
+        assert_eq!(array.value(1), 10);
+        assert!(array.is_null(2));
+        assert!(array.is_null(3));
+        assert!(array.is_null(4));
+        assert_eq!(array.value(5), 10);
+    }
+
+    #[test]
+    fn run_end_boolean_expands_values_and_nulls() {
+        let run_ends = LayoutNode::Raw {
+            data: vec![2i64, 4].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 8,
+            count: 2,
+        };
+        let values = LayoutNode::Raw {
+            data: vec![1u8, 0u8],
+            elem_size: 1,
+            count: 2,
+        };
+        let node = LayoutNode::RunEnd {
+            run_ends: Box::new(run_ends),
+            values: Box::new(values),
+            count: 4,
+        };
+
+        let mut b = OutputBuilder::new(&DataType::Boolean);
+        synthesized_read_loop(&node, &mut b).unwrap();
+        let data = b.finish();
+        assert_eq!(data.len(), 4);
+        let array = arrow::array::BooleanArray::from(data);
+        assert!(array.value(0));
+        assert!(array.value(1));
+        assert!(!array.value(2));
+        assert!(!array.value(3));
+    }
+
+    #[test]
+    fn run_end_non_monotonic_returns_typed_error() {
+        let node = LayoutNode::RunEnd {
+            run_ends: Box::new(LayoutNode::Raw {
+                data: vec![2i64, 2].iter().flat_map(|v| v.to_le_bytes()).collect(),
+                elem_size: 8,
+                count: 2,
+            }),
+            values: Box::new(LayoutNode::Raw {
+                data: vec![1i32, 2].iter().flat_map(|v| v.to_le_bytes()).collect(),
+                elem_size: 4,
+                count: 2,
+            }),
+            count: 2,
+        };
+        let mut b = int32_builder();
+        assert!(matches!(
+            synthesized_read_loop(&node, &mut b),
+            Err(LoomDecodeError::NonMonotonicRunEnd { index: 1, .. })
+        ));
+    }
+
+    #[test]
+    fn kernel_escape_zero_returns_empty_utf8_array() {
+        let desc = LayoutDescription {
+            data_type: DataType::Utf8,
+            root: LayoutNode::KernelEscape {
+                kernel_id: 0,
+                params: vec![],
+                count: 0,
+            },
+            row_count: 0,
+        };
+        let registry = crate::l2_kernel_registry::L2KernelRegistry::default_for_mvp0();
+        let data = decode_layout_to_array_data(&desc, &registry).unwrap();
+        assert_eq!(data.data_type(), &DataType::Utf8);
+        assert_eq!(data.len(), 0);
+    }
+
+    #[test]
+    fn kernel_escape_unknown_id_returns_typed_error() {
+        let desc = LayoutDescription {
+            data_type: DataType::Utf8,
+            root: LayoutNode::KernelEscape {
+                kernel_id: 99,
+                params: vec![],
+                count: 0,
+            },
+            row_count: 0,
+        };
+        let registry = crate::l2_kernel_registry::L2KernelRegistry::default_for_mvp0();
+        assert!(matches!(
+            decode_layout_to_array_data(&desc, &registry),
+            Err(LoomDecodeError::UnknownKernel(99))
+        ));
+    }
+
+    #[test]
+    fn for_over_raw_applies_reference_and_preserves_nulls() {
+        let codes = LayoutNode::BitPack {
+            values_buf: encode_test_values(&[0u64, 0, 0], 1, 32),
+            bit_width: 1,
+            offset: 0,
+            count: 3,
+            validity: Some(vec![true, false, true]),
+            all_null: false,
+        };
+        let values = LayoutNode::Raw {
+            data: vec![1i32].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 4,
+            count: 1,
+        };
+        let inner = LayoutNode::Dictionary {
+            codes: Box::new(codes),
+            values: Box::new(values),
+        };
+        let node = LayoutNode::FrameOfReference {
+            reference: 10,
+            inner: Box::new(inner),
+        };
+
+        let mut b = int32_builder();
+        synthesized_read_loop(&node, &mut b).unwrap();
+        let data = b.finish();
+        assert_eq!(data.len(), 3);
+        assert_eq!(data.null_count(), 1);
+        let array = arrow::array::Int32Array::from(data);
+        assert_eq!(array.value(0), 11);
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), 11);
+    }
+
     // -----------------------------------------------------------------------
     // Test helper: pack a small Vec<u64> into a FastLanes bit-packed buffer.
     // Used only in unit tests; mirrors the pack logic exactly so we have
@@ -740,8 +1230,16 @@ mod tests {
             if next_word > curr_word {
                 let remaining = ((found_row + 1) * bit_width) % t_bits;
                 let current_bits = bit_width - remaining;
-                let lo_mask: u64 = if current_bits == 64 { u64::MAX } else { (1u64 << current_bits) - 1 };
-                let hi_mask: u64 = if remaining == 64 { u64::MAX } else { (1u64 << remaining) - 1 };
+                let lo_mask: u64 = if current_bits == 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << current_bits) - 1
+                };
+                let hi_mask: u64 = if remaining == 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << remaining) - 1
+                };
 
                 // Write low bits into curr_word.
                 let lo = val & lo_mask;
@@ -778,16 +1276,12 @@ mod tests {
     fn set_word_le(buf: &mut Vec<u8>, byte_off: usize, t_bits: usize, val: u64) {
         match t_bits {
             32 => {
-                let existing = u32::from_le_bytes(
-                    buf[byte_off..byte_off + 4].try_into().unwrap()
-                );
+                let existing = u32::from_le_bytes(buf[byte_off..byte_off + 4].try_into().unwrap());
                 let new = existing | (val as u32);
                 buf[byte_off..byte_off + 4].copy_from_slice(&new.to_le_bytes());
             }
             64 => {
-                let existing = u64::from_le_bytes(
-                    buf[byte_off..byte_off + 8].try_into().unwrap()
-                );
+                let existing = u64::from_le_bytes(buf[byte_off..byte_off + 8].try_into().unwrap());
                 let new = existing | val;
                 buf[byte_off..byte_off + 8].copy_from_slice(&new.to_le_bytes());
             }

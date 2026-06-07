@@ -1,7 +1,8 @@
 //! Arrow typed builder output stage.
 //!
-//! [`OutputBuilder`] wraps `arrow-rs` typed builders (`Int32Builder`,
-//! `Int64Builder`) and exposes a narrow append API:
+//! [`OutputBuilder`] wraps `arrow-rs` typed builders (`BooleanBuilder`,
+//! `Int32Builder`, `Int64Builder`) and exposes a narrow append API:
+//! [`append_bool`](OutputBuilder::append_bool),
 //! [`append_i32`](OutputBuilder::append_i32),
 //! [`append_i64`](OutputBuilder::append_i64),
 //! [`append_null`](OutputBuilder::append_null).
@@ -25,7 +26,7 @@
 //! [`finish`](OutputBuilder::finish) method is intentionally identical to the
 //! `into_data()` call in `ffi.rs:138` so the two code paths stay in sync.
 
-use arrow::array::{Array, Int32Builder, Int64Builder};
+use arrow::array::{Array, BooleanBuilder, Int32Builder, Int64Builder};
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
@@ -38,13 +39,15 @@ use arrow_schema::DataType;
 /// # Variant selection
 ///
 /// Construct via [`OutputBuilder::new`], passing the target Arrow
-/// [`DataType`]. Supported types: `Int32`, `Int64`.
+/// [`DataType`]. Supported types: `Boolean`, `Int32`, `Int64`.
 ///
 /// # Thread safety
 ///
 /// `OutputBuilder` is not `Send` (arrow-rs builders are not either). Each
 /// decode invocation constructs its own builder.
 pub enum OutputBuilder {
+    /// Wraps `arrow::array::BooleanBuilder`.
+    Boolean(BooleanBuilder),
     /// Wraps `arrow::array::Int32Builder`.
     Int32(Int32Builder),
     /// Wraps `arrow::array::Int64Builder`.
@@ -56,15 +59,39 @@ impl OutputBuilder {
     ///
     /// # Panics
     ///
-    /// Panics if `data_type` is not one of the supported types (`Int32`,
-    /// `Int64`). For MVP0 only integer types are supported; this panic is
+    /// Panics if `data_type` is not one of the supported types (`Boolean`,
+    /// `Int32`, `Int64`). For MVP0 only these scalar types are supported; this panic is
     /// intentional as unsupported types indicate a programming error in the
     /// caller, not malformed input.
     pub fn new(data_type: &DataType) -> Self {
         match data_type {
+            DataType::Boolean => OutputBuilder::Boolean(BooleanBuilder::new()),
             DataType::Int32 => OutputBuilder::Int32(Int32Builder::new()),
             DataType::Int64 => OutputBuilder::Int64(Int64Builder::new()),
             other => panic!("OutputBuilder: unsupported DataType {other:?}"),
+        }
+    }
+
+    /// Return the Arrow data type produced by this builder.
+    pub fn data_type(&self) -> DataType {
+        match self {
+            OutputBuilder::Boolean(_) => DataType::Boolean,
+            OutputBuilder::Int32(_) => DataType::Int32,
+            OutputBuilder::Int64(_) => DataType::Int64,
+        }
+    }
+
+    /// Append a non-null boolean value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder is not `Boolean`.
+    pub fn append_bool(&mut self, v: bool) {
+        match self {
+            OutputBuilder::Boolean(b) => b.append_value(v),
+            OutputBuilder::Int32(_) | OutputBuilder::Int64(_) => {
+                panic!("append_bool called on integer builder")
+            }
         }
     }
 
@@ -77,8 +104,8 @@ impl OutputBuilder {
     pub fn append_i32(&mut self, v: i32) {
         match self {
             OutputBuilder::Int32(b) => b.append_value(v),
-            OutputBuilder::Int64(_) => {
-                panic!("append_i32 called on Int64 builder — use append_i64")
+            OutputBuilder::Boolean(_) | OutputBuilder::Int64(_) => {
+                panic!("append_i32 called on non-Int32 builder")
             }
         }
     }
@@ -92,8 +119,8 @@ impl OutputBuilder {
     pub fn append_i64(&mut self, v: i64) {
         match self {
             OutputBuilder::Int64(b) => b.append_value(v),
-            OutputBuilder::Int32(_) => {
-                panic!("append_i64 called on Int32 builder — use append_i32")
+            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) => {
+                panic!("append_i64 called on non-Int64 builder")
             }
         }
     }
@@ -105,6 +132,7 @@ impl OutputBuilder {
     /// incremented automatically.
     pub fn append_null(&mut self) {
         match self {
+            OutputBuilder::Boolean(b) => b.append_null(),
             OutputBuilder::Int32(b) => b.append_null(),
             OutputBuilder::Int64(b) => b.append_null(),
         }
@@ -114,8 +142,16 @@ impl OutputBuilder {
     ///
     /// Used by the bit-unpack path to select the correct `t_bits` value for
     /// [`crate::l1_model::bitpack::unpack_all`].
+    ///
+    /// # Panics
+    ///
+    /// Panics for `Boolean` builders. BitPack and FrameOfReference are integer
+    /// encodings in MVP0; boolean RunEnd expansion must not call this method.
     pub fn t_bits(&self) -> usize {
         match self {
+            OutputBuilder::Boolean(_) => {
+                panic!("t_bits called on Boolean builder; only integer builders have t_bits")
+            }
             OutputBuilder::Int32(_) => 32,
             OutputBuilder::Int64(_) => 64,
         }
@@ -133,6 +169,7 @@ impl OutputBuilder {
     /// ```
     pub fn finish(self) -> ArrayData {
         match self {
+            OutputBuilder::Boolean(mut b) => b.finish().into_data(),
             OutputBuilder::Int32(mut b) => b.finish().into_data(),
             OutputBuilder::Int64(mut b) => b.finish().into_data(),
         }
@@ -164,6 +201,23 @@ mod tests {
         let data = b.finish();
         assert_eq!(data.len(), 0);
         assert_eq!(data.null_count(), 0);
+    }
+
+    /// Boolean builder works end-to-end.
+    #[test]
+    fn boolean_builder_values_and_null() {
+        use arrow::array::BooleanArray;
+        let mut b = OutputBuilder::new(&DataType::Boolean);
+        b.append_bool(true);
+        b.append_null();
+        b.append_bool(false);
+        let data = b.finish();
+        let array = BooleanArray::from(data);
+        assert_eq!(array.len(), 3);
+        assert_eq!(array.null_count(), 1);
+        assert!(array.value(0));
+        assert!(array.is_null(1));
+        assert!(!array.value(2));
     }
 
     /// append_i32 then finish produces correct len and null_count.
@@ -233,5 +287,21 @@ mod tests {
         assert_eq!(b32.t_bits(), 32);
         let b64 = OutputBuilder::new(&DataType::Int64);
         assert_eq!(b64.t_bits(), 64);
+    }
+
+    #[test]
+    fn data_type_reports_builder_type() {
+        assert_eq!(
+            OutputBuilder::new(&DataType::Boolean).data_type(),
+            DataType::Boolean
+        );
+        assert_eq!(
+            OutputBuilder::new(&DataType::Int32).data_type(),
+            DataType::Int32
+        );
+        assert_eq!(
+            OutputBuilder::new(&DataType::Int64).data_type(),
+            DataType::Int64
+        );
     }
 }
