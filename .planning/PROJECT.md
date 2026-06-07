@@ -26,6 +26,7 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Sound FFI foundation — multi-crate Rust workspace (loom-core / loom-ffi / loom-fixtures), single unified arrow-rs version, `panic="unwind"` + boundary `catch_unwind` (live panic safety), System allocator, cbindgen-generated `loom.h` — Phase 1
 - ✓ Rust core exports a real Arrow array across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`, correct release ownership), verified by an outside-DuckDB roundtrip + release test — Phase 1
 - ✓ Thin C++ DuckDB v1.5.3 extension (`loom_scan` table function) links `libloom_ffi.a`, calls `loom_decode`, and exposes the decoded column as a DuckDB-queryable table — `SELECT * FROM loom_scan('test.bin')` returns the decoded rows via an unsigned, footer-stamped extension — Phase 2 (Arrow→DuckDB import via direct DataChunk population; arrow_scan/stream path deferred to Phase 3 — see 02-CONTEXT.md D-01 REVISED)
+- ✓ L1 decode core: `LayoutNode` model + `synthesized_read_loop` interpreter decoding Raw / BitPack / FrameOfReference with per-row validity routing, a from-scratch FastLanes transposed bit-unpack (zero vortex/fastlanes dependency — D-02), and typed Arrow `OutputBuilder` (Int32/Int64). `loom-fixtures` `vortex_reader`/`oracle` prove loom-core matches Vortex's own decoder row-for-row for bitpack + FOR (incl. nullable); no arm panics on malformed input — Phase 3
 
 ### Active
 
@@ -103,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-07 after Phase 2 (DuckDB Extension Scaffold) — verification passed; D-01 revised to direct DataChunk population after an execution-time arrow_scan blocker (code review caught a reversed decision + a DUCK-03 leak, both resolved).*
+*Last updated: 2026-06-07 after Phase 3 (L1 Bitpack, FOR, and Arrow Builders) — verification passed 9/9; loom-core decodes Raw/BitPack/FOR into typed Arrow with row-for-row Vortex-oracle equality, zero vortex/fastlanes deps (D-02). Code review caught an unchecked-multiply panic in decode_raw (CR-01), fixed inline with a checked_mul guard + regression test. CR-02 (decode_for non-BitPack fallback drops the FOR reference) carried forward as a non-blocking Phase-4 landmine — unreachable in Phase 3.*
