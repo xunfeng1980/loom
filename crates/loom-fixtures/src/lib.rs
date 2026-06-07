@@ -5,9 +5,13 @@
 //! independence of `loom-core`'s decode proof: the thing being verified
 //! (`loom-core`) must not share code paths with the oracle that verifies it.
 //!
-//! **This phase (01-01):** placeholder only. No fixture builders are implemented
-//! yet — that work arrives in Phase 3 alongside the L1 decode loop.
+//! # Modules
 //!
-//! **Phase 3+:** will add programmatic fixture builders that produce
-//! Vortex-encoded `ArrayRef` values (BitPacked, FoR, Dict, RLE, FSST) for use
-//! by the Phase 5 verification harness.
+//! - [`vortex_reader`] — inspects in-memory Vortex `BitPackedArray`/`FoRArray`
+//!   and emits a `loom_core::l1_model::LayoutNode` + raw packed bytes. The sole
+//!   gateway between the Vortex ecosystem and `loom-core` (D-02 isolation).
+//! - [`oracle`] — decodes the same array via Vortex's own `execute` path,
+//!   returning plain Rust values for row-for-row comparison against `loom-core`.
+
+pub mod oracle;
+pub mod vortex_reader;

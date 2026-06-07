@@ -1197,9 +1197,15 @@ dependencies = [
 name = "loom-fixtures"
 version = "0.1.0"
 dependencies = [
+ "arrow",
+ "arrow-schema",
+ "fastlanes",
+ "loom-core",
  "vortex-array",
+ "vortex-buffer",
  "vortex-fastlanes",
  "vortex-fsst",
+ "vortex-session",
 ]
 
 [[package]]
