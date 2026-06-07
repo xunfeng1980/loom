@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain
 - [ ] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling
 - [ ] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists
-- [ ] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings â the MVP0 acceptance gate
+- [ ] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings Ã¢ÂÂ the MVP0 acceptance gate
 
 ## Phase Details
 
@@ -45,15 +45,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [x] 01-01-PLAN.md — Cargo workspace, 3-crate boundary, arrow version pinning, panic=abort + System allocator (CORE-01, CORE-02)
+- [x] 01-01-PLAN.md - Cargo workspace, 3-crate boundary, arrow version pinning, panic=abort + System allocator (CORE-01, CORE-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [x] 01-02-PLAN.md — extern "C" loom_decode + catch_unwind, real Arrow to_ffi roundtrip, cbindgen loom.h, CORE-invariant CI (CORE-03, ARROW-03, DUCK-04)
+- [x] 01-02-PLAN.md - extern "C" loom_decode + catch_unwind, real Arrow to_ffi roundtrip, cbindgen loom.h, CORE-invariant CI (CORE-03, ARROW-03, DUCK-04)
 
 ### Phase 2: DuckDB Extension Scaffold
 
-**Goal**: A stub DuckDB extension pinned to v1.5.3 builds, loads into DuckDB, and invokes the Rust stub decoder without crashing â proving the full CMake + Rust staticlib + DuckDB ABI chain
+**Goal**: A stub DuckDB extension pinned to v1.5.3 builds, loads into DuckDB, and invokes the Rust stub decoder without crashing Ã¢ÂÂ proving the full CMake + Rust staticlib + DuckDB ABI chain
 **Depends on**: Phase 1
 **Requirements**: DUCK-01, DUCK-02, DUCK-03
 **Success Criteria** (what must be TRUE):
@@ -63,7 +63,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The `LoomScanState` destructor calls `array.release(&array)` on every exit path (verified by manual test outside DuckDB)
   4. `nm -g libloom_decoder.a | grep -i malloc` returns nothing unexpected (no rogue allocator symbols)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 02-01-PLAN.md - Vendor DuckDB v1.5.3 inputs, run Wave-0 checks, author loom_extension.cpp (entry point, loom_scan, OneShotStream factory → arrow_scan, release-safe teardown) (DUCK-01, DUCK-02, DUCK-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md - Hand-rolled CMake (cargo build + link + footer-stamp POST_BUILD), duckdb -unsigned load smoke-test, allocator-symbol guard, CI wiring (DUCK-01, DUCK-03)
 
 ### Phase 3: L1 Bitpack, FOR, and Arrow Builders
 
@@ -74,7 +82,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
   1. A programmatically constructed BitPacked Vortex array (non-byte-aligned width, e.g. 11-bit) decodes to an Arrow Int32Array whose values match the original input row-for-row
   2. A FrameOfReference column layered on bitpacking decodes correctly, with the reference scalar added to every unpacked value
-  3. At least one nullable column per encoding (bitpack, FOR) round-trips with nulls intact â `COUNT(col)` vs `COUNT(*)` in the Arrow output matches expected null count
+  3. At least one nullable column per encoding (bitpack, FOR) round-trips with nulls intact Ã¢ÂÂ `COUNT(col)` vs `COUNT(*)` in the Arrow output matches expected null count
   4. `arrow_builder_output::finish()` produces `ArrayData` that can be exported via `to_ffi` without compile errors (arrow-rs version conflict would surface here)
   5. No `.vortex` file is read or written; all test inputs are constructed via `vortex-array` builder APIs in Rust
 
@@ -95,7 +103,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 5: FSST L2 Kernel and Full Verification
 
-**Goal**: The FSST L2 kernel decompresses FSST-encoded strings and dict-over-FSST columns correctly, and a DuckDB SQL query over a Loom-decoded column matches Vortex's own decoder row-for-row â the MVP0 acceptance gate
+**Goal**: The FSST L2 kernel decompresses FSST-encoded strings and dict-over-FSST columns correctly, and a DuckDB SQL query over a Loom-decoded column matches Vortex's own decoder row-for-row Ã¢ÂÂ the MVP0 acceptance gate
 **Depends on**: Phase 4
 **Requirements**: L2-02, L2-03, VERIFY-01, VERIFY-02, VERIFY-03
 **Success Criteria** (what must be TRUE):
@@ -110,7 +118,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 â 2 â 3 â 4 â 5
+Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 Ã¢ÂÂ 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
