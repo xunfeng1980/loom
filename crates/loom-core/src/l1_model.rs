@@ -264,7 +264,15 @@ fn decode_raw(
     builder: &mut OutputBuilder,
 ) -> Result<(), LoomDecodeError> {
     let stride = elem_size as usize;
-    let needed = count * stride;
+    // Mirror `bitpack::unpack_all`: guard the size computation so a crafted
+    // `count` cannot overflow, wrap to a small value, slip past the bounds
+    // check below, and panic on slice indexing. Overflow => BufferTooShort.
+    let needed = count
+        .checked_mul(stride)
+        .ok_or(LoomDecodeError::BufferTooShort {
+            needed: usize::MAX,
+            got: data.len(),
+        })?;
     if data.len() < needed {
         return Err(LoomDecodeError::BufferTooShort {
             needed,
@@ -557,6 +565,26 @@ mod tests {
         for (i, expected) in values.iter().enumerate() {
             assert_eq!(array.value(i), *expected, "mismatch at index {i}");
         }
+    }
+
+    /// A Raw node whose `count * elem_size` overflows `usize` must return a
+    /// typed `BufferTooShort` error, never panic. Guards the no-panic-on-
+    /// malformed-input contract (regression for the unchecked-multiply gap).
+    #[test]
+    fn raw_count_overflow_returns_buffer_too_short() {
+        let node = LayoutNode::Raw {
+            data: vec![0u8; 8],
+            elem_size: 4,
+            // count * 4 overflows usize -> would wrap small and slip past the
+            // bounds check, then panic on slice indexing without the guard.
+            count: usize::MAX / 2,
+        };
+        let mut b = int32_builder();
+        let result = synthesized_read_loop(&node, &mut b);
+        assert!(
+            matches!(result, Err(LoomDecodeError::BufferTooShort { .. })),
+            "expected BufferTooShort on count overflow, got {result:?}"
+        );
     }
 
     /// BitPack with all_null=true emits all nulls without touching values_buf.
