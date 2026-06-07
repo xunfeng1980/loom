@@ -107,6 +107,24 @@ pub enum LoomDecodeError {
 
     /// No L2 kernel is registered for the requested id.
     UnknownKernel(u32),
+
+    /// FSST kernel parameters are malformed or truncated.
+    MalformedFsstParams(&'static str),
+
+    /// FSST symbol table metadata is invalid.
+    InvalidFsstSymbolTable(&'static str),
+
+    /// FSST per-row code offsets are invalid.
+    InvalidFsstOffsets(&'static str),
+
+    /// A decompressed FSST row is not valid UTF-8.
+    InvalidUtf8 {
+        /// Logical row containing invalid UTF-8 bytes.
+        index: usize,
+    },
+
+    /// The FSST decoder failed or panicked.
+    FsstKernelFailed(&'static str),
 }
 
 impl fmt::Display for LoomDecodeError {
@@ -189,6 +207,21 @@ impl fmt::Display for LoomDecodeError {
             }
             LoomDecodeError::UnknownKernel(id) => {
                 write!(f, "unknown L2 kernel id {id}")
+            }
+            LoomDecodeError::MalformedFsstParams(reason) => {
+                write!(f, "malformed FSST params: {reason}")
+            }
+            LoomDecodeError::InvalidFsstSymbolTable(reason) => {
+                write!(f, "invalid FSST symbol table: {reason}")
+            }
+            LoomDecodeError::InvalidFsstOffsets(reason) => {
+                write!(f, "invalid FSST offsets: {reason}")
+            }
+            LoomDecodeError::InvalidUtf8 { index } => {
+                write!(f, "FSST row {index} is not valid UTF-8")
+            }
+            LoomDecodeError::FsstKernelFailed(reason) => {
+                write!(f, "FSST kernel failed: {reason}")
             }
         }
     }

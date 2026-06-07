@@ -11,3 +11,4 @@ arrow        = { workspace = true }
 arrow-array  = { workspace = true }
 arrow-schema = { workspace = true }
 arrow-data   = { workspace = true }
+fsst         = { workspace = true }

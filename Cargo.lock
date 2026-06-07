@@ -1182,6 +1182,7 @@ dependencies = [
  "arrow-array",
  "arrow-data",
  "arrow-schema",
+ "fsst-rs",
 ]
 
 [[package]]
