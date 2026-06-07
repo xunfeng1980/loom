@@ -20,13 +20,13 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### L1 — Declarative Layout Layer
 
-- [ ] **L1-01**: A `LayoutNode` data model represents a column's physical layout as pure data (no code)
-- [ ] **L1-02**: A synthesized read loop interprets a `LayoutNode` tree to produce decoded values
-- [ ] **L1-03**: Decode a bit-packed integer column, including non-byte-aligned widths (1–64 bits)
-- [ ] **L1-04**: Decode a frame-of-reference (FOR) column layered on bit-packing
+- [x] **L1-01**: A `LayoutNode` data model represents a column's physical layout as pure data (no code)
+- [x] **L1-02**: A synthesized read loop interprets a `LayoutNode` tree to produce decoded values
+- [x] **L1-03**: Decode a bit-packed integer column, including non-byte-aligned widths (1–64 bits)
+- [x] **L1-04**: Decode a frame-of-reference (FOR) column layered on bit-packing
 - [ ] **L1-05**: Decode a dictionary-encoded column via codes→values lookup with recursive sub-array dispatch
 - [ ] **L1-06**: Decode a run-length-encoded (RLE) column via run-end expansion
-- [ ] **L1-07**: Null/validity is preserved through every L1 decode path
+- [x] **L1-07**: Null/validity is preserved through every L1 decode path
 
 ### L2 — Total-Function Kernel Layer
 
@@ -36,8 +36,8 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### Arrow — Output Contract
 
-- [ ] **ARROW-01**: Decoded values are emitted only through typed Arrow builders (`append_value`/`append_null`/list/struct), never raw writes
-- [ ] **ARROW-02**: Output materializes as Arrow `ArrayData` → `ArrowArray` + `ArrowSchema`
+- [x] **ARROW-01**: Decoded values are emitted only through typed Arrow builders (`append_value`/`append_null`/list/struct), never raw writes
+- [x] **ARROW-02**: Output materializes as Arrow `ArrayData` → `ArrowArray` + `ArrowSchema`
 - [x] **ARROW-03**: The Arrow array is exported across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`) with correct release-callback ownership
 
 ### DuckDB — Engine Integration
@@ -99,13 +99,13 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DUCK-03 | Phase 2 | Complete |
 | INPUT-01 | Phase 3 | Pending |
 | INPUT-02 | Phase 3 | Pending |
-| L1-01 | Phase 3 | Pending |
-| L1-02 | Phase 3 | Pending |
-| L1-03 | Phase 3 | Pending |
-| L1-04 | Phase 3 | Pending |
-| L1-07 | Phase 3 | Pending |
-| ARROW-01 | Phase 3 | Pending |
-| ARROW-02 | Phase 3 | Pending |
+| L1-01 | Phase 3 | Complete |
+| L1-02 | Phase 3 | Complete |
+| L1-03 | Phase 3 | Complete |
+| L1-04 | Phase 3 | Complete |
+| L1-07 | Phase 3 | Complete |
+| ARROW-01 | Phase 3 | Complete |
+| ARROW-02 | Phase 3 | Complete |
 | L1-05 | Phase 4 | Pending |
 | L1-06 | Phase 4 | Pending |
 | L2-01 | Phase 4 | Pending |

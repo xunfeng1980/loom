@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: Phase 2 finished; Phase 3 is next
+status: executing
 stopped_at: Phase 3 context gathered
-last_updated: "2026-06-07T14:11:13.284Z"
-last_activity: 2026-06-07 -- Phase 3 planning complete
+last_updated: "2026-06-07T14:27:55.223Z"
+last_activity: 2026-06-07 -- Phase 03 execution started
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 40
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over a Vortex-encoded column decoded by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
-**Current focus:** Phase 2 — DuckDB Extension Scaffold
+**Current focus:** Phase 03 — l1-bitpack-for-and-arrow-builders
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Phase 2 finished; Phase 3 is next
-Last activity: 2026-06-07 -- Phase 3 planning complete
+Phase: 03 (l1-bitpack-for-and-arrow-builders) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-06-07 -- Phase 03 Plan 1 completed
 
-Progress: [██░░░░░░░░] 40%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██░░░░░░░░] 40%
 | Phase 01-scaffold-and-ffi-boundary P02 | 20 | 3 tasks | 10 files |
 | Phase 02-duckdb-extension-scaffold P01 | 15 | 2 tasks | 7 files |
 | Phase 02-duckdb-extension-scaffold P02 | 30 | 2 tasks | 5 files |
+| Phase 03-l1-bitpack-for-and-arrow-builders P01 | 10 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,10 @@ Recent decisions affecting current work:
 - [Phase 2 P02]: Direct DataChunk population used in Phase 2 LoomScan — loom_decode returns bare Int32 schema (format=i), not struct schema arrow_scan requires; D-01 arrow_scan delegation is Phase 3+ work
 - [Phase 2 P02]: ArrowStreamParameters forward-declared in duckdb namespace — internal type not in amalgamated header
 - [Phase 2 P02]: Footer fields confirmed: duckdb_version=v1.5.3, platform=osx_arm64, abi_type=CPP; correct null.txt path used
+- [Phase 3 P01]: FrameOfReference.reference stored as i128 (not i64) to handle u64 columns without truncation
+- [Phase 3 P01]: unpack_all returns Vec<u64> (unsigned); callers apply wrapping_add of FOR reference after (Pitfall 4)
+- [Phase 3 P01]: OutputBuilder::t_bits() drives both unpack_all t_bits and emit-width — builder is single authority for type width
+- [Phase 3 P01]: Array trait must be explicitly imported in arrow-rs 58.3 for .into_data() and .is_null() on PrimitiveArray<T>
 
 ### Pending Todos
 
@@ -111,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-07T13:29:38.032Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-l1-bitpack-for-and-arrow-builders/03-CONTEXT.md
+Last session: 2026-06-07T14:27:35.839Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-l1-bitpack-for-and-arrow-builders/03-02-PLAN.md
