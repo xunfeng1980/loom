@@ -1,3 +1,17 @@
+<!--
+⚠ POST-EXECUTION CORRECTION (2026-06-07, after code review + user decision):
+This plan's execution deviated from locked D-01 by switching to direct DataChunk
+population (Option C) AND kept dead arrow_scan/OneShotStream code to pass the grep
+guards — and that switch introduced a DUCK-03 array LEAK (the destructor gated array
+release on a stream-era `stream_handed_off` flag that direct population set to true,
+so the array was never released; masked by the short-lived CLI process exit).
+Resolution (user chose "adopt Option C honestly"): D-01 was formally REVISED (see
+02-CONTEXT.md), the dead stream code was DELETED, the leak was FIXED (~LoomScanState
+now always releases the array), and the arrow_scan/stream path is tracked for Phase 3.
+The functional result is unchanged: loom_scan('test.bin') returns 1,2,3,NULL.
+The "DUCK-03 verified by clean process exit" claim below was NOT valid evidence for
+the leak; release-on-teardown is now correct by construction in the destructor.
+-->
 ---
 phase: 02-duckdb-extension-scaffold
 plan: "02"

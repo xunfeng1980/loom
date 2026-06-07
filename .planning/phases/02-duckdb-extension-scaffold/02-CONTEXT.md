@@ -18,7 +18,8 @@ Requirements: DUCK-01 (extension pinned to v1.5.3 builds + loads), DUCK-02 (`loo
 ## Implementation Decisions
 
 ### Arrow → DuckDB import path
-- **D-01:** The `loom_scan` scan path wraps the imported `FFI_ArrowArray` + `FFI_ArrowSchema` in a **one-shot `ArrowArrayStream`** and feeds it to DuckDB's built-in Arrow scan machinery (public/stable surface). This deliberately avoids DuckDB's internal `ArrowToDuckDB()` helper, whose include path/signature research flagged as version-fragile. The stream yields the single array once, then signals end-of-stream.
+- **D-01 (ORIGINAL):** wrap the imported `FFI_ArrowArray` + `FFI_ArrowSchema` in a one-shot `ArrowArrayStream` and feed DuckDB's built-in `arrow_scan` (public/stable surface), avoiding the version-fragile internal `ArrowToDuckDB()`.
+- **D-01 (REVISED during Phase 2 execution — 2026-06-07):** Execution surfaced a hard blocker that wasn't known when D-01 was chosen: **DuckDB's `arrow_scan` requires a top-level STRUCT / record-batch Arrow schema, but `loom_decode` emits a BARE primitive Int32 array** (`format="i"`, `n_children=0`). The `arrow_scan` path therefore cannot consume `loom_decode`'s output as-is — the column would have to be wrapped in a record batch first. Wrapping a single hardcoded primitive column in a struct purely to satisfy `arrow_scan` is premature for this plumbing stub. **Decision (user, after review): adopt direct DataChunk population for the Phase 2 stub** (read the Arrow validity + values buffers and fill the DuckDB vector). The `arrow_scan` / streaming path is **deferred to Phase 3**, where real columnar decode naturally produces a record-batch-shaped output that `arrow_scan` can consume. No dead "stable-surface" scaffolding is retained — Phase 3 builds the stream path against the real output when it's actually needed. (This formally supersedes the earlier insistence on the stream path; the original rationale — stability / forward-reuse — is preserved by the Phase-3 tracked task rather than by premature stub code.)
 
 ### DuckDB acquisition
 - **D-02:** Link against the **prebuilt DuckDB v1.5.3 release** library + headers, and load the extension into the matching **duckdb 1.5.3 CLI** with `allow_unsigned_extensions`. ABI matches because both sides are the exact 1.5.3 release. Fast, low-disk, reproducible — do NOT build DuckDB from source for MVP0.
@@ -92,7 +93,7 @@ Requirements: DUCK-01 (extension pinned to v1.5.3 builds + loads), DUCK-02 (`loo
 <deferred>
 ## Deferred Ideas
 
-None — discussion stayed within phase scope.
+**[TRACKED → Phase 3] arrow_scan / ArrowArrayStream import path.** D-01's original stream path was deferred here (see "D-01 REVISED" above). When Phase 3's real columnar decode produces a record-batch-shaped Arrow output (top-level struct schema), replace `LoomScan`'s direct DataChunk population with a one-shot (then multi-batch) `ArrowArrayStream` produce-callback factory delegated to DuckDB's built-in `arrow_scan`. This is the point where the stream path stops being premature and starts being the natural fit. Carried in STATE.md blockers/deferred.
 
 **Research/planning note (not deferred, just a flag):** the "prebuilt lib + hand-rolled CMake" pairing has one real risk to confirm during research — that a locally-built **unsigned** extension can be loaded into the official prebuilt duckdb 1.5.3 CLI given matching version+platform metadata (the extension footer/`DUCKDB_EXTENSION_API` stamping). If the prebuilt CLI refuses unsigned local extensions outright on this platform, fall back to building duckdb from source at v1.5.3 (the rejected alternative in D-02).
 

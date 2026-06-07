@@ -87,6 +87,7 @@ None yet.
 
 ### Blockers/Concerns
 
+- Phase 3 planning: **arrow_scan / ArrowArrayStream import path (D-01 deferred from Phase 2).** Phase 2 used direct DataChunk population because `arrow_scan` needs a top-level struct/record-batch schema and `loom_decode` emitted a bare primitive Int32 array. When Phase 3's real columnar decode produces record-batch-shaped output, replace `LoomScan`'s direct population with the `arrow_scan`/stream path. See 02-CONTEXT.md "D-01 REVISED".
 - Phase 4 planning: confirm `DictArray` sub-array accessor names in vortex-dict 0.74 source before planning (flagged in research/SUMMARY.md)
 - Phase 5 planning: confirm `FsstArray` internal field names in vortex-fsst 0.74 and `ArrowToDuckDB` include path/signature before planning (flagged in research/SUMMARY.md)
 
