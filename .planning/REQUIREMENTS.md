@@ -15,8 +15,8 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### Input — Vortex Source
 
-- [ ] **INPUT-01**: A single serialized Vortex encoded array/column is read into the decoder without parsing a `.vortex` file container
-- [ ] **INPUT-02**: Test fixtures are constructed programmatically as in-memory Vortex arrays (no `.vortex` files, no `vortex-file`/`vortex-serde`/`vortex-ipc`)
+- [x] **INPUT-01**: A single serialized Vortex encoded array/column is read into the decoder without parsing a `.vortex` file container
+- [x] **INPUT-02**: Test fixtures are constructed programmatically as in-memory Vortex arrays (no `.vortex` files, no `vortex-file`/`vortex-serde`/`vortex-ipc`)
 
 ### L1 — Declarative Layout Layer
 
@@ -97,8 +97,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DUCK-01 | Phase 2 | Complete |
 | DUCK-02 | Phase 2 | Complete |
 | DUCK-03 | Phase 2 | Complete |
-| INPUT-01 | Phase 3 | Pending |
-| INPUT-02 | Phase 3 | Pending |
+| INPUT-01 | Phase 3 | Complete |
+| INPUT-02 | Phase 3 | Complete |
 | L1-01 | Phase 3 | Complete |
 | L1-02 | Phase 3 | Complete |
 | L1-03 | Phase 3 | Complete |

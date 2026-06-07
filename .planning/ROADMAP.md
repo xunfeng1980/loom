@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Scaffold and FFI Boundary** - Establish Rust workspace invariants, Arrow version pinning, panic-safety contract, and cbindgen header generation
 - [x] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain (completed 2026-06-07)
-- [ ] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling
+- [x] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling (completed 2026-06-07)
 - [ ] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists
 - [ ] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings Ã¢ÂÂ the MVP0 acceptance gate
 
@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-02-PLAN.md — vortex_reader + oracle + 4 Wave-0 BLOCKING checks + bitpack/FOR/nullable roundtrip vs Vortex oracle (INPUT-01, INPUT-02, L1-03, L1-04, L1-07)
+- [x] 03-02-PLAN.md — vortex_reader + oracle + 4 Wave-0 BLOCKING checks + bitpack/FOR/nullable roundtrip vs Vortex oracle (INPUT-01, INPUT-02, L1-03, L1-04, L1-07)
 
 ### Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure
 
@@ -132,6 +132,6 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 |-------|----------------|--------|-----------|
 | 1. Scaffold and FFI Boundary | 2/2 | Complete    | 2026-06-07 |
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
-| 3. L1 Bitpack, FOR, and Arrow Builders | 1/2 | In Progress|  |
+| 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete   | 2026-06-07 |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
 | 5. FSST L2 Kernel and Full Verification | 0/TBD | Not started | - |

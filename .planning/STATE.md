@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-07T14:27:55.223Z"
-last_activity: 2026-06-07 -- Phase 03 execution started
+status: verifying
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-06-07T14:52:11.894Z"
+last_activity: 2026-06-07 -- Phase 03 Plan 1 completed
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 Phase: 03 (l1-bitpack-for-and-arrow-builders) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-07 -- Phase 03 Plan 1 completed
 
 Progress: [████████░░] 83%
@@ -59,6 +59,7 @@ Progress: [████████░░] 83%
 | Phase 02-duckdb-extension-scaffold P01 | 15 | 2 tasks | 7 files |
 | Phase 02-duckdb-extension-scaffold P02 | 30 | 2 tasks | 5 files |
 | Phase 03-l1-bitpack-for-and-arrow-builders P01 | 10 | 3 tasks | 5 files |
+| Phase 03-l1-bitpack-for-and-arrow-builders P02 | 120m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 3 P01]: unpack_all returns Vec<u64> (unsigned); callers apply wrapping_add of FOR reference after (Pitfall 4)
 - [Phase 3 P01]: OutputBuilder::t_bits() drives both unpack_all t_bits and emit-width — builder is single authority for type width
 - [Phase 3 P01]: Array trait must be explicitly imported in arrow-rs 58.3 for .into_data() and .is_null() on PrimitiveArray<T>
+- [Phase ?]: BufferHandle .as_host().as_ref() (option A) confirmed for packed bytes access
+- [Phase ?]: FoR+BitPack: use FoR::try_new(bp.into_array(), ref) with manual deltas, not FoRData::encode
+- [Phase ?]: BitPackedArrayExt::validity explicit UFCS avoids ArrayRef::validity ambiguity
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-07T14:27:35.839Z
+Last session: 2026-06-07T14:52:11.890Z
 Stopped at: Completed 03-01-PLAN.md
 Resume file: .planning/phases/03-l1-bitpack-for-and-arrow-builders/03-02-PLAN.md
