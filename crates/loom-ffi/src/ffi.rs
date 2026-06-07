@@ -52,6 +52,38 @@ impl LoomError {
 }
 
 // ---------------------------------------------------------------------------
+// Test panic sentinel
+// ---------------------------------------------------------------------------
+
+// Thread-local panic sentinel for testing the `catch_unwind` path.
+//
+// Using a thread-local avoids races between concurrently executing tests —
+// each test thread has its own copy, so arming the sentinel in one test
+// cannot accidentally affect a sibling test running on a different thread.
+//
+// This is always present (not `#[cfg(test)]`) so that integration tests in
+// `tests/roundtrip.rs` (which link the library in non-test mode) can reach
+// it.  It has no observable effect unless explicitly set via `set_panic_sentinel`.
+thread_local! {
+    static PANIC_SENTINEL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Arm the thread-local panic sentinel for the next `loom_decode` call on
+/// this thread.
+///
+/// The sentinel is consumed (reset to `false`) atomically on the first call to
+/// `loom_decode_inner` after it is set.  Call this from a test immediately
+/// before calling `loom_decode` to exercise the `catch_unwind` path
+/// (DUCK-04, T-01-05).
+///
+/// # Note
+///
+/// This function is intended for testing only.  Do not call it in production.
+pub fn set_panic_sentinel() {
+    PANIC_SENTINEL.with(|s| s.set(true));
+}
+
+// ---------------------------------------------------------------------------
 // Inner (safe) decode function
 // ---------------------------------------------------------------------------
 
@@ -66,12 +98,26 @@ impl LoomError {
 /// (ARCHITECTURE anti-pattern 3). This function is safe Rust; it is called
 /// from within the `catch_unwind` wrapper so that any panic is caught at the
 /// FFI boundary rather than unwinding past it.
-#[cfg_attr(test, allow(dead_code))]
 fn loom_decode_inner(
     _input: &[u8],
     out_array: *mut FFI_ArrowArray,
     out_schema: *mut FFI_ArrowSchema,
 ) -> Result<(), LoomError> {
+    // Check the thread-local panic sentinel (set by tests via
+    // `set_panic_sentinel()`).  Reads and resets the flag so it fires at most
+    // once per arming.  In production the flag is always `false`; this branch
+    // is never taken (DUCK-04, T-01-05).
+    let sentinel_armed = PANIC_SENTINEL.with(|s| {
+        let was_armed = s.get();
+        if was_armed {
+            s.set(false); // consume: fire exactly once
+        }
+        was_armed
+    });
+    if sentinel_armed {
+        panic!("loom_decode_inner: panic sentinel triggered (test-only path)");
+    }
+
     // Build a hardcoded minimal Int32Array: [1, 2, 3, null].
     // The null exercises the validity bitmap path (PITFALLS P7).
     //

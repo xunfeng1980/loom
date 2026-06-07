@@ -13,3 +13,6 @@ crate-type = ["staticlib", "rlib"]
 [dependencies]
 loom-core = { path = "../loom-core" }
 arrow     = { workspace = true, features = ["ffi"] }
+
+[build-dependencies]
+cbindgen = { workspace = true }

@@ -1,0 +1,166 @@
+//! Roundtrip and panic-safety tests for the `loom_decode` FFI entry point.
+//!
+//! These tests run OUTSIDE DuckDB — they exercise the Arrow C Data Interface
+//! ownership/release path in pure Rust (PITFALLS P1/P2, ARROW-03, DUCK-04).
+//!
+//! # Test matrix
+//!
+//! | Test | Requirement |
+//! |------|-------------|
+//! | `release_path_roundtrip` | ARROW-03, PITFALLS P1/P2 |
+//! | `panic_does_not_abort` | DUCK-04, PITFALLS P3, T-01-05 |
+
+use arrow::array::{Array, Int32Array};
+use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_ffi::ffi::{loom_decode, set_panic_sentinel, LoomError};
+
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+
+/// Call `loom_decode` into two zero-initialized FFI shells.
+///
+/// Returns the populated pair on success.  Panics if `loom_decode` returns
+/// a nonzero code (signals a test-setup failure, not the case under test).
+unsafe fn call_loom_decode(input: &[u8]) -> (FFI_ArrowArray, FFI_ArrowSchema) {
+    let mut ffi_array: FFI_ArrowArray = std::mem::zeroed();
+    let mut ffi_schema: FFI_ArrowSchema = std::mem::zeroed();
+    let code = loom_decode(
+        input.as_ptr(),
+        input.len(),
+        &mut ffi_array as *mut _,
+        &mut ffi_schema as *mut _,
+    );
+    assert_eq!(code, 0, "loom_decode returned error code {}", code);
+    (ffi_array, ffi_schema)
+}
+
+// ---------------------------------------------------------------------------
+// Test 1: release-path roundtrip
+// ---------------------------------------------------------------------------
+
+/// Exercise the complete Arrow C Data Interface export → import → release path
+/// in pure Rust, without DuckDB involvement (ARROW-03, PITFALLS P1/P2).
+///
+/// # What this verifies
+///
+/// 1. `loom_decode` returns 0 and writes into the caller-provided shells.
+/// 2. The written `FFI_ArrowArray` has a non-null `release` callback (i.e.
+///    `to_ffi` + `ptr::write` correctly transferred ownership).
+/// 3. Importing the array via `from_ffi` reconstructs the correct `ArrayData`.
+/// 4. The reconstructed array has the expected values: `[1, 2, 3, null]`.
+/// 5. Dropping the imported array fires `release` exactly once (the release
+///    callback sets `release = null` on the source struct as per the Arrow
+///    C Data Interface specification).
+#[test]
+fn release_path_roundtrip() {
+    // Step 1: call loom_decode into zero-initialized shells.
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&[]) };
+
+    // Step 2: confirm the release callback is set (non-null).
+    // Safety: ffi_array was just written by loom_decode; its fields are valid.
+    // The `release` field is the first field of FFI_ArrowArray per the Arrow
+    // C Data Interface spec.
+    assert!(
+        ffi_array.release.is_some(),
+        "FFI_ArrowArray.release must be non-null after successful loom_decode"
+    );
+
+    // Step 3: import the array back into Rust via `from_ffi`.
+    //
+    // `from_ffi` takes ownership of `ffi_array` (moves it out of our variable)
+    // and borrows `ffi_schema`.  When the returned `ArrayData` is dropped,
+    // the release callback fires exactly once (PITFALLS P1, ARROW-03).
+    //
+    // Safety: both structs were freshly written by loom_decode and have not
+    // been moved, cloned, or released.
+    let array_data = unsafe { from_ffi(ffi_array, &ffi_schema) }
+        .expect("from_ffi must succeed on a valid FFI_ArrowArray");
+
+    // Step 4: reconstruct a typed Int32Array and assert values + nulls.
+    let array = Int32Array::from(array_data);
+
+    assert_eq!(array.len(), 4, "expected 4 elements [1, 2, 3, null]");
+    assert_eq!(array.null_count(), 1, "expected exactly one null");
+
+    // Check non-null values.
+    assert_eq!(array.value(0), 1);
+    assert_eq!(array.value(1), 2);
+    assert_eq!(array.value(2), 3);
+
+    // Check the null position.
+    assert!(array.is_null(3), "element 3 must be null");
+
+    // Step 5: drop the array — this fires the release callback.
+    //
+    // After `from_ffi`, the Rust `ArrayData` owns the buffers.  Dropping it
+    // calls the release callback exactly once (no double-free, no leak).
+    // We confirm this implicitly: if a double-free occurred we would crash or
+    // see AddressSanitizer errors.  The Arrow implementation sets
+    // `release = null` after firing, so subsequent drops are no-ops.
+    drop(array);
+
+    // Step 6: the schema still needs to be released.  Because `from_ffi` only
+    // borrows the schema (not moves it), `ffi_schema` still holds its release
+    // pointer.  We must call its release callback to avoid a leak.
+    //
+    // Safety: ffi_schema was written by loom_decode and has not been released.
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+    // After this point, ffi_schema.release is null (the C Data Interface
+    // contract: release sets the pointer to null, preventing double-free).
+}
+
+// ---------------------------------------------------------------------------
+// Test 2: panic-safety
+// ---------------------------------------------------------------------------
+
+/// Verify that a panic inside `loom_decode_inner` is caught by `catch_unwind`
+/// and returns the `Panicked` error code rather than aborting the process.
+///
+/// # Mechanism
+///
+/// `set_panic_sentinel()` sets an `AtomicBool` inside `loom_decode_inner`.
+/// The next call to `loom_decode_inner` checks the flag, resets it, and
+/// `panic!`s.  The `catch_unwind` wrapper in `loom_decode` catches that panic
+/// and maps it to `LoomError::Panicked` (DUCK-04, PITFALLS P3, T-01-05).
+///
+/// If `catch_unwind` did NOT work, the test process would abort — the test
+/// runner itself would crash, and the test suite would report an error rather
+/// than this test passing.  The fact that this test passes proves that no panic
+/// unwound past the `extern "C"` frame.
+#[test]
+fn panic_does_not_abort() {
+    // Allocate output shells so we can pass valid non-null pointers.
+    // The inner function panics before it writes to them.
+    let mut ffi_array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
+    let mut ffi_schema: FFI_ArrowSchema = unsafe { std::mem::zeroed() };
+
+    // Arm the panic sentinel — the next call to loom_decode_inner will panic.
+    set_panic_sentinel();
+
+    // Call loom_decode — loom_decode_inner panics; catch_unwind catches it.
+    let code = unsafe {
+        loom_decode(
+            std::ptr::null(),
+            0,
+            &mut ffi_array as *mut _,
+            &mut ffi_schema as *mut _,
+        )
+    };
+
+    // The catch_unwind wrapper must have caught the panic and returned the
+    // Panicked code.  If the process is still alive at this point, catch_unwind
+    // worked correctly (DUCK-04).
+    assert_eq!(
+        code,
+        LoomError::Panicked.code(),
+        "a panic inside loom_decode_inner must return the Panicked code ({}), got {}",
+        LoomError::Panicked.code(),
+        code
+    );
+
+    // Execution reaching here confirms the test process did not abort.
+    // The test runner reports success, which is the proof of panic safety.
+}
