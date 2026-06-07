@@ -12,10 +12,12 @@
 //! `i128`) before being handed to `loom-core`. The D-02 boundary is enforced
 //! by `cargo tree -p loom-core | grep -c -E 'vortex|fastlanes'` == 0.
 
+use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::LayoutNode;
 use vortex_array::arrays::bool::BoolArrayExt;
 use vortex_array::arrays::dict::DictArraySlotsExt;
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
+use vortex_array::arrays::varbin::VarBinArrayExt;
 use vortex_array::arrays::{Bool, BoolArray, Dict, DictArray, Primitive, PrimitiveArray};
 use vortex_array::dtype::PType;
 use vortex_array::scalar::PValue;
@@ -28,6 +30,7 @@ use vortex_fastlanes::BitPackedArrayExt;
 use vortex_fastlanes::FoRArray;
 use vortex_fastlanes::FoRArrayExt;
 use vortex_fastlanes::{RLEArray, RLEArrayExt};
+use vortex_fsst::{FSSTArray, FSSTArrayExt, FSST};
 
 // ---------------------------------------------------------------------------
 // packed_bytes — confirmed BufferHandle accessor (Wave-0 check: Pitfall 5)
@@ -199,6 +202,18 @@ pub fn from_rle_array(arr: &RLEArray) -> LayoutNode {
 }
 
 // ---------------------------------------------------------------------------
+// from_fsst_array — FSSTArray -> LayoutNode::KernelEscape
+// ---------------------------------------------------------------------------
+
+/// Inspect a Vortex [`FSSTArray`] and emit `LayoutNode::KernelEscape`.
+///
+/// The returned node carries only Loom-owned `FsstParams` bytes. All Vortex
+/// buffers and child arrays are flattened inside `loom-fixtures`.
+pub fn from_fsst_array(arr: &FSSTArray) -> LayoutNode {
+    from_fsst_view(arr)
+}
+
+// ---------------------------------------------------------------------------
 // Private helper: from an ArrayView<'_, BitPacked>
 // ---------------------------------------------------------------------------
 
@@ -225,6 +240,38 @@ fn from_bitpacked_view<T: BitPackedArrayExt>(view: &T) -> LayoutNode {
     }
 }
 
+fn from_fsst_view<T: FSSTArrayExt>(view: &T) -> LayoutNode {
+    let count = view.as_ref().len();
+    let codes = view.codes();
+    let (validity, all_null) = extract_validity(
+        codes
+            .validity()
+            .expect("FSST codes validity should be derivable"),
+        count,
+    );
+    let validity = if all_null {
+        Some(vec![false; count])
+    } else {
+        validity
+    };
+
+    let params = FsstParams {
+        symbols: view.symbols().as_slice().to_vec(),
+        symbol_lengths: view.symbol_lengths().as_slice().to_vec(),
+        codes_offsets: primitive_array_ref_to_u64_vec(codes.offsets()),
+        uncompressed_lengths: primitive_array_ref_to_u64_vec(view.uncompressed_lengths()),
+        validity,
+        codes_bytes: view.codes_bytes_handle().as_host().as_ref().to_vec(),
+    }
+    .encode();
+
+    LayoutNode::KernelEscape {
+        kernel_id: 0,
+        params,
+        count,
+    }
+}
+
 fn from_dict_view<T: DictArraySlotsExt>(view: &T) -> LayoutNode {
     LayoutNode::Dictionary {
         codes: Box::new(from_array_ref(view.codes())),
@@ -238,6 +285,9 @@ fn from_array_ref(array: &ArrayRef) -> LayoutNode {
     }
     if let Some(view) = array.as_opt::<vortex_fastlanes::FoR>() {
         return from_for_view(&view);
+    }
+    if let Some(view) = array.as_opt::<FSST>() {
+        return from_fsst_view(&view);
     }
     if let Some(view) = array.as_opt::<Dict>() {
         return from_dict_view(&view);
@@ -316,6 +366,44 @@ fn primitive_to_run_end(arr: &PrimitiveArray) -> LayoutNode {
         PType::U32 => run_end_i32(arr.as_slice::<u32>().iter().map(|&v| v as i32)),
         PType::I32 => run_end_i32(arr.as_slice::<i32>().iter().copied()),
         other => panic!("unsupported RLE ptype for Loom fixture bridge: {other:?}"),
+    }
+}
+
+fn primitive_array_ref_to_u64_vec(array: &ArrayRef) -> Vec<u64> {
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = array
+        .clone()
+        .execute::<PrimitiveArray>(&mut ctx)
+        .expect("primitive execute failed");
+
+    match canonical.ptype() {
+        PType::U8 => canonical
+            .as_slice::<u8>()
+            .iter()
+            .map(|&v| v as u64)
+            .collect(),
+        PType::U16 => canonical
+            .as_slice::<u16>()
+            .iter()
+            .map(|&v| v as u64)
+            .collect(),
+        PType::U32 => canonical
+            .as_slice::<u32>()
+            .iter()
+            .map(|&v| v as u64)
+            .collect(),
+        PType::U64 => canonical.as_slice::<u64>().to_vec(),
+        PType::I32 => canonical
+            .as_slice::<i32>()
+            .iter()
+            .map(|&v| u64::try_from(v).expect("FSST length/offset values must be non-negative"))
+            .collect(),
+        PType::I64 => canonical
+            .as_slice::<i64>()
+            .iter()
+            .map(|&v| u64::try_from(v).expect("FSST length/offset values must be non-negative"))
+            .collect(),
+        other => panic!("unsupported primitive ptype for FSST metadata: {other:?}"),
     }
 }
 
@@ -419,5 +507,43 @@ fn pvalue_to_i128(pv: PValue) -> i128 {
         PValue::I32(v) => v as i128,
         PValue::I64(v) => v as i128,
         other => panic!("FoR reference must be an integer PValue, got {:?}", other),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vortex_array::arrays::VarBinArray;
+    use vortex_array::dtype::{DType, Nullability};
+
+    #[test]
+    fn fsst_bridge_emits_kernel_escape_id_zero() {
+        let varbin = VarBinArray::from_iter(
+            [Some("alpha"), Some("beta")],
+            DType::Utf8(Nullability::NonNullable),
+        );
+        let compressor = vortex_fsst::fsst_train_compressor(&varbin);
+        let mut ctx = LEGACY_SESSION.create_execution_ctx();
+        let fsst = vortex_fsst::fsst_compress(
+            &varbin,
+            varbin.len(),
+            varbin.dtype(),
+            &compressor,
+            &mut ctx,
+        );
+
+        let node = from_fsst_array(&fsst);
+        let LayoutNode::KernelEscape {
+            kernel_id,
+            params,
+            count,
+        } = node
+        else {
+            panic!("FSST bridge must emit KernelEscape");
+        };
+
+        assert_eq!(kernel_id, 0);
+        assert_eq!(count, 2);
+        assert!(FsstParams::decode(&params, 2).is_ok());
     }
 }
