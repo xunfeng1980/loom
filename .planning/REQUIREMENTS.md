@@ -85,7 +85,7 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Phase mapping (set during roadmap creation; finalized by the roadmapper).
+Phase mapping finalized by roadmapper 2026-06-07.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -122,4 +122,4 @@ Phase mapping (set during roadmap creation; finalized by the roadmapper).
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-07 after initial definition*
+*Last updated: 2026-06-07 — traceability finalized by roadmapper*
