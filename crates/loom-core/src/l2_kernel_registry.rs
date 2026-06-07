@@ -1,13 +1,16 @@
-//! L2 kernel registry and MVP0 FSST stub.
+//! L2 kernel registry and FSST L2 kernel.
 //!
 //! L2 kernels are total functions that own their output Arrow array. This keeps
 //! the L1 read loop focused on builder-backed declarative encodings while
-//! preserving a clean seam for Phase 5's real FSST implementation.
+//! preserving a clean dispatch boundary for native L2 implementations.
 
-use arrow::array::{Array, StringArray};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
+use arrow::array::{Array, StringBuilder};
 use arrow_data::ArrayData;
 
 use crate::error::LoomDecodeError;
+use crate::fsst_params::FsstParams;
 
 /// Total-function L2 kernel.
 pub trait L2Kernel {
@@ -34,31 +37,131 @@ impl L2KernelRegistry {
     }
 }
 
-/// Phase-4 FSST placeholder.
-///
-/// The real Phase-5 body will decode FSST strings. The Phase-4 contract is
-/// type-accurate routing: return an empty Utf8 array owned by the kernel.
+/// FSST string decompression kernel.
 pub struct FsstKernel;
 
 impl L2Kernel for FsstKernel {
-    fn decode(&self, _params: &[u8], _count: usize) -> Result<ArrayData, LoomDecodeError> {
-        let array = StringArray::from(Vec::<&str>::new());
-        Ok(array.into_data())
+    fn decode(&self, params: &[u8], count: usize) -> Result<ArrayData, LoomDecodeError> {
+        catch_unwind(AssertUnwindSafe(|| decode_fsst(params, count)))
+            .unwrap_or(Err(LoomDecodeError::FsstKernelFailed("decoder panicked")))
     }
+}
+
+fn decode_fsst(params: &[u8], count: usize) -> Result<ArrayData, LoomDecodeError> {
+    if params.is_empty() {
+        return Err(LoomDecodeError::MalformedFsstParams("empty params"));
+    }
+
+    let params = FsstParams::decode(params, count)?;
+    let decompressor = fsst::Decompressor::new(&params.symbols, &params.symbol_lengths);
+    let mut builder = StringBuilder::new();
+
+    for row in 0..count {
+        if params
+            .validity
+            .as_ref()
+            .is_some_and(|validity| !validity[row])
+        {
+            builder.append_null();
+            continue;
+        }
+
+        let start = usize::try_from(params.codes_offsets[row])
+            .map_err(|_| LoomDecodeError::InvalidFsstOffsets("offset does not fit usize"))?;
+        let end = usize::try_from(params.codes_offsets[row + 1])
+            .map_err(|_| LoomDecodeError::InvalidFsstOffsets("offset does not fit usize"))?;
+        let compressed = &params.codes_bytes[start..end];
+        let decompressed = decompressor.decompress(compressed);
+        let expected_len = usize::try_from(params.uncompressed_lengths[row]).map_err(|_| {
+            LoomDecodeError::FsstKernelFailed("uncompressed length does not fit usize")
+        })?;
+        if decompressed.len() != expected_len {
+            return Err(LoomDecodeError::FsstKernelFailed("decoded length mismatch"));
+        }
+
+        let value = std::str::from_utf8(&decompressed)
+            .map_err(|_| LoomDecodeError::InvalidUtf8 { index: row })?;
+        builder.append_value(value);
+    }
+
+    Ok(builder.finish().into_data())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow::array::StringArray;
     use arrow_schema::DataType;
+
+    fn params_for_rows(rows: &[Option<&[u8]>]) -> Vec<u8> {
+        let symbols = vec![fsst::Symbol::from_u8(b'a'), fsst::Symbol::from_u8(b'b')];
+        let mut codes_offsets = Vec::with_capacity(rows.len() + 1);
+        let mut uncompressed_lengths = Vec::with_capacity(rows.len());
+        let mut validity = Vec::with_capacity(rows.len());
+        let mut codes_bytes = Vec::new();
+
+        codes_offsets.push(0);
+        for row in rows {
+            match row {
+                Some(bytes) => {
+                    validity.push(true);
+                    uncompressed_lengths.push(bytes.len() as u64);
+                    for byte in *bytes {
+                        match *byte {
+                            b'a' => codes_bytes.push(0),
+                            b'b' => codes_bytes.push(1),
+                            other => {
+                                codes_bytes.push(fsst::ESCAPE_CODE);
+                                codes_bytes.push(other);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    validity.push(false);
+                    uncompressed_lengths.push(0);
+                }
+            }
+            codes_offsets.push(codes_bytes.len() as u64);
+        }
+
+        FsstParams {
+            symbols,
+            symbol_lengths: vec![1, 1],
+            codes_offsets,
+            uncompressed_lengths,
+            validity: Some(validity),
+            codes_bytes,
+        }
+        .encode()
+    }
+
+    fn decode_strings(params: Vec<u8>, count: usize) -> Result<StringArray, LoomDecodeError> {
+        let registry = L2KernelRegistry::default_for_mvp0();
+        let kernel = registry.get(0).expect("FSST kernel must exist");
+        let data = kernel.decode(&params, count)?;
+        Ok(StringArray::from(data))
+    }
 
     #[test]
     fn default_registry_has_fsst_at_zero() {
         let registry = L2KernelRegistry::default_for_mvp0();
         let kernel = registry
             .get(0)
-            .expect("FSST stub must be registered at id 0");
-        let data = kernel.decode(&[], 0).expect("stub decode should succeed");
+            .expect("FSST kernel must be registered at id 0");
+        let params = FsstParams {
+            symbols: vec![],
+            symbol_lengths: vec![],
+            codes_offsets: vec![0],
+            uncompressed_lengths: vec![],
+            validity: None,
+            codes_bytes: vec![],
+        }
+        .encode();
+
+        let data = kernel
+            .decode(&params, 0)
+            .expect("zero-row decode should succeed");
         assert_eq!(data.data_type(), &DataType::Utf8);
         assert_eq!(data.len(), 0);
     }
@@ -67,5 +170,57 @@ mod tests {
     fn default_registry_missing_id_returns_none() {
         let registry = L2KernelRegistry::default_for_mvp0();
         assert!(registry.get(1).is_none());
+    }
+
+    #[test]
+    fn fsst_kernel_decodes_plain_strings() {
+        let array = decode_strings(params_for_rows(&[Some(b"aa"), Some(b"bax")]), 2)
+            .expect("FSST rows should decode");
+
+        assert_eq!(array.value(0), "aa");
+        assert_eq!(array.value(1), "bax");
+    }
+
+    #[test]
+    fn fsst_kernel_preserves_nulls() {
+        let array = decode_strings(params_for_rows(&[Some(b"a"), None, Some(b"b")]), 3)
+            .expect("FSST rows should decode");
+
+        assert_eq!(array.value(0), "a");
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), "b");
+    }
+
+    #[test]
+    fn fsst_kernel_rejects_invalid_utf8() {
+        let err = decode_strings(params_for_rows(&[Some(&[0xff])]), 1)
+            .expect_err("invalid UTF-8 must be rejected");
+
+        assert_eq!(err, LoomDecodeError::InvalidUtf8 { index: 0 });
+    }
+
+    #[test]
+    fn fsst_kernel_rejects_empty_params() {
+        let registry = L2KernelRegistry::default_for_mvp0();
+        let kernel = registry.get(0).expect("FSST kernel must exist");
+        let err = kernel.decode(&[], 0).expect_err("empty params are invalid");
+
+        assert_eq!(err, LoomDecodeError::MalformedFsstParams("empty params"));
+    }
+
+    #[test]
+    fn fsst_kernel_panic_becomes_typed_error() {
+        let params = FsstParams {
+            symbols: vec![fsst::Symbol::from_u8(b'a')],
+            symbol_lengths: vec![1],
+            codes_offsets: vec![0, 1],
+            uncompressed_lengths: vec![1],
+            validity: None,
+            codes_bytes: vec![fsst::ESCAPE_CODE],
+        }
+        .encode();
+
+        let err = decode_strings(params, 1).expect_err("bad code should panic inside fsst-rs");
+        assert_eq!(err, LoomDecodeError::FsstKernelFailed("decoder panicked"));
     }
 }
