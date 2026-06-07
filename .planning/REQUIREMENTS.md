@@ -24,13 +24,13 @@ Requirements for MVP0. Each maps to a roadmap phase.
 - [x] **L1-02**: A synthesized read loop interprets a `LayoutNode` tree to produce decoded values
 - [x] **L1-03**: Decode a bit-packed integer column, including non-byte-aligned widths (1–64 bits)
 - [x] **L1-04**: Decode a frame-of-reference (FOR) column layered on bit-packing
-- [ ] **L1-05**: Decode a dictionary-encoded column via codes→values lookup with recursive sub-array dispatch
-- [ ] **L1-06**: Decode a run-length-encoded (RLE) column via run-end expansion
+- [x] **L1-05**: Decode a dictionary-encoded column via codes→values lookup with recursive sub-array dispatch
+- [x] **L1-06**: Decode a run-length-encoded (RLE) column via run-end expansion
 - [x] **L1-07**: Null/validity is preserved through every L1 decode path
 
 ### L2 — Total-Function Kernel Layer
 
-- [ ] **L2-01**: A `LayoutNode` can escape to an L2 kernel by id (`KernelEscape`), dispatched through a kernel registry
+- [x] **L2-01**: A `LayoutNode` can escape to an L2 kernel by id (`KernelEscape`), dispatched through a kernel registry
 - [ ] **L2-02**: An FSST L2 kernel decompresses FSST-encoded strings (symbol table + code stream) into string values
 - [ ] **L2-03**: A dictionary whose values are FSST-encoded decodes end-to-end (dict-over-FSST exercises the L1→L2 boundary)
 
@@ -106,9 +106,9 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | L1-07 | Phase 3 | Complete |
 | ARROW-01 | Phase 3 | Complete |
 | ARROW-02 | Phase 3 | Complete |
-| L1-05 | Phase 4 | Pending |
-| L1-06 | Phase 4 | Pending |
-| L2-01 | Phase 4 | Pending |
+| L1-05 | Phase 4 | Complete |
+| L1-06 | Phase 4 | Complete |
+| L2-01 | Phase 4 | Complete |
 | L2-02 | Phase 5 | Pending |
 | L2-03 | Phase 5 | Pending |
 | VERIFY-01 | Phase 5 | Pending |
