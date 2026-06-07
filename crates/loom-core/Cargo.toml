@@ -1,0 +1,13 @@
+[package]
+name = "loom-core"
+version = "0.1.0"
+edition = "2021"
+description = "Pure-Rust decode library — zero FFI, zero vortex dependencies (D-01, D-02)"
+
+# Arrow dependencies only — vortex-* crates are FORBIDDEN in loom-core (D-02).
+# The boundary is enforced by #![forbid(unsafe_code)] in lib.rs and by this manifest.
+[dependencies]
+arrow        = { workspace = true }
+arrow-array  = { workspace = true }
+arrow-schema = { workspace = true }
+arrow-data   = { workspace = true }

@@ -1,0 +1,21 @@
+[package]
+name = "loom-fixtures"
+version = "0.1.0"
+edition = "2021"
+description = "Reference fixtures and oracle decoder — the ONLY crate permitted to use vortex-* (D-02)"
+
+# This is the ONLY crate in the workspace allowed to depend on vortex-* crates (D-02).
+# Its role is to:
+#   1. Build reference (oracle) encoded arrays using the real Vortex encoders.
+#   2. Decode them via Vortex's own decoder for row-for-row comparison against
+#      the Loom output in the verification harness (Phase 5).
+#
+# FORBIDDEN: vortex-file, vortex-serde, vortex-ipc (PITFALLS P8).
+#
+# Note: vortex-dict was removed because vortex-dict =0.74.0 does not exist on
+# crates.io (merged into vortex-array in the 0.7x series). Dictionary encoding
+# is accessed via vortex-array itself at 0.74.0 (deviation Rule 1, auto-fixed).
+[dependencies]
+vortex-array     = { workspace = true }
+vortex-fastlanes = { workspace = true }
+vortex-fsst      = { workspace = true }

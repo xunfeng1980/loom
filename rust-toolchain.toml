@@ -3,8 +3,10 @@
 # build against exactly this version. Upgrade intentionally; do not use "stable"
 # unqualified, which floats and breaks reproducibility.
 #
-# 1.87.0 is the minimum version required by cbindgen 0.29.3 (STACK.md compatibility
-# matrix). Current CI toolchain is 1.96.0 (rustc 1.96.0, 2026-05-25) which satisfies
-# this MSRV. Pin to 1.87.0 so this workspace compiles on any stable >= 1.87.0.
-channel    = "1.87.0"
+# 1.92.0 is chosen because:
+#   - vortex-array 0.74.0 declares rust-version = "1.91.0" (MSRV); 1.92.0 satisfies it.
+#   - cbindgen 0.29.3 requires >= 1.87.0 (STACK.md); 1.92.0 satisfies it.
+#   - Deviation from STACK.md which listed 1.87.0: that was the cbindgen MSRV.
+#     vortex-array 0.74.0's own Cargo.toml raises the effective MSRV to 1.91.0.
+channel    = "1.92.0"
 components = ["rustfmt", "clippy"]

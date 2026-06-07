@@ -1,0 +1,15 @@
+[package]
+name = "loom-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "FFI staticlib — carries the extern C surface and the global allocator (D-01, CORE-01, CORE-02)"
+
+[lib]
+# staticlib: produces libloom_ffi.a for linking into the C++ DuckDB extension (CORE-01).
+# rlib: allows Rust unit tests in Plan 02 to call inner functions directly without
+#       requiring the full static-link cycle.
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+loom-core = { path = "../loom-core" }
+arrow     = { workspace = true }
