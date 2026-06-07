@@ -226,11 +226,50 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
+# PHASE 2 / DUCK-01 / ROADMAP criterion 4:
+# No rogue allocator symbols in libloom_ffi.a.
+#
+# DuckDB and the extension share a single flat process symbol namespace at
+# dlopen time.  If the Rust staticlib exports its own malloc/free/realloc
+# as DEFINED ("T"/"t") symbols, they will collide with DuckDB's allocator,
+# causing heap corruption (PITFALLS P5).
+#
+# CORE-02 (System allocator) was set in Phase 1 so Rust does NOT bundle its
+# own allocator — undefined "U" references to libc malloc are expected and
+# fine.  Only DEFINED ("T"/"t") malloc/free/realloc symbols are a problem.
+#
+# Guard: run `nm -g libloom_ffi.a`, filter for DEFINED (non-U, non-u) lines
+# that mention malloc, free, or realloc.  Any hit is a FAIL.
+# ---------------------------------------------------------------------------
+echo "--- PHASE 2 / ROADMAP criterion 4: No rogue allocator symbols in libloom_ffi.a ---"
+if [ ! -f "target/release/libloom_ffi.a" ]; then
+    fail "target/release/libloom_ffi.a not found — build loom-ffi first (ROADMAP criterion 4)"
+else
+    # nm -g: global (external) symbols only.
+    # Filter: keep lines that match malloc/free/realloc AND have a type code
+    # that is NOT "U" or "u" (undefined references to libc are fine).
+    # The nm output format is: [value] <type> <name>
+    # On macOS nm output: <value> <type> <name>
+    rogue_alloc=$(nm -g target/release/libloom_ffi.a 2>/dev/null \
+        | grep -E '\b(malloc|free|realloc)\b' \
+        | grep -vE '\s[Uu]\s' \
+        | grep -v '^#' \
+        || true)
+    if [ -z "${rogue_alloc}" ]; then
+        pass "nm -g target/release/libloom_ffi.a: no DEFINED malloc/free/realloc symbols (PITFALLS P5, ROADMAP criterion 4)"
+    else
+        fail "Rogue allocator symbols found in libloom_ffi.a — System allocator may not be set (PITFALLS P5):"
+        echo "${rogue_alloc}" >&2
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo "=== Summary ==="
 if [ "${overall}" -eq 0 ]; then
-    echo "${GRN}All CORE invariants PASSED.${RST}"
+    echo "${GRN}All CORE invariants PASSED (Phase 1 CORE + Phase 2 DUCK-01).${RST}"
 else
     echo "${RED}One or more CORE invariants FAILED. See errors above.${RST}" >&2
     exit 1

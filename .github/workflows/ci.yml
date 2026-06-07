@@ -11,7 +11,13 @@
 #   ARROW-03: real Arrow array exported via to_ffi + ptr::write; release test passes
 #   DUCK-04: catch_unwind on extern "C"; panic-safety test passes
 #
-# The script called here is: scripts/check-core-invariants.sh
+# Phase 2 DUCK-01 / DUCK-03 invariants added in Plan 02-02:
+#   - C++ extension builds with CMake (cargo-build trigger + staticlib link + footer-stamp)
+#   - DuckDB v1.5.3 CLI loads the extension with -unsigned; loom_scan returns 4 rows
+#   - No rogue allocator symbols in libloom_ffi.a (ROADMAP criterion 4, PITFALLS P5)
+#
+# The invariant script called here is: scripts/check-core-invariants.sh
+# The smoke-test script is:            scripts/duckdb-smoke-test.sh
 
 name: CI
 
@@ -22,6 +28,10 @@ on:
     branches: ["**"]
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Rust build, Clippy, unit tests, and CORE invariant checks.
+  # Runs on ubuntu-latest (linux_amd64 platform).
+  # ---------------------------------------------------------------------------
   build-and-test:
     name: Build, Clippy, and CORE Invariants
     runs-on: ubuntu-latest
@@ -75,5 +85,86 @@ jobs:
       # This is the gate referenced by ROADMAP criterion 5:
       # "panic=abort + System allocator verified in CI".
       # The script also runs cargo test -p loom-ffi internally (ARROW-03, DUCK-04).
+      # Phase 2: also guards no-rogue-allocator-symbols (ROADMAP criterion 4).
       - name: Run CORE invariant checks
         run: bash scripts/check-core-invariants.sh
+
+      # Step 7: Install CMake for C++ extension build.
+      - name: Install CMake
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y cmake
+
+      # Step 8: Build the C++ DuckDB extension (DUCK-01).
+      # cmake -S duckdb-ext: CMAKE_SOURCE_DIR = <repo>/duckdb-ext (important for
+      # the vendor/null.txt and vendor/append_metadata.cmake paths in CMakeLists.txt).
+      - name: Build C++ extension
+        run: |
+          cmake -S duckdb-ext -B duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build duckdb-ext/build
+
+      # Step 9: Download DuckDB v1.5.3 CLI for linux-amd64.
+      - name: Download DuckDB CLI (linux-amd64)
+        run: |
+          curl -fSL --retry 3 --retry-delay 2 \
+            -o duckdb_cli.zip \
+            https://github.com/duckdb/duckdb/releases/download/v1.5.3/duckdb_cli-linux-amd64.zip
+          unzip duckdb_cli.zip
+          chmod +x duckdb
+          echo "DUCKDB_CLI=$(pwd)/duckdb" >> "$GITHUB_ENV"
+
+      # Step 10: Run the DuckDB load smoke-test.
+      # DUCKDB_CLI is set in the previous step so the script uses the downloaded binary.
+      # Asserts loom_scan('test.bin') returns 4 rows (1, 2, 3, NULL) via duckdb -unsigned.
+      # This proves DUCK-01 (loadability + footer-stamp) and DUCK-03 (teardown on real path).
+      - name: DuckDB load smoke-test (DUCK-01, DUCK-03)
+        run: bash scripts/duckdb-smoke-test.sh
+
+  # ---------------------------------------------------------------------------
+  # Job 2: macOS arm64 (osx_arm64) C++ extension build + load smoke-test.
+  # This job verifies the osx_arm64 platform string stamped in the footer
+  # matches the CLI on the macOS runner (ROADMAP criterion 2 on arm64).
+  # ---------------------------------------------------------------------------
+  build-and-test-macos:
+    name: C++ Extension Build + Smoke-test (macOS arm64)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Rust workspace (release)
+        run: cargo build --workspace --release
+
+      # CMake is pre-installed on macOS-14 GitHub-hosted runners.
+      - name: Build C++ extension (macOS arm64)
+        run: |
+          cmake -S duckdb-ext -B duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build duckdb-ext/build
+
+      # Download the macOS arm64 CLI.
+      - name: Download DuckDB CLI (osx-arm64)
+        run: |
+          curl -fSL --retry 3 --retry-delay 2 \
+            -o duckdb_cli.zip \
+            https://github.com/duckdb/duckdb/releases/download/v1.5.3/duckdb_cli-osx-arm64.zip
+          unzip duckdb_cli.zip
+          chmod +x duckdb
+          echo "DUCKDB_CLI=$(pwd)/duckdb" >> "$GITHUB_ENV"
+
+      - name: DuckDB load smoke-test (DUCK-01, DUCK-03) — macOS arm64
+        run: bash scripts/duckdb-smoke-test.sh
