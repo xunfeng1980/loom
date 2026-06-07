@@ -129,7 +129,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `SELECT * FROM loom_scan(...)` in DuckDB over every supported encoding (bitpack, FOR, dict, RLE, FSST, dict-over-FSST) returns results matching the Vortex reference decoder with zero row mismatches
   4. `VERIFY-03` passes: an aggregate SQL query (e.g. `SELECT COUNT(*), SUM(col)`) over the Loom-decoded column returns the same result as the same query over the Vortex-decoded oracle
 
-**Plans**: TBD
+**Plans**: 4 plans across 3 waves
+
+- **Wave 1**: `05-01` Core FSST L2 kernel and Utf8 dict-over-FSST integration
+- **Wave 2** *(blocked on Wave 1 completion)*: `05-02` Vortex FSST fixture/oracle row-match, `05-03` Loom layout payload codec and FFI decode path
+- **Wave 3** *(blocked on Waves 1-2 completion)*: `05-04` DuckDB SQL MVP0 acceptance gate
 
 ## Progress
 
@@ -142,4 +146,4 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete    | 2026-06-07 |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 2/2 | Complete   | 2026-06-07 |
-| 5. FSST L2 Kernel and Full Verification | 0/TBD | In Progress | - |
+| 5. FSST L2 Kernel and Full Verification | 0/4 | Planned | - |
