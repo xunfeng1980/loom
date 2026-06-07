@@ -11,7 +11,7 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 - [x] **CORE-01**: The decoder builds as a Rust `staticlib` with all `arrow-*` sub-crates resolved to a single version (`cargo tree -d` shows zero arrow duplicates)
 - [x] **CORE-02**: The release profile enforces `panic = "abort"` and a `System` global allocator so the FFI boundary is sound against panics and allocator clashes
-- [ ] **CORE-03**: `cbindgen` generates the C header (`loom.h`) from the `extern "C"` surface during the build
+- [x] **CORE-03**: `cbindgen` generates the C header (`loom.h`) from the `extern "C"` surface during the build
 
 ### Input — Vortex Source
 
@@ -38,14 +38,14 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 - [ ] **ARROW-01**: Decoded values are emitted only through typed Arrow builders (`append_value`/`append_null`/list/struct), never raw writes
 - [ ] **ARROW-02**: Output materializes as Arrow `ArrayData` → `ArrowArray` + `ArrowSchema`
-- [ ] **ARROW-03**: The Arrow array is exported across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`) with correct release-callback ownership
+- [x] **ARROW-03**: The Arrow array is exported across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`) with correct release-callback ownership
 
 ### DuckDB — Engine Integration
 
 - [ ] **DUCK-01**: A C++ DuckDB extension pinned to DuckDB v1.5.3 builds and loads
 - [ ] **DUCK-02**: A `loom_scan` table function invokes the Rust decoder and adopts the imported Arrow array zero-copy
 - [ ] **DUCK-03**: The extension releases the imported Arrow array on every teardown path (no leak, no double-free)
-- [ ] **DUCK-04**: Every `extern "C"` entry point is wrapped in `catch_unwind` so a decoder panic cannot abort the DuckDB process
+- [x] **DUCK-04**: Every `extern "C"` entry point is wrapped in `catch_unwind` so a decoder panic cannot abort the DuckDB process
 
 ### Verify — Verification & Acceptance
 

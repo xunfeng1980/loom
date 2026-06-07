@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 1 Plan 01 — 3-crate workspace with invariants verified
-last_updated: "2026-06-07T10:12:16.355Z"
-last_activity: 2026-06-07 -- Phase 1 execution started
+stopped_at: Completed Phase 1 Plan 02 — FFI boundary with loom_decode + cbindgen + CORE CI
+last_updated: "2026-06-07T10:35:00Z"
+last_activity: 2026-06-07 -- Phase 1 Plan 02 complete
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 10
 ---
 
 # Project State
@@ -25,34 +25,35 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 ## Current Position
 
-Phase: 1 (Scaffold and FFI Boundary) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-06-07 -- Phase 1 execution started
+Phase: 1 (Scaffold and FFI Boundary) — COMPLETE
+Plan: 2 of 2 — COMPLETE
+Status: Phase 1 complete; Phase 2 (DuckDB Extension Scaffold) ready to plan
+Last activity: 2026-06-07 -- Phase 1 Plan 02 complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 2
+- Average duration: ~15 minutes/plan
+- Total execution time: ~30 minutes
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-scaffold-and-ffi-boundary | 2 | ~30 min | ~15 min |
 
 **Recent Trend:**
 
-- Last 5 plans: none yet
-- Trend: -
+- Last 5 plans: P01 (~10 min), P02 (~20 min)
+- Trend: Within expected range
 
 *Updated after each plan completion*
-| Phase 01-scaffold-and-ffi-boundary P01 | 10 | - tasks | - files |
+| Phase 01-scaffold-and-ffi-boundary P01 | 10 | 2 tasks | 10 files |
+| Phase 01-scaffold-and-ffi-boundary P02 | 20 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Toolchain pinned to 1.92.0 not 1.87.0 — vortex-array 0.74.0 requires MSRV 1.91.0
 - [Phase ?]: vortex-dict removed from deps — crate does not exist at 0.74.0; dict encoding via vortex-array 0.74.0
 - [Phase ?]: [patch.crates-io] removed — exact version pins achieve arrow unification without invalid self-patch
+- [Phase 1 P02]: loom_decode signature locked — i32 return code, no loom_free, Arrow release callback owns teardown
+- [Phase 1 P02]: LoomError codes: NullPointer=1, DecodeFailed=2, Panicked=3
+- [Phase 1 P02]: cbindgen excludes FFI_ArrowArray/FFI_ArrowSchema — incomplete-type pointer in loom.h prevents ABI struct mismatch
+- [Phase 1 P02]: panic sentinel uses thread_local Cell<bool> for test isolation (not global AtomicBool)
 
 ### Pending Todos
 
@@ -89,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-07T10:12:16.351Z
-Stopped at: Completed Phase 1 Plan 01 — 3-crate workspace with invariants verified
+Last session: 2026-06-07T10:35:00Z
+Stopped at: Completed Phase 1 Plan 02 — FFI boundary with loom_decode + cbindgen + CORE CI
 Resume file: None

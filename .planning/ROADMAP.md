@@ -20,7 +20,7 @@ other decoders write into), L1 dict+RLE+L2 escape fourth (incremental completion
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Scaffold and FFI Boundary** - Establish Rust workspace invariants, Arrow version pinning, panic-safety contract, and cbindgen header generation
+- [x] **Phase 1: Scaffold and FFI Boundary** - Establish Rust workspace invariants, Arrow version pinning, panic-safety contract, and cbindgen header generation
 - [ ] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain
 - [ ] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling
 - [ ] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists
@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — extern "C" loom_decode + catch_unwind, real Arrow to_ffi roundtrip, cbindgen loom.h, CORE-invariant CI (CORE-03, ARROW-03, DUCK-04)
+- [x] 01-02-PLAN.md — extern "C" loom_decode + catch_unwind, real Arrow to_ffi roundtrip, cbindgen loom.h, CORE-invariant CI (CORE-03, ARROW-03, DUCK-04)
 
 ### Phase 2: DuckDB Extension Scaffold
 
@@ -112,7 +112,7 @@ Phases execute in numeric order: 1 â 2 â 3 â 4 â 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffold and FFI Boundary | 1/2 | In Progress|  |
+| 1. Scaffold and FFI Boundary | 2/2 | Complete | 2026-06-07 |
 | 2. DuckDB Extension Scaffold | 0/TBD | Not started | - |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 0/TBD | Not started | - |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |
