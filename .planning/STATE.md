@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-06-07T09:52:22.817Z"
-last_activity: 2026-06-07 — Roadmap created; all 25 v1 requirements mapped to 5 phases
+stopped_at: Completed Phase 1 Plan 01 — 3-crate workspace with invariants verified
+last_updated: "2026-06-07T10:12:16.355Z"
+last_activity: 2026-06-07 -- Phase 1 execution started
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 ## Current Position
 
-Phase: 1 of 5 (Scaffold and FFI Boundary)
-Plan: 0 of TBD in current phase
+Phase: 1 (Scaffold and FFI Boundary) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-06-07 — Roadmap created; all 25 v1 requirements mapped to 5 phases
+Last activity: 2026-06-07 -- Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-scaffold-and-ffi-boundary P01 | 10 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 
 - Roadmap: 5-phase structure adopted — dependency chain (FFI → DuckDB scaffold → L1 core → L1 remainder + L2 escape → FSST + verify) is load-bearing and cannot be reordered
 - Roadmap: DUCK-04 (catch_unwind) assigned to Phase 1 alongside CORE-02 (panic=abort) — both are FFI panic-safety invariants that must precede any C++ calls
+- [Phase ?]: Toolchain pinned to 1.92.0 not 1.87.0 — vortex-array 0.74.0 requires MSRV 1.91.0
+- [Phase ?]: vortex-dict removed from deps — crate does not exist at 0.74.0; dict encoding via vortex-array 0.74.0
+- [Phase ?]: [patch.crates-io] removed — exact version pins achieve arrow unification without invalid self-patch
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-07T09:42:38.796Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-scaffold-and-ffi-boundary/01-CONTEXT.md
+Last session: 2026-06-07T10:12:16.351Z
+Stopped at: Completed Phase 1 Plan 01 — 3-crate workspace with invariants verified
+Resume file: None

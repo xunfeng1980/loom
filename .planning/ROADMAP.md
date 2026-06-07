@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Cargo workspace, 3-crate boundary, arrow version pinning, panic=abort + System allocator (CORE-01, CORE-02)
+- [x] 01-01-PLAN.md — Cargo workspace, 3-crate boundary, arrow version pinning, panic=abort + System allocator (CORE-01, CORE-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -112,7 +112,7 @@ Phases execute in numeric order: 1 â 2 â 3 â 4 â 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffold and FFI Boundary | 0/2 | Not started | - |
+| 1. Scaffold and FFI Boundary | 1/2 | In Progress|  |
 | 2. DuckDB Extension Scaffold | 0/TBD | Not started | - |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 0/TBD | Not started | - |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 0/TBD | Not started | - |

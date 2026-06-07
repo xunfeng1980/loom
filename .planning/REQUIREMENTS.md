@@ -9,8 +9,8 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### Core — Decoder Build & FFI Soundness
 
-- [ ] **CORE-01**: The decoder builds as a Rust `staticlib` with all `arrow-*` sub-crates resolved to a single version (`cargo tree -d` shows zero arrow duplicates)
-- [ ] **CORE-02**: The release profile enforces `panic = "abort"` and a `System` global allocator so the FFI boundary is sound against panics and allocator clashes
+- [x] **CORE-01**: The decoder builds as a Rust `staticlib` with all `arrow-*` sub-crates resolved to a single version (`cargo tree -d` shows zero arrow duplicates)
+- [x] **CORE-02**: The release profile enforces `panic = "abort"` and a `System` global allocator so the FFI boundary is sound against panics and allocator clashes
 - [ ] **CORE-03**: `cbindgen` generates the C header (`loom.h`) from the `extern "C"` surface during the build
 
 ### Input — Vortex Source
@@ -89,8 +89,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Complete |
+| CORE-02 | Phase 1 | Complete |
 | CORE-03 | Phase 1 | Pending |
 | ARROW-03 | Phase 1 | Pending |
 | DUCK-04 | Phase 1 | Pending |
@@ -116,6 +116,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | VERIFY-03 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 25 total
 - Mapped to phases: 25
 - Unmapped: 0 ✓
