@@ -1,0 +1,71 @@
+# .github/workflows/ci.yml
+# GitHub Actions CI workflow for Loom MVP0 (DuckDB demo).
+#
+# Triggers on push and pull_request to any branch.
+# The workflow fails if any invariant check or build step exits nonzero.
+#
+# Phase 1 CORE invariants verified by this workflow (ROADMAP criterion 5):
+#   CORE-01: Zero arrow-* version conflicts; vortex-file absent; loom-core clean
+#   CORE-02: panic="abort" + System global_allocator present
+#   CORE-03: cbindgen generates loom.h with loom_decode signature
+#   ARROW-03: real Arrow array exported via to_ffi + ptr::write; release test passes
+#   DUCK-04: catch_unwind on extern "C"; panic-safety test passes
+#
+# The script called here is: scripts/check-core-invariants.sh
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build-and-test:
+    name: Build, Clippy, and CORE Invariants
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Install the Rust toolchain pinned in rust-toolchain.toml.
+      # dtolnay/rust-toolchain reads the channel from rust-toolchain.toml
+      # automatically when no explicit `toolchain` input is given.
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Let the action read the channel from rust-toolchain.toml.
+          # We pass the components we need for clippy.
+          components: clippy
+
+      # Step 3: Cache Cargo registry and build artefacts for faster CI runs.
+      - name: Cache Cargo artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Step 4: Build the entire workspace in release mode.
+      # Zero warnings are required (ROADMAP criterion 4).
+      - name: Build workspace (release)
+        run: cargo build --workspace --release
+
+      # Step 5: Clippy — deny warnings.
+      # Applies to the whole workspace; any new warning fails the build.
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      # Step 6: Run the CORE invariant script.
+      # This is the gate referenced by ROADMAP criterion 5:
+      # "panic=abort + System allocator verified in CI".
+      # The script also runs cargo test -p loom-ffi internally (ARROW-03, DUCK-04).
+      - name: Run CORE invariant checks
+        run: bash scripts/check-core-invariants.sh
