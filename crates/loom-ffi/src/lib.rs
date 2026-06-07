@@ -29,3 +29,11 @@ use std::alloc::System;
 /// linked into a C++ consumer.
 #[global_allocator]
 static GLOBAL: System = System;
+
+/// FFI surface — `extern "C"` entry point and supporting types.
+///
+/// See [`ffi::loom_decode`] for the locked FFI contract.
+pub mod ffi;
+
+/// Re-export the primary FFI entry point at the crate root for discoverability.
+pub use ffi::loom_decode;
