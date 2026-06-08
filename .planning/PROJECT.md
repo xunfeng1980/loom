@@ -37,12 +37,13 @@ If only one thing works, it is this end-to-end chain.
 - ✓ ArrowArrayStream decision: direct DuckDB DataChunk population remains the Phase 8 path; ArrowArrayStream is deferred until a later table/record-batch FFI ABI is introduced — Phase 8
 - ✓ Verifier and safety boundary MVP: `loom_core::verifier` checks MVP0 layout/table descriptions with typed code/path/message diagnostics, Rust decode helpers and FFI ingress fail closed before Arrow output, `loom inspect` prints `verification: pass|fail`, and `scripts/mvp0-verify.sh` includes curated negative verifier coverage — Phase 9
 - ✓ ALP Float32/Float64 L2 coverage: Loom-owned `AlpParams`, kernel id `1`, verifier checks, synthetic fixtures with Vortex primitive float oracle comparison, FFI roundtrips, CLI inspect/decode output, and DuckDB SQL smoke checks are complete — Phase 10
+- ✓ Distribution Container v0: `LMC1` wraps existing `LMP1`/`LMT1` payloads with versioning, required/optional feature flags, checked sections, CLI visibility, generated fixture coverage, DuckDB SQL smoke coverage, and malformed-container release-gate coverage — Phase 11
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 11: Distribution Container v0 (`DIST-01` through `DIST-05`)
+- [ ] Phase 12/13/14 are roadmap placeholders only: formal verifier / safety proof MVP, MLIR/native lowering spike, and real Vortex file/container ingress.
 
 ### Out of Scope
 
@@ -95,7 +96,7 @@ If only one thing works, it is this end-to-end chain.
 | Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
 | Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Complete — Phase 9 |
 | Phase 10 should return to L2 numeric compression coverage | COV-01 was the remaining explicit v2 decode coverage item; ALP Float32/Float64 exercised the L2 path without jumping to MLIR or formal verification scope | Complete — Phase 10 |
-| Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Active — Phase 11 |
+| Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 
 ## Evolution
 
@@ -115,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 11 research — active scope is Distribution Container v0. Formal verifier, MLIR/native lowering, and real Vortex file/container ingress are roadmap placeholders.*
+*Last updated: 2026-06-08 after Phase 11 completion — Distribution Container v0 is complete. Formal verifier, MLIR/native lowering, and real Vortex file/container ingress remain roadmap placeholders.*

@@ -100,11 +100,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Distribution Container
 
-- [ ] **DIST-01**: A versioned Loom distribution container (`LMC1`) wraps existing single-column `LMP1` and table `LMT1` payloads without breaking raw payload compatibility
-- [ ] **DIST-02**: The container records required and optional feature flags, and unknown required features fail closed before decode
-- [ ] **DIST-03**: A checked section directory records section kind, flags, offset, and length with overflow/truncation rejection
-- [ ] **DIST-04**: `loom inspect` exposes container version, features, sections, payload kind, schema summary, and verifier status
-- [ ] **DIST-05**: The release gate covers container-wrapped payload success and negative container rejection cases
+- [x] **DIST-01**: A versioned Loom distribution container (`LMC1`) wraps existing single-column `LMP1` and table `LMT1` payloads without breaking raw payload compatibility
+- [x] **DIST-02**: The container records required and optional feature flags, and unknown required features fail closed before decode
+- [x] **DIST-03**: A checked section directory records section kind, flags, offset, and length with overflow/truncation rejection
+- [x] **DIST-04**: `loom inspect` exposes container version, features, sections, payload kind, schema summary, and verifier status
+- [x] **DIST-05**: The release gate covers container-wrapped payload success and negative container rejection cases
 
 ## Out of Scope
 
@@ -173,11 +173,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | SAFE-03 | Phase 9 | Complete |
 | SAFE-04 | Phase 9 | Complete |
 | VERIFY-06 | Phase 9 | Complete |
-| DIST-01 | Phase 11 | Planned |
-| DIST-02 | Phase 11 | Planned |
-| DIST-03 | Phase 11 | Planned |
-| DIST-04 | Phase 11 | Planned |
-| DIST-05 | Phase 11 | Planned |
+| DIST-01 | Phase 11 | Complete |
+| DIST-02 | Phase 11 | Complete |
+| DIST-03 | Phase 11 | Complete |
+| DIST-04 | Phase 11 | Complete |
+| DIST-05 | Phase 11 | Complete |
 
 **Coverage:**
 
@@ -193,4 +193,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 11 distribution container research added; Phase 12-14 placeholders recorded*
+*Last updated: 2026-06-08 — Phase 11 Distribution Container v0 complete; Phase 12-14 placeholders remain recorded*

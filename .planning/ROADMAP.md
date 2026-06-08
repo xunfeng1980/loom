@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
-- [ ] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (executing, 3/4 plans complete)
+- [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [ ] **Phase 12: Formal Verifier / Safety Proof MVP** - Placeholder for moving beyond structural validation into a formal safety proof surface (not expanded)
 - [ ] **Phase 13: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the distribution boundary exists (not expanded)
 - [ ] **Phase 14: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
@@ -306,7 +306,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 11-04-PLAN.md - Document container v0, add negative container gate, run final verification, and close DIST requirements (DIST-01, DIST-02, DIST-03, DIST-04, DIST-05)
+- [x] 11-04-PLAN.md - Document container v0, add negative container gate, run final verification, and close DIST requirements (DIST-01, DIST-02, DIST-03, DIST-04, DIST-05)
 
 ### Phase 12: Formal Verifier / Safety Proof MVP
 
@@ -340,7 +340,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
-| 11. Distribution Container v0 | 3/4 | Executing | - |
+| 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
 | 12. Formal Verifier / Safety Proof MVP | 0/? | Placeholder | - |
 | 13. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 14. Real Vortex File/Container Ingress | 0/? | Placeholder | - |
