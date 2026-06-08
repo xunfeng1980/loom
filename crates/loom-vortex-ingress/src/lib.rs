@@ -137,6 +137,127 @@ pub struct VortexFileFacts {
     pub supported_loom_payload: bool,
 }
 
+/// Complete-reader support classification for Phase 18 facts.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexReaderSupport {
+    /// The reader facts and current Loom emission slice are accepted.
+    Accepted,
+    /// The file is valid Vortex, but the current Loom reader cannot emit it.
+    Unsupported,
+    /// The input cannot be opened as a valid Vortex file.
+    Rejected,
+}
+
+impl VortexReaderSupport {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Unsupported => "unsupported",
+            Self::Rejected => "rejected",
+        }
+    }
+}
+
+/// Loom artifact kind the reader may emit after verification.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexReaderEmissionKind {
+    /// No `.loom` bytes may be emitted for this input.
+    None,
+    /// A single-column layout payload wrapped in `LMC1`.
+    Lmp1,
+    /// A table payload wrapped in `LMC1`.
+    Lmt1,
+}
+
+impl VortexReaderEmissionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Lmp1 => "LMP1",
+            Self::Lmt1 => "LMT1",
+        }
+    }
+}
+
+/// Stable diagnostic code vocabulary for the complete-reader boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexReaderDiagnosticCode {
+    OpenFailed,
+    TraversalFailed,
+    UnsupportedLayout,
+    UnsupportedDType,
+    UnsupportedConversion,
+    VerificationRequired,
+}
+
+impl VortexReaderDiagnosticCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::OpenFailed => "READER_OPEN_FAILED",
+            Self::TraversalFailed => "READER_TRAVERSAL_FAILED",
+            Self::UnsupportedLayout => "READER_UNSUPPORTED_LAYOUT",
+            Self::UnsupportedDType => "READER_UNSUPPORTED_DTYPE",
+            Self::UnsupportedConversion => "READER_UNSUPPORTED_CONVERSION",
+            Self::VerificationRequired => "READER_VERIFICATION_REQUIRED",
+        }
+    }
+}
+
+/// Loom-owned dtype fact. The strings are intentionally reviewer-facing
+/// summaries; no public fact exposes a Vortex type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderDTypeFact {
+    pub path: String,
+    pub summary: String,
+    pub kind: String,
+    pub nullable: Option<bool>,
+}
+
+/// Loom-owned layout fact for a node in the Vortex layout tree.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderLayoutFact {
+    pub path: String,
+    pub encoding_id: String,
+    pub dtype_summary: String,
+    pub row_count: u64,
+    pub child_count: usize,
+    pub child_type: Option<String>,
+    pub child_name: Option<String>,
+    pub child_row_offset: Option<u64>,
+    pub segment_ids: Vec<u32>,
+    pub metadata_byte_len: usize,
+}
+
+/// Loom-owned segment byte-range fact.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderSegmentFact {
+    pub id: u32,
+    pub index: usize,
+    pub start: u64,
+    pub end: u64,
+    pub length: u64,
+    pub alignment: String,
+    pub ordered_after_previous: bool,
+    pub overlaps_previous: bool,
+}
+
+/// Rich Phase 18 facts extracted from a real Vortex file.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderFacts {
+    pub source_kind: VortexIngressSourceKind,
+    pub vortex_file_version: u16,
+    pub row_count: u64,
+    pub root_dtype: VortexReaderDTypeFact,
+    pub root_layout_encoding: String,
+    pub layout_facts: Vec<VortexReaderLayoutFact>,
+    pub dtype_facts: Vec<VortexReaderDTypeFact>,
+    pub segment_facts: Vec<VortexReaderSegmentFact>,
+    pub statistics_present: bool,
+    pub footer_approx_byte_size: Option<usize>,
+    pub support: VortexReaderSupport,
+    pub emission_kind: VortexReaderEmissionKind,
+}
+
 /// Result of inspecting or converting a real Vortex file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VortexIngressReport {
@@ -242,6 +363,172 @@ fn facts_from_file(file: &VortexFile, source_kind: VortexIngressSourceKind) -> V
     }
 }
 
+fn reader_facts_from_file(
+    file: &VortexFile,
+    source_kind: VortexIngressSourceKind,
+) -> VortexReaderFacts {
+    let footer = file.footer();
+    let layout = footer.layout();
+    let support = if supported_int32_non_nullable(file).is_ok() {
+        VortexReaderSupport::Accepted
+    } else {
+        VortexReaderSupport::Unsupported
+    };
+    let emission_kind = match support {
+        VortexReaderSupport::Accepted => VortexReaderEmissionKind::Lmp1,
+        VortexReaderSupport::Unsupported | VortexReaderSupport::Rejected => {
+            VortexReaderEmissionKind::None
+        }
+    };
+
+    let mut layout_facts = Vec::new();
+    collect_layout_facts(layout.clone(), "$".to_string(), None, &mut layout_facts);
+
+    let dtype_facts = layout_facts
+        .iter()
+        .map(|layout| dtype_fact_from_summary(layout.path.clone(), layout.dtype_summary.clone()))
+        .collect::<Vec<_>>();
+    let root_dtype = dtype_fact_from_summary("$", format!("{:?}", file.dtype()));
+
+    VortexReaderFacts {
+        source_kind,
+        vortex_file_version: vortex_file::VERSION,
+        row_count: file.row_count(),
+        root_dtype,
+        root_layout_encoding: layout.encoding_id().as_ref().to_string(),
+        layout_facts,
+        dtype_facts,
+        segment_facts: segment_facts_from_file(file),
+        statistics_present: file.file_stats().is_some(),
+        footer_approx_byte_size: footer.approx_byte_size(),
+        support,
+        emission_kind,
+    }
+}
+
+fn collect_layout_facts(
+    layout: vortex_layout::LayoutRef,
+    path: String,
+    child_context: Option<(String, String, Option<u64>)>,
+    facts: &mut Vec<VortexReaderLayoutFact>,
+) {
+    let segment_ids = layout.segment_ids().into_iter().map(|id| *id).collect();
+    let (child_type, child_name, child_row_offset) = child_context
+        .map(|(child_type, child_name, child_row_offset)| {
+            (Some(child_type), Some(child_name), child_row_offset)
+        })
+        .unwrap_or((None, None, None));
+
+    facts.push(VortexReaderLayoutFact {
+        path: path.clone(),
+        encoding_id: layout.encoding_id().as_ref().to_string(),
+        dtype_summary: format!("{:?}", layout.dtype()),
+        row_count: layout.row_count(),
+        child_count: layout.nchildren(),
+        child_type,
+        child_name,
+        child_row_offset,
+        segment_ids,
+        metadata_byte_len: layout.metadata().len(),
+    });
+
+    let child_types = layout.child_types().collect::<Vec<_>>();
+    let child_names = child_types
+        .iter()
+        .map(|child| child.name().to_string())
+        .collect::<Vec<_>>();
+    let child_offsets = child_types
+        .iter()
+        .map(|child| child.row_offset())
+        .collect::<Vec<_>>();
+
+    let Ok(children) = layout.children() else {
+        return;
+    };
+
+    for (idx, child) in children.into_iter().enumerate() {
+        let child_type = child_types
+            .get(idx)
+            .map(|child| format!("{:?}", child))
+            .unwrap_or_else(|| "unknown".to_string());
+        let child_name = child_names
+            .get(idx)
+            .cloned()
+            .unwrap_or_else(|| format!("child_{idx}"));
+        let child_row_offset = child_offsets.get(idx).copied().flatten();
+        collect_layout_facts(
+            child,
+            format!("{path}/children/{idx}"),
+            Some((child_type, child_name, child_row_offset)),
+            facts,
+        );
+    }
+}
+
+fn dtype_fact_from_summary(
+    path: impl Into<String>,
+    summary: impl Into<String>,
+) -> VortexReaderDTypeFact {
+    let summary = summary.into();
+    VortexReaderDTypeFact {
+        path: path.into(),
+        kind: dtype_kind_from_summary(&summary).to_string(),
+        nullable: dtype_nullable_from_summary(&summary),
+        summary,
+    }
+}
+
+fn dtype_kind_from_summary(summary: &str) -> &'static str {
+    if summary.contains("Struct") {
+        "struct"
+    } else if summary.contains("List") {
+        "list"
+    } else if summary.contains("Utf8") {
+        "utf8"
+    } else if summary.contains("Bool") {
+        "bool"
+    } else if summary.contains("Primitive") || summary.contains("I32") || summary.contains("I64") {
+        "primitive"
+    } else {
+        "unknown"
+    }
+}
+
+fn dtype_nullable_from_summary(summary: &str) -> Option<bool> {
+    if summary.contains("NonNullable") {
+        Some(false)
+    } else if summary.contains("Nullable") {
+        Some(true)
+    } else {
+        None
+    }
+}
+
+fn segment_facts_from_file(file: &VortexFile) -> Vec<VortexReaderSegmentFact> {
+    let mut previous_end = None;
+    file.footer()
+        .segment_map()
+        .iter()
+        .enumerate()
+        .map(|(index, segment)| {
+            let range = segment.byte_range();
+            let ordered_after_previous = previous_end.map(|end| range.start >= end).unwrap_or(true);
+            let overlaps_previous = previous_end.map(|end| range.start < end).unwrap_or(false);
+            previous_end = Some(range.end);
+            VortexReaderSegmentFact {
+                id: index as u32,
+                index,
+                start: range.start,
+                end: range.end,
+                length: range.end.saturating_sub(range.start),
+                alignment: format!("{:?}", segment.alignment),
+                ordered_after_previous,
+                overlaps_previous,
+            }
+        })
+        .collect()
+}
+
 fn opened_buffer_or_report(bytes: &[u8]) -> Result<VortexFile, VortexIngressReport> {
     let session = default_session();
     session
@@ -264,6 +551,21 @@ pub fn inspect_vortex_buffer(bytes: &[u8]) -> VortexIngressReport {
     }
 }
 
+/// Extract Phase 18 complete-reader facts from an in-memory Vortex file buffer.
+///
+/// Valid but unsupported files still return facts with `support = Unsupported`
+/// and `emission_kind = None`. Invalid input returns a rejected ingress report
+/// and no partial Loom artifact may be emitted.
+pub fn reader_facts_from_vortex_buffer(
+    bytes: &[u8],
+) -> Result<VortexReaderFacts, VortexIngressReport> {
+    let file = opened_buffer_or_report(bytes)?;
+    Ok(reader_facts_from_file(
+        &file,
+        VortexIngressSourceKind::Buffer,
+    ))
+}
+
 /// Inspect a local Vortex file path.
 pub fn inspect_vortex_path(path: &Path) -> VortexIngressReport {
     let session = default_session();
@@ -275,6 +577,23 @@ pub fn inspect_vortex_path(path: &Path) -> VortexIngressReport {
             format!("failed to open Vortex path: {err}"),
         ),
     }
+}
+
+/// Extract Phase 18 complete-reader facts from a local Vortex file path.
+pub fn reader_facts_from_vortex_path(
+    path: &Path,
+) -> Result<VortexReaderFacts, VortexIngressReport> {
+    let session = default_session();
+    RUNTIME
+        .block_on(session.open_options().open_path(path))
+        .map(|file| reader_facts_from_file(&file, VortexIngressSourceKind::Path))
+        .map_err(|err| {
+            VortexIngressReport::rejected(
+                VortexIngressDiagnosticCode::OpenFailed,
+                "$.path",
+                format!("failed to open Vortex path: {err}"),
+            )
+        })
 }
 
 /// Emit a verifier-compatible Loom `LMC1` container for the supported ingress slice.

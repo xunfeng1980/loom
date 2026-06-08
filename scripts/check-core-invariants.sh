@@ -12,7 +12,7 @@
 #
 # Requirements verified: CORE-01, CORE-02, CORE-03, ARROW-03, DUCK-04
 # Pitfall guards: P1 release callback, P2 schema lifetime, P3 panic across FFI,
-#                 P5 allocator mismatch, P8 vortex-file scope guard, P9 arrow skew
+#                 P5 allocator mismatch, P8 vortex-file/layout scope guard, P9 arrow skew
 #
 # Grep gate hygiene: all pattern searches strip comment lines before counting,
 # so a comment containing the search token cannot self-satisfy a check.
@@ -110,6 +110,21 @@ if [ -z "$unexpected_vortex_file" ]; then
 else
     fail "vortex-file direct dependency appeared outside crates/loom-vortex-ingress:"
     echo "$unexpected_vortex_file" >&2
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# CORE-01 (scope): vortex-layout is allowed only in the isolated ingress crate.
+# ---------------------------------------------------------------------------
+echo "--- CORE-01 (scope): vortex-layout direct dependency allowlist ---"
+vortex_layout_cargo=$(rg -n 'vortex-layout' Cargo.toml crates/*/Cargo.toml || true)
+unexpected_vortex_layout=$(printf '%s\n' "$vortex_layout_cargo" \
+    | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)
+if [ -z "$unexpected_vortex_layout" ]; then
+    pass "vortex-layout direct dependency is isolated to crates/loom-vortex-ingress"
+else
+    fail "vortex-layout direct dependency appeared outside crates/loom-vortex-ingress:"
+    echo "$unexpected_vortex_layout" >&2
 fi
 echo ""
 
