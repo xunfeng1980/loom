@@ -592,6 +592,7 @@ LMC1 artifact
 **Status:** Placeholder only. Do not expand until Phase 19 provides solver-backed artifact verifier evidence and Phase 20 identifies the production decode/native lowering seed.
 **Depends on:** Phase 18, Phase 19, and Phase 20.
 **Ordering decision:** Widen real Vortex coverage after the verifier and first production lowering seed exist, not because that seed is permanently complete. This phase should add representative Vortex encodings, layouts, and storage modes beyond the Phase 18 accepted matrix, preserve Loom-owned facts and diagnostics, emit artifacts only when verifier/lowering facts accept them, and add Vortex oracle/equivalence gates. For every new encoding/layout, Phase 21 must record a paired decision: interpreter-only for now, production-lowering-supported with dialect/native delta, or fail-closed/deferred with stable diagnostics. It must not become solver work, host-runtime ABI work, production backend implementation, or DuckDB/Iceberg integration.
+**Research:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-RESEARCH.md`
 
 ### Phase 22: Host Native Runtime ABI and Execution Policy
 
