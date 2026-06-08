@@ -1,44 +1,14 @@
 #!/usr/bin/env bash
-# duckdb-smoke-test.sh — Build, load, and smoke-test the loom DuckDB extension.
-#
-# Proves the full CMake + Rust-staticlib + DuckDB-ABI chain end-to-end:
-#   1. Builds the extension with CMake if not already built.
-#   2. Downloads the DuckDB v1.5.3 CLI for the host platform if not cached.
-#   3. Loads loom.duckdb_extension via `duckdb -unsigned`.
-#   4. Asserts SELECT * FROM loom_scan('test.bin') returns 4 rows (1,2,3,NULL).
-#   5. Asserts SELECT count(*) FROM loom_scan('test.bin') returns 4.
-#
-# Exit codes:
-#   0 — smoke-test PASSED (DUCK-01 loadability + DUCK-03 teardown path verified)
-#   1 — build failed, download failed, ABI/metadata mismatch, or row count mismatch
-#
-# DUCK-01 proof: the extension is loaded into the official prebuilt duckdb v1.5.3
-#   CLI with -unsigned (bypasses signature check; metadata check still applies —
-#   the footer stamp POST_BUILD ensures the footer matches the CLI).
-#
-# DUCK-03 proof: the query runs to completion and the CLI process exits with code 0.
-#   A leaked/double-freed ArrowArray would abort the process or cause a nonzero exit.
-#   Combined with the Phase-1 Rust-side release-roundtrip test, this covers every
-#   teardown path for the one-shot hardcoded array.
-#
-# Run from the workspace root:
-#   bash scripts/duckdb-smoke-test.sh
-#
-# In CI, the DUCKDB_CLI environment variable may be set to an already-downloaded
-# binary path (e.g. the download happens in a separate CI step). The script uses
-# that if provided.
+# duckdb-smoke-test.sh — MVP0 SQL acceptance gate for the Loom DuckDB extension.
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
 DUCKDB_VERSION="v1.5.3"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 EXT_PATH="${REPO_ROOT}/duckdb-ext/build/loom.duckdb_extension"
 CLI_CACHE_DIR="${REPO_ROOT}/duckdb-ext/vendor/duckdb-cli"
+PAYLOAD_DIR="${REPO_ROOT}/target/loom-duckdb-fixtures"
 
-# Colour helpers (graceful fallback in CI / non-terminal)
 if [ -t 1 ] && command -v tput &>/dev/null; then
     RED=$(tput setaf 1)
     GRN=$(tput setaf 2)
@@ -55,13 +25,25 @@ info()  { echo "${YLW}[smoke-test]${RST} $*"; }
 ok()    { echo "${GRN}[PASS]${RST} $*"; }
 fail()  { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
-echo "=== Loom DuckDB extension smoke-test (DUCK-01, DUCK-03) ==="
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+echo "=== Loom DuckDB MVP0 SQL smoke-test ==="
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 1: Build the extension (idempotent — skips if already up-to-date)
-# ---------------------------------------------------------------------------
+info "Generating deterministic Loom payloads..."
+cargo run -p loom-fixtures --bin emit_duckdb_payloads >/dev/null
+test -f "${PAYLOAD_DIR}/bitpack-i32.loom"
+test -f "${PAYLOAD_DIR}/for-i32.loom"
+test -f "${PAYLOAD_DIR}/dict-i32.loom"
+test -f "${PAYLOAD_DIR}/rle-i32.loom"
+test -f "${PAYLOAD_DIR}/fsst-utf8.loom"
+test -f "${PAYLOAD_DIR}/dict-fsst-utf8.loom"
+ok "Generated payloads in ${PAYLOAD_DIR}"
+
 info "Building loom.duckdb_extension..."
+cargo build -p loom-ffi --release
+rm -f "${EXT_PATH}"
 cmake -S "${REPO_ROOT}/duckdb-ext" \
       -B "${REPO_ROOT}/duckdb-ext/build" \
       -DCMAKE_BUILD_TYPE=Release \
@@ -74,22 +56,16 @@ fi
 
 EXT_SIZE=$(wc -c < "${EXT_PATH}" | tr -d ' ')
 if [ "${EXT_SIZE}" -lt 512 ]; then
-    fail "Extension file is only ${EXT_SIZE} bytes — footer stamp missing (expected >= 512)"
+    fail "Extension file is only ${EXT_SIZE} bytes — footer stamp missing"
 fi
-ok "Built ${EXT_PATH} (${EXT_SIZE} bytes, footer present)"
+ok "Built ${EXT_PATH} (${EXT_SIZE} bytes)"
 
-# ---------------------------------------------------------------------------
-# Step 2: Locate or download the DuckDB v1.5.3 CLI
-# ---------------------------------------------------------------------------
 if [ -n "${DUCKDB_CLI:-}" ]; then
-    # CI may pre-set the binary path in the environment
     DUCKDB_BIN="${DUCKDB_CLI}"
     info "Using pre-set DUCKDB_CLI=${DUCKDB_BIN}"
 else
-    # Determine platform and download URL
     OS="$(uname -s)"
     ARCH="$(uname -m)"
-
     if [ "${OS}" = "Darwin" ] && [ "${ARCH}" = "arm64" ]; then
         CLI_ASSET="duckdb_cli-osx-arm64.zip"
     elif [ "${OS}" = "Darwin" ]; then
@@ -104,84 +80,106 @@ else
 
     CLI_URL="https://github.com/duckdb/duckdb/releases/download/${DUCKDB_VERSION}/${CLI_ASSET}"
     DUCKDB_BIN="${CLI_CACHE_DIR}/duckdb"
-
     if [ -x "${DUCKDB_BIN}" ]; then
         info "DuckDB CLI already cached at ${DUCKDB_BIN}"
     else
         info "Downloading DuckDB ${DUCKDB_VERSION} CLI (${CLI_ASSET})..."
         mkdir -p "${CLI_CACHE_DIR}"
         TMPZIP="${CLI_CACHE_DIR}/${CLI_ASSET}"
-        curl -fSL --retry 3 --retry-delay 2 \
-            -o "${TMPZIP}" \
-            "${CLI_URL}"
+        curl -fSL --retry 3 --retry-delay 2 -o "${TMPZIP}" "${CLI_URL}"
         unzip -o "${TMPZIP}" -d "${CLI_CACHE_DIR}"
         rm -f "${TMPZIP}"
         chmod +x "${DUCKDB_BIN}"
-        ok "Downloaded and unpacked ${DUCKDB_BIN}"
+        ok "Downloaded ${DUCKDB_BIN}"
     fi
 fi
 
 if [ ! -x "${DUCKDB_BIN}" ]; then
     fail "DuckDB CLI not executable at: ${DUCKDB_BIN}"
 fi
-
 info "Using DuckDB CLI: ${DUCKDB_BIN}"
 
-# ---------------------------------------------------------------------------
-# Step 3: Load the extension and run SELECT count(*) — must return 4
-# ---------------------------------------------------------------------------
-info "Running LOAD + SELECT count(*) FROM loom_scan('test.bin')..."
-COUNT_OUTPUT=$("${DUCKDB_BIN}" -unsigned -c \
-    "LOAD '${EXT_PATH}'; SELECT count(*) FROM loom_scan('test.bin');" \
-    2>&1)
-# DuckDB outputs a box-drawing table; extract the numeric data row(s).
-# The data rows appear as lines containing only box chars, spaces, and digits.
-# Use grep to find lines that contain digits, strip non-digit chars, pick the
-# last purely-numeric token (count value appears after the int64 type header).
-COUNT=$(echo "${COUNT_OUTPUT}" \
-    | grep -Eo '[[:space:]][0-9]+[[:space:]]' \
-    | tr -d ' ' \
-    | tail -1)
+sql_to_file() {
+    local sql="$1"
+    local out="$2"
+    "${DUCKDB_BIN}" -unsigned -c \
+        "LOAD '${EXT_PATH}'; COPY (${sql}) TO '${out}' (FORMAT CSV, HEADER FALSE);" \
+        >/dev/null
+}
 
-if [ "${COUNT}" != "4" ]; then
-    echo "Full DuckDB output:" >&2
-    echo "${COUNT_OUTPUT}" >&2
-    fail "Expected count(*) = 4, got: '${COUNT}'"
-fi
-ok "SELECT count(*) FROM loom_scan('test.bin') = ${COUNT} (DUCK-01)"
+check_rows() {
+    local name="$1"
+    local expected="$2"
+    local payload="${PAYLOAD_DIR}/${name}.loom"
+    local out="${TMP_DIR}/${name}-rows.csv"
 
-# ---------------------------------------------------------------------------
-# Step 4: Load the extension and run SELECT * — assert 1, 2, 3, NULL
-# ---------------------------------------------------------------------------
-info "Running LOAD + SELECT * FROM loom_scan('test.bin')..."
-ROWS_OUTPUT=$("${DUCKDB_BIN}" -unsigned -c \
-    "LOAD '${EXT_PATH}'; SELECT * FROM loom_scan('test.bin');" \
-    2>&1)
-
-# Assert presence of expected values: 1, 2, 3, and NULL
-if ! echo "${ROWS_OUTPUT}" | grep -qE '\b1\b'; then
-    fail "Value '1' not found in loom_scan output. Output was: ${ROWS_OUTPUT}"
-fi
-if ! echo "${ROWS_OUTPUT}" | grep -qE '\b2\b'; then
-    fail "Value '2' not found in loom_scan output. Output was: ${ROWS_OUTPUT}"
-fi
-if ! echo "${ROWS_OUTPUT}" | grep -qE '\b3\b'; then
-    fail "Value '3' not found in loom_scan output. Output was: ${ROWS_OUTPUT}"
-fi
-if ! echo "${ROWS_OUTPUT}" | grep -qi 'null'; then
-    # DuckDB may render NULL as blank or "NULL" depending on output mode
-    # Also check for the numeric pattern 1, 2, 3 across 4 lines (last is NULL/blank)
-    ROW_COUNT=$(echo "${ROWS_OUTPUT}" | grep -cE '^\s*[0-9]+\s*$' || echo 0)
-    if [ "${ROW_COUNT}" -lt 3 ]; then
-        fail "NULL row not found in loom_scan output. Output was: ${ROWS_OUTPUT}"
+    info "SELECT rows for ${name}..."
+    sql_to_file "SELECT COALESCE(CAST(value AS VARCHAR), 'NULL') FROM loom_scan('${payload}')" "${out}"
+    local actual
+    actual="$(cat "${out}")"
+    if [ "${actual}" != "${expected}" ]; then
+        echo "Expected rows:" >&2
+        echo "${expected}" >&2
+        echo "Actual rows:" >&2
+        echo "${actual}" >&2
+        fail "row mismatch for ${name}"
     fi
-fi
-ok "SELECT * FROM loom_scan('test.bin') returned rows including 1, 2, 3, NULL (DUCK-01, DUCK-03)"
+    ok "SELECT * FROM loom_scan('${name}') matched"
+}
+
+check_numeric_aggregate() {
+    local name="$1"
+    local expected="$2"
+    local payload="${PAYLOAD_DIR}/${name}.loom"
+    local out="${TMP_DIR}/${name}-agg.csv"
+
+    info "SELECT COUNT/SUM for ${name}..."
+    sql_to_file "SELECT COUNT(*), SUM(value) FROM loom_scan('${payload}')" "${out}"
+    local actual
+    actual="$(cat "${out}")"
+    if [ "${actual}" != "${expected}" ]; then
+        fail "aggregate mismatch for ${name}: expected '${expected}', got '${actual}'"
+    fi
+    ok "SELECT COUNT(*), SUM(value) for ${name} matched"
+}
+
+check_string_aggregate() {
+    local name="$1"
+    local expected="$2"
+    local payload="${PAYLOAD_DIR}/${name}.loom"
+    local out="${TMP_DIR}/${name}-agg.csv"
+
+    info "SELECT COUNT/MIN/MAX for ${name}..."
+    sql_to_file "SELECT COUNT(*), COUNT(value), MIN(value), MAX(value) FROM loom_scan('${payload}')" "${out}"
+    local actual
+    actual="$(cat "${out}")"
+    if [ "${actual}" != "${expected}" ]; then
+        fail "aggregate mismatch for ${name}: expected '${expected}', got '${actual}'"
+    fi
+    ok "SELECT COUNT/MIN/MAX for ${name} matched"
+}
+
+check_rows "bitpack-i32" $'1\n2\n3\n4'
+check_numeric_aggregate "bitpack-i32" "4,10"
+
+check_rows "for-i32" $'10\n11\n12'
+check_numeric_aggregate "for-i32" "3,33"
+
+check_rows "dict-i32" $'30\n10\n20\n30'
+check_numeric_aggregate "dict-i32" "4,90"
+
+check_rows "rle-i32" $'1\n1\n2\n2\n2\n3'
+check_numeric_aggregate "rle-i32" "6,11"
+
+check_rows "fsst-utf8" $'alpha\nNULL\nbeta'
+check_string_aggregate "fsst-utf8" "3,2,alpha,beta"
+
+check_rows "dict-fsst-utf8" $'beta\nalpha\ngamma\nbeta'
+check_string_aggregate "dict-fsst-utf8" "4,4,alpha,gamma"
 
 echo ""
 echo "${GRN}=== Smoke-test PASSED ===${RST}"
 echo "  Extension: ${EXT_PATH}"
 echo "  DuckDB CLI: ${DUCKDB_BIN} (${DUCKDB_VERSION})"
-echo "  loom_scan('test.bin') returned 4 rows: 1, 2, 3, NULL"
-echo "  CLI process exited 0 (DUCK-03 teardown evidence)"
+echo "  Covered: bitpack-i32, for-i32, dict-i32, rle-i32, fsst-utf8, dict-fsst-utf8"
 echo ""
