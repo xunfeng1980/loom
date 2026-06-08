@@ -1,9 +1,16 @@
 use std::sync::LazyLock;
 
+use arrow::array::{Int32Array, Int64Array};
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::container_codec::{
+    decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
+};
+use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_core::table_codec::decode_table_to_array_data;
 use loom_source_ingress::{
     SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
+    SourceOracleStrategy,
 };
 use loom_vortex_ingress::emit_source_ingress_lmc1_from_vortex_buffer;
 use vortex_array::arrays::StructArray;
@@ -67,6 +74,26 @@ fn assert_emitted_artifact_is_verifier_accepted(bytes: &[u8]) {
     let registry = L2KernelRegistry::default_for_mvp0();
     let report = verify_artifact(bytes, &registry, &Default::default());
     assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+}
+
+fn decode_single_i32_values(bytes: &[u8]) -> Vec<i32> {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let desc = decode_layout_payload_maybe_container(bytes).expect("decode LMP1 container");
+    let data = decode_layout_to_array_data(&desc, &registry).expect("decode LMP1 rows");
+    let array = Int32Array::from(data);
+    (0..array.len()).map(|idx| array.value(idx)).collect()
+}
+
+fn decode_table_values(bytes: &[u8]) -> (Vec<i32>, Vec<i64>) {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let table = decode_table_payload_maybe_container(bytes).expect("decode LMT1 container");
+    let arrays = decode_table_to_array_data(&table, &registry).expect("decode LMT1 rows");
+    let ids = Int32Array::from(arrays[0].clone());
+    let scores = Int64Array::from(arrays[1].clone());
+    (
+        (0..ids.len()).map(|idx| ids.value(idx)).collect(),
+        (0..scores.len()).map(|idx| scores.value(idx)).collect(),
+    )
 }
 
 #[test]
@@ -139,4 +166,53 @@ fn accepted_table_handoff_is_verifier_routed_lmt1() {
         .artifact_verification
         .summary
         .contains("LMT1 table"));
+}
+
+#[test]
+fn accepted_single_column_records_source_native_oracle_evidence() {
+    let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
+    let accepted =
+        emit_source_ingress_lmc1_from_vortex_buffer(&vortex).expect("accepted source handoff");
+
+    let oracle = accepted
+        .report
+        .oracle_evidence
+        .as_ref()
+        .expect("source oracle evidence");
+    assert_eq!(oracle.strategy, SourceOracleStrategy::SourceNativeScan);
+    assert!(oracle.accepted);
+    assert_eq!(oracle.row_count_checked, Some(3));
+    assert!(oracle.nulls_checked);
+    assert!(oracle.source_native_scan_used);
+    assert!(oracle
+        .notes
+        .iter()
+        .any(|note| note.contains("metadata only")));
+    assert_eq!(decode_single_i32_values(&accepted.bytes), vec![7, -1, 42]);
+}
+
+#[test]
+fn accepted_table_records_source_native_oracle_evidence() {
+    let vortex = supported_table_bytes();
+    let accepted =
+        emit_source_ingress_lmc1_from_vortex_buffer(&vortex).expect("accepted source handoff");
+
+    let oracle = accepted
+        .report
+        .oracle_evidence
+        .as_ref()
+        .expect("source oracle evidence");
+    assert_eq!(oracle.strategy, SourceOracleStrategy::SourceNativeScan);
+    assert!(oracle.accepted);
+    assert_eq!(oracle.row_count_checked, Some(3));
+    assert!(oracle.nulls_checked);
+    assert!(oracle.source_native_scan_used);
+    assert!(oracle
+        .notes
+        .iter()
+        .any(|note| note.contains("metadata only")));
+    assert_eq!(
+        decode_table_values(&accepted.bytes),
+        (vec![1, 2, 3], vec![10, 20, 30])
+    );
 }
