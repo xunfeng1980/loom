@@ -3,110 +3,52 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 15 complete; Phase 16 placeholder
-last_updated: "2026-06-08T12:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 15 real Vortex file/container ingress complete
+stopped_at: Phase 15 complete; Phase 16-20 placeholders
+last_updated: "2026-06-08T07:53:32.000Z"
+last_activity: 2026-06-08 -- README MVP1 scope refreshed; Phase 19-20 roadmap placeholders added
 progress:
-  total_phases: 18
+  total_phases: 20
   completed_phases: 15
   total_plans: 52
   completed_plans: 52
-  percent: 83
+  percent: 75
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-07)
+See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 16 — full `melior`/LLVM/JIT backend integration placeholder, with Phase 15 real Vortex ingress complete
+**Current focus:** Phase 16 — full `melior`/LLVM/JIT backend integration placeholder, with Phase 15 real Vortex ingress complete and Phase 19-20 reserved for Iceberg/table-engine follow-on work
 
 ## Current Position
 
 Phase: 15 (real-vortex-file-container-ingress) — COMPLETE
 Plan: 4 of 4 complete
-Status: Phase 15 complete; Phase 16-18 remain reserved roadmap placeholders
+Status: Phase 15 complete; Phase 16-20 remain reserved roadmap placeholders
 Last activity: 2026-06-08 -- Phase 15 real Vortex file/container ingress complete
 
-Progress: [████████░░] 83%
+Progress: 75%
 
-## Performance Metrics
+## Progress Snapshot
 
-**Velocity:**
+- Completed phases: 15 / 20
+- Completed executable plans: 52 / 52
+- Current milestone stage: MVP1 / v3 distribution and verification track
+- Current position: Phase 15 complete; Phase 16-20 are reserved roadmap placeholders
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 15 ingress integration
 
-- Total plans completed: 12
-- Average duration: ~15 minutes/plan
-- Total execution time: ~30 minutes
+**Completed phase plan counts:**
 
-**By Phase:**
+| Phase range | Scope | Plans complete |
+|-------------|-------|----------------|
+| 1-5 | Original MVP0 DuckDB demo path | 12/12 |
+| 6-10 | MVP0 hardening, DX, tables, verifier, ALP coverage | 19/19 |
+| 11-15 | MVP1/v3 distribution, safety proof, full verifier foundation, native-lowering spike, real ingress | 21/21 |
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01-scaffold-and-ffi-boundary | 2 | ~30 min | ~15 min |
-| 1 | 2 | - | - |
-| 2 | 2 | - | - |
-| 03 | 2 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: P01 (~10 min), P02 (~20 min)
-- Trend: Within expected range
-
-*Updated after each plan completion*
-| Phase 01-scaffold-and-ffi-boundary P01 | 10 | 2 tasks | 10 files |
-| Phase 01-scaffold-and-ffi-boundary P02 | 20 | 3 tasks | 10 files |
-| Phase 02-duckdb-extension-scaffold P01 | 15 | 2 tasks | 7 files |
-| Phase 02-duckdb-extension-scaffold P02 | 30 | 2 tasks | 5 files |
-| Phase 03-l1-bitpack-for-and-arrow-builders P01 | 10 | 3 tasks | 5 files |
-| Phase 03-l1-bitpack-for-and-arrow-builders P02 | 120m | 3 tasks | 7 files |
-| Phase 04 P01 | 14 min | 3 tasks | 5 files |
-| Phase 04 P02 | 10 min | 3 tasks | 9 files |
-| Phase 05 P01 | 5 min | 3 tasks | 8 files |
-| Phase 05 P02 | 17 min | 3 tasks | 5 files |
-| Phase 05 P03 | 5 min | 3 tasks | 6 files |
-| Phase 05 P04 | 9 min | 4 tasks | 6 files |
-| Phase 06 P01 | 5 min | 3 tasks | 8 files |
-| Phase 06 P02 | 5 min | 4 tasks | 2 files |
-| Phase 06 P03 | 5 min | 3 tasks | 5 files |
-| Phase 07 P01 | 10 min | 5 tasks | 5 files |
-| Phase 07 P02 | 10 min | 4 tasks | 2 files |
-| Phase 07 P03 | 10 min | 5 tasks | 3 files |
-| Phase 07 P04 | 10 min | 4 tasks | 8 files |
-| Phase 08 P01 | 10 min | 4 tasks | 2 files |
-| Phase 08 P02 | 10 min | 4 tasks | 3 files |
-| Phase 08 P03 | 15 min | 4 tasks | 2 files |
-| Phase 08 P04 | 10 min | 4 tasks | 8 files |
-| Phase 09 P01 | 15 min | 3 tasks | 3 files |
-| Phase 09 P02 | 15 min | 3 tasks | 4 files |
-| Phase 09 P03 | 15 min | 3 tasks | 3 files |
-| Phase 09 P04 | 15 min | 3 tasks | 8 files |
-| Phase 10 P01 | 15 min | 3 tasks | 9 files |
-| Phase 10 P02 | 15 min | 3 tasks | 6 files |
-| Phase 10 P03 | 15 min | 3 tasks | 5 files |
-| Phase 10 P04 | 15 min | 3 tasks | 9 files |
-| Phase 11 P01 | 15 min | 3 tasks | 3 files |
-| Phase 11 P02 | 20 min | 3 tasks | 4 files |
-| Phase 11 P03 | 25 min | 3 tasks | 5 files |
-| Phase 11 P04 | 20 min | 3 tasks | 8 files |
-| Phase 12 P01 | 10 min | 3 tasks | 2 files |
-| Phase 12 P02 | 10 min | 4 tasks | 3 files |
-| Phase 12 P03 | 15 min | 3 tasks | 3 files |
-| Phase 12 P04 | 20 min | 3 tasks | 8 files |
-| Phase 13 P01 | 10 min | 2 tasks | 2 files |
-| Phase 13 P02 | 20 min | 3 tasks | 7 files |
-| Phase 13 P03 | 25 min | 3 tasks | 7 files |
-| Phase 13 P04 | 20 min | 3 tasks | 6 files |
-| Phase 13 P05 | 30 min | 3 tasks | 13 files |
-| Phase 14 P01 | 15 min | 3 tasks | 4 files |
-| Phase 14 P02 | 15 min | 3 tasks | 3 files |
-| Phase 14 P03 | 15 min | 3 tasks | 3 files |
-| Phase 14 P04 | 20 min | 3 tasks | 12 files |
-| Phase 15 P01 | 20 min | 3 tasks | 6 files |
-| Phase 15 P02 | 20 min | 3 tasks | 3 files |
-| Phase 15 P03 | 25 min | 3 tasks | 4 files |
-| Phase 15 P04 | 25 min | 4 tasks | 12 files |
+Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
 ## Accumulated Context
 
@@ -173,6 +115,8 @@ None yet.
 - Phase 16 reserved as a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence.
 - Phase 17 reserved as a roadmap placeholder only: production decode dialect and native kernel expansion.
 - Phase 18 reserved as a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
+- Phase 19 reserved as a roadmap placeholder only: Iceberg ref/table binding after the engine-integrated artifact contract is credible.
+- Phase 20 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Quick Tasks Completed
 
@@ -213,11 +157,13 @@ None yet.
 | v3 native | Full melior/LLVM/JIT backend integration | Placeholder | Phase 16 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 17 |
 | v3 engine | Engine-integrated native execution MVP | Placeholder | Phase 18 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 19 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 20 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T12:30:00.000Z
-Stopped at: Phase 15 complete; Phase 16 placeholder
+Last session: 2026-06-08T07:53:32.000Z
+Stopped at: Phase 15 complete; Phase 16-20 placeholders
 Phase 15 research: .planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md
 Phase 15 context: .planning/phases/15-real-vortex-file-container-ingress/15-CONTEXT.md
 Phase 15 report: .planning/phases/15-real-vortex-file-container-ingress/15-INGRESS-REPORT.md

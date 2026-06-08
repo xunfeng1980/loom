@@ -1,22 +1,21 @@
-# Loom — MVP0 (DuckDB demo)
+# Loom — MVP1 (post-MVP0 distribution/verification track)
 
 ## What This Is
 
 Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
-(full design in `design.md`). **This project is MVP0** — a runnable prototype that
-proves the core chain end-to-end on a real engine: Vortex-style encoded payloads
-are decoded through Loom's declarative **L1 layout layer** plus one total-function
-**L2 kernel (FSST)** into legal Arrow, handed to **DuckDB** via the Arrow C Data
-Interface, and queried with SQL, including a small mixed-column table payload and ALP-style Float32/Float64 L2 coverage. It is for the author/systems audience evaluating
-whether the L1/L2 + "output-as-typed-Arrow" idea actually works in practice.
+(full design in `design.md`). The original MVP0 DuckDB demo is complete. The
+project is now in MVP1 / v3, focused on distribution containers, verifier-backed
+safety, native-lowering preparation, narrow real Vortex file ingress, and the
+post-native table/query-surface path.
 
 ## Core Value
 
 A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads,
-including a mixed-column table payload, and get row/aggregate results that match
-the expected decoded values.
-If only one thing works, it is this end-to-end chain.
+including mixed-column table payloads, and get row/aggregate results that match
+the expected decoded values. Real Vortex files can enter Loom through the narrow
+Phase 15 ingress slice, and later phases should preserve the verifier-gated,
+fail-closed boundary as Loom grows toward native execution and table bindings.
 
 ## Requirements
 
@@ -45,38 +44,40 @@ If only one thing works, it is this end-to-end chain.
 
 ### Active
 
-<!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
+<!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
 - [ ] Phase 16 remains a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence exists.
 - [ ] Phase 17 remains a roadmap placeholder only: production decode dialect and native kernel expansion.
 - [ ] Phase 18 remains a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
+- [ ] Phase 19 remains a roadmap placeholder only: Iceberg ref/table binding after the engine-integrated artifact contract is credible.
+- [ ] Phase 20 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- MLIR `decode` dialect / lowering to LLVM / native-speed codegen — MVP0 interprets directly; speed layer is the design's later act (`design.md` §8)
-- MLIR/native lowering correctness proof and real Vortex file ingress proof — Phase 14 is only a verifier-gated textual lowering spike; production compiler proof and real ingress remain later work (`design.md` §5, §7, §13)
-- Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
-- `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
+- Production MLIR `decode` dialect / lowering to LLVM / native-speed codegen — Phase 14 is only a verifier-gated textual lowering spike; Phase 16-18 reserve the production native path (`design.md` §8)
+- MLIR/native lowering correctness proof and arbitrary real Vortex ingress proof — Phase 14 is only a verifier-gated textual lowering spike; Phase 15 is only one narrow non-null Int32 real-ingress slice (`design.md` §5, §7, §13)
+- Full arbitrary `.vortex` file layout support (footer / layout tree / multi-chunk / all encodings) — Phase 15 only supports a narrow generated ingress slice
+- `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — current implementation focuses on schema/decode and SQL smoke paths
 - Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
 - Correctness guarantees beyond matching the reference decoder — Loom guarantees safety + well-formedness, never correctness (`design.md` §7)
 
 ## Context
 
-- **Origin doc:** `design.md` (Chinese) is the authoritative full design. MVP0 is the smallest slice that exercises the L1→L2-escape→Arrow→engine chain on real data.
-- **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets MVP0 reference Vortex's encoding definitions / crates directly rather than reverse-engineering a wire format.
+- **Origin doc:** `design.md` (Chinese) is the authoritative full design. MVP0 was the smallest slice that exercised the L1→L2-escape→Arrow→engine chain on real data; MVP1 is widening that proof toward distribution, verification, native lowering, real ingress, and table/query-surface integration.
+- **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets Loom use Vortex crates in oracle/fixture/ingress boundaries while keeping `loom-core` and `loom-ffi` Vortex-free.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
-- **Design philosophy carried into MVP0:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% (here, FSST) drops into L2. MVP0 should make that split visible.
-- **What MVP0 is *not* trying to prove:** native speed, real Vortex file ingress, complete production verification of all future Loom artifacts, or decades-long version stability. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation; Phase 14 starts only a narrow verifier-gated textual lowering spike, not production native execution.
+- **Design philosophy carried into MVP1:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface before widening backend and engine integration.
+- **What MVP1 is *not* trying to prove yet:** native speed, arbitrary Vortex file ingress, complete production verification of all future Loom artifacts, Iceberg table binding, or multi-engine query execution. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation; Phase 14 starts only a narrow verifier-gated textual lowering spike; Phase 15 adds only a narrow real-ingress slice.
 
 ## Constraints
 
 - **Tech stack**: Rust decoder core (Arrow via arrow-rs) — chosen for Vortex-ecosystem alignment and a path toward the eventual safety/memory model.
 - **Tech stack**: C++ DuckDB extension (table function) — same language as DuckDB; thinnest possible wrapper over the Rust core.
 - **Interop**: Arrow C Data Interface as the Rust↔C++ FFI boundary — zero-copy, language-neutral, matches the design's "output is Arrow" contract.
-- **Dependencies**: Vortex (as reference decoder for verification and as the source of the encoding to decode); DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs).
-- **Scope discipline**: MVP0 is a feasibility prototype, not production. Prefer the narrowest path that produces a correct, demonstrable SQL result over generality.
+- **Dependencies**: DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs); Vortex crates only in oracle/fixture/ingress boundaries, not in the core decode path.
+- **Scope discipline**: MVP1 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
 
 ## Key Decisions
 
@@ -109,6 +110,8 @@ If only one thing works, it is this end-to-end chain.
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration placeholder | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. | Placeholder — Phase 16 |
 | Phase 17/18 reserve the post-JIT production path | After full backend integration, the remaining final-goal path is production decode-dialect/kernel expansion followed by engine-integrated native execution over real artifacts. | Placeholder — Phases 17-18 |
+| Phase 19 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 19 |
+| Phase 20 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 20 |
 
 ## Evolution
 
@@ -128,4 +131,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 14 completion — verifier-gated textual MLIR/native lowering spike implemented.*
+*Last updated: 2026-06-08 after Phase 15 completion — MVP1 scope, real Vortex ingress, and Phase 19-20 placeholders recorded.*

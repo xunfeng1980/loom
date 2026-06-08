@@ -2,28 +2,31 @@
 
 ## Project
 
-**Loom — MVP0 (DuckDB demo)**
+**Loom — MVP1 / v3 distribution and verification track**
 
 Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
-(full design in `design.md`). **This project is MVP0** — a runnable prototype that
-proves the core chain end-to-end on a real engine: a single Vortex-encoded column
-is decoded through Loom's declarative **L1 layout layer** plus one total-function
-**L2 kernel (FSST)** into legal Arrow, handed to **DuckDB** via the Arrow C Data
-Interface, and queried with SQL. It is for the author/systems audience evaluating
-whether the L1/L2 + "output-as-typed-Arrow" idea actually works in practice.
+(full design in `design.md`). The original **MVP0** DuckDB demo is complete. The
+project is now in **MVP1 / v3**, focused on distribution containers, verifier-backed
+safety, native-lowering preparation, and narrow real Vortex file ingress.
 
-**Core Value:** A user can run a SQL query in DuckDB over a Vortex-encoded column that was decoded
-by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
-If only one thing works, it is this end-to-end chain.
+Current implemented path: multi-column `.loom` containers (`LMC1` wrapping `LMP1`/`LMT1`),
+DuckDB SQL smoke coverage, `L2Core` verifier foundation, verifier-gated textual MLIR spike,
+and an isolated `loom-vortex-ingress` boundary that may use `vortex-file`.
+
+**Core Value:** A user can run SQL in DuckDB over Loom-decoded artifacts, including mixed-column
+table payloads, and real Vortex files can enter Loom through a narrow non-null Int32 `.vortex` ->
+`LMC1` ingress slice. The continuing goal is to keep every emitted artifact verifier-gated and
+fail-closed.
 
 ### Constraints
 
 - **Tech stack**: Rust decoder core (Arrow via arrow-rs) — chosen for Vortex-ecosystem alignment and a path toward the eventual safety/memory model.
 - **Tech stack**: C++ DuckDB extension (table function) — same language as DuckDB; thinnest possible wrapper over the Rust core.
 - **Interop**: Arrow C Data Interface as the Rust↔C++ FFI boundary — zero-copy, language-neutral, matches the design's "output is Arrow" contract.
-- **Dependencies**: Vortex (as reference decoder for verification and as the source of the encoding to decode); DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs).
-- **Scope discipline**: MVP0 is a feasibility prototype, not production. Prefer the narrowest path that produces a correct, demonstrable SQL result over generality.
+- **Dependencies**: DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs); Vortex crates only in oracle/fixture/ingress boundaries, not in the core decode path.
+- **Dependency boundary**: `loom-core` and `loom-ffi` must remain Vortex-free; `loom-fixtures` may use Vortex as an oracle, and `loom-vortex-ingress` may use `vortex-file` for the Phase 15 real-file ingress slice.
+- **Scope discipline**: MVP1 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
 
 <!-- GSD:project-end -->
 
@@ -39,8 +42,8 @@ If only one thing works, it is this end-to-end chain.
 |------------|---------|---------|-----------------|
 | `vortex-array` | 0.74.0 | Core in-memory array model, encoding registry, Arrow conversion | The canonical Vortex crate; owns `ArrayRef`, encoding dispatch, and zero-copy Arrow round-trips. Directly models the L1 encodings MVP0 needs (bitpack, FOR, dict, RLE). |
 | `vortex-fastlanes` | 0.74.0 | BitPacked and Frame-of-Reference (FOR) encoding implementations | SpiralDB's FastLanes port; provides `BitPackedEncoding` and `FoREncoding`. These are the two numeric L1 encodings MVP0 must decode. |
-| `vortex-dict` | 0.74.0 | Dictionary encoding implementation | `DictEncoding` wraps a codes array + values array; required for L1 dictionary support. |
-| `vortex-fsst` | 0.74.0 | FSST string encoding/decoding — the one L2 kernel in MVP0 | Wraps `fsst-rs`; exposes `FsstEncoding` and its decode path. This is the single L2 escape MVP0 exercises. |
+| Dictionary support via `vortex-array` | 0.74.0 | Dictionary array reference | `vortex-dict` is not a crate in 0.74.0; use `vortex-array` dictionary APIs when Vortex-side oracle code needs dictionary data. |
+| `vortex-fsst` | 0.74.0 | FSST string encoding/decoding reference | Wraps `fsst-rs`; useful for string-oriented oracle paths. MVP1 also includes ALP-style L2 parameter coverage. |
 | `fsst-rs` | 0.5.11 | Pure-Rust FSST symbol-table decompressor (transitive via vortex-fsst) | Maintained by the SpiralDB team (now vortex-data). `Decompressor` takes an 8-bit code stream and a symbol table, emits raw bytes. Zero external dependencies. |
 | `arrow` (arrow-rs) | 58.3.0 | Arrow typed array builders, `ArrayData`, `ArrayRef`, `Schema` | The official Apache Arrow Rust implementation. `vortex-array` 0.74 depends on arrow-array/arrow-schema/arrow-cast at the **58.x** series. Must use the same major version to avoid duplicate type definitions across the FFI boundary. |
 
@@ -126,7 +129,7 @@ If only one thing works, it is this end-to-end chain.
 | `cxx` for the Arrow FFI boundary | The boundary carries only C-ABI-compatible structs (`FFI_ArrowArray*`); `cxx` overhead not justified | `extern "C"` + cbindgen |
 | `extension-template-rs` (pure Rust DuckDB extension) | Experimental; no mature DataChunk-level table function API; cannot easily intermix with Rust `vortex-array` | C++ extension-template + Rust staticlib |
 | DuckDB `arrow` community extension (deprecated) | Archived as of DuckDB 1.3 | Use `arrow_scan` built-in or `nanoarrow` community extension |
-| `vortex-file` / `vortex-ipc` | Full file-format container; MVP0 decodes a single in-memory column, not a file | `vortex-array` + encoding-specific crates only |
+| Direct `vortex-file` outside ingress | File-backed Vortex APIs must not leak into `loom-core`, `loom-ffi`, or table fixtures; Phase 15 allows `vortex-file` only in `loom-vortex-ingress` | Use `loom-vortex-ingress` for real file inspection/emission; keep core/FFI Vortex-free |
 
 ## Version Compatibility Matrix
 

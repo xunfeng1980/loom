@@ -14,122 +14,16 @@ It is **not a smaller WebAssembly**, but a different species: **a non-general, n
 
 ---
 
-## Current MVP0 Implementation
+## Current MVP1 Implementation and MVP0/MVP1 Scope
 
-The repository currently implements an interpreter-based MVP0, not the complete distribution IR described below. The working path is:
+The repository has moved beyond MVP0 and is now in the **MVP1 / v3 distribution and verification track**. The full design below remains the long-term target; the current scope is:
 
-```
-in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
-  -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
-```
+| Stage | Status | Covered | Boundary |
+|---|---|---|---|
+| MVP0 | Complete | `LMP1` single-column layout payloads, Rust interpreter, Arrow C Data Interface, DuckDB `loom_scan(...)` SQL acceptance; bitpack/FOR/dict/RLE/FSST/dict-over-FSST | No distribution container, full verifier, real Vortex ingress, MLIR/native lowering, or native-speed claim |
+| MVP1 | Reached Phase 15 | `LMT1` multi-column payloads, ALP Float32/Float64, fail-closed verifier, `LMC1` container, Safety Proof MVP, Full Verifier foundation, textual MLIR spike, narrow `.vortex` -> `LMC1` ingress | No arbitrary Vortex layouts, production MLIR/JIT, remote/object-store ingress, signatures/attestation, or complete correctness proof |
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary. Phase 13 adds a Full Loom Verifier foundation for a tiny future `L2Core` slice. Phase 14 adds the first verifier-gated textual MLIR/native lowering spike for bounded Int32 copy. Phase 15 adds a narrow real Vortex file/container ingress boundary: isolated `vortex-file` usage, Loom-owned facts/diagnostics, CLI inspection, and one supported non-null Int32 `.vortex` -> `LMC1` slice verified against Vortex scan rows. This is not a complete production proof for all future Loom artifacts, arbitrary Vortex layout support, production native lowering, or native speed. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety/full-verifier/native-lowering/ingress cases that fail closed before successful output.
-
-Run the full MVP0 release gate:
-
-```bash
-bash scripts/mvp0-verify.sh
-```
-
-The gate runs the same underlying checks manually available as:
-
-```bash
-cargo test --workspace
-cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
-rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
-bash scripts/safety-proof-test.sh
-bash scripts/full-verifier-test.sh
-bash scripts/native-lowering-test.sh
-bash scripts/vortex-ingress-test.sh
-bash scripts/duckdb-smoke-test.sh
-```
-
-The current `.loom` file format is a local MVP0/v3 fixture container, not a full Vortex file reader. `LMC1` is the Phase 11 distribution boundary around the existing payload codecs: `LMP1` for a single layout payload and `LMT1` for a table payload. Phase 15 can inspect real local Vortex files and emit `LMC1` only for one narrow non-null Int32 slice; unsupported or malformed real files return stable ingress diagnostics and no partial `.loom` output. Phase 9/11 verification is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, unknown required container features, unsupported container versions, duplicate payload sections, truncated sections, offset overflows, and related table-shape errors for the implemented MVP0 surface. Phase 12's formal verifier / Safety Proof MVP makes that current boundary reviewable and mechanically guarded; it argues no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded current parser/interpreter/kernel loops. It is not the full Loom verifier and does not claim future L2 language totality, MLIR/native lowering safety, arbitrary Vortex ingress safety, signatures/attestation, or correctness proofs.
-
-Phase 7 adds reviewer-facing descriptor and CLI tooling:
-
-```bash
-cargo run -p loom-fixtures --bin emit_duckdb_payloads
-cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
-cargo run --bin loom -- decode target/loom-duckdb-fixtures/fsst-utf8.loom
-cargo run -p loom-fixtures --bin loom_fixture_timing
-```
-
-`loom inspect` prints `verification: pass` for valid payloads/descriptors and `verification: fail` with diagnostics for verifier-rejected inputs.
-
-The timing command reports illustrative wall-clock numbers for Loom interpreter decode vs Vortex oracle decode. It is not a benchmark and has no pass/fail speed threshold.
-
-Phase 8 adds a small multi-column table fixture and DuckDB SQL acceptance path:
-
-```bash
-cargo run -p loom-fixtures --bin emit_duckdb_payloads
-cargo run --bin loom -- inspect target/loom-duckdb-fixtures/mixed-table.loom
-cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
-bash scripts/duckdb-smoke-test.sh
-```
-
-`mixed-table.loom` exposes `id INT32`, `flag BOOLEAN`, and `label VARCHAR` through `loom_scan(...)`. The extension still uses direct DataChunk population; the ArrowArrayStream route remains a future ABI decision rather than Phase 8's implementation path.
-
-Phase 10 adds ALP Float32/Float64 L2 coverage:
-
-```bash
-cargo run -p loom-fixtures --bin emit_duckdb_payloads
-cargo run --bin loom -- inspect target/loom-duckdb-fixtures/alp-f32.loom
-cargo run --bin loom -- decode target/loom-duckdb-fixtures/alp-f64.loom
-bash scripts/duckdb-smoke-test.sh
-```
-
-ALP is registered as kernel id `1`; FSST remains kernel id `0`. `loom inspect` shows a concise ALP params summary with output type, row count, exponent, value count, validity presence, and params byte length. Vortex 0.74.0 does not expose an ALP array bridge in this repo, so Vortex remains the primitive Float32/Float64 row oracle while Loom owns the stable ALP params format. Phase 10 makes no ALP timing or benchmark claim.
-
-Phase 11 adds the `LMC1` distribution container v0:
-
-```bash
-cargo run -p loom-fixtures --bin emit_duckdb_payloads
-cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
-cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
-bash scripts/container-negative-test.sh
-bash scripts/duckdb-smoke-test.sh
-```
-
-`loom inspect` shows `container: LMC1`, container version, required and optional feature sets, section summaries, verifier status, and the wrapped payload kind. DuckDB `loom_scan(...)` accepts container-wrapped single-column fixtures and the container-wrapped `mixed-table.loom` SQL smoke fixture. This phase is only the local distribution artifact boundary; it does not add native lowering, remote artifact lookup, signatures, or real Vortex file ingestion.
-
-Phase 12 adds the current-boundary Safety Proof MVP:
-
-```bash
-bash scripts/safety-proof-test.sh
-```
-
-The proof artifacts live in `.planning/phases/12-formal-verifier-safety-proof-mvp/`: `12-SAFETY-CONTRACT.md`, `12-PROOF-OBLIGATIONS.md`, and `12-SAFETY-PROOF.md`. This is a practical proof package for the implemented byte-to-Arrow path, not the complete future Loom verifier.
-
-Phase 13 adds the Full Loom Verifier foundation:
-
-```bash
-bash scripts/full-verifier-test.sh
-cargo run --bin loom -- verify-l2core --sample
-```
-
-The artifacts live in `.planning/phases/13-full-loom-verifier/`, `formal/lean/`, and `specs/tla/`. The foundation defines a tiny `L2Core` spec, Rust executable verifier, SMT-ready constraint IR, Lean scaffold, TLA+ lifecycle invariant, and `VerifiedArtifactFacts` for Phase 14 lowering preconditions. It deliberately does not implement MLIR/native lowering or real Vortex file/container ingress.
-
-Phase 14 adds the first MLIR/native lowering spike:
-
-- `loom_core::native_lowering::check_lowering_support` requires an accepted `verify_l2_core` report plus present `VerifiedArtifactFacts`.
-- Unsupported accepted programs fail closed before artifact emission.
-- `lower_to_textual_mlir` emits deterministic textual MLIR for only the bounded Int32 copy slice, using standard `func`, `arith`, `scf`, and `memref` operations.
-- `execute_supported_copy_i32` provides typed primitive equivalence evidence for that slice without constructing Arrow arrays or mutating Arrow raw buffers.
-- `scripts/native-lowering-test.sh` is wired into the release gate and treats `mlir-opt` validation as optional evidence.
-
-This is a spike, not a production MLIR dialect, LLVM/JIT integration, vectorization path, native-speed claim, or compiler-correctness proof.
-
-Phase 15 adds narrow real Vortex ingress:
-
-```bash
-bash scripts/vortex-ingress-test.sh
-cargo run -p loom-vortex-ingress --bin emit_vortex_ingress_fixtures
-cargo run --bin loom -- ingest-vortex --inspect fixtures/vortex/int32-flat.vortex
-cargo run --bin loom -- ingest-vortex --emit-loom fixtures/vortex/int32-flat.vortex /tmp/int32-flat.loom
-```
-
-The ingress crate is the only workspace crate that may directly depend on `vortex-file`. It emits stable `VortexIngressReport` / `VortexFileFacts` data, keeps `loom-core` and `loom-ffi` Vortex-free, and supports only the generated non-null Int32 real Vortex fixture as `.vortex` -> `LMC1` evidence. It does not support arbitrary Vortex layouts, object-store ingress, native lowering, or production-speed claims.
+Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/safety/full-verifier/native-lowering/ingress cases must fail closed before successful output.
 
 ---
 

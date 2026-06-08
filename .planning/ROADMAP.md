@@ -1,19 +1,17 @@
-# Roadmap: Loom MVP0 (DuckDB demo)
+# Roadmap: Loom MVP1 (post-MVP0 distribution/verification track)
 
 ## Overview
 
-Loom MVP0 proves one narrow chain end-to-end: Vortex-style encoded payloads are decoded by a
-pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed Apache
-Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL. Phases 1-10
-complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
-introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
-reviewable as a formal safety-proof MVP. Phase 13 completes the full Loom verifier foundation
-over a tiny future `L2Core` slice. Phase 14 completes a verifier-gated textual MLIR/native lowering
-spike after the verifier handoff exists. Phase 15 brings real Vortex file/container ingress
-before production native backend work, so the later backend consumes real artifact shapes instead of
-only synthetic slices. Phase 16 is reserved for full `melior`/LLVM/JIT backend integration. Phase 17
-and Phase 18 remain placeholders for the post-JIT productionization path from the final Loom goal:
-native decode-dialect/kernel expansion, then engine-integrated end-to-end execution.
+The original Loom MVP0 proved one narrow chain end-to-end: Vortex-style encoded payloads are decoded
+by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed
+Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
+Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
+distribution containers, verifier-backed safety, native-lowering preparation, and narrow real Vortex
+file ingress. Phase 16 is reserved for full `melior`/LLVM/JIT backend integration. Phase 17 and Phase
+18 remain placeholders for the post-JIT productionization path from the final Loom goal: native
+decode-dialect/kernel expansion, then engine-integrated end-to-end execution. Phase 19 and Phase 20
+reserve the table-format and multi-engine query surface that should follow: Iceberg ref/table binding
+first, then StarRocks + DuckDB dual query surface.
 
 ## Phases
 
@@ -42,6 +40,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Placeholder for promoting the Phase 14 textual spike into an optional programmatic MLIR -> LLVM -> JIT backend after real ingress evidence exists (not expanded)
 - [ ] **Phase 17: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 18: Engine-Integrated Native Execution MVP** - Placeholder for an end-to-end verified native execution path inside a host engine over real ingested artifacts, with interpreter fallback and oracle/equivalence evidence (not expanded)
+- [ ] **Phase 19: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path is credible (not expanded)
+- [ ] **Phase 20: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
 
 ## Phase Details
 
@@ -468,10 +468,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Depends on:** Phase 15, Phase 16, and Phase 17.
 **Ordering decision:** Close the final-goal loop by running verified native decode inside a host engine over real ingested artifacts, with interpreter fallback, cache/fail-closed policy, and oracle/equivalence evidence. This is the first placeholder for an end-to-end native Loom story, not just a standalone JIT demo.
 
+### Phase 19: Iceberg Ref/Table Binding
+
+**Status:** Placeholder only. Do not expand until Phase 18 clarifies the engine-integrated artifact contract.
+**Depends on:** Phase 18.
+**Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase.
+
+### Phase 20: StarRocks + DuckDB Dual Query Surface
+
+**Status:** Placeholder only. Do not expand until Phase 19 establishes the Iceberg binding contract.
+**Depends on:** Phase 19.
+**Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -489,7 +501,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
 | 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
-| 15. Real Vortex File/Container Ingress | 0/4 | Planned | - |
+| 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
 | 16. Full melior/LLVM/JIT Backend Integration | 0/? | Placeholder | - |
 | 17. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 18. Engine-Integrated Native Execution MVP | 0/? | Placeholder | - |
+| 19. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
+| 20. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
