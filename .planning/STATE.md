@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: phase_planned
+status: executing
 stopped_at: Phase 12 planned
-last_updated: "2026-06-08T04:10:00.000Z"
-last_activity: 2026-06-08 -- Phase 12 planned; formal verifier / safety proof MVP split into 4 executable plans
+last_updated: "2026-06-08T05:00:52.450Z"
+last_activity: 2026-06-08 -- Phase 12 execution started
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 39
   completed_plans: 35
-  percent: 90
+  percent: 73
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 12 planned; Phase 13/14/15 remain roadmap placeholders
+**Current focus:** Phase 12 — formal-verifier-safety-proof-mvp
 
 ## Current Position
 
-Phase: 12 (formal-verifier-safety-proof-mvp) — PLANNED
-Plan: 0 of 4
-Status: Ready for execution
-Last activity: 2026-06-08 -- Phase 12 planned; formal verifier / safety proof MVP split into 4 executable plans
+Phase: 12 (formal-verifier-safety-proof-mvp) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 12
+Last activity: 2026-06-08 -- Phase 12 execution started
 
 Progress: [█████████░] 90%
 
