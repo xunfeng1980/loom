@@ -7,8 +7,8 @@ pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing
 Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL. Phases 1-10
 complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
 introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
-reviewable as a formal safety-proof MVP. Phase 13 is active for the full Loom verifier foundation
-over the future distribution IR and total-function language. Phases 14-15 remain roadmap
+reviewable as a formal safety-proof MVP. Phase 13 completes the full Loom verifier foundation
+over a tiny future `L2Core` slice. Phases 14-15 remain roadmap
 placeholders for native lowering and real Vortex file ingress.
 
 ## Phases
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
-- [ ] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants
+- [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
 - [ ] **Phase 14: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the verifier boundary exists (not expanded)
 - [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
@@ -342,7 +342,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 13: Full Loom Verifier
 
-**Status:** Executing. Progress 4/5 plans complete.
+**Status:** Complete.
 **Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, mechanized Lean/Rocq soundness scaffolding, and TLA+ lifecycle/pipeline invariants.
 **Depends on:** Phase 12
 **Requirements:** VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10
@@ -374,7 +374,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Waves 1-3 completion)*
 
-- [ ] 13-05-PLAN.md - Write final verifier report, update public/planning docs, wire release gate, run final verification, and close VERIFIER requirements (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10)
+- [x] 13-05-PLAN.md - Write final verifier report, update public/planning docs, wire release gate, run final verification, and close VERIFIER requirements (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10)
 
 ### Phase 14: MLIR/Native Lowering Spike
 
@@ -405,6 +405,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
 | 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
-| 13. Full Loom Verifier | 0/5 | Planned | - |
+| 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
 | 14. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |

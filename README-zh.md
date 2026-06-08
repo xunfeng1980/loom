@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP: safety contract、proof-obligation matrix、focused no-panic/fail-closed tests、final proof narrative,以及接入 release gate 的 safety proof gate。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety case 会在 successful output 前 fail closed。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP: safety contract、proof-obligation matrix、focused no-panic/fail-closed tests、final proof narrative,以及接入 release gate 的 safety proof gate。Phase 13 增加 Full Loom Verifier foundation:一个很小的未来 `L2Core` slice、Rust abstract interpretation、SMT-ready obligations、Lean/Rocq soundness scaffold、TLA+ lifecycle invariant、`VerifiedArtifactFacts`,以及 full-verifier gate。它不是对所有未来 Loom artifact、native lowering 或真实 Vortex ingress 的完整生产级证明。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety/full-verifier case 会在 successful output 前 fail closed。
 
 运行完整 MVP0 release gate:
 
@@ -38,6 +38,7 @@ cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
 bash scripts/safety-proof-test.sh
+bash scripts/full-verifier-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
@@ -97,6 +98,15 @@ bash scripts/safety-proof-test.sh
 ```
 
 证明文件位于 `.planning/phases/12-formal-verifier-safety-proof-mvp/`: `12-SAFETY-CONTRACT.md`、`12-PROOF-OBLIGATIONS.md` 和 `12-SAFETY-PROOF.md`。这是当前 byte-to-Arrow 实现路径的实用证明包,不是未来完整 Loom verifier。
+
+Phase 13 增加 Full Loom Verifier foundation:
+
+```bash
+bash scripts/full-verifier-test.sh
+cargo run --bin loom -- verify-l2core --sample
+```
+
+相关文件位于 `.planning/phases/13-full-loom-verifier/`、`formal/lean/` 和 `specs/tla/`。该 foundation 定义 tiny `L2Core` spec、Rust executable verifier、SMT-ready constraint IR、Lean scaffold、TLA+ lifecycle invariant,以及给 Phase 14 lowering preconditions 使用的 `VerifiedArtifactFacts`。它明确不实现 MLIR/native lowering 或真实 Vortex file/container ingress。
 
 ---
 

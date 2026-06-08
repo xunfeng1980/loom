@@ -54,6 +54,10 @@ info "Running Phase 12 safety proof gate..."
 bash scripts/safety-proof-test.sh
 ok "scripts/safety-proof-test.sh"
 
+info "Running Phase 13 full-verifier gate..."
+bash scripts/full-verifier-test.sh
+ok "scripts/full-verifier-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"

@@ -3,6 +3,7 @@
 **Plan:** `13-03-PLAN.md`
 **Status:** Complete
 **Date:** 2026-06-08
+**Commit:** `5ca51e4 feat(13-03): add executable l2core verifier`
 
 ## Completed
 
@@ -35,3 +36,11 @@ git diff --check
 The executable Rust verifier MVP exists. Phase 13 can proceed to `13-04`: the
 Lean/Rocq semantics scaffold, TLA+ lifecycle model, and full-verifier gate
 script.
+
+## Closed Requirements
+
+- `VERIFIER-04` executable verifier checks
+- `VERIFIER-06`
+- `VERIFIER-07` verifier emission portion
+- `VERIFIER-08`
+- `VERIFIER-10` executable facts portion

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 13 planned
-last_updated: "2026-06-08T07:40:00.000Z"
-last_activity: 2026-06-08 -- 13-04 complete; Lean/TLA scaffold and full-verifier gate added
+status: complete
+stopped_at: Phase 13 complete
+last_updated: "2026-06-08T08:10:00.000Z"
+last_activity: 2026-06-08 -- Phase 13 complete; full Loom verifier foundation closed
 progress:
   total_phases: 15
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 44
-  completed_plans: 43
-  percent: 88
+  completed_plans: 44
+  percent: 90
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 13 — full-loom-verifier
+**Current focus:** Phase 14 — MLIR/native lowering spike placeholder
 
 ## Current Position
 
-Phase: 13 (full-loom-verifier) — EXECUTING
-Plan: 4 of 5 complete
-Status: 13-04 complete; Wave 4 ready
-Last activity: 2026-06-08 -- 13-04 complete; Lean/TLA scaffold and full-verifier gate added
+Phase: 13 (full-loom-verifier) — COMPLETE
+Plan: 5 of 5 complete
+Status: Phase 13 complete; Phase 14 remains placeholder until explicitly planned
+Last activity: 2026-06-08 -- Phase 13 complete; full Loom verifier foundation closed
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -98,7 +98,7 @@ Progress: [████████░░] 80%
 | Phase 13 P02 | 20 min | 3 tasks | 7 files |
 | Phase 13 P03 | 25 min | 3 tasks | 7 files |
 | Phase 13 P04 | 20 min | 3 tasks | 6 files |
-| Phase 13 P05 | planned | 3 tasks | 13 files |
+| Phase 13 P05 | 30 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -154,6 +154,7 @@ None yet.
 - Phase 13 executing: 13-02 complete with Rust `L2Core` model, SMT-ready constraint IR, `VerifiedArtifactFacts`, and focused model tests.
 - Phase 13 executing: 13-03 complete with executable Rust `verify_l2_core`, stable diagnostics, proof-obligation traces, facts emission, tests, and `loom verify-l2core --sample`.
 - Phase 13 executing: 13-04 complete with Lean `LoomCore.lean` scaffold, TLA+ `LoweredImpliesVerified` lifecycle model, and `scripts/full-verifier-test.sh`.
+- Phase 13 complete: verifier foundation closed with final report, public/planning docs, `scripts/full-verifier-test.sh` wired into `scripts/mvp0-verify.sh`, and VERIFIER-01 through VERIFIER-10 marked complete. Phase 14 and Phase 15 remain placeholders.
 - Phase 14 and Phase 15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
@@ -189,13 +190,13 @@ None yet.
 | v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
 | v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Complete | Phase 11 |
 | v3 safety | Formal verifier / safety proof MVP | Complete | Phase 12 |
-| v3 safety | Full Loom verifier | Planned | Phase 13 |
+| v3 safety | Full Loom verifier | Complete | Phase 13 |
 | v3 native | MLIR/native lowering spike | Placeholder | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 15 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T04:10:00.000Z
-Stopped at: Phase 13 planned
+Last session: 2026-06-08T08:10:00.000Z
+Stopped at: Phase 13 complete
 Phase 13 context: .planning/phases/13-full-loom-verifier/13-CONTEXT.md
 Resume file: .planning/ROADMAP.md

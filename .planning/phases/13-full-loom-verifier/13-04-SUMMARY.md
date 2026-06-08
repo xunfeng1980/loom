@@ -3,6 +3,7 @@
 **Plan:** `13-04-PLAN.md`
 **Status:** Complete
 **Date:** 2026-06-08
+**Commit:** `fe4bba1 test(13-04): add formal verifier gate`
 
 ## Completed
 
@@ -35,3 +36,12 @@ optional checks as skipped.
 Wave 3 is complete. Phase 13 can proceed to `13-05`: final verifier report,
 public/planning docs, release-gate wiring, final verification, and requirement
 closure.
+
+## Closed Requirements
+
+- `VERIFIER-01` formal scaffold alignment
+- `VERIFIER-03` Lean scaffold portion
+- `VERIFIER-04` lifecycle/resource invariant portion
+- `VERIFIER-05` Lean builder theorem scaffold portion
+- `VERIFIER-09`
+- `VERIFIER-10` TLA lifecycle portion

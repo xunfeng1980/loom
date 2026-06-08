@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary: a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a final proof narrative, and a dedicated safety proof gate wired into the release gate. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety cases that fail closed before successful output.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary: a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a final proof narrative, and a dedicated safety proof gate wired into the release gate. Phase 13 adds a Full Loom Verifier foundation for a tiny future `L2Core` slice: Rust abstract interpretation, SMT-ready obligations, Lean/Rocq soundness scaffold, TLA+ lifecycle invariant, `VerifiedArtifactFacts`, and a full-verifier gate. This is not a complete production proof for all future Loom artifacts, native lowering, or real Vortex ingress. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety/full-verifier cases that fail closed before successful output.
 
 Run the full MVP0 release gate:
 
@@ -38,6 +38,7 @@ cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
 bash scripts/safety-proof-test.sh
+bash scripts/full-verifier-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
@@ -97,6 +98,15 @@ bash scripts/safety-proof-test.sh
 ```
 
 The proof artifacts live in `.planning/phases/12-formal-verifier-safety-proof-mvp/`: `12-SAFETY-CONTRACT.md`, `12-PROOF-OBLIGATIONS.md`, and `12-SAFETY-PROOF.md`. This is a practical proof package for the implemented byte-to-Arrow path, not the complete future Loom verifier.
+
+Phase 13 adds the Full Loom Verifier foundation:
+
+```bash
+bash scripts/full-verifier-test.sh
+cargo run --bin loom -- verify-l2core --sample
+```
+
+The artifacts live in `.planning/phases/13-full-loom-verifier/`, `formal/lean/`, and `specs/tla/`. The foundation defines a tiny `L2Core` spec, Rust executable verifier, SMT-ready constraint IR, Lean scaffold, TLA+ lifecycle invariant, and `VerifiedArtifactFacts` for Phase 14 lowering preconditions. It deliberately does not implement MLIR/native lowering or real Vortex file/container ingress.
 
 ---
 

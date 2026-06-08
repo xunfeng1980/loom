@@ -39,12 +39,12 @@ If only one thing works, it is this end-to-end chain.
 - ✓ ALP Float32/Float64 L2 coverage: Loom-owned `AlpParams`, kernel id `1`, verifier checks, synthetic fixtures with Vortex primitive float oracle comparison, FFI roundtrips, CLI inspect/decode output, and DuckDB SQL smoke checks are complete — Phase 10
 - ✓ Distribution Container v0: `LMC1` wraps existing `LMP1`/`LMT1` payloads with versioning, required/optional feature flags, checked sections, CLI visibility, generated fixture coverage, DuckDB SQL smoke coverage, and malformed-container release-gate coverage — Phase 11
 - ✓ Formal verifier / Safety Proof MVP: the current `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof narrative, and release-gated `scripts/safety-proof-test.sh` evidence without claiming the future full Loom verifier — Phase 12
+- ✓ Full Loom Verifier foundation: a tiny `L2Core` spec, Rust executable verifier with stable diagnostics/facts, SMT-ready constraint IR, Lean/Rocq scaffold, TLA+ lifecycle invariant, and release-gated `scripts/full-verifier-test.sh` evidence without claiming complete production verification, native lowering safety, or real Vortex ingress — Phase 13
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 13 Full Loom Verifier is planned: build a tiny `L2Core` verifier foundation with Rust abstract interpretation, SMT obligations, Lean/Rocq soundness scaffolding, and TLA+ lifecycle invariants.
 - [ ] Phase 14/15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Out of Scope
@@ -64,7 +64,7 @@ If only one thing works, it is this end-to-end chain.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets MVP0 reference Vortex's encoding definitions / crates directly rather than reverse-engineering a wire format.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
 - **Design philosophy carried into MVP0:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% (here, FSST) drops into L2. MVP0 should make that split visible.
-- **What MVP0 is *not* trying to prove:** future Loom IR safety, future L2 language totality, native speed, real Vortex file ingress, or decades-long version stability. Phase 12 covers only the current implemented byte-to-Arrow safety boundary.
+- **What MVP0 is *not* trying to prove:** native speed, real Vortex file ingress, complete production verification of all future Loom artifacts, or decades-long version stability. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation but still leaves native lowering and real ingress to Phase 14/15.
 
 ## Constraints
 
@@ -100,7 +100,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 10 should return to L2 numeric compression coverage | COV-01 was the remaining explicit v2 decode coverage item; ALP Float32/Float64 exercised the L2 path without jumping to MLIR or formal verification scope | Complete — Phase 10 |
 | Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
-| Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Planned — Phase 13 |
+| Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 
 ## Evolution
 
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 13 planning — full Loom verifier planned with layered verification stack selected.*
+*Last updated: 2026-06-08 after Phase 13 completion — full Loom verifier foundation implemented with layered verification stack.*

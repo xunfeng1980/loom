@@ -3,6 +3,7 @@
 **Plan:** `13-01-PLAN.md`
 **Status:** Complete
 **Date:** 2026-06-08
+**Commit:** `402a819 docs(13-01): define l2core verifier spec`
 
 ## Completed
 
@@ -29,3 +30,12 @@ git diff --check
 
 Wave 1 is complete. Phase 13 can proceed to `13-02`: the Rust `L2Core` syntax,
 fact model, and SMT-ready constraint IR.
+
+## Closed Requirements
+
+- `VERIFIER-01`
+- `VERIFIER-02`
+- `VERIFIER-03`
+- `VERIFIER-04`
+- `VERIFIER-05`
+- `VERIFIER-10` specification/facts definition portion

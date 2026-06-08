@@ -3,6 +3,7 @@
 **Plan:** `13-02-PLAN.md`
 **Status:** Complete
 **Date:** 2026-06-08
+**Commit:** `7cc2ee4 feat(13-02): add l2core model and constraints`
 
 ## Completed
 
@@ -31,3 +32,11 @@ git diff --check
 
 Wave 2 is complete. Phase 13 can proceed to `13-03`: the executable Rust
 abstract-interpreting verifier, diagnostics, proof traces, and facts.
+
+## Closed Requirements
+
+- `VERIFIER-03` Rust model portion
+- `VERIFIER-04` Rust capability/resource model portion
+- `VERIFIER-05` Rust Arrow event model portion
+- `VERIFIER-07` constraint IR portion
+- `VERIFIER-10` Rust fact model portion

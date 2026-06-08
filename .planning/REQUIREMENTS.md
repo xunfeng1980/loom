@@ -116,16 +116,16 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Full Loom Verifier
 
-- [ ] **VERIFIER-01**: A normative Phase 13 verifier/spec document defines the tiny `L2Core` subset, artifact assumptions, and safety theorem target
-- [ ] **VERIFIER-02**: L1 declarative layout semantics are specified as finite, pure data descriptions that compose with `L2Core`
-- [ ] **VERIFIER-03**: `L2Core` syntax, static semantics, dynamic semantics, and allowed loop forms are defined
-- [ ] **VERIFIER-04**: The capability/resource model covers input ranges, scratch bounds, output builders, no ambient authority, and fail-closed errors
-- [ ] **VERIFIER-05**: Arrow builder event semantics are specified so output well-formedness can be checked or proved by construction
-- [ ] **VERIFIER-06**: A Rust verifier prototype or architecture uses type/effect checking plus abstract interpretation for `L2Core`
-- [ ] **VERIFIER-07**: Local arithmetic, range, overflow, loop-variant, and resource-bound obligations are represented as SMT-ready constraints
-- [ ] **VERIFIER-08**: Verifier diagnostics and proof-obligation traces are stable enough for reviewer-facing rejection reports
-- [ ] **VERIFIER-09**: A Lean or Rocq proof scaffold defines core semantics and states or proves an accepted-program safety theorem
-- [ ] **VERIFIER-10**: Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions
+- [x] **VERIFIER-01**: A normative Phase 13 verifier/spec document defines the tiny `L2Core` subset, artifact assumptions, and safety theorem target
+- [x] **VERIFIER-02**: L1 declarative layout semantics are specified as finite, pure data descriptions that compose with `L2Core`
+- [x] **VERIFIER-03**: `L2Core` syntax, static semantics, dynamic semantics, and allowed loop forms are defined
+- [x] **VERIFIER-04**: The capability/resource model covers input ranges, scratch bounds, output builders, no ambient authority, and fail-closed errors
+- [x] **VERIFIER-05**: Arrow builder event semantics are specified so output well-formedness can be checked or proved by construction
+- [x] **VERIFIER-06**: A Rust verifier prototype or architecture uses type/effect checking plus abstract interpretation for `L2Core`
+- [x] **VERIFIER-07**: Local arithmetic, range, overflow, loop-variant, and resource-bound obligations are represented as SMT-ready constraints
+- [x] **VERIFIER-08**: Verifier diagnostics and proof-obligation traces are stable enough for reviewer-facing rejection reports
+- [x] **VERIFIER-09**: A Lean or Rocq proof scaffold defines core semantics and states or proves an accepted-program safety theorem
+- [x] **VERIFIER-10**: Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions
 
 ## Out of Scope
 
@@ -204,16 +204,16 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PROOF-03 | Phase 12 | Complete |
 | PROOF-04 | Phase 12 | Complete |
 | PROOF-05 | Phase 12 | Complete |
-| VERIFIER-01 | Phase 13 | Planned |
-| VERIFIER-02 | Phase 13 | Planned |
-| VERIFIER-03 | Phase 13 | Planned |
-| VERIFIER-04 | Phase 13 | Planned |
-| VERIFIER-05 | Phase 13 | Planned |
-| VERIFIER-06 | Phase 13 | Planned |
-| VERIFIER-07 | Phase 13 | Planned |
-| VERIFIER-08 | Phase 13 | Planned |
-| VERIFIER-09 | Phase 13 | Planned |
-| VERIFIER-10 | Phase 13 | Planned |
+| VERIFIER-01 | Phase 13 | Complete |
+| VERIFIER-02 | Phase 13 | Complete |
+| VERIFIER-03 | Phase 13 | Complete |
+| VERIFIER-04 | Phase 13 | Complete |
+| VERIFIER-05 | Phase 13 | Complete |
+| VERIFIER-06 | Phase 13 | Complete |
+| VERIFIER-07 | Phase 13 | Complete |
+| VERIFIER-08 | Phase 13 | Complete |
+| VERIFIER-09 | Phase 13 | Complete |
+| VERIFIER-10 | Phase 13 | Complete |
 
 **Coverage:**
 
@@ -231,4 +231,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier active context started*
+*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier foundation complete*
