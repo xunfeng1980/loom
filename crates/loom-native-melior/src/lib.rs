@@ -4,6 +4,7 @@
 //! default Loom workspace can build and verify without a mandatory MLIR/LLVM
 //! installation. Feature-enabled backend evidence must stay fail-closed.
 
+pub mod backend;
 pub mod report;
 pub mod toolchain;
 
