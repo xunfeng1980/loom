@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 23 23-04 complete; execute 23-05 backend release gate/report next
-last_updated: "2026-06-08T15:13:38.000Z"
-last_activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
+status: ready
+stopped_at: Phase 23 complete; Phase 24 DuckDB native execution integration research/planning next
+last_updated: "2026-06-08T15:19:45.000Z"
+last_activity: 2026-06-08 -- Phase 23 complete with backend release gate and DuckDB handoff
 progress:
   total_phases: 30
-  completed_phases: 22
+  completed_phases: 23
   total_plans: 92
-  completed_plans: 91
+  completed_plans: 92
   percent: 77
 ---
 
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 23 — Production Native Backend Implementation (23-05 next)
+**Current focus:** Phase 24 — DuckDB Native Execution Integration MVP (research/planning next)
 
 ## Current Position
 
-Phase: 23 (Production Native Backend Implementation) — EXECUTING
-Plan: 5 of 5
-Status: 23-04 complete; execute 23-05 backend release gate, report, docs, and Phase 24 handoff next
-Last activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
+Phase: 24 (DuckDB Native Execution Integration MVP) — READY FOR RESEARCH/PLANNING
+Plan: not expanded
+Status: Phase 23 complete; Phase 24 should consume the Phase 22 runtime ABI report and Phase 23 backend report
+Last activity: 2026-06-08 -- Phase 23 complete with backend release gate and DuckDB handoff
 
 Progress: 77%
 
 ## Progress Snapshot
 
-- Completed phases: 22 / 30
-- Completed executable plans: 91 / 92
+- Completed phases: 23 / 30
+- Completed executable plans: 92 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 23 production native backend implementation is executing; 23-05 is next
-- Last verified gate: Phase 22 focused gate passed; `scripts/runtime-abi-test.sh` is wired into `scripts/mvp0-verify.sh`
+- Current position: Phase 24 DuckDB native execution integration is ready for research/planning
+- Last verified gate: Phase 23 focused backend gate passed; `scripts/production-backend-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
 
@@ -54,7 +54,7 @@ Progress: 77%
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
 | 22 | Host native runtime ABI and execution policy | 5/5 complete |
-| 23 | Production native backend implementation | 4/5 executing |
+| 23 | Production native backend implementation | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -157,7 +157,8 @@ None yet.
 - Phase 23 executing: 23-02 complete with `loom.decode` ODS/TableGen sources, Rust manifest drift checks against the Phase 20 textual surface, default MLIR-free manifest tests, and `scripts/production-backend-test.sh` strict `mlir-tblgen` validation.
 - Phase 23 executing: 23-03 complete with validated `NativeBackendRequest` to production MLIR/LLVM pipeline bridging, pipeline/toolchain identity in `NativeBackendReport`, skip-aware strict toolchain handling, production LLVM translation validation, and focused negative `production_backend_pipeline` tests.
 - Phase 23 executing: 23-04 complete with production JIT seed entry points over accepted `NativeBackendReport` artifacts, deterministic primitive reference-output comparison, cancellation checks, unsupported-shape rejection before toolchain probing, and focused `production_backend_jit` tests.
-- Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime ABI, mapping bind/init/local-init to plan/scan/worker and testing projection/threading plus Arrow release/error/cancel paths.
+- Phase 23 complete: `scripts/production-backend-test.sh` gates backend contract, ODS manifest, production pipeline, JIT seed, and strict ODS validation when local LLVM/MLIR tooling is available; it is wired into `scripts/mvp0-verify.sh`. Final report and summary document supported non-null primitive native evidence, deferred paths, Backend Identity, Cancellation, Unfrozen `loom_runtime.h`, and the Phase 24 DuckDB handoff.
+- Phase 24 ready for research/planning: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime/backend contract, mapping bind/init/local-init/function to plan/scan/worker/next-batch and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
 - Phase 27 reserved as a roadmap placeholder only: Lance dataset binding/ingress through the external source ingress contract, scanning supported Arrow-compatible Lance datasets into verified `LMC1`/`LMT1` artifacts before deeper Lance metadata binding.
@@ -213,8 +214,8 @@ None yet.
 | v3 native | Production decode dialect seed and raw primitive native lowering | Complete | Phase 20 |
 | v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Complete | Phase 22 |
-| v3 native | Production native backend implementation | Planned | Phase 23 |
-| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
+| v3 native | Production native backend implementation | Complete | Phase 23 |
+| v3 engine | DuckDB native execution integration MVP | Ready for planning | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
 | v3 ingress | External source ingress contract | Placeholder | Phase 26 |
 | v3 ingress | Lance dataset binding / ingress | Placeholder | Phase 27 |
@@ -224,8 +225,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T15:13:38.000Z
-Stopped at: Phase 23 23-04 complete; execute 23-05 backend release gate/report next
+Last session: 2026-06-08T15:19:45.000Z
+Stopped at: Phase 23 complete; Phase 24 DuckDB native execution integration research/planning next
 
 Phase 17 handoff:
 
@@ -258,6 +259,10 @@ Phase 19 19-03 summary: .planning/phases/19-solver-backed-full-artifact-verifier
 Phase 19 19-04 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-04-SUMMARY.md
 Phase 19 solver report: .planning/phases/19-solver-backed-full-artifact-verifier/19-SOLVER-REPORT.md
 Phase 19 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-SUMMARY.md
+Phase 23 backend contract: .planning/phases/23-production-native-backend-implementation/23-BACKEND-CONTRACT.md
+Phase 23 backend report: .planning/phases/23-production-native-backend-implementation/23-BACKEND-REPORT.md
+Phase 23 summary: .planning/phases/23-production-native-backend-implementation/23-SUMMARY.md
+Phase 24 next: consume Phase 22 runtime ABI report plus Phase 23 backend report; map DuckDB bind/init/local-init/function to runtime/backend plan/scan/worker/next-batch before editing host code.
 Phase 20 research: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-RESEARCH.md
 Phase 20 context: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-CONTEXT.md
 Phase 20 plans: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-01-PLAN.md through 20-05-PLAN.md
