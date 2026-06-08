@@ -135,13 +135,21 @@ echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking adapter crate scaffold..."
+check_file ".planning/phases/28-iceberg-ref-table-binding/28-CONTEXT.md"
+check_file ".planning/phases/28-iceberg-ref-table-binding/28-RESEARCH.md"
+check_file ".planning/phases/28-iceberg-ref-table-binding/28-PATTERNS.md"
 check_file "crates/loom-iceberg-binding/Cargo.toml"
 check_file "crates/loom-iceberg-binding/src/lib.rs"
 check_file "crates/loom-iceberg-binding/src/binding_contract.rs"
 check_file "crates/loom-iceberg-binding/tests/dependency_boundary.rs"
+check_file "crates/loom-iceberg-binding/tests/binding_contract.rs"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-metadata.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/unsupported-remote-metadata.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/rejected-missing-identity.json"
 rg -q --fixed-strings '"crates/loom-iceberg-binding"' Cargo.toml \
     || fail "workspace member missing: crates/loom-iceberg-binding"
-ok "adapter crate scaffold"
+ok "adapter crate scaffold and local parser fixtures"
 
 info "Running focused adapter dependency and contract tests..."
 cargo test -p loom-iceberg-binding --test dependency_boundary
