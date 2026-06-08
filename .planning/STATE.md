@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 18 plan 18-04 complete; 18-05 next
-last_updated: "2026-06-08T10:17:18.000Z"
-last_activity: 2026-06-08 -- Phase 18 plan 18-04 complete
+stopped_at: Phase 18 complete; Phase 19 placeholder next
+last_updated: "2026-06-08T10:20:56.000Z"
+last_activity: 2026-06-08 -- Phase 18 complete
 progress:
   total_phases: 25
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 67
-  completed_plans: 66
+  completed_plans: 67
   percent: 72
 ---
 
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 18 — complete-vortex-reader (executing)
+**Current focus:** Phase 19 — solver-backed full artifact verifier (placeholder; not yet expanded)
 
 ## Current Position
 
-Phase: 18 (complete-vortex-reader) — EXECUTING
-Plan: 4 of 5 complete; next 18-05 CLI/report/release-gate closeout
-Status: Phase 18 supported struct/table conversion complete; Phase 19 remains reserved for solver-backed full artifact verifier
-Last activity: 2026-06-08 -- Phase 18 plan 18-04 complete
+Phase: 18 (complete-vortex-reader) — COMPLETE
+Plan: 5 of 5 complete
+Status: Phase 18 complete-reader boundary closed; Phase 19 remains reserved for solver-backed full artifact verifier
+Last activity: 2026-06-08 -- Phase 18 complete
 
 Progress: 72%
 
 ## Progress Snapshot
 
-- Completed phases: 17 / 25
-- Completed executable plans: 66 / 67
+- Completed phases: 18 / 25
+- Completed executable plans: 67 / 67
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 18 complete Vortex reader executing; 18-04 complete
-- Last verified gate: `bash scripts/vortex-ingress-test.sh` passed after Phase 18 table conversion work
+- Current position: Phase 18 complete Vortex reader closed; Phase 19 placeholder next
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 18 closeout; Phase 16 optional backend evidence preserved the expected LLVM/MLIR major-version skip
 
 **Completed phase plan counts:**
 
@@ -49,7 +49,7 @@ Progress: 72%
 | 11-15 | MVP1/v3 distribution, safety proof, full verifier foundation, native-lowering spike, real ingress | 21/21 |
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
-| 18 | Complete Vortex reader | 4/5 |
+| 18 | Complete Vortex reader | 5/5 |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -125,6 +125,7 @@ None yet.
 - Phase 18 executing: 18-02 complete with recursive layout child paths, structured `DType` classification including struct field names/counts, segment overlap/order facts, split range facts or non-fatal diagnostics, and guard coverage for unsupported struct files without primitive-scan panics.
 - Phase 18 executing: 18-03 complete with an explicit non-null single-column primitive matrix for Int32, Int64, Float32, and Float64, verifier-backed `LMC1` emission, typed Vortex scan oracle helpers, and UTF-8 fail-closed negative coverage.
 - Phase 18 executing: 18-04 complete with real Vortex struct/table support for non-null primitive fields, `LMT1` table emission wrapped in `LMC1`, artifact-verifier/table-decode oracle tests, unsupported string-field table fail-closed coverage, and CLI reader support/emission output.
+- Phase 18 complete: 18-05 closed with CLI reader facts and artifact-verifier status, `scripts/complete-vortex-reader-test.sh`, release-gate wiring, final report, public/planning docs, and Phase 19 solver-backed verifier handoff.
 - Phase 19 reserved as a roadmap placeholder only: solver-backed full artifact verifier after the complete Vortex reader and before production native expansion.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21-23 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -172,7 +173,7 @@ None yet.
 | v3 ingress | Real Vortex file/container ingress | Complete | Phase 15 |
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
 | v3 verifier | Unified artifact verification pipeline | Complete | Phase 17 |
-| v3 ingress | Complete Vortex reader | In Progress | Phase 18 |
+| v3 ingress | Complete Vortex reader | Complete | Phase 18 |
 | v3 verifier | Solver-backed full artifact verifier | Placeholder | Phase 19 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 20 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 21 |
@@ -183,8 +184,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T10:17:18.000Z
-Stopped at: Phase 18 plan 18-04 complete; 18-05 next
+Last session: 2026-06-08T10:20:56.000Z
+Stopped at: Phase 18 complete; Phase 19 placeholder next
 
 Phase 17 handoff:
 
@@ -206,4 +207,6 @@ Phase 17 summary: .planning/phases/17-unified-artifact-verification-pipeline/17-
 Phase 18 research: .planning/phases/18-complete-vortex-reader/18-RESEARCH.md
 Phase 18 context: .planning/phases/18-complete-vortex-reader/18-CONTEXT.md
 Phase 18 plans: .planning/phases/18-complete-vortex-reader/18-01-PLAN.md through 18-05-PLAN.md
+Phase 18 report: .planning/phases/18-complete-vortex-reader/18-READER-REPORT.md
+Phase 18 summary: .planning/phases/18-complete-vortex-reader/18-SUMMARY.md
 Resume file: .planning/ROADMAP.md

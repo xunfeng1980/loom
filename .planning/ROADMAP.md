@@ -6,10 +6,10 @@ The original Loom MVP0 proved one narrow chain end-to-end: Vortex-style encoded 
 by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed
 Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
 Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
-distribution containers, verifier-backed safety, native-lowering preparation, and narrow real Vortex
+distribution containers, verifier-backed safety, native-lowering preparation, and real Vortex
 file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice. Phase 17 closed
 the largest verifier gap by unifying the current payload verifier and future `L2Core` verifier foundation into one artifact verification
-pipeline. Phase 18 is next and reserves a complete Vortex reader beyond the narrow Phase 15 ingress slice. Phase 19
+pipeline. Phase 18 completed the Vortex reader boundary beyond the narrow Phase 15 ingress slice. Phase 19
 is reserved for the solver-backed full artifact verifier that upgrades collected obligations into discharged verifier evidence before
 production native expansion. Phase 20 preserves the production MLIR decode dialect/native kernel expansion step. Phases 21-23 split the
 formerly oversized engine-integrated native execution placeholder into a runtime ABI/policy phase, a DuckDB host-integration MVP, and an
@@ -42,7 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
 - [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
 - [x] **Phase 17: Unified Artifact Verification Pipeline** - Fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (complete)
-- [ ] **Phase 18: Complete Vortex Reader** - In progress expansion from Phase 15's narrow real-ingress slice into a complete, isolated, fail-closed Vortex file/container reader before solver-backed verification and engine-integrated native execution
+- [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
 - [ ] **Phase 19: Solver-backed Full Artifact Verifier** - Placeholder for real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (not expanded)
 - [ ] **Phase 20: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 21: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
@@ -535,7 +535,7 @@ LMC1 artifact
 
 ### Phase 18: Complete Vortex Reader
 
-**Status:** In progress. `18-01` through `18-04` are complete; see `.planning/phases/18-complete-vortex-reader/18-RESEARCH.md`, `18-CONTEXT.md`, `18-READER-CONTRACT.md`, and plans `18-01` through `18-05`.
+**Status:** Complete (2026-06-08). See `.planning/phases/18-complete-vortex-reader/18-RESEARCH.md`, `18-CONTEXT.md`, `18-READER-CONTRACT.md`, `18-READER-REPORT.md`, `18-SUMMARY.md`, and plans `18-01` through `18-05`.
 **Depends on:** Phase 15 and Phase 17; may consume constraints discovered in Phase 16.
 **Ordering decision:** Expand from the supported non-null Int32 `.vortex` -> `LMC1` evidence slice to a complete Vortex reader boundary before engine-integrated native execution. Engine integration needs stable real artifact/fact/schema semantics; those should come from the full reader boundary rather than from the Phase 15 narrow ingress slice. Scope should include real file/container layout coverage, chunk/schema handling, representative encoding coverage, projection/statistics decisions, stable Loom-owned facts/diagnostics, and fail-closed behavior. It must not become a new query-engine integration phase.
 
@@ -546,7 +546,7 @@ LMC1 artifact
 - [x] 18-02-PLAN.md - Recursive layout/dtype/segment inspection
 - [x] 18-03-PLAN.md - Supported single-column conversion matrix
 - [x] 18-04-PLAN.md - Supported struct/table conversion
-- [ ] 18-05-PLAN.md - CLI/report/release-gate closeout
+- [x] 18-05-PLAN.md - CLI/report/release-gate closeout
 
 ### Phase 19: Solver-backed Full Artifact Verifier
 
@@ -616,7 +616,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
-| 18. Complete Vortex Reader | 4/5 | In Progress | - |
+| 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
 | 19. Solver-backed Full Artifact Verifier | 0/? | Placeholder | - |
 | 20. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 21. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |

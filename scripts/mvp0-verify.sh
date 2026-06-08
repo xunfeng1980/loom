@@ -89,6 +89,10 @@ info "Running Phase 17 artifact verifier gate..."
 bash scripts/artifact-verifier-test.sh
 ok "scripts/artifact-verifier-test.sh"
 
+info "Running Phase 18 complete Vortex reader gate..."
+bash scripts/complete-vortex-reader-test.sh
+ok "scripts/complete-vortex-reader-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"

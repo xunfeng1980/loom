@@ -30,7 +30,7 @@ use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, i
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
 use loom_vortex_ingress::{
     emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, reader_facts_from_vortex_path,
-    VortexIngressReport,
+    VortexIngressReport, VortexReaderEmissionKind,
 };
 
 fn main() {
@@ -117,7 +117,11 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
                 println!("reader_support: {}", reader_facts.support.as_str());
                 println!("emission_kind: {}", reader_facts.emission_kind.as_str());
                 println!("reader_layout_facts: {}", reader_facts.layout_facts.len());
+                println!("reader_dtype_facts: {}", reader_facts.dtype_facts.len());
                 println!("reader_segment_facts: {}", reader_facts.segment_facts.len());
+                println!("reader_split_facts: {}", reader_facts.split_facts.len());
+                println!("reader_diagnostics: {}", reader_facts.diagnostics.len());
+                print_reader_artifact_verification(path, reader_facts.emission_kind)?;
             }
             if report.status.as_str() == "rejected" {
                 return Err("Vortex ingress rejected input".to_string());
@@ -154,6 +158,34 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
         }
         _ => Err(usage()),
     }
+}
+
+fn print_reader_artifact_verification(
+    path: &Path,
+    emission_kind: VortexReaderEmissionKind,
+) -> Result<(), String> {
+    if emission_kind == VortexReaderEmissionKind::None {
+        println!("reader_artifact_verification: not_applicable");
+        return Ok(());
+    }
+
+    let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    match emit_supported_lmc1_from_vortex_buffer(&bytes) {
+        Ok(artifact) => {
+            let registry = L2KernelRegistry::default_for_mvp0();
+            let report = verify_artifact(&artifact, &registry, &Default::default());
+            let status = if report.status() == ArtifactVerificationStatus::Accepted {
+                "pass"
+            } else {
+                "fail"
+            };
+            println!("reader_artifact_verification: {status}");
+        }
+        Err(_) => {
+            println!("reader_artifact_verification: fail");
+        }
+    }
+    Ok(())
 }
 
 fn verify_l2core(mode: &str) -> Result<(), String> {
