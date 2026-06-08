@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 15 complete; Phase 16-20 placeholders
-last_updated: "2026-06-08T07:53:32.000Z"
-last_activity: 2026-06-08 -- README MVP1 scope refreshed; Phase 19-20 roadmap placeholders added
+stopped_at: Phase 16 research started; Phase 17-23 placeholders
+last_updated: "2026-06-08T08:35:00.000Z"
+last_activity: 2026-06-08 -- Engine-integrated native execution split into Phases 19-21
 progress:
-  total_phases: 20
+  total_phases: 23
   completed_phases: 15
   total_plans: 52
   completed_plans: 52
-  percent: 75
+  percent: 65
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 16 — full `melior`/LLVM/JIT backend integration placeholder, with Phase 15 real Vortex ingress complete and Phase 19-20 reserved for Iceberg/table-engine follow-on work
+**Current focus:** Phase 16 — full `melior`/LLVM/JIT backend integration research, with Phase 18-23 reserved for full-reader, engine, and table follow-on work
 
 ## Current Position
 
-Phase: 15 (real-vortex-file-container-ingress) — COMPLETE
-Plan: 4 of 4 complete
-Status: Phase 15 complete; Phase 16-20 remain reserved roadmap placeholders
-Last activity: 2026-06-08 -- Phase 15 real Vortex file/container ingress complete
+Phase: 16 (full-melior-llvm-jit-backend-integration) — RESEARCH
+Plan: not planned yet
+Status: Phase 16 research started; Phase 17-23 remain reserved roadmap placeholders
+Last activity: 2026-06-08 -- Engine-integrated native execution split into Phases 19-21
 
-Progress: 75%
+Progress: 65%
 
 ## Progress Snapshot
 
-- Completed phases: 15 / 20
+- Completed phases: 15 / 23
 - Completed executable plans: 52 / 52
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 15 complete; Phase 16-20 are reserved roadmap placeholders
+- Current position: Phase 16 research started; Phase 17-23 are reserved roadmap placeholders
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 15 ingress integration
 
 **Completed phase plan counts:**
@@ -112,11 +112,16 @@ None yet.
 - Phase 15 research started: recommended an isolated real Vortex ingress bridge, scoped `vortex-file` allowlist, Loom-owned `VortexFileFacts`, fail-closed diagnostics, and one narrow supported `.vortex` -> `LMC1` slice before Phase 16 JIT work.
 - Phase 15 planned: 4 plans across ingress contract/dependency boundary, real Vortex metadata facts, supported real `.vortex` -> `LMC1` conversion, and CLI/docs/release-gate closeout.
 - Phase 15 complete: `loom-vortex-ingress` isolates real `vortex-file` use, emits stable `VortexIngressReport` / `VortexFileFacts`, inspects real buffers/paths fail-closed, emits one non-null Int32 `.vortex` -> `LMC1` slice, exposes `loom ingest-vortex`, and wires `scripts/vortex-ingress-test.sh` into the release gate.
-- Phase 16 reserved as a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence.
+- Phase 16 research started after Phase 15 real ingress evidence: full `melior`/LLVM/JIT backend integration remains optional, verifier-gated, and fail-closed.
+- Phase 16 research started: recommended an optional `loom-native-melior` backend crate, explicit LLVM/MLIR toolchain probing, verifier-gated programmatic MLIR construction, optional MLIR ExecutionEngine/JIT evidence, and fail-closed rejection before native artifact creation.
 - Phase 17 reserved as a roadmap placeholder only: production decode dialect and native kernel expansion.
-- Phase 18 reserved as a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
-- Phase 19 reserved as a roadmap placeholder only: Iceberg ref/table binding after the engine-integrated artifact contract is credible.
-- Phase 20 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
+- Phase 19-21 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
+- Phase 19 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
+- Phase 20 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 19 runtime contract.
+- Phase 21 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
+- Phase 22 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- Phase 23 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Quick Tasks Completed
 
@@ -154,17 +159,21 @@ None yet.
 | v3 safety | Full Loom verifier | Complete | Phase 13 |
 | v3 native | MLIR/native lowering spike | Complete | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Complete | Phase 15 |
-| v3 native | Full melior/LLVM/JIT backend integration | Placeholder | Phase 16 |
+| v3 native | Full melior/LLVM/JIT backend integration | Research | Phase 16 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 17 |
-| v3 engine | Engine-integrated native execution MVP | Placeholder | Phase 18 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 19 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 20 |
+| v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
+| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 19 |
+| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 20 |
+| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 21 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 22 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 23 |
 
 ## Session Continuity
 
 Last session: 2026-06-08T07:53:32.000Z
-Stopped at: Phase 15 complete; Phase 16-20 placeholders
+Stopped at: Phase 16 research started; Phase 17-23 placeholders
 Phase 15 research: .planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md
 Phase 15 context: .planning/phases/15-real-vortex-file-container-ingress/15-CONTEXT.md
 Phase 15 report: .planning/phases/15-real-vortex-file-container-ingress/15-INGRESS-REPORT.md
+Phase 16 research: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-RESEARCH.md
 Resume file: .planning/ROADMAP.md
