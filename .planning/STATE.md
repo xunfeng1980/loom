@@ -161,6 +161,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260608-vni | Update Phase 23 and 24 roadmap handoff from Phase 22 ABI deep research | 2026-06-08 | 3ed57a5 | [260608-vni-update-phase-23-and-24-roadmap-handoff-f](./quick/260608-vni-update-phase-23-and-24-roadmap-handoff-f/) |
 | 260608-v17 | Polish English and Chinese READMEs with final minimal logo, DuckDB data flow, and quickstart | 2026-06-08 | none | [260608-v17-polish-readme-with-logo-duckdb-data-flow](./quick/260608-v17-polish-readme-with-logo-duckdb-data-flow/) |
 | 260608-vfc | Extend Phase 22 deep research with C API, Node-API/N-API, and natural API design lessons | 2026-06-08 | 58f9cd4 | [260608-vfc-extend-phase-22-deep-research-with-c-api](./quick/260608-vfc-extend-phase-22-deep-research-with-c-api/) |
 | 260608-va8 | Deepen Phase 22 research with papers, related projects, and ABI best practices | 2026-06-08 | 7b832ef | [260608-va8-deepen-phase-22-research-with-papers-rel](./quick/260608-va8-deepen-phase-22-research-with-papers-rel/) |
