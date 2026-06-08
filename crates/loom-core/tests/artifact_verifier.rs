@@ -2,8 +2,8 @@ use arrow_schema::DataType;
 use loom_core::artifact_verifier::{
     verify_artifact, verify_artifact_with_l2_core, ArtifactLoweringDiagnostic,
     ArtifactLoweringReadiness, ArtifactVerificationDiagnostic, ArtifactVerificationFacts,
-    ArtifactVerificationReport, ArtifactVerificationStage, ArtifactVerificationStatus,
-    ConstraintDischargeStatus,
+    ArtifactVerificationOptions, ArtifactVerificationReport, ArtifactVerificationStage,
+    ArtifactVerificationStatus, ConstraintDischargeStatus,
 };
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload, Feature};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -383,4 +383,82 @@ fn verify_artifact_with_l2_core_maps_output_type_mismatch() {
     let first = report.first_error().expect("diagnostic");
     assert_eq!(first.stage, ArtifactVerificationStage::L2Core);
     assert_eq!(first.code, "output-type-mismatch");
+}
+
+#[test]
+fn verify_artifact_without_l2_core_is_not_lowering_ready() {
+    let bytes = wrapped_i32_layout(4);
+    let options = ArtifactVerificationOptions {
+        compute_lowering_readiness: true,
+        lowering_backend: Some("textual-mlir".to_string()),
+        ..Default::default()
+    };
+
+    let report = verify_artifact(&bytes, &registry(), &options);
+
+    assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+    let facts = report
+        .facts()
+        .expect("accepted artifact should expose facts");
+    assert!(!facts.lowering_ready.ready);
+    assert_eq!(
+        facts.lowering_ready.backend.as_deref(),
+        Some("textual-mlir")
+    );
+    assert_eq!(
+        facts.lowering_ready.diagnostics[0].code,
+        "missing-l2core-facts"
+    );
+}
+
+#[test]
+fn verify_artifact_with_l2_core_marks_supported_copy_lowering_ready() {
+    let bytes = wrapped_i32_layout(4);
+    let program = sample_l2core_program();
+    let options = ArtifactVerificationOptions {
+        compute_lowering_readiness: true,
+        lowering_backend: Some("textual-mlir".to_string()),
+        ..Default::default()
+    };
+
+    let report = verify_artifact_with_l2_core(&bytes, &registry(), &program, &options);
+
+    let facts = report
+        .facts()
+        .expect("accepted artifact should expose facts");
+    assert!(facts.lowering_ready.ready);
+    assert_eq!(
+        facts.lowering_ready.backend.as_deref(),
+        Some("textual-mlir")
+    );
+    assert!(facts.lowering_ready.diagnostics.is_empty());
+}
+
+#[test]
+fn verify_artifact_with_l2_core_keeps_unsupported_shape_not_ready() {
+    let bytes = wrapped_i32_layout(4);
+    let mut program = sample_l2core_program();
+    program.optional_features.push("debug.extra".to_string());
+    let options = ArtifactVerificationOptions {
+        compute_lowering_readiness: true,
+        lowering_backend: Some("textual-mlir".to_string()),
+        ..Default::default()
+    };
+
+    let report = verify_artifact_with_l2_core(&bytes, &registry(), &program, &options);
+
+    assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+    let facts = report
+        .facts()
+        .expect("accepted artifact should expose facts");
+    assert!(!facts.lowering_ready.ready);
+    assert_eq!(
+        facts.lowering_ready.backend.as_deref(),
+        Some("textual-mlir")
+    );
+    assert!(facts
+        .lowering_ready
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "unsupported-feature"));
 }

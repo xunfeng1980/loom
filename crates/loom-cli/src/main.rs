@@ -7,6 +7,9 @@ use arrow::array::{
 };
 use arrow_schema::DataType;
 use loom_core::alp_params::AlpParams;
+use loom_core::artifact_verifier::{
+    verify_artifact, ArtifactVerificationReport, ArtifactVerificationStatus,
+};
 use loom_core::container_codec::{
     decode_container, decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
     extract_wrapped_payload, feature_names, is_container_payload, unknown_feature_bits,
@@ -62,6 +65,13 @@ fn run() -> Result<(), String> {
             }
             verify_l2core(&mode)
         }
+        "verify-artifact" => {
+            let input = args.next().ok_or_else(usage)?;
+            if args.next().is_some() {
+                return Err(usage());
+            }
+            verify_artifact_cli(Path::new(&input))
+        }
         "ingest-vortex" => {
             let mode = args.next().ok_or_else(usage)?;
             ingest_vortex(&mode, args.collect())
@@ -75,8 +85,21 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
+    "usage: loom <inspect|decode|verify-artifact> <payload-or-descriptor>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
         .to_string()
+}
+
+fn verify_artifact_cli(path: &Path) -> Result<(), String> {
+    let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let report = verify_artifact(&bytes, &registry, &Default::default());
+
+    println!("input: {}", path.display());
+    print_artifact_verification_report(&report);
+    if report.status() == ArtifactVerificationStatus::Rejected {
+        return Err("artifact verification failed".to_string());
+    }
+    Ok(())
 }
 
 fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
@@ -700,6 +723,67 @@ fn kernel_escape_summary(
 
 fn display_decode_error(err: LoomDecodeError) -> String {
     err.to_string()
+}
+
+fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
+    let status = match report.status() {
+        ArtifactVerificationStatus::Accepted => "pass",
+        ArtifactVerificationStatus::Rejected => "fail",
+        ArtifactVerificationStatus::Unsupported => "unsupported",
+    };
+    println!("artifact_verification: {status}");
+
+    if let Some(facts) = report.facts() {
+        println!("facts: present");
+        println!("artifact_kind: {}", facts.artifact_kind);
+        println!(
+            "container_version: {}",
+            facts
+                .container_version
+                .map_or_else(|| "unknown".to_string(), |version| version.to_string())
+        );
+        println!(
+            "required_features: {}",
+            if facts.required_features.is_empty() {
+                "none".to_string()
+            } else {
+                facts.required_features.join(",")
+            }
+        );
+        println!(
+            "optional_features: {}",
+            if facts.optional_features.is_empty() {
+                "none".to_string()
+            } else {
+                facts.optional_features.join(",")
+            }
+        );
+        println!(
+            "payload_kind: {}",
+            facts.payload_kind.as_deref().unwrap_or("unknown")
+        );
+        println!("constraint_status: {}", facts.constraint_status.as_str());
+        println!("lowering_ready: {}", facts.lowering_ready.ready);
+    } else {
+        println!("facts: none");
+        println!("constraint_status: none");
+        println!("lowering_ready: false");
+    }
+
+    if report.diagnostics().is_empty() {
+        println!("diagnostics: none");
+    } else {
+        println!("diagnostics:");
+        for diagnostic in report.diagnostics() {
+            println!(
+                "diagnostic: stage={} code={} path={} message={}",
+                diagnostic.stage.as_str(),
+                diagnostic.code,
+                diagnostic.path,
+                diagnostic.message
+            );
+        }
+    }
 }
 
 fn print_verification(report: &VerificationReport) {

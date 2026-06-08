@@ -8,6 +8,7 @@ use crate::full_verifier::verify_l2_core;
 use crate::l2_core::L2CoreProgram;
 use crate::l2_core::VerifiedArtifactFacts;
 use crate::l2_kernel_registry::L2KernelRegistry;
+use crate::native_lowering::check_lowering_support;
 use crate::verifier::verify_container;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -345,6 +346,16 @@ pub fn verify_artifact(
     facts.schema_section_present = has_section(&container, SectionKind::Schema);
     facts.kernel_manifest_section_present = has_section(&container, SectionKind::KernelManifest);
     facts.stats_section_present = has_section(&container, SectionKind::Stats);
+    if _options.compute_lowering_readiness || _options.require_l2_core_for_lowering {
+        facts.lowering_ready = ArtifactLoweringReadiness::with_diagnostic(
+            Some(lowering_backend(_options)),
+            ArtifactLoweringDiagnostic::new(
+                "missing-l2core-facts",
+                "$.facts.l2_core",
+                "lowering readiness requires an associated accepted L2Core program",
+            ),
+        );
+    }
 
     ArtifactVerificationReport::accepted(facts)
 }
@@ -394,6 +405,9 @@ pub fn verify_artifact_with_l2_core(
     artifact_facts.proof_obligation_ids = l2_facts.proof_obligation_ids.clone();
     artifact_facts.constraint_status = constraint_status_for(&artifact_facts.constraint_ids);
     artifact_facts.l2_core = Some(l2_facts);
+    if options.compute_lowering_readiness || options.lowering_backend.is_some() {
+        artifact_facts.lowering_ready = lowering_readiness_for(program, &l2_report, options);
+    }
 
     ArtifactVerificationReport::accepted(artifact_facts)
 }
@@ -429,4 +443,40 @@ fn constraint_status_for(constraint_ids: &[String]) -> ConstraintDischargeStatus
     } else {
         ConstraintDischargeStatus::CollectedOnly
     }
+}
+
+fn lowering_readiness_for(
+    program: &L2CoreProgram,
+    report: &crate::full_verifier::FullVerificationReport,
+    options: &ArtifactVerificationOptions,
+) -> ArtifactLoweringReadiness {
+    let backend = lowering_backend(options);
+    let support = check_lowering_support(program, report);
+    if support.is_supported() {
+        return ArtifactLoweringReadiness::ready(backend);
+    }
+
+    let diagnostics = support
+        .diagnostics()
+        .iter()
+        .map(|diagnostic| {
+            ArtifactLoweringDiagnostic::new(
+                diagnostic.code.as_str(),
+                diagnostic.path.clone(),
+                diagnostic.message.clone(),
+            )
+        })
+        .collect();
+    ArtifactLoweringReadiness {
+        ready: false,
+        backend: Some(backend),
+        diagnostics,
+    }
+}
+
+fn lowering_backend(options: &ArtifactVerificationOptions) -> String {
+    options
+        .lowering_backend
+        .clone()
+        .unwrap_or_else(|| "textual-mlir".to_string())
 }
