@@ -21,9 +21,9 @@ The repository has moved beyond MVP0 and is now in the **MVP1 / v3 distribution 
 | Stage | Status | Covered | Boundary |
 |---|---|---|---|
 | MVP0 | Complete | `LMP1` single-column layout payloads, Rust interpreter, Arrow C Data Interface, DuckDB `loom_scan(...)` SQL acceptance; bitpack/FOR/dict/RLE/FSST/dict-over-FSST | No distribution container, full verifier, real Vortex ingress, MLIR/native lowering, or native-speed claim |
-| MVP1 | Reached Phase 16 | `LMT1` multi-column payloads, ALP Float32/Float64, fail-closed verifier, `LMC1` container, Safety Proof MVP, Full Verifier foundation, textual MLIR spike, narrow `.vortex` -> `LMC1` ingress, optional `melior`/LLVM/JIT backend evidence for the bounded Int32 copy slice | Phase 16 is not a production native compiler, not arbitrary Vortex/native lowering, and not host-engine native execution; no remote/object-store ingress, signatures/attestation, or complete correctness proof |
+| MVP1 | Reached Phase 17 | `LMT1` multi-column payloads, ALP Float32/Float64, fail-closed verifier, `LMC1` container, Safety Proof MVP, Full Verifier foundation, textual MLIR spike, narrow `.vortex` -> `LMC1` ingress, optional `melior`/LLVM/JIT backend evidence, and a unified artifact verifier pipeline with `LMC1`/L1 checks, optional `L2Core` facts, constraint status, and lowering readiness | Phase 17 is not full SMT discharge, a stable external `L2Core` codec, complete Vortex reader support, a production native compiler, or host-engine native execution; no remote/object-store ingress, signatures/attestation, or complete correctness proof |
 
-Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/safety/full-verifier/native-lowering/ingress/backend cases must fail closed before successful output.
+Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/artifact-verifier/safety/full-verifier/native-lowering/ingress/backend cases must fail closed before successful output.
 
 ---
 

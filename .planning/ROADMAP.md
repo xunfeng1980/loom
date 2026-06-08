@@ -7,9 +7,9 @@ by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, prod
 Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
 Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
 distribution containers, verifier-backed safety, native-lowering preparation, and narrow real Vortex
-file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice. Phase 17 now closes
+file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice. Phase 17 closed
 the largest verifier gap by unifying the current payload verifier and future `L2Core` verifier foundation into one artifact verification
-pipeline. Phase 18 reserves a complete Vortex reader beyond the narrow Phase 15 ingress slice. Phase 19 preserves the production
+pipeline. Phase 18 is next and reserves a complete Vortex reader beyond the narrow Phase 15 ingress slice. Phase 19 preserves the production
 MLIR decode dialect/native kernel expansion step. Phases 20-22 split the formerly oversized engine-integrated native execution placeholder
 into a runtime ABI/policy phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 23 and Phase
 24 reserve the table-format and multi-engine query surface that should follow: Iceberg ref/table
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
 - [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
-- [ ] **Phase 17: Unified Artifact Verification Pipeline** - Planned fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report
+- [x] **Phase 17: Unified Artifact Verification Pipeline** - Fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (complete)
 - [ ] **Phase 18: Complete Vortex Reader** - Placeholder for expanding Phase 15's narrow real-ingress slice into a complete, isolated, fail-closed Vortex file/container reader before engine-integrated native execution (not expanded)
 - [ ] **Phase 19: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 20: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
@@ -496,9 +496,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 17: Unified Artifact Verification Pipeline
 
-**Status:** Planned. See `.planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md` and plans `17-01` through `17-05`.
+**Status:** Complete. See `.planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md`, `17-ARTIFACT-VERIFIER-CONTRACT.md`, `17-ARTIFACT-VERIFIER-REPORT.md`, and `17-SUMMARY.md`.
 **Depends on:** Phase 16.
-**Ordering decision:** Before widening native lowering, unify the two current verifier lines into one artifact verifier pipeline. Today `verifier.rs` handles implemented `LMP1`/`LMT1`/`LMC1` structural payload verification, while `full_verifier.rs` handles the future `L2Core` verifier foundation. Phase 17 should make those a single artifact-facing flow:
+**Ordering decision:** Before widening native lowering, unify the two current verifier lines into one artifact verifier pipeline. `verifier.rs` handles implemented `LMP1`/`LMT1`/`LMC1` structural payload verification, while `full_verifier.rs` handles the future `L2Core` verifier foundation. Phase 17 made those a single artifact-facing flow:
 
 ```text
 LMC1 artifact
@@ -510,13 +510,13 @@ LMC1 artifact
   -> lowering-ready verification report
 ```
 
-**Verifier shortfall captured for Phase 17:**
+**Verifier shortfall closed by Phase 17:**
 
-- current payload verifier and future `L2Core` verifier are parallel lines, not one artifact verification pipeline
-- static structural verifier, runtime semantic guard, and oracle/equivalence evidence need explicit layering in reports/docs
-- lowering must consume one accepted artifact report instead of piecing together separate verifier outputs
+- current payload verifier and future `L2Core` verifier now have one artifact-facing report/facts pipeline
+- static structural verifier, runtime semantic guard, and oracle/equivalence evidence are explicitly layered in reports/docs
+- lowering can consume one accepted artifact report with optional `L2Core` facts and lowering readiness
 
-**Deferred beyond Phase 17 unless pulled in by planning:**
+**Deferred beyond Phase 17:**
 
 - real SMT discharge with Z3/CVC5 or equivalent solver strategy for symbolic offset/range/overflow obligations
 - stable external `L2Core` artifact codec/parser instead of only Rust data model/sample CLI
@@ -525,11 +525,11 @@ LMC1 artifact
 - production MLIR decode dialect, Arrow/raw-buffer native writes, vectorization, and broad native kernel expansion
 
 **Plan Files:**
-- [ ] 17-01-PLAN.md - Artifact verifier contract and report model
-- [ ] 17-02-PLAN.md - Container and L1 structural artifact pipeline
-- [ ] 17-03-PLAN.md - L2Core adapter and verifier facts fusion
-- [ ] 17-04-PLAN.md - Lowering readiness, CLI visibility, and gate script
-- [ ] 17-05-PLAN.md - Final docs, verification report, and planning closeout
+- [x] 17-01-PLAN.md - Artifact verifier contract and report model
+- [x] 17-02-PLAN.md - Container and L1 structural artifact pipeline
+- [x] 17-03-PLAN.md - L2Core adapter and verifier facts fusion
+- [x] 17-04-PLAN.md - Lowering readiness, CLI visibility, and gate script
+- [x] 17-05-PLAN.md - Final docs, verification report, and planning closeout
 
 ### Phase 18: Complete Vortex Reader
 
@@ -598,7 +598,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
-| 17. Unified Artifact Verification Pipeline | 0/5 | Planned | - |
+| 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
 | 18. Complete Vortex Reader | 0/? | Placeholder | - |
 | 19. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 20. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
