@@ -34,3 +34,138 @@ fn source_ingress_contract_public_types_exist() {
         SourceDiagnostic::new(SourceDiagnosticCode::OpenFailed, "$", "open failed"),
     );
 }
+
+fn mock_identity() -> SourceIdentity {
+    SourceIdentity::new("mock-buffer", "mock-format").with_format_version("1")
+}
+
+fn mock_facts(row_count: u64) -> SourceFacts {
+    let mut facts = SourceFacts::new(mock_identity(), row_count);
+    facts.root_schema = Some(SourceSchemaFact::new("$", "primitive"));
+    facts.schema_facts.push(SourceSchemaFact::new("$", "primitive"));
+    facts.layout_facts.push(SourceLayoutFact::new("$", "raw"));
+    facts.segment_facts.push(SourceSegmentFact::new(0, 0, 16));
+    facts.split_facts.push(SourceSplitFact::new(0, 0, row_count));
+    facts.coverage = Some(SourceCoverage::new("primitive", "raw", "primitive"));
+    facts
+}
+
+fn mock_diagnostic() -> SourceDiagnostic {
+    SourceDiagnostic::new(
+        SourceDiagnosticCode::UnsupportedConversion,
+        "$.payload",
+        "shape is valid but unsupported",
+    )
+}
+
+#[test]
+fn source_ingress_contract_stable_strings() {
+    assert_eq!(SourceIngressStatus::Accepted.as_str(), "accepted");
+    assert_eq!(SourceIngressStatus::Unsupported.as_str(), "unsupported");
+    assert_eq!(SourceIngressStatus::Rejected.as_str(), "rejected");
+
+    assert_eq!(SourceEmissionKind::None.as_str(), "none");
+    assert_eq!(SourceEmissionKind::Lmp1.as_str(), "LMP1");
+    assert_eq!(SourceEmissionKind::Lmt1.as_str(), "LMT1");
+
+    assert_eq!(SourceEmissionDisposition::None.as_str(), "none");
+    assert_eq!(
+        SourceEmissionDisposition::CanonicalRaw.as_str(),
+        "canonical-raw"
+    );
+    assert_eq!(
+        SourceEmissionDisposition::CanonicalTable.as_str(),
+        "canonical-table"
+    );
+    assert_eq!(
+        SourceEmissionDisposition::StructuredLayout.as_str(),
+        "structured-layout"
+    );
+
+    assert_eq!(
+        SourceLoweringDisposition::InterpreterOnly.as_str(),
+        "interpreter-only"
+    );
+    assert_eq!(
+        SourceLoweringDisposition::ProductionLoweringSupported.as_str(),
+        "production-lowering-supported"
+    );
+    assert_eq!(
+        SourceLoweringDisposition::FailClosedDeferred.as_str(),
+        "fail-closed/deferred"
+    );
+
+    assert_eq!(
+        SourceOracleStrategy::DecodedRowFixture.as_str(),
+        "decoded-row-fixture"
+    );
+}
+
+#[test]
+fn accepted_report_requires_facts_verifier_acceptance_and_oracle_evidence() {
+    let artifact = SourceArtifactVerificationSummary::accepted(128, "artifact accepted");
+    let oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::DecodedRowFixture, 3);
+    let report = SourceIngressReport::accepted(
+        mock_facts(3),
+        SourceEmissionKind::Lmp1,
+        SourceEmissionDisposition::CanonicalRaw,
+        SourceLoweringDisposition::ProductionLoweringSupported,
+        artifact,
+        oracle,
+    )
+    .expect("accepted report");
+
+    assert_eq!(report.status, SourceIngressStatus::Accepted);
+    assert!(report.facts.is_some());
+    assert!(report.artifact_verification.accepted);
+    assert!(report.artifact_verification.artifact_byte_len.is_some());
+    assert!(report.oracle_evidence.as_ref().is_some_and(|e| e.accepted));
+
+    let no_artifact = SourceIngressReport::accepted(
+        mock_facts(3),
+        SourceEmissionKind::None,
+        SourceEmissionDisposition::None,
+        SourceLoweringDisposition::FailClosedDeferred,
+        SourceArtifactVerificationSummary::not_applicable(),
+        SourceOracleEvidence::accepted(SourceOracleStrategy::DecodedRowFixture, 3),
+    );
+    assert!(no_artifact.is_err());
+
+    let no_oracle = SourceIngressReport::accepted(
+        mock_facts(3),
+        SourceEmissionKind::Lmt1,
+        SourceEmissionDisposition::CanonicalTable,
+        SourceLoweringDisposition::ProductionLoweringSupported,
+        SourceArtifactVerificationSummary::accepted(256, "artifact accepted"),
+        SourceOracleEvidence::unsupported("oracle not checked"),
+    );
+    assert!(no_oracle.is_err());
+}
+
+#[test]
+fn unsupported_valid_report_may_carry_facts_but_no_artifact_bytes() {
+    let report = SourceIngressReport::unsupported(Some(mock_facts(3)), mock_diagnostic());
+
+    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert!(report.facts.is_some());
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert!(!report.artifact_verification.accepted);
+    assert!(report.artifact_verification.artifact_byte_len.is_none());
+    assert!(report.oracle_evidence.is_none());
+    assert!(!report.diagnostics.is_empty());
+}
+
+#[test]
+fn rejected_malformed_report_exposes_diagnostics_and_no_trusted_facts() {
+    let report = SourceIngressReport::rejected(mock_identity(), mock_diagnostic());
+
+    assert_eq!(report.status, SourceIngressStatus::Rejected);
+    assert!(report.facts.is_none());
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert!(!report.artifact_verification.accepted);
+    assert!(report.artifact_verification.artifact_byte_len.is_none());
+    assert!(report.oracle_evidence.is_none());
+    assert!(!report.diagnostics.is_empty());
+}
