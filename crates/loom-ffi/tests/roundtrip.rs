@@ -10,9 +10,10 @@
 //! | `release_path_roundtrip` | ARROW-03, PITFALLS P1/P2 |
 //! | `panic_does_not_abort` | DUCK-04, PITFALLS P3, T-01-05 |
 
-use arrow::array::{Array, Int32Array, StringArray};
+use arrow::array::{Array, Float32Array, Float64Array, Int32Array, StringArray};
 use arrow::datatypes::DataType;
 use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::alp_params::{AlpOutputType, AlpParams};
 use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
@@ -172,6 +173,68 @@ fn roundtrip_decode_payload_utf8_values() {
     }
 }
 
+#[test]
+fn roundtrip_decode_payload_alp_float32_values() {
+    let payload = encode_layout_payload(&alp_desc(
+        DataType::Float32,
+        AlpParams {
+            output_type: AlpOutputType::Float32,
+            decimal_exponent: -2,
+            mantissas: vec![125, -250, 0, 125],
+            validity: Some(vec![true, false, true, true]),
+        },
+    ));
+
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&payload) };
+    let array_data = unsafe { from_ffi(ffi_array, &ffi_schema) }
+        .expect("from_ffi must succeed for ALP Float32 payload");
+    assert_eq!(array_data.data_type(), &DataType::Float32);
+    let array = Float32Array::from(array_data);
+
+    assert_eq!(array.len(), 4);
+    assert_eq!(array.null_count(), 1);
+    assert_eq!(array.value(0), 1.25);
+    assert!(array.is_null(1));
+    assert_eq!(array.value(2), 0.0);
+    assert_eq!(array.value(3), 1.25);
+
+    drop(array);
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+}
+
+#[test]
+fn roundtrip_decode_payload_alp_float64_values() {
+    let payload = encode_layout_payload(&alp_desc(
+        DataType::Float64,
+        AlpParams {
+            output_type: AlpOutputType::Float64,
+            decimal_exponent: -3,
+            mantissas: vec![10125, -3500, 0, 10125],
+            validity: Some(vec![true, true, false, true]),
+        },
+    ));
+
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&payload) };
+    let array_data = unsafe { from_ffi(ffi_array, &ffi_schema) }
+        .expect("from_ffi must succeed for ALP Float64 payload");
+    assert_eq!(array_data.data_type(), &DataType::Float64);
+    let array = Float64Array::from(array_data);
+
+    assert_eq!(array.len(), 4);
+    assert_eq!(array.null_count(), 1);
+    assert_eq!(array.value(0), 10.125);
+    assert_eq!(array.value(1), -3.5);
+    assert!(array.is_null(2));
+    assert_eq!(array.value(3), 10.125);
+
+    drop(array);
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Test 2: panic-safety
 // ---------------------------------------------------------------------------
@@ -259,4 +322,17 @@ fn fsst_params_for_strings(rows: &[Option<&str>]) -> Vec<u8> {
         codes_bytes,
     }
     .encode()
+}
+
+fn alp_desc(data_type: DataType, params: AlpParams) -> LayoutDescription {
+    let count = params.mantissas.len();
+    LayoutDescription {
+        data_type,
+        root: LayoutNode::KernelEscape {
+            kernel_id: 1,
+            params: params.encode(),
+            count,
+        },
+        row_count: count,
+    }
 }

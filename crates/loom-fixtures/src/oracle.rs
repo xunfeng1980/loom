@@ -46,6 +46,34 @@ pub fn decode_u32_oracle(array: &ArrayRef) -> (Vec<u32>, Vec<bool>) {
     (values, null_flags)
 }
 
+/// Decode a Vortex `ArrayRef` to `Vec<f32>` via Vortex's own execution path.
+pub fn decode_f32_oracle(array: &ArrayRef) -> (Vec<f32>, Vec<bool>) {
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = array
+        .clone()
+        .execute::<PrimitiveArray>(&mut ctx)
+        .expect("oracle execute::<PrimitiveArray> failed");
+
+    let values: Vec<f32> = canonical.as_slice::<f32>().to_vec();
+    let validity = PrimitiveArrayExt::validity(&canonical);
+    let null_flags = extract_null_flags(&validity, canonical.as_ref().len());
+    (values, null_flags)
+}
+
+/// Decode a Vortex `ArrayRef` to `Vec<f64>` via Vortex's own execution path.
+pub fn decode_f64_oracle(array: &ArrayRef) -> (Vec<f64>, Vec<bool>) {
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let canonical = array
+        .clone()
+        .execute::<PrimitiveArray>(&mut ctx)
+        .expect("oracle execute::<PrimitiveArray> failed");
+
+    let values: Vec<f64> = canonical.as_slice::<f64>().to_vec();
+    let validity = PrimitiveArrayExt::validity(&canonical);
+    let null_flags = extract_null_flags(&validity, canonical.as_ref().len());
+    (values, null_flags)
+}
+
 /// Decode a Vortex `ArrayRef` to boolean values via Vortex's own execution path.
 pub fn decode_bool_oracle(array: &ArrayRef) -> (Vec<bool>, Vec<bool>) {
     let mut ctx = LEGACY_SESSION.create_execution_ctx();
@@ -155,5 +183,28 @@ mod tests {
             vec![Some("alpha".to_owned()), None, Some("beta".to_owned())]
         );
         assert_eq!(nulls, vec![false, true, false]);
+    }
+
+    #[test]
+    fn f32_oracle_preserves_values_and_nulls() {
+        let array = PrimitiveArray::from_option_iter([Some(1.25f32), None, Some(-2.5), Some(0.0)])
+            .into_array();
+
+        let (values, nulls) = decode_f32_oracle(&array);
+
+        assert_eq!(values, vec![1.25, 0.0, -2.5, 0.0]);
+        assert_eq!(nulls, vec![false, true, false, false]);
+    }
+
+    #[test]
+    fn f64_oracle_preserves_values_and_nulls() {
+        let array =
+            PrimitiveArray::from_option_iter([Some(10.125f64), Some(-3.5), None, Some(10.125)])
+                .into_array();
+
+        let (values, nulls) = decode_f64_oracle(&array);
+
+        assert_eq!(values, vec![10.125, -3.5, 0.0, 10.125]);
+        assert_eq!(nulls, vec![false, false, true, false]);
     }
 }

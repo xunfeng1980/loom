@@ -20,9 +20,10 @@
 //! DUCK-02: Wave-0 assurance that the C ABI seam carries correct data.
 //! T-02-IDX: Arrow buffer index assumptions pinned before any C++ buffer logic.
 
-use arrow::array::{Array, StringArray};
+use arrow::array::{Array, Float32Array, Float64Array, StringArray};
 use arrow::datatypes::DataType;
 use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::alp_params::{AlpOutputType, AlpParams};
 use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
@@ -160,6 +161,32 @@ fn buffer_layout_utf8_validity_offsets_values() {
     }
 }
 
+#[test]
+fn buffer_layout_alp_float32_validity_values() {
+    assert_float_buffer_layout(
+        DataType::Float32,
+        AlpParams {
+            output_type: AlpOutputType::Float32,
+            decimal_exponent: -2,
+            mantissas: vec![125, -250, 0],
+            validity: Some(vec![true, false, true]),
+        },
+    );
+}
+
+#[test]
+fn buffer_layout_alp_float64_validity_values() {
+    assert_float_buffer_layout(
+        DataType::Float64,
+        AlpParams {
+            output_type: AlpOutputType::Float64,
+            decimal_exponent: -3,
+            mantissas: vec![10125, -3500, 0],
+            validity: Some(vec![true, true, false]),
+        },
+    );
+}
+
 fn fsst_params_for_strings(rows: &[Option<&str>]) -> Vec<u8> {
     let mut codes_offsets = Vec::with_capacity(rows.len() + 1);
     let mut uncompressed_lengths = Vec::with_capacity(rows.len());
@@ -194,4 +221,70 @@ fn fsst_params_for_strings(rows: &[Option<&str>]) -> Vec<u8> {
         codes_bytes,
     }
     .encode()
+}
+
+fn assert_float_buffer_layout(data_type: DataType, params: AlpParams) {
+    let count = params.mantissas.len();
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: data_type.clone(),
+        root: LayoutNode::KernelEscape {
+            kernel_id: 1,
+            params: params.encode(),
+            count,
+        },
+        row_count: count,
+    });
+
+    let mut array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
+    let mut schema: FFI_ArrowSchema = unsafe { std::mem::zeroed() };
+
+    let rc = unsafe {
+        loom_decode(
+            payload.as_ptr(),
+            payload.len(),
+            &mut array as *mut _,
+            &mut schema as *mut _,
+        )
+    };
+    assert_eq!(rc, 0, "loom_decode returned nonzero rc={}", rc);
+
+    assert_eq!(array.length, count as i64);
+    assert_eq!(array.null_count, 1);
+    assert_eq!(
+        array.n_buffers, 2,
+        "float array should expose validity + values"
+    );
+    assert!(
+        !array.buffers.is_null(),
+        "buffers pointer itself must be non-null"
+    );
+
+    let validity = unsafe { *array.buffers.add(0) };
+    let values = unsafe { *array.buffers.add(1) };
+    assert!(
+        !validity.is_null(),
+        "float validity buffer must be non-null"
+    );
+    assert!(!values.is_null(), "float values buffer must be non-null");
+
+    let array_data =
+        unsafe { from_ffi(array, &schema) }.expect("from_ffi must succeed for float payload");
+    assert_eq!(array_data.data_type(), &data_type);
+    match data_type {
+        DataType::Float32 => {
+            let decoded = Float32Array::from(array_data);
+            assert_eq!(decoded.null_count(), 1);
+            drop(decoded);
+        }
+        DataType::Float64 => {
+            let decoded = Float64Array::from(array_data);
+            assert_eq!(decoded.null_count(), 1);
+            drop(decoded);
+        }
+        _ => unreachable!("test helper only supports floats"),
+    }
+
+    if let Some(release_fn) = schema.release {
+        unsafe { release_fn(&mut { schema } as *mut _) };
+    }
 }

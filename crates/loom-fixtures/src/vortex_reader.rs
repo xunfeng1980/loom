@@ -279,7 +279,7 @@ fn from_dict_view<T: DictArraySlotsExt>(view: &T) -> LayoutNode {
     }
 }
 
-fn from_array_ref(array: &ArrayRef) -> LayoutNode {
+pub fn from_array_ref(array: &ArrayRef) -> LayoutNode {
     if let Some(view) = array.as_opt::<vortex_fastlanes::BitPacked>() {
         return from_bitpacked_view(&view);
     }
@@ -344,6 +344,24 @@ fn primitive_to_raw(arr: &PrimitiveArray) -> LayoutNode {
         PType::I64 => LayoutNode::Raw {
             data: arr
                 .as_slice::<i64>()
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 8,
+            count: arr.as_ref().len(),
+        },
+        PType::F32 => LayoutNode::Raw {
+            data: arr
+                .as_slice::<f32>()
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+            elem_size: 4,
+            count: arr.as_ref().len(),
+        },
+        PType::F64 => LayoutNode::Raw {
+            data: arr
+                .as_slice::<f64>()
                 .iter()
                 .flat_map(|v| v.to_le_bytes())
                 .collect(),

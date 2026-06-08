@@ -1,6 +1,6 @@
 //! Descriptor roundtrip coverage for real MVP0 fixture layouts.
 
-use arrow::array::{Array, Int32Array, StringArray};
+use arrow::array::{Array, Float32Array, Float64Array, Int32Array, StringArray};
 use arrow_schema::DataType;
 use loom_core::descriptor::{
     descriptor_text_to_payload, from_descriptor_text, payload_to_descriptor_text,
@@ -64,6 +64,16 @@ fn assert_descriptor_decodes_like_original(name: &str, desc: &LayoutDescription)
             let actual = decode_utf8(&parsed);
             assert_eq!(actual, expected, "utf8 decode mismatch for {name}");
         }
+        DataType::Float32 => {
+            let expected = decode_f32(desc);
+            let actual = decode_f32(&parsed);
+            assert_eq!(actual, expected, "f32 decode mismatch for {name}");
+        }
+        DataType::Float64 => {
+            let expected = decode_f64(desc);
+            let actual = decode_f64(&parsed);
+            assert_eq!(actual, expected, "f64 decode mismatch for {name}");
+        }
         ref other => panic!("unsupported descriptor fixture data type {other:?}"),
     }
 }
@@ -93,6 +103,36 @@ fn decode_utf8(desc: &LayoutDescription) -> Vec<Option<String>> {
                 None
             } else {
                 Some(array.value(row).to_string())
+            }
+        })
+        .collect()
+}
+
+fn decode_f32(desc: &LayoutDescription) -> Vec<Option<f32>> {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let data = decode_layout_to_array_data(desc, &registry).expect("decode f32 descriptor");
+    let array = Float32Array::from(data);
+    (0..array.len())
+        .map(|row| {
+            if array.is_null(row) {
+                None
+            } else {
+                Some(array.value(row))
+            }
+        })
+        .collect()
+}
+
+fn decode_f64(desc: &LayoutDescription) -> Vec<Option<f64>> {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let data = decode_layout_to_array_data(desc, &registry).expect("decode f64 descriptor");
+    let array = Float64Array::from(data);
+    (0..array.len())
+        .map(|row| {
+            if array.is_null(row) {
+                None
+            } else {
+                Some(array.value(row))
             }
         })
         .collect()
@@ -217,4 +257,28 @@ fn make_fsst(rows: &[Option<&str>]) -> vortex_fsst::FSSTArray {
     let compressor = vortex_fsst::fsst_train_compressor(&values);
     let mut ctx = LEGACY_SESSION.create_execution_ctx();
     vortex_fsst::fsst_compress(&values, values.len(), values.dtype(), &compressor, &mut ctx)
+}
+
+#[test]
+fn descriptor_roundtrips_raw_float_samples() {
+    assert_descriptor_decodes_like_original("raw-f32", &raw_f32_desc());
+    assert_descriptor_decodes_like_original("raw-f64", &raw_f64_desc());
+}
+
+fn raw_f32_desc() -> LayoutDescription {
+    let input = PrimitiveArray::from_iter([1.25f32, -2.5, 0.0, 1.25]);
+    LayoutDescription {
+        data_type: DataType::Float32,
+        root: vortex_reader::from_array_ref(&input.into_array()),
+        row_count: 4,
+    }
+}
+
+fn raw_f64_desc() -> LayoutDescription {
+    let input = PrimitiveArray::from_iter([10.125f64, -3.5, 0.0, 10.125]);
+    LayoutDescription {
+        data_type: DataType::Float64,
+        root: vortex_reader::from_array_ref(&input.into_array()),
+        row_count: 4,
+    }
 }
