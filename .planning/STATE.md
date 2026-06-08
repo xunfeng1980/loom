@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 23 23-01 complete; execute 23-02 compiled loom.decode ODS dialect evidence next
-last_updated: "2026-06-08T14:58:03.000Z"
-last_activity: 2026-06-08 -- Phase 23 23-01 backend contract/runtime-plan bridge complete
+stopped_at: Phase 23 23-02 complete; execute 23-03 production melior and LLVM lowering pipeline next
+last_updated: "2026-06-08T15:02:38.000Z"
+last_activity: 2026-06-08 -- Phase 23 23-02 compiled loom.decode ODS dialect evidence complete
 progress:
   total_phases: 28
   completed_phases: 22
   total_plans: 92
-  completed_plans: 88
-  percent: 80
+  completed_plans: 89
+  percent: 81
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 23 — Production Native Backend Implementation (23-02 next)
+**Current focus:** Phase 23 — Production Native Backend Implementation (23-03 next)
 
 ## Current Position
 
 Phase: 23 (Production Native Backend Implementation) — EXECUTING
-Plan: 2 of 5
-Status: 23-01 complete; execute 23-02 compiled `loom.decode` ODS dialect evidence next
-Last activity: 2026-06-08 -- Phase 23 23-01 backend contract/runtime-plan bridge complete
+Plan: 3 of 5
+Status: 23-02 complete; execute 23-03 production melior and LLVM lowering pipeline next
+Last activity: 2026-06-08 -- Phase 23 23-02 compiled loom.decode ODS dialect evidence complete
 
-Progress: 80%
+Progress: 81%
 
 ## Progress Snapshot
 
 - Completed phases: 22 / 28
-- Completed executable plans: 88 / 92
+- Completed executable plans: 89 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 23 production native backend implementation is executing; 23-02 is next
+- Current position: Phase 23 production native backend implementation is executing; 23-03 is next
 - Last verified gate: Phase 22 focused gate passed; `scripts/runtime-abi-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
@@ -54,7 +54,7 @@ Progress: 80%
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
 | 22 | Host native runtime ABI and execution policy | 5/5 complete |
-| 23 | Production native backend implementation | 1/5 executing |
+| 23 | Production native backend implementation | 2/5 executing |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -154,6 +154,7 @@ None yet.
 - Phase 23 research/planning started: recommended a host-neutral production backend boundary in `loom-native-melior` that consumes Phase 22 `RuntimePlan`/`RuntimeCacheKey`, keeps public `loom_runtime.h` unfrozen, records backend/toolchain/pipeline/target identity, adds ODS/TableGen evidence for `loom.decode`, promotes melior/LLVM lowering into a production pipeline, seeds verifier-gated JIT execution over supported primitive kernels, and release-gates the backend before Phase 24 DuckDB integration.
 - Phase 23 planned: 23-01 through 23-05 cover the backend contract/runtime-plan bridge, compiled `loom.decode` ODS dialect evidence, production melior/LLVM lowering pipeline, verifier-gated JIT execution plus interpreter equivalence, and backend release-gate/report/Phase 24 handoff.
 - Phase 23 executing: 23-01 complete with `23-BACKEND-CONTRACT.md`, `loom_native_melior::backend`, stable backend identity/diagnostics/cancellation modeling, runtime-plan/cache-key preflight validation, and focused `production_backend_contract` tests.
+- Phase 23 executing: 23-02 complete with `loom.decode` ODS/TableGen sources, Rust manifest drift checks against the Phase 20 textual surface, default MLIR-free manifest tests, and `scripts/production-backend-test.sh` strict `mlir-tblgen` validation.
 - Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime ABI, mapping bind/init/local-init to plan/scan/worker and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
@@ -216,8 +217,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T14:58:03.000Z
-Stopped at: Phase 23 23-01 complete; execute 23-02 compiled loom.decode ODS dialect evidence next
+Last session: 2026-06-08T15:02:38.000Z
+Stopped at: Phase 23 23-02 complete; execute 23-03 production melior and LLVM lowering pipeline next
 
 Phase 17 handoff:
 
