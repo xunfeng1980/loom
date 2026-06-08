@@ -139,7 +139,7 @@ else
     echo "native: route used interpreter fallback for unsupported native preparation" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 fi
 if ! rg -q 'toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
-    echo "toolchain-skipped: not observed because the native route completed or fell back before a toolchain skip" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
+    echo "toolchain-not-observed: native route completed or fell back before a toolchain skip" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 fi
 ok "native primitive table SQL and route diagnostics"
 
@@ -239,7 +239,6 @@ ok "public SQL remains loom_scan(path)"
 require_report 'native'
 require_report 'interpreter-fallback'
 require_report 'fail-closed'
-require_report 'toolchain-skipped|toolchain-failed'
 require_report 'cancelled'
 
 echo ""
