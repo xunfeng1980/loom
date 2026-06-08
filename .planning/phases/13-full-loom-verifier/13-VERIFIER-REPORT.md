@@ -160,8 +160,9 @@ git diff --check
 ```
 
 `scripts/full-verifier-test.sh` checks Phase 13 documents, `VERIFIER-01` through
-`VERIFIER-10`, Rust model/verifier tests, CLI visibility, Lean when installed,
-and TLC when installed.
+`VERIFIER-10`, Rust model/verifier tests, CLI visibility, managed Lean, and
+managed TLC. Install the required formal tools with `mise install && mise run
+formal-tools`; missing Lean or TLC is a gate failure, not skipped evidence.
 
 ## Requirement Closure
 

@@ -15,8 +15,8 @@
 - Added `specs/tla/LoomVerifierPipeline.tla` and `.cfg` with lifecycle states
   and the `LoweredImpliesVerified` invariant.
 - Added `scripts/full-verifier-test.sh`, a repeatable Phase 13 gate that checks
-  docs, obligation IDs, Rust model/verifier tests, CLI visibility, Lean when
-  installed, and TLC when installed.
+  docs, obligation IDs, Rust model/verifier tests, CLI visibility, managed Lean,
+  and managed TLC.
 - Updated the proof-obligation matrix with Lean/Rocq and TLA+ evidence for
   `VERIFIER-09` and `VERIFIER-10`.
 
@@ -30,8 +30,8 @@ rg -n "VERIFIER-09|VERIFIER-10|accepted_program_safe|LoweredImpliesVerified|full
 git diff --check
 ```
 
-Lean and TLC were not installed in this environment, so the gate reported both
-optional checks as skipped.
+Post-phase tooling update: Lean and TLC are now managed by `mise run
+formal-tools`; the full-verifier gate fails when either tool is unavailable.
 
 ## Result
 

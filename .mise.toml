@@ -1,0 +1,12 @@
+[tools]
+java = "temurin-21.0.8+9.0.LTS"
+
+[tasks.formal-tools]
+description = "Install Lean and TLC tools required by formal verifier gates"
+run = "scripts/install-formal-tools.sh"
+
+[tasks.full-verifier]
+description = "Run Phase 13 full-verifier gate with required formal tools"
+depends = ["formal-tools"]
+run = "scripts/full-verifier-test.sh"
+

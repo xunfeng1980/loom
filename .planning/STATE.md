@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 21 planned; execution next
-last_updated: "2026-06-08T13:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 21 planned
+stopped_at: Formal tools managed and verified; Phase 21 execution next
+last_updated: "2026-06-08T13:26:00.000Z"
+last_activity: 2026-06-08 -- Lean/TLC formal tools managed and full gate verified
 progress:
   total_phases: 27
   completed_phases: 20
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 Phase: 21 (expanded-vortex-encoding-coverage) — PLANNED
 Plan: 21-01 through 21-05 planned; execution next
 Status: Phase 21 is planned across five executable slices: coverage/disposition matrix, nullable and chunked primitive coverage, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression classification, and release-gate/report handoff to Phase 22/23.
-Last activity: 2026-06-08 -- Phase 21 planned
+Last activity: 2026-06-08 -- Lean/TLC formal tools managed and full gate verified
 
 Progress: 74%
 
@@ -38,7 +38,7 @@ Progress: 74%
 - Completed executable plans: 77 / 82
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 21 expanded Vortex encoding coverage is planned; execution is next
-- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including the Phase 20 production native-lowering gate in normal and strict mode with LLVM/MLIR 22.1.7
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including managed Lean/TLC formal checks, Bitwuzla solver evidence, and the Phase 20 production native-lowering gate in normal and strict mode with LLVM/MLIR 22.1.7
 
 **Completed phase plan counts:**
 

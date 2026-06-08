@@ -69,6 +69,10 @@ Invalidate ==
   /\ resourceBounded' = FALSE
   /\ verifiedFactsPresent' = FALSE
 
+TerminalStutter ==
+  /\ state = Invalidated
+  /\ UNCHANGED <<state, verifierAccepted, requiredFeaturesAccepted, resourceBounded, verifiedFactsPresent>>
+
 Next ==
   \/ Parse
   \/ VerifyOk
@@ -76,6 +80,7 @@ Next ==
   \/ MakeLowerable
   \/ Lower
   \/ Invalidate
+  \/ TerminalStutter
 
 Spec ==
   Init /\ [][Next]_<<state, verifierAccepted, requiredFeaturesAccepted, resourceBounded, verifiedFactsPresent>>
@@ -88,4 +93,3 @@ LoweredImpliesVerified ==
     /\ verifiedFactsPresent
 
 ====
-

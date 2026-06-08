@@ -25,6 +25,10 @@ Loom 是一种**随数据分发的解码器表示**:面向服务端数据引擎,
 
 验收边界:generated fixtures 的 DuckDB SQL 行/聚合结果与 oracle 一致;curated negative verifier/container/artifact-verifier/safety/full-verifier/native-lowering/ingress/backend case 会在 successful output 前 fail closed。
 
+形式化工具边界:full-verifier gate 必须实际运行 Lean 和 TLC。使用
+`mise install && mise run formal-tools`;缺失形式化工具是失败,不是 skipped
+evidence。
+
 ---
 
 ## 1. 目标与非目标

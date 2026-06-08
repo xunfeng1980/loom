@@ -1,2 +1,5 @@
 # Rust build artifacts — never commit the target directory.
 /target
+
+# Project-local downloaded tool artifacts.
+/.tools

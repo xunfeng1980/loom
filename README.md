@@ -25,6 +25,10 @@ The repository has moved beyond MVP0 and is now in the **MVP1 / v3 distribution 
 
 Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/artifact-verifier/safety/full-verifier/native-lowering/ingress/backend cases must fail closed before successful output.
 
+Formal tool boundary: Lean and TLC are required for the full-verifier gate. Use
+`mise install && mise run formal-tools`; missing formal tools are failures, not
+skipped evidence.
+
 ---
 
 ## 1. Goals and Non-Goals
