@@ -8,4 +8,6 @@
 
 pub mod source_contract;
 
-pub use source_contract::parquet_source_facts_from_path;
+pub use source_contract::{
+    parquet_source_facts_from_path, source_ingress_report_from_parquet_path,
+};

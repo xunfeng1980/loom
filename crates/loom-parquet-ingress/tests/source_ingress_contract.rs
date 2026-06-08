@@ -8,7 +8,9 @@ use arrow_array::{
     StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_parquet_ingress::{parquet_source_facts_from_path, source_ingress_report_from_parquet_path};
+use loom_parquet_ingress::{
+    parquet_source_facts_from_path, source_ingress_report_from_parquet_path,
+};
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
     SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,

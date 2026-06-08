@@ -61,6 +61,20 @@ pub fn parquet_source_facts_from_path(path: &Path) -> Result<SourceFacts, Source
     ))
 }
 
+/// Build a byte-free source ingress report for a local Parquet file.
+///
+/// Plan 27-02 classifies supported Parquet shapes in `SourceCoverage`, but does
+/// not emit artifact bytes or construct accepted reports.
+pub fn source_ingress_report_from_parquet_path(path: &Path) -> SourceIngressReport {
+    match parquet_source_facts_from_path(path) {
+        Ok(facts) => {
+            let diagnostic = diagnostic_for_facts(&facts);
+            SourceIngressReport::unsupported(Some(facts), diagnostic)
+        }
+        Err(report) => report,
+    }
+}
+
 fn source_facts_from_metadata(
     path: &Path,
     schema: &SchemaRef,
@@ -259,6 +273,50 @@ fn unsupported_note(schema: &Schema) -> String {
     } else {
         "Parquet schema is outside the non-null Int32/Int64/Float32/Float64 slice".to_string()
     }
+}
+
+fn diagnostic_for_facts(facts: &SourceFacts) -> SourceDiagnostic {
+    if facts
+        .coverage
+        .as_ref()
+        .is_some_and(|coverage| coverage.support == SourceIngressStatus::Accepted)
+    {
+        return SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.emission",
+            "Parquet source shape is supported for canonical emission, but artifact bytes are deferred to a later plan",
+        );
+    }
+
+    if facts
+        .schema_facts
+        .iter()
+        .any(|fact| fact.nullable == Some(true))
+    {
+        return SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedSchema,
+            "$.schema",
+            "nullable Parquet fields are outside the supported emission slice",
+        );
+    }
+
+    if facts
+        .schema_facts
+        .iter()
+        .any(|fact| matches!(fact.logical_kind.as_str(), "nested" | "dictionary"))
+    {
+        return SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedSchema,
+            "$.schema",
+            "nested or dictionary Parquet fields are outside the supported emission slice",
+        );
+    }
+
+    SourceDiagnostic::new(
+        SourceDiagnosticCode::UnsupportedConversion,
+        "$.schema",
+        "Parquet schema is valid but cannot be converted to a Phase 27 Loom artifact",
+    )
 }
 
 fn logical_kind(data_type: &DataType) -> &'static str {
