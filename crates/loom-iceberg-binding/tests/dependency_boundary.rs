@@ -209,7 +209,9 @@ fn focused_gate_is_wired_after_lance_parquet_and_before_duckdb_smoke() {
         .find("scripts/duckdb-smoke-test.sh")
         .expect("DuckDB smoke gate");
     assert!(
-        source_pos < lance_parquet_pos && lance_parquet_pos < iceberg_pos && iceberg_pos < duckdb_pos,
+        source_pos < lance_parquet_pos
+            && lance_parquet_pos < iceberg_pos
+            && iceberg_pos < duckdb_pos,
         "Phase 28 gate must run after Phase 27 and before DuckDB smoke"
     );
 }

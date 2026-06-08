@@ -92,11 +92,15 @@ fn make_fsst_fixture() -> Utf8Fixture {
     let rows = (0..1024)
         .map(|i| Some(format!("phase7-string-{i:04}")))
         .collect::<Vec<_>>();
-    let refs = rows.iter().map(|value| value.as_deref()).collect::<Vec<_>>();
+    let refs = rows
+        .iter()
+        .map(|value| value.as_deref())
+        .collect::<Vec<_>>();
     let values = VarBinArray::from_iter(refs, DType::Utf8(Nullability::Nullable));
     let compressor = vortex_fsst::fsst_train_compressor(&values);
     let mut ctx = LEGACY_SESSION.create_execution_ctx();
-    let fsst = vortex_fsst::fsst_compress(&values, values.len(), values.dtype(), &compressor, &mut ctx);
+    let fsst =
+        vortex_fsst::fsst_compress(&values, values.len(), values.dtype(), &compressor, &mut ctx);
     let array = fsst.as_array().clone();
     let desc = LayoutDescription {
         data_type: DataType::Utf8,

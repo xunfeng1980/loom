@@ -29,11 +29,11 @@ use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
+use loom_solver_smt::{verify_artifact_with_l2_core_and_bitwuzla, SolverRunOptions};
 use loom_vortex_ingress::{
     emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, reader_facts_from_vortex_path,
     VortexIngressReport, VortexReaderEmissionKind,
 };
-use loom_solver_smt::{verify_artifact_with_l2_core_and_bitwuzla, SolverRunOptions};
 
 fn main() {
     if let Err(err) = run() {
@@ -68,9 +68,7 @@ fn run() -> Result<(), String> {
             }
             verify_l2core(&mode)
         }
-        "verify-artifact" => {
-            verify_artifact_cli(args.collect())
-        }
+        "verify-artifact" => verify_artifact_cli(args.collect()),
         "ingest-vortex" => {
             let mode = args.next().ok_or_else(usage)?;
             ingest_vortex(&mode, args.collect())

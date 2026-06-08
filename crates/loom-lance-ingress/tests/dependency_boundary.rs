@@ -18,7 +18,10 @@ fn dependency_sections(text: &str) -> Vec<&str> {
 
     for line in text.lines() {
         let trimmed = line.trim();
-        if matches!(trimmed, "[dependencies]" | "[dev-dependencies]" | "[build-dependencies]") {
+        if matches!(
+            trimmed,
+            "[dependencies]" | "[dev-dependencies]" | "[build-dependencies]"
+        ) {
             in_dependency_section = true;
             continue;
         }

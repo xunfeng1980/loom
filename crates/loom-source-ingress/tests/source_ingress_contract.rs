@@ -1,8 +1,7 @@
 use loom_source_ingress::{
-    SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic,
-    SourceDiagnosticCode, SourceDiagnosticFamily, SourceEmissionDisposition, SourceEmissionKind,
-    SourceFacts, SourceIdentity, SourceIngressAcceptedArtifact, SourceIngressReport,
-    SourceIngressStatus,
+    SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic, SourceDiagnosticCode,
+    SourceDiagnosticFamily, SourceEmissionDisposition, SourceEmissionKind, SourceFacts,
+    SourceIdentity, SourceIngressAcceptedArtifact, SourceIngressReport, SourceIngressStatus,
     SourceLayoutFact, SourceLoweringDisposition, SourceOracleEvidence, SourceOracleStrategy,
     SourceSchemaFact, SourceSegmentFact, SourceSplitFact,
 };
@@ -104,9 +103,8 @@ fn crate_manifest_documents_and_enforces_dependency_hygiene() {
 fn contract_sources_do_not_contain_source_specific_public_vocabulary() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let source = std::fs::read_to_string(format!("{manifest_dir}/src/lib.rs")).expect("read src");
-    let tests =
-        std::fs::read_to_string(format!("{manifest_dir}/tests/source_ingress_contract.rs"))
-            .expect("read tests");
+    let tests = std::fs::read_to_string(format!("{manifest_dir}/tests/source_ingress_contract.rs"))
+        .expect("read tests");
 
     for marker in forbidden_source_markers() {
         assert!(
@@ -127,10 +125,14 @@ fn mock_identity() -> SourceIdentity {
 fn mock_facts(row_count: u64) -> SourceFacts {
     let mut facts = SourceFacts::new(mock_identity(), row_count);
     facts.root_schema = Some(SourceSchemaFact::new("$", "primitive"));
-    facts.schema_facts.push(SourceSchemaFact::new("$", "primitive"));
+    facts
+        .schema_facts
+        .push(SourceSchemaFact::new("$", "primitive"));
     facts.layout_facts.push(SourceLayoutFact::new("$", "raw"));
     facts.segment_facts.push(SourceSegmentFact::new(0, 0, 16));
-    facts.split_facts.push(SourceSplitFact::new(0, 0, row_count));
+    facts
+        .split_facts
+        .push(SourceSplitFact::new(0, 0, row_count));
     facts.coverage = Some(SourceCoverage::new("primitive", "raw", "primitive"));
     facts
 }

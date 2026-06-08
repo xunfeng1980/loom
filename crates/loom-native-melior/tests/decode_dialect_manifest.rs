@@ -100,6 +100,10 @@ fn manifest_covers_expected_primitive_kernel_surface() {
 #[test]
 fn default_manifest_tests_do_not_require_mlir_tblgen() {
     for path in ods_source_paths() {
-        assert!(path.exists(), "expected ODS source path to exist: {}", path.display());
+        assert!(
+            path.exists(),
+            "expected ODS source path to exist: {}",
+            path.display()
+        );
     }
 }
