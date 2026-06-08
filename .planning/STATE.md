@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 24-03-PLAN.md
-last_updated: "2026-06-08T16:32:27.133Z"
-last_activity: 2026-06-08 -- Completed Phase 24 Plan 03
+stopped_at: Completed 24-04-PLAN.md
+last_updated: "2026-06-08T16:39:58.018Z"
+last_activity: 2026-06-08 -- Completed Phase 24 Plan 04
 progress:
   total_phases: 30
   completed_phases: 18
   total_plans: 97
-  completed_plans: 76
-  percent: 78
+  completed_plans: 77
+  percent: 79
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 24 (duckdb-native-execution-integration-mvp) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
-Last activity: 2026-06-08 -- Completed Phase 24 Plan 03
+Last activity: 2026-06-08 -- Completed Phase 24 Plan 04
 
-Progress: 78%
+Progress: 79%
 
 ## Progress Snapshot
 
 - Completed phases: 23 / 30
-- Completed executable plans: 93 / 97
+- Completed executable plans: 94 / 97
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 Plan 03 complete; Plan 04 is next
+- Current position: Phase 24 Plan 04 complete; Plan 05 is next
 - Last verified gate: Phase 23 focused backend gate passed; `scripts/production-backend-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
@@ -93,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 24]: [Phase 24 P03]: DuckDB C++ consumes internal Rust route decisions instead of duplicating native eligibility policy. — Plan 24-03 lifecycle adapter uses loom_duckdb_* route reports from Rust.
 - [Phase 24]: [Phase 24 P03]: Projection pushdown is enabled internally through TableFunctionInitInput::column_ids while public SQL remains loom_scan(path). — Preserves D-10 and D-13 without adding public SQL mode parameters.
 - [Phase 24]: [Phase 24 P03]: Phase 24 keeps single-worker, single-batch direct DataChunk output; local worker state and stream APIs remain deferred. — Matches D-03/D-11 and keeps Phase 25 responsible for concurrency/cache hardening.
+- [Phase 24]: [Phase 24 P04]: Native DuckDB output remains an internal direct DataChunk fill path, not a public ArrowArrayStream or record-batch ABI. — Preserves D-05/D-13 while letting DuckDB consume prepared native primitive buffers.
+- [Phase 24]: [Phase 24 P04]: Native primitive buffers must match pointer, exact byte length, Arrow type, projected Loom kind, and DuckDB vector type before row emission. — Enforces T-24-04-01 and D-08 at the adapter boundary.
+- [Phase 24]: [Phase 24 P04]: LoomScan sets positive cardinality only after all selected native or interpreter columns fill successfully. — Keeps mismatch/cancel/fail-closed routes from emitting partial rows.
 
 ### Pending Todos
 
@@ -235,8 +238,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T16:32:05.049Z
-Stopped at: Completed 24-03-PLAN.md
+Last session: 2026-06-08T16:39:58.010Z
+Stopped at: Completed 24-04-PLAN.md
 
 Phase 17 handoff:
 
@@ -291,3 +294,4 @@ Resume file: None
 |-------|------|----------|-------|
 | Phase 24 P02 | 5min | 2 tasks | 5 files |
 | Phase 24-duckdb-native-execution-integration-mvp P03 | 5min | 2 tasks | 1 files |
+| Phase 24-duckdb-native-execution-integration-mvp P04 | 8min | 2 tasks | 1 files |
