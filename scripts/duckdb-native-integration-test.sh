@@ -136,7 +136,7 @@ native_out="${TMP_DIR}/native-agg.csv"
 sql_to_file "SELECT COUNT(*), SUM(i32_col), SUM(i64_col) FROM loom_scan('${native_payload}')" "${native_out}"
 [ "$(cat "${native_out}")" = "4,10,100" ] || fail "native primitive aggregate mismatch: $(cat "${native_out}")"
 require_report 'route=native-candidate'
-require_report 'native-raw-copy-output'
+require_report 'native-execution-engine-output'
 if rg -q 'interpreter-fallback|toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
     echo "Route report:" >&2
     cat "${LOOM_DUCKDB_TEST_ROUTE_REPORT}" >&2

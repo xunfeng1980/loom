@@ -1,0 +1,3 @@
+[env]
+MLIR_SYS_220_PREFIX = { value = "/opt/homebrew/opt/llvm", force = false }
+TABLEGEN_220_PREFIX = { value = "/opt/homebrew/opt/llvm", force = false }

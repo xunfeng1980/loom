@@ -38,7 +38,8 @@ use loom_native_melior::backend::{
     NativeBackendReport, NativeBackendRequestInput, NativeBackendStatus, NATIVE_BACKEND_NAME,
 };
 use loom_native_melior::jit::{
-    compare_production_jit_output, ProductionJitOutput, PRODUCTION_JIT_ENTRY_SYMBOL,
+    compare_production_jit_output, execute_prepared_production_jit, ProductionJitOptions,
+    ProductionJitOutput, PRODUCTION_JIT_ENTRY_SYMBOL,
 };
 use loom_native_melior::pipeline::{
     validate_and_prepare_production_backend, ProductionBackendPipelineOptions,
@@ -918,7 +919,7 @@ pub fn prepare_duckdb_runtime(
         cache_hit = true;
         cached
     } else if plan_report.artifact_value_buffers.is_some() {
-        accepted_raw_copy_backend_report(request_input.clone(), &mut diagnostics)
+        accepted_execution_engine_backend_report(request_input.clone(), &mut diagnostics)
     } else {
         validate_and_prepare_production_backend(
             request_input.clone(),
@@ -929,7 +930,7 @@ pub fn prepare_duckdb_runtime(
     if !cancellation.cancelled && !cache_hit {
         if let Some(test_buffers) = plan_report.test_jit_value_buffers.as_ref() {
             backend_report =
-                accepted_raw_copy_backend_report(request_input.clone(), &mut diagnostics);
+                accepted_execution_engine_backend_report(request_input.clone(), &mut diagnostics);
             diagnostics.push(DuckDbRuntimeDiagnostic {
                 code: "test-jit-output".to_string(),
                 path: "$.policy.test_native_facts.test_jit_value_buffers".to_string(),
@@ -1013,19 +1014,37 @@ pub fn prepare_duckdb_runtime(
             value_buffers: test_buffers,
         }
     } else {
-        diagnostics.push(DuckDbRuntimeDiagnostic {
-            code: "native-raw-copy-output".to_string(),
-            path: "$.artifact.raw_value_buffers".to_string(),
-            message: format!(
-                "native raw-copy produced {} value buffer(s) from Raw primitive artifact bytes",
-                expected_buffers.len()
-            ),
-        });
-        ProductionJitOutput {
-            entry_symbol: PRODUCTION_JIT_ENTRY_SYMBOL.to_string(),
-            row_count: lowering_facts.shape.row_count(),
-            column_count: lowering_facts.shape.columns().len(),
-            value_buffers: expected_buffers.clone(),
+        match execute_prepared_production_jit(
+            &backend_report,
+            &cancellation,
+            ProductionJitOptions {
+                require_compatible_toolchain: true,
+                input_value_buffers: expected_buffers.clone(),
+            },
+        ) {
+            Ok(output) => {
+                diagnostics.push(DuckDbRuntimeDiagnostic {
+                    code: "native-execution-engine-output".to_string(),
+                    path: "$.jit.output".to_string(),
+                    message: format!(
+                        "MLIR ExecutionEngine produced {} native value buffer(s)",
+                        output.value_buffers.len()
+                    ),
+                });
+                output
+            }
+            Err(report) => {
+                diagnostics.extend(backend_diagnostics(&report));
+                diagnostics.push(cache_non_cacheable_diagnostic(
+                    "native JIT execution failed before comparison",
+                ));
+                return DuckDbPreparedRoute {
+                    decision: decision_for_backend_status(report.status, plan_report.policy),
+                    backend_report: Some(report),
+                    native_buffers: Vec::new(),
+                    diagnostics,
+                };
+            }
         }
     };
 
@@ -1362,16 +1381,16 @@ fn native_buffers_from_output(
         .collect()
 }
 
-fn accepted_raw_copy_backend_report(
+fn accepted_execution_engine_backend_report(
     request_input: NativeBackendRequestInput,
     diagnostics: &mut Vec<DuckDbRuntimeDiagnostic>,
 ) -> NativeBackendReport {
     match validate_backend_request(request_input) {
         Ok(request) => {
             diagnostics.push(DuckDbRuntimeDiagnostic {
-                code: "native-raw-copy-backend".to_string(),
-                path: "$.backend.raw_copy".to_string(),
-                message: "accepted verified Raw primitive native-copy backend request".to_string(),
+                code: "native-execution-engine-backend".to_string(),
+                path: "$.backend.execution_engine".to_string(),
+                message: "accepted verified MLIR ExecutionEngine backend request".to_string(),
             });
             NativeBackendReport::accepted_pipeline(
                 &request,
@@ -1379,7 +1398,7 @@ fn accepted_raw_copy_backend_report(
                 PRODUCTION_JIT_ENTRY_SYMBOL,
                 request.lowering_facts.shape.row_count(),
                 request.lowering_facts.shape.columns().len(),
-                "phase=24;backend=duckdb-raw-copy;execution=artifact-value-buffer-copy",
+                "phase=24;backend=melior-execution-engine;execution=mlir-raw-copy",
             )
         }
         Err(report) => report,

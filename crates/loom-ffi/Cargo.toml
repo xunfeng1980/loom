@@ -12,7 +12,7 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 loom-core          = { path = "../loom-core" }
-loom-native-melior = { path = "../loom-native-melior" }
+loom-native-melior = { path = "../loom-native-melior", features = ["melior"] }
 arrow              = { workspace = true, features = ["ffi"] }
 
 [build-dependencies]

@@ -3,7 +3,7 @@ use loom_core::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
 use loom_core::arrow_buffer_lowering::{
-    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes, ArrowTableBufferPlan,
+    plan_arrow_buffers_from_decode_dialect, ArrowTableBufferPlan,
 };
 use loom_core::full_verifier::FullVerificationReport;
 use loom_core::l2_core::L2CoreProgram;
@@ -185,11 +185,11 @@ fn execute_raw_copy_mlir(
     input_value_buffers: &[Vec<u8>],
 ) -> Result<Vec<Vec<u8>>, NativeBackendDiagnostic> {
     if input_value_buffers.is_empty() {
-        return Ok(table
-            .columns
-            .iter()
-            .map(reference_zeroed_value_bytes)
-            .collect());
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.input_value_buffers",
+            "production JIT requires explicit artifact input value buffers",
+        ));
     }
 
     if input_value_buffers.len() != table.columns.len() {

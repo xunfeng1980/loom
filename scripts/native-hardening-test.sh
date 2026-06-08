@@ -208,7 +208,7 @@ cmp -s "${first_native}" "${second_native}" || fail "identical scan aggregate ou
 [ "$(cat "${first_native}")" = "4,10,100,12.0,7.0" ] || \
     fail "native aggregate mismatch: $(cat "${first_native}")"
 require_report 'route=native-candidate'
-require_report 'native-raw-copy-output'
+require_report 'native-execution-engine-output'
 require_report 'cache-miss'
 require_report 'cache-inserted'
 require_report 'cache-hit'
