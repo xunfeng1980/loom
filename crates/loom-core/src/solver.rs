@@ -220,11 +220,7 @@ pub struct SmtLibScript {
 }
 
 impl SmtLibScript {
-    pub fn required_qfbv(
-        id: impl Into<String>,
-        text: String,
-        obligation_ids: Vec<String>,
-    ) -> Self {
+    pub fn required_qfbv(id: impl Into<String>, text: String, obligation_ids: Vec<String>) -> Self {
         let id = id.into();
         let deterministic_id = deterministic_text_id(&id, &text);
         Self {
@@ -414,11 +410,7 @@ pub fn emit_required_qfbv_script(
     text.push_str("; loom-smt-primary-backend bitwuzla\n\n");
 
     for var in vars {
-        let _ = writeln!(
-            text,
-            "(declare-const {} (_ BitVec 64))",
-            smt_symbol(&var)
-        );
+        let _ = writeln!(text, "(declare-const {} (_ BitVec 64))", smt_symbol(&var));
     }
     if !constraints.is_empty() {
         text.push('\n');
@@ -428,11 +420,7 @@ pub fn emit_required_qfbv_script(
     for (idx, constraint) in constraints.iter().enumerate() {
         let name = format!("bad_{}_{}", sanitize_symbol(constraint.id()), idx);
         let bad = bad_state_qfbv(constraint);
-        let _ = writeln!(
-            text,
-            "(assert (! {bad} :named {}))",
-            smt_symbol(&name)
-        );
+        let _ = writeln!(text, "(assert (! {bad} :named {}))", smt_symbol(&name));
         obligation_ids.push(constraint.id().to_string());
     }
 
@@ -507,7 +495,10 @@ fn bad_state_qfbv(constraint: &LoomConstraint) -> String {
         } => {
             let left = term_qfbv_with_type(left, ty);
             let right = term_qfbv_with_type(right, ty);
-            format!("(and (not (= {right} {})) (bvult (bvmul {left} {right}) {left}))", bv_const(0, bits_for_type(ty)))
+            format!(
+                "(and (not (= {right} {})) (bvult (bvmul {left} {right}) {left}))",
+                bv_const(0, bits_for_type(ty))
+            )
         }
         LoomConstraint::InRange {
             value,

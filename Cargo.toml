@@ -7,6 +7,7 @@ members = [
     "crates/loom-cli",
     "crates/loom-vortex-ingress",
     "crates/loom-native-melior",
+    "crates/loom-solver-smt",
 ]
 
 # Shared dependency versions — all downstream crates reference these via `.workspace = true`.

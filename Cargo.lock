@@ -1617,6 +1617,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-solver-smt"
+version = "0.1.0"
+dependencies = [
+ "loom-core",
+]
+
+[[package]]
 name = "loom-vortex-ingress"
 version = "0.1.0"
 dependencies = [

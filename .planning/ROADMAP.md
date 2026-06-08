@@ -552,7 +552,7 @@ LMC1 artifact
 
 ### Phase 19: Solver-backed Full Artifact Verifier
 
-**Status:** Planned. See `.planning/phases/19-solver-backed-full-artifact-verifier/19-01-PLAN.md` through `19-05-PLAN.md`.
+**Status:** In Progress (3/5 plans complete). See `.planning/phases/19-solver-backed-full-artifact-verifier/19-01-PLAN.md` through `19-05-PLAN.md`.
 **Depends on:** Phase 16, Phase 17, and Phase 18.
 **Ordering decision:** Upgrade the Phase 17 unified artifact pipeline from collected obligations to solver-backed verifier evidence before production native expansion. Phase 18 must come first so the verifier targets real complete-reader facts instead of only the synthetic or narrow Phase 13/14/16 bounded copy slice. Scope should include a Z3/CVC5 or SMT-LIB strategy, symbolic offset/range/overflow obligation discharge, fail-closed unknown/unsupported obligations, stable external `L2Core` artifact codec/parser planning or implementation, solver-backed artifact reports, and `VerifiedArtifactFacts` that can be trusted by later native lowering only when obligations are discharged. It must not become production MLIR dialect work, native kernel expansion, or host-engine execution.
 
@@ -561,7 +561,7 @@ LMC1 artifact
 **Suggested plan split:**
 - [x] 19-01-PLAN.md - Solver contract and obligation report model
 - [x] 19-02-PLAN.md - Deterministic Bitwuzla-primary SMT-LIB emitter
-- [ ] 19-03-PLAN.md - Optional `loom-solver-smt` crate with Bitwuzla backend
+- [x] 19-03-PLAN.md - Optional `loom-solver-smt` crate with Bitwuzla backend
 - [ ] 19-04-PLAN.md - Artifact verifier solver-discharge integration
 - [ ] 19-05-PLAN.md - CLI, release gate, and solver verifier closeout
 
@@ -634,7 +634,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
-| 19. Solver-backed Full Artifact Verifier | 2/5 | In Progress | - |
+| 19. Solver-backed Full Artifact Verifier | 3/5 | In Progress | - |
 | 20. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 21. Expanded Vortex Encoding Coverage | 0/? | Placeholder | - |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
