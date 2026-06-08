@@ -14,9 +14,7 @@ use loom_source_ingress::{
 };
 
 /// Extract source-neutral facts from a local Lance dataset path.
-pub async fn lance_source_facts_from_path(
-    path: &Path,
-) -> Result<SourceFacts, SourceIngressReport> {
+pub async fn lance_source_facts_from_path(path: &Path) -> Result<SourceFacts, SourceIngressReport> {
     let uri = path.to_str().ok_or_else(|| {
         rejected_report(
             path,
@@ -163,15 +161,22 @@ async fn layout_facts(dataset: &Dataset, schema: &Schema, row_count: u64) -> Vec
     facts.push(manifest);
 
     for (index, fragment) in fragments.iter().enumerate() {
-        let logical_rows = fragment.count_rows(None).await.ok().map(|count| count as u64);
-        let physical_rows = fragment.physical_rows().await.ok().map(|count| count as u64);
+        let logical_rows = fragment
+            .count_rows(None)
+            .await
+            .ok()
+            .map(|count| count as u64);
+        let physical_rows = fragment
+            .physical_rows()
+            .await
+            .ok()
+            .map(|count| count as u64);
         let validation = if fragment.validate().await.is_ok() {
             "ok"
         } else {
             "failed"
         };
-        let mut layout =
-            SourceLayoutFact::new(format!("$.fragments[{index}]"), "lance-fragment");
+        let mut layout = SourceLayoutFact::new(format!("$.fragments[{index}]"), "lance-fragment");
         layout.row_count = logical_rows.or(physical_rows);
         layout.child_count = fragment.num_data_files();
         layout.child_names = (0..fragment.num_data_files())
@@ -223,14 +228,11 @@ fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverag
     let field_count = schema.fields().len();
     let has_nullable = schema.fields().iter().any(|field| field.is_nullable());
     let all_supported_primitives = field_count > 0
-        && schema
-            .fields()
-            .iter()
-            .all(|field| {
-                !field.is_nullable()
-                    && !field_has_extension_metadata(field)
-                    && is_supported_primitive(field.data_type())
-            });
+        && schema.fields().iter().all(|field| {
+            !field.is_nullable()
+                && !field_has_extension_metadata(field)
+                && is_supported_primitive(field.data_type())
+        });
     let mut coverage = SourceCoverage::new(
         if field_count == 1 {
             logical_kind_for_field(&schema.fields()[0]).to_string()
@@ -319,11 +321,12 @@ fn diagnostic_for_facts(facts: &SourceFacts) -> SourceDiagnostic {
         );
     }
 
-    if facts
-        .schema_facts
-        .iter()
-        .any(|fact| matches!(fact.logical_kind.as_str(), "nested" | "dictionary" | "extension"))
-    {
+    if facts.schema_facts.iter().any(|fact| {
+        matches!(
+            fact.logical_kind.as_str(),
+            "nested" | "dictionary" | "extension"
+        )
+    }) {
         return SourceDiagnostic::new(
             SourceDiagnosticCode::UnsupportedSchema,
             "$.schema",
@@ -418,7 +421,11 @@ fn diagnostic_with_detail(
 }
 
 fn sanitized_detail(detail: String) -> String {
-    let first_line = detail.lines().next().unwrap_or("Lance adapter error").trim();
+    let first_line = detail
+        .lines()
+        .next()
+        .unwrap_or("Lance adapter error")
+        .trim();
     let lowered = first_line.to_ascii_lowercase();
     if lowered.contains("credential")
         || lowered.contains("secret")
