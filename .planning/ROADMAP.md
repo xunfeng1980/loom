@@ -364,6 +364,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Status:** Complete.
 **Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, mechanized Lean/Rocq soundness scaffolding, and TLA+ lifecycle/pipeline invariants.
+**Proof status note:** Phase 13 Lean is a scaffold only: its current semantic predicates are `True` placeholders, so theorem names such as `accepted_program_safe` are not load-bearing proof evidence. Current load-bearing verifier evidence comes from the Rust verifier and, after Phase 19, Bitwuzla-backed SMT discharge.
 **Depends on:** Phase 12
 **Requirements:** VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10
 **Research:** `.planning/phases/13-full-loom-verifier/13-RESEARCH.md`
@@ -373,7 +374,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. A normative verifier/spec document defines the Phase 13 `L2Core` subset, capability model, resource model, and Arrow builder event semantics.
   2. A Rust verifier prototype or architecture in `loom-core` uses type/effect checking plus abstract interpretation to reject unsafe `L2Core` artifacts.
   3. Local arithmetic/range/loop/resource obligations are represented as explicit verifier constraints, with an SMT-ready path.
-  4. A Lean or Rocq proof scaffold defines core syntax/static semantics/dynamic semantics and states or proves an accepted-program safety theorem.
+  4. A Lean or Rocq proof scaffold defines core syntax/static semantics/dynamic semantics and states an accepted-program safety theorem target; current predicates are placeholders, so this is not load-bearing proof evidence.
   5. A TLA+ lifecycle model captures parse/verify/lower/cache transitions and the invariant that lowering cannot occur before verifier acceptance.
   6. Phase 13 emits verifier facts/proof obligations that Phase 14 can consume as native-lowering preconditions.
 

@@ -10,6 +10,8 @@
 - Added `formal/lean/LoomCore.lean` with the Phase 13 `L2Core` Lean scaffold,
   including `L2Ty`, `Capability`, `ArrowEvent`, `Stmt`, `Program`, `Verified`,
   `Safe`, `builder_events_well_formed`, and `accepted_program_safe`.
+  The theorem is scaffold-only: key semantic predicates are `True`
+  placeholders and do not carry safety evidence.
 - Added `specs/tla/LoomVerifierPipeline.tla` and `.cfg` with lifecycle states
   and the `LoweredImpliesVerified` invariant.
 - Added `scripts/full-verifier-test.sh`, a repeatable Phase 13 gate that checks

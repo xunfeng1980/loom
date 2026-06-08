@@ -81,7 +81,8 @@
 - `crates/loom-core/src/l2_core.rs` or equivalent: tiny future language model.
 - `crates/loom-core/src/full_verifier.rs` or equivalent: type/effect and abstract interpretation verifier.
 - `crates/loom-core/tests/full_verifier.rs`: executable verifier tests.
-- `formal/lean/LoomCore.lean`: Lean soundness scaffold.
+- `formal/lean/LoomCore.lean`: Lean soundness scaffold with placeholder
+  predicates; theorem names compile when Lean is available but do not yet carry
+  load-bearing safety evidence.
 - `specs/tla/LoomVerifierPipeline.tla` and `.cfg`: lifecycle invariant model.
 - `scripts/full-verifier-test.sh`: Phase 13 gate.
-

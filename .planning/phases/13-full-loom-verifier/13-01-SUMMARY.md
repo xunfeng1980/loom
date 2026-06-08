@@ -15,8 +15,10 @@
 - Created `13-PROOF-OBLIGATIONS.md` with rows for `VERIFIER-01` through
   `VERIFIER-10`.
 - Preserved the selected layered architecture: Rust abstract interpretation,
-  SMT local obligations, Lean/Rocq semantics and soundness, and TLA+ lifecycle
-  invariants.
+  SMT local obligations, Lean/Rocq semantics/soundness scaffolding, and TLA+
+  lifecycle invariants. The later Phase 13 Lean file is scaffold-only; current
+  load-bearing evidence is Rust verifier behavior plus Phase 19 Bitwuzla
+  discharge.
 
 ## Verification
 

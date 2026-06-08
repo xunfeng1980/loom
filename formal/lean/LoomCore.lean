@@ -5,6 +5,12 @@ This file is a mechanized scaffold, not a complete final Loom soundness proof.
 It names the core language objects and theorem targets that the Rust verifier,
 SMT obligations, and future proof work must align with.
 
+Important limitation: the Phase 13 predicates `builder_events_typed` and
+`no_ambient_authority` are intentionally `True` placeholders. Therefore
+`accepted_program_safe` is a tautological scaffold theorem over names and shape,
+not load-bearing safety evidence. Current load-bearing verifier evidence lives
+in the Rust executable verifier and the Phase 19 Bitwuzla-backed SMT discharge.
+
 Rocq remains the fallback if extraction or verified-checker lineage becomes
 mandatory for later milestones.
 -/
@@ -71,4 +77,3 @@ theorem accepted_program_safe (p : Program) :
     Verified p -> Safe p := by
   intro h
   exact And.intro h.right.left h.right.right
-

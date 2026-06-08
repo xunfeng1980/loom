@@ -105,11 +105,12 @@ None yet.
 - Phase 11 executing: 11-03 complete with CLI inspect/decode support, generated `LMC1` smoke fixtures, DuckDB bind support, and container-aware negative verifier scripting.
 - Phase 11 complete: `LMC1` Distribution Container v0 now has docs, generated fixture coverage, DuckDB SQL smoke coverage, malformed-container release-gate coverage, and DIST-01 through DIST-05 closed.
 - Phase 12 complete: current-boundary Safety Proof MVP has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof docs, and a release-gated safety proof script for the implemented `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary only.
-- Phase 13 entered: selected full-verifier architecture combines Rust abstract interpretation/type-effect checking, SMT local obligations, Lean/Rocq semantics and soundness, and TLA+ lifecycle/pipeline invariants.
+- Phase 13 entered: selected full-verifier architecture combines Rust abstract interpretation/type-effect checking, SMT local obligations, Lean/Rocq semantics scaffolding, and TLA+ lifecycle/pipeline invariants.
 - Phase 13 executing: 13-01 complete with normative `L2Core` verifier spec and proof-obligation matrix.
 - Phase 13 executing: 13-02 complete with Rust `L2Core` model, SMT-ready constraint IR, `VerifiedArtifactFacts`, and focused model tests.
 - Phase 13 executing: 13-03 complete with executable Rust `verify_l2_core`, stable diagnostics, proof-obligation traces, facts emission, tests, and `loom verify-l2core --sample`.
 - Phase 13 executing: 13-04 complete with Lean `LoomCore.lean` scaffold, TLA+ `LoweredImpliesVerified` lifecycle model, and `scripts/full-verifier-test.sh`.
+- Phase 13 evidence caveat: the current Lean file compiles as a scaffold, but `builder_events_typed` and `no_ambient_authority` are `True` placeholders; `accepted_program_safe` is not load-bearing safety evidence. Current load-bearing verifier evidence is Rust executable verification plus Phase 19 Bitwuzla-backed SMT discharge.
 - Phase 13 complete: verifier foundation closed with final report, public/planning docs, `scripts/full-verifier-test.sh` wired into `scripts/mvp0-verify.sh`, and VERIFIER-01 through VERIFIER-10 marked complete. Phase 14 consumed the verifier handoff for lowering planning.
 - Phase 14 research complete: recommended verifier-gated textual MLIR first, optional MLIR toolchain evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
 - Phase 14 planned: 4 plans across lowering contract/support predicate, textual MLIR emission, supported-slice equivalence gate, and final docs/release-gate closeout.

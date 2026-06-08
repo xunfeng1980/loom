@@ -83,6 +83,18 @@ core terms for `L2Ty`, `Capability`, `ArrowEvent`, `Stmt`, `Program`,
 This is a scaffold, not the complete final Loom soundness proof. Rocq remains a
 fallback if later extraction or verified-checker lineage becomes mandatory.
 
+Current limitation: the scaffold compiles without `sorry`, but the load-bearing
+semantic predicates are placeholders. In `formal/lean/LoomCore.lean`,
+`builder_events_typed` and `no_ambient_authority` are defined as `True`, so
+`accepted_program_safe` proves the theorem target shape rather than a substantive
+language soundness result. This is intentional Phase 13 scaffolding and must not
+be counted as checked proof evidence for artifact safety.
+
+The current load-bearing evidence is:
+
+- the Rust executable verifier and artifact verifier diagnostics/facts, and
+- Phase 19 Bitwuzla-backed discharge of solver obligations.
+
 ### TLA+
 
 `specs/tla/LoomVerifierPipeline.tla` models lifecycle states and the
@@ -165,6 +177,8 @@ and TLC when installed.
 - `VERIFIER-06`: Complete. Rust abstract-state verifier exists.
 - `VERIFIER-07`: Complete. SMT-ready constraint IR and verifier emission exist.
 - `VERIFIER-08`: Complete. Stable diagnostics and proof traces exist.
-- `VERIFIER-09`: Complete. Lean scaffold exists with safety theorem names.
+- `VERIFIER-09`: Complete as scaffold only. Lean theorem names compile, but
+  substantive semantic predicates are `True` placeholders; this is not
+  load-bearing proof evidence.
 - `VERIFIER-10`: Complete. `VerifiedArtifactFacts` and TLA lowering lifecycle
   evidence exist for Phase 14 preconditions.
