@@ -41,7 +41,7 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- No active phase. Phase 9 is complete; next work should be planned as a new milestone or Phase 10.
+- [ ] Phase 10: Additional L2 kernels and numeric compression coverage (`COV-01`)
 
 ### Out of Scope
 
@@ -50,7 +50,6 @@ If only one thing works, it is this end-to-end chain.
 - MLIR `decode` dialect / lowering to LLVM / native-speed codegen — MVP0 interprets directly; speed layer is the design's later act (`design.md` §8)
 - Formal verifier and totality/termination proofs — Phase 9 is only a first-pass structural verifier; full formal proof remains later work (`design.md` §5, §7, §13)
 - Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
-- Additional L2 kernels (ALP float decode, decompression blocks, etc.) — one kernel (FSST) is enough to prove the L2 escape
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
 - Versioned distribution container, feature flags, content-hash URI, native fast-path (`design.md` §10–11) — distribution concerns come after the decode chain works
 - Correctness guarantees beyond matching the reference decoder — Loom guarantees safety + well-formedness, never correctness (`design.md` §7)
@@ -93,6 +92,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Complete — Phase 8 |
 | Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
 | Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Complete — Phase 9 |
+| Phase 10 should return to L2 numeric compression coverage | COV-01 is the remaining explicit v2 decode coverage item; ALP/delta-style kernels exercise the L2 path without jumping to MLIR or formal verification scope | Active |
 
 ## Evolution
 
@@ -112,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 completing Phase 9 (Verifier and Safety Boundary MVP) — structural verifier, fail-closed decode/FFI/CLI routing, negative release gate coverage, and docs are complete. Formal verifier and totality proof remain future work.*
+*Last updated: 2026-06-08 entering Phase 10 (Additional L2 Kernels and Numeric Compression Coverage) — active scope is COV-01 planning. Formal verifier, MLIR/native lowering, and distribution container work remain future scope.*

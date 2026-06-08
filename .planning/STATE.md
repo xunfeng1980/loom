@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: complete
-stopped_at: Phase 09 complete
-last_updated: "2026-06-08T09:58:04+08:00"
-last_activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP complete
+status: planning
+stopped_at: Phase 10 added
+last_updated: "2026-06-08T10:05:00+08:00"
+last_activity: 2026-06-08 -- Phase 10 additional L2 kernels and numeric compression coverage added
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
   total_plans: 27
   completed_plans: 27
-  percent: 100
+  percent: 90
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 09 — verifier-and-safety-boundary-mvp complete
+**Current focus:** Phase 10 — additional-l2-kernels-and-numeric-compression-coverage
 
 ## Current Position
 
-Phase: 09 — COMPLETE
-Plan: 4 of 4
-Status: Phase 09 complete; verifier MVP implemented and release gate passing
-Last activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP complete
+Phase: 10 — NOT PLANNED
+Plan: 0 of 0
+Status: Phase 10 added; ready for discussion/planning
+Last activity: 2026-06-08 -- Phase 10 additional L2 kernels and numeric compression coverage added
 
-Progress: [██████████] 100%
+Progress: [█████████ ] 90%
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
+- Phase 10 added: Additional L2 Kernels and Numeric Compression Coverage.
 
 ### Quick Tasks Completed
 
@@ -135,7 +136,7 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Deferred | Roadmap |
+| v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Planned | Phase 10 |
 | v2 | COV-02: Multi-column table function | Complete | Phase 8 |
 | v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
 | v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
@@ -159,6 +160,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T09:58:04+08:00
-Stopped at: Phase 09 complete
-Resume file: .planning/phases/09-verifier-and-safety-boundary-mvp/09-04-SUMMARY.md
+Last session: 2026-06-08T10:05:00+08:00
+Stopped at: Phase 10 added
+Resume file: .planning/ROADMAP.md

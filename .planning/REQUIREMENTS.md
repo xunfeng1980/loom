@@ -74,7 +74,7 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 
 ### Decode Coverage
 
-- **COV-01**: Additional L2 kernels (ALP float decode, delta-of-delta)
+- [ ] **COV-01**: Additional L2 kernels (ALP float decode, delta-of-delta)
 - [x] **COV-02**: Multi-column table function and Arrow schema assembly across columns
 
 ### Table Output
@@ -148,6 +148,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DX-02 | Phase 7 | Complete |
 | DX-03 | Phase 7 | Complete |
 | DX-04 | Phase 7 | Complete |
+| COV-01 | Phase 10 | Planned |
 | COV-02 | Phase 8 | Complete |
 | TABLE-01 | Phase 8 | Complete |
 | TABLE-02 | Phase 8 | Complete |
@@ -166,11 +167,12 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v1 requirements: 25 total
 - v2 foundation requirements: 5 total
 - v2 developer-experience requirements: 4 total
+- v2 decode-coverage requirements: 2 total
 - v2 table-output requirements: 7 total
 - v2 safety-boundary requirements: 5 total
-- Mapped to phases: 46
+- Mapped to phases: 47
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 9 verifier and safety boundary MVP complete*
+*Last updated: 2026-06-08 — Phase 10 additional L2 kernels and numeric compression coverage added*

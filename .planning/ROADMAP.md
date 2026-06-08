@@ -29,6 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
+- [ ] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with numeric compression coverage, starting from COV-01 (not planned yet)
 
 ## Phase Details
 
@@ -247,10 +248,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] 09-04-PLAN.md - Document verifier MVP behavior, audit stale FOR todo, run final gates, and close requirements (SAFE-01, SAFE-02, SAFE-03, SAFE-04, VERIFY-06)
 
+### Phase 10: Additional L2 Kernels and Numeric Compression Coverage
+
+**Goal:** [To be planned]
+**Requirements**: COV-01
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 10 to break down)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -263,3 +275,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
+| 10. Additional L2 Kernels and Numeric Compression Coverage | 0/0 | Not planned | - |
