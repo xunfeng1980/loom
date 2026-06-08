@@ -161,6 +161,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260608-va8 | Deepen Phase 22 research with papers, related projects, and ABI best practices | 2026-06-08 | afd978b | [260608-va8-deepen-phase-22-research-with-papers-rel](./quick/260608-va8-deepen-phase-22-research-with-papers-rel/) |
 | 260607-taf | Translate design.md (Chinese) into English README.md and create README-zh.md as the consistent Chinese version | 2026-06-07 | 5f8b8e7 | [260607-taf-translate-design-md-chinese-into-english](./quick/260607-taf-translate-design-md-chinese-into-english/) |
 
 ## Deferred Items

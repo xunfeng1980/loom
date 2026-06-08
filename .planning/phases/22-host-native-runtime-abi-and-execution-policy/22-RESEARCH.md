@@ -67,6 +67,12 @@ Current implementation still lacks a host-native runtime layer:
 
 ## External Research Notes
 
+Additional post-closeout depth, including related papers, adjacent projects,
+and ABI best practices, is captured in `22-DEEP-RESEARCH.md`. That appendix does
+not reopen Phase 22; it sharpens the Phase 23/24/25/27 handoff and recommends
+keeping the C ABI sketch unfrozen until at least DuckDB plus a second consumer
+exercise the same contract.
+
 ### Arrow C Data Is a Good Batch Boundary, Not the Whole Runtime
 
 The Arrow C Data Interface is explicitly ABI-stable, zero-copy oriented, and
