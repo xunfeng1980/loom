@@ -10,8 +10,8 @@ progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 39
-  completed_plans: 37
-  percent: 77
+  completed_plans: 38
+  percent: 79
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 ## Current Position
 
 Phase: 12 (formal-verifier-safety-proof-mvp) — EXECUTING
-Plan: 2 of 4
-Status: 12-02 complete; 12-03 ready
-Last activity: 2026-06-08 -- 12-02 complete; safety contract tests committed
+Plan: 3 of 4
+Status: 12-03 complete; final proof/docs ready
+Last activity: 2026-06-08 -- 12-03 complete; safety proof gate committed and wired into MVP0 release gate
 
 Progress: [█████████░] 90%
 
@@ -92,7 +92,7 @@ Progress: [█████████░] 90%
 | Phase 11 P04 | 20 min | 3 tasks | 8 files |
 | Phase 12 P01 | 10 min | 3 tasks | 2 files |
 | Phase 12 P02 | 10 min | 4 tasks | 3 files |
-| Phase 12 P03 | planned | 3 tasks | 3 files |
+| Phase 12 P03 | 15 min | 3 tasks | 3 files |
 | Phase 12 P04 | planned | 3 tasks | 8 files |
 
 ## Accumulated Context

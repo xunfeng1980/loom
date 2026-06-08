@@ -334,7 +334,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 12-02-PLAN.md - Add focused core/FFI no-panic and fail-closed safety contract tests (PROOF-02, PROOF-03)
-- [ ] 12-03-PLAN.md - Add `scripts/safety-proof-test.sh`, wire it into `mvp0-verify.sh`, and map gate evidence (PROOF-02, PROOF-04)
+- [x] 12-03-PLAN.md - Add `scripts/safety-proof-test.sh`, wire it into `mvp0-verify.sh`, and map gate evidence (PROOF-02, PROOF-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -374,7 +374,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
-| 12. Formal Verifier / Safety Proof MVP | 2/4 | In Progress | - |
+| 12. Formal Verifier / Safety Proof MVP | 3/4 | In Progress | - |
 | 13. Full Loom Verifier | 0/? | Placeholder | - |
 | 14. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |
