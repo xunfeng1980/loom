@@ -157,6 +157,19 @@ check_cargo_tree_clean() {
     done
 }
 
+check_no_duplicate_arrow_parquet_families() {
+    local output duplicate_headers
+    output="$(cargo tree -d)"
+    duplicate_headers="$(
+        awk '/^[A-Za-z0-9_-]+ v[0-9]/{print}' <<<"${output}" \
+            | rg '^(arrow|arrow-array|arrow-schema|arrow-data|parquet) v' || true
+    )"
+    if [ -n "${duplicate_headers}" ]; then
+        printf '%s\n' "${duplicate_headers}" >&2
+        fail "duplicate Arrow/Parquet dependency family detected"
+    fi
+}
+
 check_direct_iceberg_sdk_deps() {
     local sdk_name refs
     sdk_name="ice""berg"
@@ -239,6 +252,10 @@ info "Checking adapter crate scaffold..."
 check_file "${PHASE_DIR}/28-CONTEXT.md"
 check_file "${PHASE_DIR}/28-RESEARCH.md"
 check_file "${PHASE_DIR}/28-PATTERNS.md"
+check_file "${PHASE_DIR}/28-01-SUMMARY.md"
+check_file "${PHASE_DIR}/28-02-SUMMARY.md"
+check_file "${PHASE_DIR}/28-03-SUMMARY.md"
+check_file "${PHASE_DIR}/28-04-SUMMARY.md"
 check_file "${REPORT}"
 check_file "crates/loom-iceberg-binding/Cargo.toml"
 check_file "crates/loom-iceberg-binding/src/lib.rs"
@@ -298,6 +315,7 @@ ok "focused adapter tests"
 info "Checking SDK and JSON dependency placement..."
 check_direct_iceberg_sdk_deps
 check_serde_json_placement
+check_no_duplicate_arrow_parquet_families
 
 source_dep_patterns=(
     "ice""berg"
@@ -434,19 +452,6 @@ check_no_fixed_patterns "route-specific Iceberg SQL/API" "${api_surfaces[@]}" --
 check_no_fixed_patterns "object-store/catalog credential controls" "${api_surfaces[@]}" -- "${credential_markers[@]}"
 check_no_fixed_patterns "branch/tag mutation controls" "${api_surfaces[@]}" -- "${mutation_markers[@]}"
 ok "public, host, and CLI surfaces"
-
-info "Checking focused gate remains unwired from main release gate..."
-set +e
-rg -q --fixed-strings "iceberg-binding-test.sh" scripts/mvp0-verify.sh
-gate_status=$?
-set -e
-if [ "${gate_status}" -eq 0 ]; then
-    fail "Plan 28-01 must not wire scripts/iceberg-binding-test.sh into scripts/mvp0-verify.sh"
-fi
-if [ "${gate_status}" -ne 1 ]; then
-    fail "mvp0-verify unwired check failed with rg status ${gate_status}"
-fi
-ok "focused gate is unwired"
 
 echo ""
 echo "${GRN}=== Phase 28 Iceberg binding dependency/scope guard PASSED ===${RST}"
