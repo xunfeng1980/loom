@@ -5,13 +5,13 @@ milestone_name: milestone
 status: executing
 stopped_at: Phase 10 executing
 last_updated: "2026-06-08T02:30:27.270Z"
-last_activity: 2026-06-08 -- Phase 10 P01 complete; ALP core kernel committed
+last_activity: 2026-06-08 -- Phase 10 P02/P03 complete; ALP fixtures, FFI, CLI, and DuckDB smoke coverage committed
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 ## Current Position
 
 Phase: 10 (additional-l2-kernels-and-numeric-compression-coverage) — EXECUTING
-Plan: 2 of 4
+Plan: 4 of 4
 Status: Executing Phase 10
-Last activity: 2026-06-08 -- Phase 10 P01 complete; ALP core kernel committed
+Last activity: 2026-06-08 -- Phase 10 P02/P03 complete; ALP fixtures, FFI, CLI, and DuckDB smoke coverage committed
 
-Progress: [█████████ ] 90%
+Progress: [█████████▋] 97%
 
 ## Performance Metrics
 
@@ -83,8 +83,8 @@ Progress: [█████████ ] 90%
 | Phase 09 P03 | 15 min | 3 tasks | 3 files |
 | Phase 09 P04 | 15 min | 3 tasks | 8 files |
 | Phase 10 P01 | 15 min | 3 tasks | 9 files |
-| Phase 10 P02 | planned | 3 tasks | 6 files |
-| Phase 10 P03 | planned | 3 tasks | 5 files |
+| Phase 10 P02 | 15 min | 3 tasks | 6 files |
+| Phase 10 P03 | 15 min | 3 tasks | 5 files |
 | Phase 10 P04 | planned | 3 tasks | 9 files |
 
 ## Accumulated Context
@@ -128,7 +128,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
-- Phase 10 executing: 10-01 complete with Float32/Float64 core support, checked `AlpParams`, ALP kernel id `1`, and verifier checks.
+- Phase 10 executing: 10-01 through 10-03 complete. ALP Float32/Float64 now has core kernel support, fixtures and Vortex primitive oracle comparisons, FFI roundtrips, CLI inspect/decode output, and DuckDB SQL smoke coverage.
 
 ### Quick Tasks Completed
 
@@ -166,4 +166,4 @@ None yet.
 
 Last session: 2026-06-08T02:20:31.197Z
 Stopped at: Phase 10 executing
-Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-02-PLAN.md
+Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-04-PLAN.md

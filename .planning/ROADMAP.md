@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
-- [ ] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (executing, 1/4 plans complete)
+- [ ] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (executing, 3/4 plans complete)
 
 ## Phase Details
 
@@ -270,8 +270,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-02-PLAN.md - Add ALP synthetic fixtures, Vortex primitive float oracle comparisons, and FFI float roundtrips (COV-01)
-- [ ] 10-03-PLAN.md - Add CLI ALP/float output plus DuckDB Float32/Float64 SQL smoke coverage (COV-01)
+- [x] 10-02-PLAN.md - Add ALP synthetic fixtures, Vortex primitive float oracle comparisons, and FFI float roundtrips (COV-01)
+- [x] 10-03-PLAN.md - Add CLI ALP/float output plus DuckDB Float32/Float64 SQL smoke coverage (COV-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -293,4 +293,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
-| 10. Additional L2 Kernels and Numeric Compression Coverage | 1/4 | Executing | - |
+| 10. Additional L2 Kernels and Numeric Compression Coverage | 3/4 | Executing | - |
