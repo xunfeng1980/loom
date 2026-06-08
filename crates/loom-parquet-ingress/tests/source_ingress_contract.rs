@@ -291,3 +291,47 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
         );
     }
 }
+
+#[test]
+fn parquet_malformed_files_are_rejected_without_facts() {
+    let temp = TempDir::new().expect("tempdir");
+    let malformed = temp.path().join("malformed.parquet");
+    std::fs::write(&malformed, b"not a parquet file").expect("write malformed bytes");
+
+    let malformed_report = source_ingress_report_from_parquet_path(&malformed);
+    assert_eq!(malformed_report.status, SourceIngressStatus::Rejected);
+    assert!(malformed_report.facts.is_none());
+    assert_eq!(malformed_report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(
+        malformed_report.emission_disposition,
+        SourceEmissionDisposition::None
+    );
+    assert_eq!(
+        malformed_report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(malformed_report.oracle_evidence.is_none());
+    assert_eq!(malformed_report.diagnostics.len(), 1);
+    assert_eq!(
+        malformed_report.diagnostics[0].code,
+        SourceDiagnosticCode::ReadFailed
+    );
+    assert_eq!(malformed_report.diagnostics[0].path, "$.metadata");
+
+    let missing = temp.path().join("missing.parquet");
+    let missing_report = source_ingress_report_from_parquet_path(&missing);
+    assert_eq!(missing_report.status, SourceIngressStatus::Rejected);
+    assert!(missing_report.facts.is_none());
+    assert_eq!(missing_report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(
+        missing_report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(missing_report.oracle_evidence.is_none());
+    assert_eq!(missing_report.diagnostics.len(), 1);
+    assert_eq!(
+        missing_report.diagnostics[0].code,
+        SourceDiagnosticCode::OpenFailed
+    );
+    assert_eq!(missing_report.diagnostics[0].path, "$.open");
+}
