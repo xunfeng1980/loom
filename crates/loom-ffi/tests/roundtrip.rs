@@ -10,8 +10,12 @@
 //! | `release_path_roundtrip` | ARROW-03, PITFALLS P1/P2 |
 //! | `panic_does_not_abort` | DUCK-04, PITFALLS P3, T-01-05 |
 
-use arrow::array::{Array, Int32Array};
+use arrow::array::{Array, Int32Array, StringArray};
+use arrow::datatypes::DataType;
 use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::fsst_params::FsstParams;
+use loom_core::l1_model::{LayoutDescription, LayoutNode};
+use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::ffi::{loom_decode, set_panic_sentinel, LoomError};
 
 // ---------------------------------------------------------------------------
@@ -53,7 +57,7 @@ unsafe fn call_loom_decode(input: &[u8]) -> (FFI_ArrowArray, FFI_ArrowSchema) {
 ///    callback sets `release = null` on the source struct as per the Arrow
 ///    C Data Interface specification).
 #[test]
-fn release_path_roundtrip() {
+fn roundtrip_success_returns_expected_values_and_null() {
     // Step 1: call loom_decode into zero-initialized shells.
     let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&[]) };
 
@@ -112,6 +116,62 @@ fn release_path_roundtrip() {
     // contract: release sets the pointer to null, preventing double-free).
 }
 
+#[test]
+fn roundtrip_decode_payload_i32_values() {
+    let values = [10i32, -20, 30];
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: DataType::Int32,
+        root: LayoutNode::Raw {
+            data: values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 4,
+            count: values.len(),
+        },
+        row_count: values.len(),
+    });
+
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&payload) };
+    let array_data =
+        unsafe { from_ffi(ffi_array, &ffi_schema) }.expect("from_ffi must succeed for i32 payload");
+    let array = Int32Array::from(array_data);
+
+    assert_eq!(array.values(), values.as_slice());
+    assert_eq!(array.null_count(), 0);
+
+    drop(array);
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+}
+
+#[test]
+fn roundtrip_decode_payload_utf8_values() {
+    let rows = [Some("alpha"), None, Some("beta")];
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: DataType::Utf8,
+        root: LayoutNode::KernelEscape {
+            kernel_id: 0,
+            params: fsst_params_for_strings(&rows),
+            count: rows.len(),
+        },
+        row_count: rows.len(),
+    });
+
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&payload) };
+    let array_data = unsafe { from_ffi(ffi_array, &ffi_schema) }
+        .expect("from_ffi must succeed for Utf8 payload");
+    let array = StringArray::from(array_data);
+
+    assert_eq!(array.len(), 3);
+    assert_eq!(array.value(0), "alpha");
+    assert!(array.is_null(1));
+    assert_eq!(array.value(2), "beta");
+
+    drop(array);
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Test 2: panic-safety
 // ---------------------------------------------------------------------------
@@ -131,7 +191,7 @@ fn release_path_roundtrip() {
 /// than this test passing.  The fact that this test passes proves that no panic
 /// unwound past the `extern "C"` frame.
 #[test]
-fn panic_does_not_abort() {
+fn panic_sentinel_returns_panicked_code_without_aborting() {
     // Allocate output shells so we can pass valid non-null pointers.
     // The inner function panics before it writes to them.
     let mut ffi_array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
@@ -163,4 +223,40 @@ fn panic_does_not_abort() {
 
     // Execution reaching here confirms the test process did not abort.
     // The test runner reports success, which is the proof of panic safety.
+}
+
+fn fsst_params_for_strings(rows: &[Option<&str>]) -> Vec<u8> {
+    let mut codes_offsets = Vec::with_capacity(rows.len() + 1);
+    let mut uncompressed_lengths = Vec::with_capacity(rows.len());
+    let mut validity = Vec::with_capacity(rows.len());
+    let mut codes_bytes = Vec::new();
+
+    codes_offsets.push(0);
+    for row in rows {
+        match row {
+            Some(value) => {
+                validity.push(true);
+                uncompressed_lengths.push(value.len() as u64);
+                for byte in value.as_bytes() {
+                    codes_bytes.push(255);
+                    codes_bytes.push(*byte);
+                }
+            }
+            None => {
+                validity.push(false);
+                uncompressed_lengths.push(0);
+            }
+        }
+        codes_offsets.push(codes_bytes.len() as u64);
+    }
+
+    FsstParams {
+        symbols: vec![],
+        symbol_lengths: vec![],
+        codes_offsets,
+        uncompressed_lengths,
+        validity: Some(validity),
+        codes_bytes,
+    }
+    .encode()
 }

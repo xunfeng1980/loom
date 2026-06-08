@@ -23,6 +23,9 @@ use std::panic::{self, AssertUnwindSafe};
 
 use arrow::array::Array;
 use arrow::ffi::{to_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::l1_model::decode_layout_to_array_data;
+use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_core::layout_codec::decode_layout_payload;
 
 // ---------------------------------------------------------------------------
 // Error enum
@@ -99,7 +102,7 @@ pub fn set_panic_sentinel() {
 /// from within the `catch_unwind` wrapper so that any panic is caught at the
 /// FFI boundary rather than unwinding past it.
 fn loom_decode_inner(
-    _input: &[u8],
+    input: &[u8],
     out_array: *mut FFI_ArrowArray,
     out_schema: *mut FFI_ArrowSchema,
 ) -> Result<(), LoomError> {
@@ -118,24 +121,24 @@ fn loom_decode_inner(
         panic!("loom_decode_inner: panic sentinel triggered (test-only path)");
     }
 
-    // Build a hardcoded minimal Int32Array: [1, 2, 3, null].
-    // The null exercises the validity bitmap path (PITFALLS P7).
-    //
-    // We use the builder API (not from_vec) so the null is real — the builder
-    // installs a proper null bitmap rather than a placeholder.
-    let array = {
+    let array_data = if input.is_empty() {
+        // Build a hardcoded minimal Int32Array: [1, 2, 3, null].
+        // The null exercises the validity bitmap path (PITFALLS P7).
+        //
+        // We use the builder API (not from_vec) so the null is real — the builder
+        // installs a proper null bitmap rather than a placeholder.
         use arrow::array::Int32Builder;
         let mut builder = Int32Builder::new();
         builder.append_value(1);
         builder.append_value(2);
         builder.append_value(3);
         builder.append_null();
-        builder.finish()
+        builder.finish().into_data()
+    } else {
+        let desc = decode_layout_payload(input).map_err(|_| LoomError::DecodeFailed)?;
+        let registry = L2KernelRegistry::default_for_mvp0();
+        decode_layout_to_array_data(&desc, &registry).map_err(|_| LoomError::DecodeFailed)?
     };
-
-    // Obtain the `ArrayData` substrate required by `to_ffi`.
-    // `into_data()` consumes the array; no extra clone/copy (PITFALLS P1).
-    let array_data = array.into_data();
 
     // Produce the FFI pair.  The `Field` for the schema: Int32, nullable.
     // `to_ffi` accepts a reference to ArrayData, so we borrow here.
