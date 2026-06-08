@@ -34,7 +34,7 @@ Vortex semantic compatibility.
 | `crates/loom-vortex-ingress/tests/source_ingress_contract.rs` | Vortex mapping tests | Verifies supported primitive/table mappings, unsupported valid reports, rejected reports, and source-neutral public vocabulary. |
 | `crates/loom-vortex-ingress/tests/source_ingress_handoff.rs` | Verifier/oracle handoff tests | Verifies accepted `LMP1`/`LMT1` handoff, source-native oracle evidence, unsupported valid fail-closed behavior, and rejected malformed behavior. |
 | `26-SOURCE-INGRESS-CONTRACT.md` | Normative reviewer contract | Records source-neutral model, trust boundaries, non-goals, adapter obligations, and Phase 27 handoff. |
-| `scripts/source-ingress-contract-test.sh` | Plan 26-04 guard | Checks docs, implementation markers, focused tests, dependency boundaries, and API creep before Plan 26-05 release wiring. |
+| `scripts/source-ingress-contract-test.sh` | Phase 26 release gate | Checks docs, implementation markers, focused tests, dependency boundaries, and API creep; Plan 26-05 wires it into the main gate. |
 
 ## Vortex Mapping
 
@@ -144,7 +144,7 @@ The current dependency boundary is:
 - DuckDB extension code and public headers remain free of source-ingress public
   API expansion.
 
-Plan 26-04 adds `scripts/source-ingress-contract-test.sh` to check:
+`scripts/source-ingress-contract-test.sh` checks:
 
 - required Phase 26 docs exist,
 - generic and Vortex adapter markers exist,
@@ -154,7 +154,7 @@ Plan 26-04 adds `scripts/source-ingress-contract-test.sh` to check:
 - forbidden checks avoid matching their own script literals by constructing
   patterns from smaller pieces where needed.
 
-Plan 26-05 wires the script into `scripts/mvp0-verify.sh` so the main release
+Plan 26-05 wired the script into `scripts/mvp0-verify.sh` so the main release
 gate order is Phase 24 DuckDB native integration, Phase 25 native hardening,
 Phase 26 source ingress contract, then DuckDB SQL smoke.
 
@@ -210,13 +210,32 @@ shape and its oracle-backed rows for supported slices.
 
 ## Verification Commands
 
-Plan 26-04 verification:
+Plan 26-05 verification:
 
 ```bash
-bash -n scripts/source-ingress-contract-test.sh
+bash -n scripts/source-ingress-contract-test.sh && bash -n scripts/mvp0-verify.sh
 bash scripts/source-ingress-contract-test.sh
-rg -q "Current-Phase Tradeoffs" .planning/phases/26-external-source-ingress-contract/26-SOURCE-INGRESS-REPORT.md
+LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh
 ```
 
-The second command is expected to run the focused Phase 26 contract and adapter
-tests that already cover Plans 26-01 through 26-03.
+Additional direct wiring checks passed:
+
+```bash
+rg -q "source-ingress-contract-test\.sh" scripts/mvp0-verify.sh
+python3 - <<'PY'
+from pathlib import Path
+text = Path("scripts/mvp0-verify.sh").read_text()
+order = [
+    "scripts/duckdb-native-integration-test.sh",
+    "scripts/native-hardening-test.sh",
+    "scripts/source-ingress-contract-test.sh",
+    "scripts/duckdb-smoke-test.sh",
+]
+positions = [text.index(item) for item in order]
+assert positions == sorted(positions), positions
+PY
+```
+
+All commands passed on 2026-06-08 UTC / 2026-06-09 Asia/Shanghai. The main
+release gate now runs the Phase 26 source-ingress contract gate after Phase 25
+native hardening and before DuckDB SQL smoke.
