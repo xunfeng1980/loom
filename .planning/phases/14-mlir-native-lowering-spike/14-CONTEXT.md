@@ -87,7 +87,9 @@ Plan Phase 14 as four sequential plans:
 1. `14-01` Lowering contract and support predicate.
 2. `14-02` Textual MLIR emission for bounded Int32 copy.
 3. `14-03` Reference/equivalence gate plus optional `mlir-opt` validation.
-4. `14-04` Optional native/JIT probe and final docs.
+4. `14-04` Final lowering report, public/planning docs, release-gate wiring,
+   and closeout evidence.
 
-The first two plans are load-bearing; the fourth plan may record skipped
-optional toolchain evidence if MLIR tooling is unavailable locally.
+The first two plans are load-bearing. Optional native/JIT execution is deferred
+beyond Phase 14; Phase 14's optional toolchain evidence is textual MLIR
+validation through `mlir-opt` when available.

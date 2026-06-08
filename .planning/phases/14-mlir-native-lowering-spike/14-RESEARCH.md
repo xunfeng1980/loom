@@ -327,9 +327,9 @@ committing to `melior` or LLVM packages in `Cargo.toml`.
 - Compare lowered-plan semantics against expected `Int32` output.
 - Add optional `mlir-opt` validation script when tool exists.
 
-### 14-04: Optional Native/JIT Probe And Closeout
+### 14-04: Closeout And Optional Toolchain Evidence
 
-- If local MLIR tools or bindings are available, run a JIT/toolchain probe.
+- If local MLIR tools are available, record textual MLIR validation evidence.
 - If unavailable, record skipped evidence without failing the release gate.
 - Update roadmap/state/docs with Phase 14 outcome and next boundary.
 
@@ -363,7 +363,7 @@ Proceed with Phase 14 as a four-plan spike:
 14-01 lowering contract + support checker
 14-02 deterministic textual MLIR emitter
 14-03 equivalence/reference gate + optional mlir-opt validation
-14-04 optional native/JIT probe + closeout docs
+14-04 closeout docs + optional MLIR toolchain evidence
 ```
 
 Do not add `melior`, LLVM, or Cranelift as mandatory dependencies in the first

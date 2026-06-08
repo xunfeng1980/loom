@@ -234,7 +234,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v2 foundation requirements: 5 total
 - v2 developer-experience requirements: 4 total
 - v2 decode-coverage requirements: 2 total
-- v2 table-output requirements: 7 total
+- v2 table-output requirements: 6 total
 - v2 safety-boundary requirements: 5 total
 - v3 distribution-container requirements: 5 total
 - v3 formal-safety-proof requirements: 5 total

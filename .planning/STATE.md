@@ -30,7 +30,7 @@ Plan: 4 of 4 complete
 Status: Phase 14 complete; Phase 15 remains placeholder until explicitly planned
 Last activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike complete
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -159,7 +159,7 @@ None yet.
 - Phase 13 executing: 13-03 complete with executable Rust `verify_l2_core`, stable diagnostics, proof-obligation traces, facts emission, tests, and `loom verify-l2core --sample`.
 - Phase 13 executing: 13-04 complete with Lean `LoomCore.lean` scaffold, TLA+ `LoweredImpliesVerified` lifecycle model, and `scripts/full-verifier-test.sh`.
 - Phase 13 complete: verifier foundation closed with final report, public/planning docs, `scripts/full-verifier-test.sh` wired into `scripts/mvp0-verify.sh`, and VERIFIER-01 through VERIFIER-10 marked complete. Phase 14 consumed the verifier handoff for lowering planning.
-- Phase 14 research complete: recommended verifier-gated textual MLIR first, optional native/JIT evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
+- Phase 14 research complete: recommended verifier-gated textual MLIR first, optional MLIR toolchain evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
 - Phase 14 planned: 4 plans across lowering contract/support predicate, textual MLIR emission, supported-slice equivalence gate, and final docs/release-gate closeout.
 - Phase 14 complete: verifier-gated support predicate, deterministic textual MLIR for bounded Int32 copy, typed primitive equivalence evidence, optional `mlir-opt` gate, final report, docs, and release-gate integration are complete.
 - Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
