@@ -29,7 +29,8 @@ use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
 use loom_vortex_ingress::{
-    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, VortexIngressReport,
+    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, reader_facts_from_vortex_path,
+    VortexIngressReport,
 };
 
 fn main() {
@@ -112,6 +113,12 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
             let report = inspect_vortex_path(path);
             println!("input: {}", path.display());
             print_vortex_ingress_report(&report);
+            if let Ok(reader_facts) = reader_facts_from_vortex_path(path) {
+                println!("reader_support: {}", reader_facts.support.as_str());
+                println!("emission_kind: {}", reader_facts.emission_kind.as_str());
+                println!("reader_layout_facts: {}", reader_facts.layout_facts.len());
+                println!("reader_segment_facts: {}", reader_facts.segment_facts.len());
+            }
             if report.status.as_str() == "rejected" {
                 return Err("Vortex ingress rejected input".to_string());
             }

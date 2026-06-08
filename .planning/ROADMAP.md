@@ -535,7 +535,7 @@ LMC1 artifact
 
 ### Phase 18: Complete Vortex Reader
 
-**Status:** In progress. `18-01` through `18-03` are complete; see `.planning/phases/18-complete-vortex-reader/18-RESEARCH.md`, `18-CONTEXT.md`, `18-READER-CONTRACT.md`, and plans `18-01` through `18-05`.
+**Status:** In progress. `18-01` through `18-04` are complete; see `.planning/phases/18-complete-vortex-reader/18-RESEARCH.md`, `18-CONTEXT.md`, `18-READER-CONTRACT.md`, and plans `18-01` through `18-05`.
 **Depends on:** Phase 15 and Phase 17; may consume constraints discovered in Phase 16.
 **Ordering decision:** Expand from the supported non-null Int32 `.vortex` -> `LMC1` evidence slice to a complete Vortex reader boundary before engine-integrated native execution. Engine integration needs stable real artifact/fact/schema semantics; those should come from the full reader boundary rather than from the Phase 15 narrow ingress slice. Scope should include real file/container layout coverage, chunk/schema handling, representative encoding coverage, projection/statistics decisions, stable Loom-owned facts/diagnostics, and fail-closed behavior. It must not become a new query-engine integration phase.
 
@@ -545,7 +545,7 @@ LMC1 artifact
 - [x] 18-01-PLAN.md - Reader facts contract and dependency boundary
 - [x] 18-02-PLAN.md - Recursive layout/dtype/segment inspection
 - [x] 18-03-PLAN.md - Supported single-column conversion matrix
-- [ ] 18-04-PLAN.md - Supported struct/table conversion
+- [x] 18-04-PLAN.md - Supported struct/table conversion
 - [ ] 18-05-PLAN.md - CLI/report/release-gate closeout
 
 ### Phase 19: Solver-backed Full Artifact Verifier
@@ -616,7 +616,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
-| 18. Complete Vortex Reader | 3/5 | In Progress | - |
+| 18. Complete Vortex Reader | 4/5 | In Progress | - |
 | 19. Solver-backed Full Artifact Verifier | 0/? | Placeholder | - |
 | 20. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 21. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |

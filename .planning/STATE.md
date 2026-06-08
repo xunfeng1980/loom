@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 18 plan 18-03 complete; 18-04 next
-last_updated: "2026-06-08T10:12:29.000Z"
-last_activity: 2026-06-08 -- Phase 18 plan 18-03 complete
+stopped_at: Phase 18 plan 18-04 complete; 18-05 next
+last_updated: "2026-06-08T10:17:18.000Z"
+last_activity: 2026-06-08 -- Phase 18 plan 18-04 complete
 progress:
   total_phases: 25
   completed_phases: 17
   total_plans: 67
-  completed_plans: 65
-  percent: 71
+  completed_plans: 66
+  percent: 72
 ---
 
 # Project State
@@ -26,19 +26,19 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 18 (complete-vortex-reader) — EXECUTING
-Plan: 3 of 5 complete; next 18-04 supported struct/table conversion
-Status: Phase 18 supported single-column conversion matrix complete; Phase 19 remains reserved for solver-backed full artifact verifier
-Last activity: 2026-06-08 -- Phase 18 plan 18-03 complete
+Plan: 4 of 5 complete; next 18-05 CLI/report/release-gate closeout
+Status: Phase 18 supported struct/table conversion complete; Phase 19 remains reserved for solver-backed full artifact verifier
+Last activity: 2026-06-08 -- Phase 18 plan 18-04 complete
 
-Progress: 71%
+Progress: 72%
 
 ## Progress Snapshot
 
 - Completed phases: 17 / 25
-- Completed executable plans: 65 / 67
+- Completed executable plans: 66 / 67
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 18 complete Vortex reader executing; 18-03 complete
-- Last verified gate: `bash scripts/vortex-ingress-test.sh` passed after Phase 18 single-column matrix work
+- Current position: Phase 18 complete Vortex reader executing; 18-04 complete
+- Last verified gate: `bash scripts/vortex-ingress-test.sh` passed after Phase 18 table conversion work
 
 **Completed phase plan counts:**
 
@@ -49,7 +49,7 @@ Progress: 71%
 | 11-15 | MVP1/v3 distribution, safety proof, full verifier foundation, native-lowering spike, real ingress | 21/21 |
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
-| 18 | Complete Vortex reader | 3/5 |
+| 18 | Complete Vortex reader | 4/5 |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -124,6 +124,7 @@ None yet.
 - Phase 18 executing: 18-01 complete with `18-READER-CONTRACT.md`, Loom-owned `VortexReaderFacts` / layout / dtype / segment facts, buffer/path reader fact extraction, support/emission classification, reader contract tests, and strengthened `vortex-file` / `vortex-layout` dependency gates.
 - Phase 18 executing: 18-02 complete with recursive layout child paths, structured `DType` classification including struct field names/counts, segment overlap/order facts, split range facts or non-fatal diagnostics, and guard coverage for unsupported struct files without primitive-scan panics.
 - Phase 18 executing: 18-03 complete with an explicit non-null single-column primitive matrix for Int32, Int64, Float32, and Float64, verifier-backed `LMC1` emission, typed Vortex scan oracle helpers, and UTF-8 fail-closed negative coverage.
+- Phase 18 executing: 18-04 complete with real Vortex struct/table support for non-null primitive fields, `LMT1` table emission wrapped in `LMC1`, artifact-verifier/table-decode oracle tests, unsupported string-field table fail-closed coverage, and CLI reader support/emission output.
 - Phase 19 reserved as a roadmap placeholder only: solver-backed full artifact verifier after the complete Vortex reader and before production native expansion.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21-23 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -182,8 +183,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T10:12:29.000Z
-Stopped at: Phase 18 plan 18-03 complete; 18-04 next
+Last session: 2026-06-08T10:17:18.000Z
+Stopped at: Phase 18 plan 18-04 complete; 18-05 next
 
 Phase 17 handoff:
 

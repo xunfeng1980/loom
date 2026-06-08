@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use loom_vortex_ingress::{
     inspect_vortex_buffer, reader_facts_from_vortex_buffer, VortexReaderDiagnosticCode,
-    VortexReaderSupport,
+    VortexReaderEmissionKind, VortexReaderSupport,
 };
 use vortex_array::arrays::StructArray;
 use vortex_array::dtype::FieldNames;
@@ -87,7 +87,8 @@ fn reader_recursive_facts_dtype_records_struct_fields() {
     let bytes = struct_vortex_bytes();
     let facts = reader_facts_from_vortex_buffer(&bytes).expect("reader facts");
 
-    assert_eq!(facts.support, VortexReaderSupport::Unsupported);
+    assert_eq!(facts.support, VortexReaderSupport::Accepted);
+    assert_eq!(facts.emission_kind, VortexReaderEmissionKind::Lmt1);
     assert_eq!(facts.root_dtype.kind, "struct");
     assert_eq!(facts.root_dtype.nullable, Some(false));
     assert_eq!(facts.root_dtype.field_count, Some(2));
