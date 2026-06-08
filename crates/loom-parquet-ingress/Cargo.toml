@@ -5,11 +5,11 @@ edition = "2021"
 description = "Isolated local Parquet file ingress adapter for Loom"
 
 [dependencies]
+arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 parquet = { workspace = true }
 
 [dev-dependencies]
-arrow-array = { workspace = true }
 tempfile = { workspace = true }

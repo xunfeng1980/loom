@@ -115,8 +115,9 @@ fn assert_arrow_oracle_batch(path: &Path, expected_schema: &[(&str, DataType)]) 
     let batch = &batches[0];
     assert_eq!(batch.num_rows(), 3);
     assert_eq!(batch.num_columns(), expected_schema.len());
+    let schema = batch.schema();
     for (index, (name, data_type)) in expected_schema.iter().enumerate() {
-        let field = batch.schema().field(index);
+        let field = schema.field(index);
         assert_eq!(field.name(), name);
         assert_eq!(field.data_type(), data_type);
         assert!(!field.is_nullable());
