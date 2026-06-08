@@ -1,0 +1,16 @@
+{
+  "table_uuid": "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30",
+  "table_name": "demo.events",
+  "schema_id": 7,
+  "snapshot_id": 314159,
+  "ref_name": "main",
+  "ref_type": "branch",
+  "manifest_list_location": "tests/fixtures/local/metadata/snap-314159.avro",
+  "loom_artifact_path": "tests/fixtures/local/artifacts/demo-events.lmc1.loom",
+  "loom_artifact_sha256": "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7",
+  "verifier_evidence": {
+    "accepted": true,
+    "status": "accepted",
+    "summary": "manifest-only accepted claim is descriptive only"
+  }
+}
