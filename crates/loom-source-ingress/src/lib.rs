@@ -130,7 +130,7 @@ impl SourceDiagnosticCode {
             Self::LayoutUnavailable | Self::SplitUnavailable | Self::UnsupportedLayout => {
                 SourceDiagnosticFamily::Layout
             }
-            Self::UnsupportedConversion => SourceDiagnosticFamily::Support,
+            Self::UnsupportedConversion => SourceDiagnosticFamily::Conversion,
             Self::VerificationFailed => SourceDiagnosticFamily::Verification,
             Self::OracleUnavailable => SourceDiagnosticFamily::Oracle,
         }
