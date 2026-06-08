@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
 - [x] **Phase 17: Unified Artifact Verification Pipeline** - Fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (complete)
 - [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
-- [ ] **Phase 19: Solver-backed Full Artifact Verifier** - Placeholder for real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (not expanded)
+- [ ] **Phase 19: Solver-backed Full Artifact Verifier** - Research started for real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion
 - [ ] **Phase 20: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 21: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
 - [ ] **Phase 22: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
@@ -550,9 +550,11 @@ LMC1 artifact
 
 ### Phase 19: Solver-backed Full Artifact Verifier
 
-**Status:** Placeholder only. Do not expand until Phase 18 establishes the complete Vortex reader boundary.
+**Status:** Research started. See `.planning/phases/19-solver-backed-full-artifact-verifier/19-RESEARCH.md`.
 **Depends on:** Phase 16, Phase 17, and Phase 18.
 **Ordering decision:** Upgrade the Phase 17 unified artifact pipeline from collected obligations to solver-backed verifier evidence before production native expansion. Phase 18 must come first so the verifier targets real complete-reader facts instead of only the synthetic or narrow Phase 13/14/16 bounded copy slice. Scope should include a Z3/CVC5 or SMT-LIB strategy, symbolic offset/range/overflow obligation discharge, fail-closed unknown/unsupported obligations, stable external `L2Core` artifact codec/parser planning or implementation, solver-backed artifact reports, and `VerifiedArtifactFacts` that can be trusted by later native lowering only when obligations are discharged. It must not become production MLIR dialect work, native kernel expansion, or host-engine execution.
+
+**Research recommendation:** Keep `loom-core` solver-neutral, emit deterministic SMT-LIB v2.7 scripts from Loom-owned obligation/report types, and add an optional `loom-solver-smt` backend crate that can run Z3 first and cvc5 as a later strict cross-check. Treat `unsat` on negated bad-state queries as discharged evidence; treat `sat`, `unknown`, timeout, parse error, or missing strict solver as fail-closed. Phase 20+ must consume discharged facts, not `CollectedOnly` obligations.
 
 ### Phase 20: Production Decode Dialect and Native Kernel Expansion
 

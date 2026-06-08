@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 18 complete; Phase 19 placeholder next
-last_updated: "2026-06-08T10:20:56.000Z"
-last_activity: 2026-06-08 -- Phase 18 complete
+stopped_at: Phase 19 research started; plan phase next
+last_updated: "2026-06-08T11:10:32.000Z"
+last_activity: 2026-06-08 -- Phase 19 research started
 progress:
   total_phases: 25
   completed_phases: 18
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 19 — solver-backed full artifact verifier (placeholder; not yet expanded)
+**Current focus:** Phase 19 — solver-backed full artifact verifier (research started)
 
 ## Current Position
 
-Phase: 18 (complete-vortex-reader) — COMPLETE
-Plan: 5 of 5 complete
-Status: Phase 18 complete-reader boundary closed; Phase 19 remains reserved for solver-backed full artifact verifier
-Last activity: 2026-06-08 -- Phase 18 complete
+Phase: 19 (solver-backed-full-artifact-verifier) — RESEARCH
+Plan: not planned yet
+Status: Phase 19 research recommends solver-neutral core obligations, deterministic SMT-LIB, and optional solver backend crate
+Last activity: 2026-06-08 -- Phase 19 research started
 
 Progress: 72%
 
@@ -37,7 +37,7 @@ Progress: 72%
 - Completed phases: 18 / 25
 - Completed executable plans: 67 / 67
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 18 complete Vortex reader closed; Phase 19 placeholder next
+- Current position: Phase 19 solver-backed full artifact verifier research started; plan phase next
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 18 closeout; Phase 16 optional backend evidence preserved the expected LLVM/MLIR major-version skip
 
 **Completed phase plan counts:**
@@ -126,7 +126,7 @@ None yet.
 - Phase 18 executing: 18-03 complete with an explicit non-null single-column primitive matrix for Int32, Int64, Float32, and Float64, verifier-backed `LMC1` emission, typed Vortex scan oracle helpers, and UTF-8 fail-closed negative coverage.
 - Phase 18 executing: 18-04 complete with real Vortex struct/table support for non-null primitive fields, `LMT1` table emission wrapped in `LMC1`, artifact-verifier/table-decode oracle tests, unsupported string-field table fail-closed coverage, and CLI reader support/emission output.
 - Phase 18 complete: 18-05 closed with CLI reader facts and artifact-verifier status, `scripts/complete-vortex-reader-test.sh`, release-gate wiring, final report, public/planning docs, and Phase 19 solver-backed verifier handoff.
-- Phase 19 reserved as a roadmap placeholder only: solver-backed full artifact verifier after the complete Vortex reader and before production native expansion.
+- Phase 19 research started: recommended solver-neutral obligation/report types in `loom-core`, deterministic SMT-LIB v2.7 emission, optional `loom-solver-smt` backend using Z3 first and cvc5 later as strict cross-check, and fail-closed handling for `sat`, `unknown`, timeout, parse error, and missing strict solver.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21-23 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 21 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader and solver-backed verifier artifacts.
@@ -174,7 +174,7 @@ None yet.
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
 | v3 verifier | Unified artifact verification pipeline | Complete | Phase 17 |
 | v3 ingress | Complete Vortex reader | Complete | Phase 18 |
-| v3 verifier | Solver-backed full artifact verifier | Placeholder | Phase 19 |
+| v3 verifier | Solver-backed full artifact verifier | Research | Phase 19 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 20 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 21 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 22 |
@@ -184,8 +184,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T10:20:56.000Z
-Stopped at: Phase 18 complete; Phase 19 placeholder next
+Last session: 2026-06-08T11:10:32.000Z
+Stopped at: Phase 19 research started; plan phase next
 
 Phase 17 handoff:
 
@@ -209,4 +209,5 @@ Phase 18 context: .planning/phases/18-complete-vortex-reader/18-CONTEXT.md
 Phase 18 plans: .planning/phases/18-complete-vortex-reader/18-01-PLAN.md through 18-05-PLAN.md
 Phase 18 report: .planning/phases/18-complete-vortex-reader/18-READER-REPORT.md
 Phase 18 summary: .planning/phases/18-complete-vortex-reader/18-SUMMARY.md
+Phase 19 research: .planning/phases/19-solver-backed-full-artifact-verifier/19-RESEARCH.md
 Resume file: .planning/ROADMAP.md
