@@ -51,7 +51,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 19: Solver-backed Full Artifact Verifier** - Real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (complete)
 - [x] **Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence, without claiming a complete compiled dialect or production JIT backend (complete)
 - [x] **Phase 21: Expanded Vortex Encoding Coverage** - Widen supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (complete)
-- [ ] **Phase 22: Host Native Runtime ABI and Execution Policy** - Planned engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, projection/predicate/split planning, concurrency, and interpreter fallback semantics that host engines will call
+- [x] **Phase 22: Host Native Runtime ABI and Execution Policy** - Engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, projection/predicate/split planning, concurrency, and interpreter fallback semantics that host engines will call (complete)
 - [ ] **Phase 23: Production Native Backend Implementation** - Placeholder for the real compiled `loom.decode` ODS dialect, melior pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend that consumes Phase 22 ABI/policy decisions (not expanded)
 - [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
 - [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
@@ -617,7 +617,8 @@ remains a Phase 23 backend delta.
 
 ### Phase 22: Host Native Runtime ABI and Execution Policy
 
-**Status:** Planned; ready for execution.
+**Status:** Complete (2026-06-08). See `22-RUNTIME-ABI-CONTRACT.md`,
+`22-RUNTIME-ABI-REPORT.md`, and `22-SUMMARY.md`.
 **Depends on:** Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21.
 **Ordering decision:** Define the engine-independent boundary before touching a host engine or committing to the production backend mechanics, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, StarRocks, compiled dialect, or JIT implementation phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 27 validation.
 
@@ -625,12 +626,20 @@ remains a Phase 23 backend delta.
 **Research:** `.planning/phases/22-host-native-runtime-abi-and-execution-policy/22-RESEARCH.md`
 **Context:** `.planning/phases/22-host-native-runtime-abi-and-execution-policy/22-CONTEXT.md`
 
-**Planned split:**
-- [ ] 22-01-PLAN.md - Runtime ABI contract and lifecycle model
-- [ ] 22-02-PLAN.md - Verified facts handoff and execution decision policy
-- [ ] 22-03-PLAN.md - Projection, predicate, and split planning envelope
-- [ ] 22-04-PLAN.md - Cache key, diagnostics, and C ABI sketch
-- [ ] 22-05-PLAN.md - Report, release gate, and backend handoff
+**Delivered split:**
+- [x] 22-01-PLAN.md - Runtime ABI contract and lifecycle model
+- [x] 22-02-PLAN.md - Verified facts handoff and execution decision policy
+- [x] 22-03-PLAN.md - Projection, predicate, and split planning envelope
+- [x] 22-04-PLAN.md - Cache key, diagnostics, and C ABI sketch
+- [x] 22-05-PLAN.md - Report, release gate, and backend handoff
+
+**Closeout:** Phase 22 added `loom_core::runtime_abi`, a host-neutral runtime
+contract, deterministic native/interpreter/fail-closed decision policy,
+projection/predicate/split/concurrency planning, deterministic cache identity,
+stable diagnostics, a non-frozen `loom_runtime.h` ABI sketch, and
+`scripts/runtime-abi-test.sh` wired into the release gate. It does not implement
+DuckDB native execution, StarRocks integration, Iceberg binding, production JIT,
+or arbitrary Vortex semantic compatibility.
 
 ### Phase 23: Production Native Backend Implementation
 
@@ -696,7 +705,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 19. Solver-backed Full Artifact Verifier | 5/5 | Complete | 2026-06-08 |
 | 20. Production Decode Dialect Seed and Raw Primitive Native Lowering | 5/5 | Complete | 2026-06-08 |
 | 21. Expanded Vortex Encoding Coverage | 5/5 | Complete | 2026-06-08 |
-| 22. Host Native Runtime ABI and Execution Policy | 0/5 | Planned | - |
+| 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 0/? | Placeholder | - |
 | 24. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |

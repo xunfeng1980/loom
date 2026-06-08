@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 22 host native runtime ABI planned; execution next
+stopped_at: Phase 22 complete; Phase 23 production native backend implementation next
 last_updated: "2026-06-08T14:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 22 host native runtime ABI research and planning complete
+last_activity: 2026-06-08 -- Phase 22 host native runtime ABI implemented and release-gated
 progress:
   total_phases: 28
-  completed_phases: 21
+  completed_phases: 22
   total_plans: 87
-  completed_plans: 82
-  percent: 75
+  completed_plans: 87
+  percent: 79
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 22 — host native runtime ABI and execution policy (planned; execution next)
+**Current focus:** Phase 23 — production native backend implementation (next)
 
 ## Current Position
 
-Phase: 22 (host-native-runtime-abi-and-execution-policy) — NEXT
-Plan: Phase 22 planned as 22-01 through 22-05
-Status: Phase 22 research and planning are complete. The planned direction is a host-neutral runtime ABI/policy contract over verified artifact facts, production lowering facts, projection/predicate/split planning, cache identity, diagnostics, concurrency, and fallback semantics before Phase 23 backend or Phase 24 DuckDB integration.
-Last activity: 2026-06-08 -- Phase 22 host native runtime ABI research and planning complete
+Phase: 23 (production-native-backend-implementation) — NEXT
+Plan: Phase 23 is a roadmap placeholder and should be researched/planned next
+Status: Phase 22 is complete with a host-neutral runtime ABI/policy model, deterministic native/interpreter/fail-closed decisions, projection/predicate/split/concurrency planning, cache identity, diagnostics, C ABI sketch, and release gate. Phase 23 should implement the production native backend against this runtime contract.
+Last activity: 2026-06-08 -- Phase 22 host native runtime ABI implemented and release-gated
 
-Progress: 75%
+Progress: 79%
 
 ## Progress Snapshot
 
-- Completed phases: 21 / 28
-- Completed executable plans: 82 / 87
+- Completed phases: 22 / 28
+- Completed executable plans: 87 / 87
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 22 host native runtime ABI and execution policy is planned; execution is next
-- Last verified gate: Phase 21 focused gates passed; final `scripts/vortex-encoding-coverage-test.sh` / `scripts/mvp0-verify.sh` verification is recorded in Phase 21 summary
+- Current position: Phase 23 production native backend implementation is next
+- Last verified gate: Phase 22 focused gate passed; `scripts/runtime-abi-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
 
@@ -53,7 +53,7 @@ Progress: 75%
 | 19 | Solver-backed full artifact verifier | 5/5 complete |
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
-| 22 | Host native runtime ABI and execution policy | 0/5 planned |
+| 22 | Host native runtime ABI and execution policy | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -149,6 +149,7 @@ None yet.
 - Phase 22-25 split research complete: the former engine-integrated native execution MVP placeholder is now four placeholders covering host native runtime ABI/policy, production native backend implementation, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 22 research started: recommended a host-neutral runtime ABI and execution policy over verified artifact facts, Bitwuzla discharge, production-lowering facts, projection/predicate/split planning, cache identity, diagnostics, concurrency, and native/interpreter/fail-closed decisions before Phase 23 backend or Phase 24 DuckDB integration.
 - Phase 22 planned: 22-01 through 22-05 cover runtime ABI contract/lifecycle, verified-facts handoff and execution decisions, projection/predicate/split/concurrency planning, cache key/diagnostics/C ABI sketch, and final release-gate/backend handoff.
+- Phase 22 complete: `loom_core::runtime_abi` now provides host-neutral runtime ABI model types, deterministic native/interpreter/fail-closed decision policy, projection/predicate/split/concurrency planning, deterministic cache identity, stable runtime diagnostics, a non-frozen `loom_runtime.h` C ABI sketch, final report, and `scripts/runtime-abi-test.sh` wired into the release gate.
 - Phase 23 reserved as a roadmap placeholder only: production native backend implementation with compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution over the Phase 22 runtime contract.
 - Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
@@ -198,7 +199,7 @@ None yet.
 | v3 verifier | Solver-backed full artifact verifier | Complete | Phase 19 |
 | v3 native | Production decode dialect seed and raw primitive native lowering | Complete | Phase 20 |
 | v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
-| v3 engine | Host native runtime ABI and execution policy | Planned | Phase 22 |
+| v3 engine | Host native runtime ABI and execution policy | Complete | Phase 22 |
 | v3 native | Production native backend implementation | Placeholder | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
@@ -209,7 +210,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T14:30:00.000Z
-Stopped at: Phase 22 host native runtime ABI planned; execution next
+Stopped at: Phase 22 complete; Phase 23 research/planning next
 
 Phase 17 handoff:
 

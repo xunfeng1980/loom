@@ -105,6 +105,10 @@ info "Running Phase 21 expanded Vortex encoding coverage gate..."
 bash scripts/vortex-encoding-coverage-test.sh
 ok "scripts/vortex-encoding-coverage-test.sh"
 
+info "Running Phase 22 runtime ABI gate..."
+bash scripts/runtime-abi-test.sh
+ok "scripts/runtime-abi-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"
