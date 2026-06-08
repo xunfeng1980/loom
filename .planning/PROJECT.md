@@ -45,14 +45,15 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 14/15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
+- [ ] Phase 14 MLIR/native lowering spike is planned: first verifier-gated textual MLIR over a tiny `L2Core` bounded Int32 copy slice, with optional native/JIT evidence only.
+- [ ] Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
 - MLIR `decode` dialect / lowering to LLVM / native-speed codegen — MVP0 interprets directly; speed layer is the design's later act (`design.md` §8)
-- MLIR/native lowering correctness proof and real Vortex file ingress proof — Phase 13 targets the Loom verifier foundation only; lowering and real ingress remain Phase 14/15 work (`design.md` §5, §7, §13)
+- MLIR/native lowering correctness proof and real Vortex file ingress proof — Phase 14 is only a verifier-gated textual lowering spike; production compiler proof and real ingress remain later work (`design.md` §5, §7, §13)
 - Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
 - Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
@@ -64,7 +65,7 @@ If only one thing works, it is this end-to-end chain.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets MVP0 reference Vortex's encoding definitions / crates directly rather than reverse-engineering a wire format.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
 - **Design philosophy carried into MVP0:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% (here, FSST) drops into L2. MVP0 should make that split visible.
-- **What MVP0 is *not* trying to prove:** native speed, real Vortex file ingress, complete production verification of all future Loom artifacts, or decades-long version stability. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation but still leaves native lowering and real ingress to Phase 14/15.
+- **What MVP0 is *not* trying to prove:** native speed, real Vortex file ingress, complete production verification of all future Loom artifacts, or decades-long version stability. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation; Phase 14 starts only a narrow verifier-gated textual lowering spike, not production native execution.
 
 ## Constraints
 
@@ -101,6 +102,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
+| Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Planned — Phase 14 |
 
 ## Evolution
 
@@ -120,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 13 completion — full Loom verifier foundation implemented with layered verification stack.*
+*Last updated: 2026-06-08 after Phase 14 planning — verifier-gated textual MLIR/native lowering spike planned.*

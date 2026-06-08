@@ -127,6 +127,14 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **VERIFIER-09**: A Lean or Rocq proof scaffold defines core semantics and states or proves an accepted-program safety theorem
 - [x] **VERIFIER-10**: Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions
 
+### MLIR/Native Lowering Spike
+
+- [ ] **LOWER-01**: A lowering contract and Rust support predicate require an accepted `verify_l2_core` report plus present `VerifiedArtifactFacts`, and unsupported shapes fail closed with stable diagnostics before artifact emission
+- [ ] **LOWER-02**: The supported bounded Int32 copy `L2Core` slice emits deterministic textual MLIR using standard `func`, `arith`, `scf`, and `memref` dialect operations without mandatory `melior`, LLVM, or Cranelift dependencies
+- [ ] **LOWER-03**: Focused tests compare the supported slice against typed primitive reference output and cover negative range/capacity and unsupported-shape rejection cases
+- [ ] **LOWER-04**: A `scripts/native-lowering-test.sh` gate runs focused native-lowering tests and treats `mlir-opt`/native toolchain validation as explicit optional evidence when unavailable
+- [ ] **LOWER-05**: Public and planning docs state the narrow Phase 14 spike scope and do not claim production native compiler completion, custom Loom dialect completion, vectorization, mandatory JIT, or compiler correctness proof
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -214,6 +222,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | VERIFIER-08 | Phase 13 | Complete |
 | VERIFIER-09 | Phase 13 | Complete |
 | VERIFIER-10 | Phase 13 | Complete |
+| LOWER-01 | Phase 14 | Planned |
+| LOWER-02 | Phase 14 | Planned |
+| LOWER-03 | Phase 14 | Planned |
+| LOWER-04 | Phase 14 | Planned |
+| LOWER-05 | Phase 14 | Planned |
 
 **Coverage:**
 
@@ -226,9 +239,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 distribution-container requirements: 5 total
 - v3 formal-safety-proof requirements: 5 total
 - v3 full-loom-verifier requirements: 10 total
-- Mapped to phases: 67
+- v3 mlir-native-lowering-spike requirements: 5 total
+- Mapped to phases: 72
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier foundation complete*
+*Last updated: 2026-06-08 — Phase 14 MLIR/Native Lowering Spike planned*
