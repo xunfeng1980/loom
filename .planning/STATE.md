@@ -7,11 +7,11 @@ stopped_at: Phase 19 research started; plan phase next
 last_updated: "2026-06-08T11:10:32.000Z"
 last_activity: 2026-06-08 -- Phase 19 research started
 progress:
-  total_phases: 25
+  total_phases: 26
   completed_phases: 18
   total_plans: 67
   completed_plans: 67
-  percent: 72
+  percent: 69
 ---
 
 # Project State
@@ -30,11 +30,11 @@ Plan: not planned yet
 Status: Phase 19 research recommends solver-neutral core obligations, deterministic SMT-LIB, and optional solver backend crate
 Last activity: 2026-06-08 -- Phase 19 research started
 
-Progress: 72%
+Progress: 69%
 
 ## Progress Snapshot
 
-- Completed phases: 18 / 25
+- Completed phases: 18 / 26
 - Completed executable plans: 67 / 67
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 19 solver-backed full artifact verifier research started; plan phase next
@@ -128,12 +128,13 @@ None yet.
 - Phase 18 complete: 18-05 closed with CLI reader facts and artifact-verifier status, `scripts/complete-vortex-reader-test.sh`, release-gate wiring, final report, public/planning docs, and Phase 19 solver-backed verifier handoff.
 - Phase 19 research started: recommended solver-neutral obligation/report types in `loom-core`, deterministic SMT-LIB v2.7 emission, optional `loom-solver-smt` backend using Z3 first and cvc5 later as strict cross-check, and fail-closed handling for `sat`, `unknown`, timeout, parse error, and missing strict solver.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
-- Phase 21-23 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
-- Phase 21 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader and solver-backed verifier artifacts.
-- Phase 22 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 21 runtime contract.
-- Phase 23 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- Phase 24 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- Phase 25 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
+- Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
+- Phase 22 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
+- Phase 23 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract.
+- Phase 24 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
+- Phase 25 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- Phase 26 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Quick Tasks Completed
 
@@ -176,11 +177,12 @@ None yet.
 | v3 ingress | Complete Vortex reader | Complete | Phase 18 |
 | v3 verifier | Solver-backed full artifact verifier | Research | Phase 19 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 20 |
-| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 21 |
-| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 22 |
-| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 23 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 24 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 25 |
+| v3 ingress | Expanded Vortex encoding coverage | Placeholder | Phase 21 |
+| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 22 |
+| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 23 |
+| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 24 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 25 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 26 |
 
 ## Session Continuity
 

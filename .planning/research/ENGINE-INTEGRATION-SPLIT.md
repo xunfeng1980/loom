@@ -4,7 +4,7 @@ Date: 2026-06-08
 
 ## Goal
 
-The former Phase 19 placeholder mixed three different risks:
+The former engine-integrated native execution placeholder mixed three different risks:
 
 - a stable native runtime contract that host engines can call safely
 - one concrete host-engine integration over complete-reader artifacts
@@ -22,7 +22,7 @@ Those are separate proof obligations. Keeping them separate avoids turning the f
 
 ## Recommended Split
 
-### Phase 19: Host Native Runtime ABI and Execution Policy
+### Phase 22: Host Native Runtime ABI and Execution Policy
 
 Define the engine-independent ABI and policy:
 
@@ -35,9 +35,9 @@ Define the engine-independent ABI and policy:
 
 This phase should not integrate DuckDB, Iceberg, or StarRocks.
 
-### Phase 20: DuckDB Native Execution Integration MVP
+### Phase 23: DuckDB Native Execution Integration MVP
 
-Wire the Phase 19 runtime into the existing DuckDB table-function path:
+Wire the Phase 22 runtime into the existing DuckDB table-function path:
 
 - native execution selected only for accepted verifier/native facts
 - interpreter fallback where policy allows
@@ -47,7 +47,7 @@ Wire the Phase 19 runtime into the existing DuckDB table-function path:
 
 DuckDB stays first because Loom already has this host seam and release gate.
 
-### Phase 21: Native Equivalence, Cache, and Fallback Hardening
+### Phase 24: Native Equivalence, Cache, and Fallback Hardening
 
 Close the native execution story before table-format binding:
 

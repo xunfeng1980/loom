@@ -104,10 +104,11 @@ Result: all commands passed on 2026-06-08. After upgrading local Homebrew LLVM/M
 - Solver-backed symbolic range/offset/overflow discharge remains Phase 19.
 - Stable external `L2Core` artifact codec/parser remains Phase 19 or later.
 - Production MLIR decode dialect and native kernel expansion remain Phase 20.
-- Host native runtime ABI and execution policy remain Phase 21.
-- DuckDB native execution integration remains Phase 22.
-- Native equivalence/cache/fallback hardening remains Phase 23.
-- Iceberg ref/table binding and StarRocks + DuckDB dual query surface remain Phase 24 and Phase 25.
+- Expanded Vortex encoding coverage remains Phase 21.
+- Host native runtime ABI and execution policy remains Phase 22.
+- DuckDB native execution integration remains Phase 23.
+- Native equivalence/cache/fallback hardening remains Phase 24.
+- Iceberg ref/table binding and StarRocks + DuckDB dual query surface remain Phase 25 and Phase 26.
 
 ## Phase 19 Handoff
 
