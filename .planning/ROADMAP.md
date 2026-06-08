@@ -329,7 +329,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 12-01-PLAN.md - Define the safety contract, proof-obligation matrix, loop-bound audit, and unsafe-boundary argument (PROOF-01, PROOF-03, PROOF-05)
+- [x] 12-01-PLAN.md - Define the safety contract, proof-obligation matrix, loop-bound audit, and unsafe-boundary argument (PROOF-01, PROOF-03, PROOF-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -374,7 +374,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
-| 12. Formal Verifier / Safety Proof MVP | 0/4 | Planned | - |
+| 12. Formal Verifier / Safety Proof MVP | 1/4 | In Progress | - |
 | 13. Full Loom Verifier | 0/? | Placeholder | - |
 | 14. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |
