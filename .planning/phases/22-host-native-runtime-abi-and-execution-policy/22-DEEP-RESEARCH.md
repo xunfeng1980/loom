@@ -170,6 +170,79 @@ Sources:
 - https://arrow.apache.org/docs/16.0/format/ADBC/C.html
 - https://arrow.apache.org/nanoarrow/main/reference/c.html
 
+### Node-API / N-API and Natural Host APIs
+
+Node-API is a useful pattern because it deliberately separates three layers:
+
+1. a stable C ABI (`node_api.h`);
+2. higher-level wrappers such as `node-addon-api`;
+3. language-specific natural bindings such as `napi-rs`.
+
+Node-API's C layer has several design choices worth copying for Loom:
+
+- every call returns a stable status code;
+- actual return values are written through out parameters;
+- runtime-specific values are opaque (`napi_value`);
+- richer error information is retrieved through a separate error-info API;
+- version discovery is explicit through `napi_get_version`;
+- enum values are treated as extensible, so consumers must tolerate unknown
+  values in out positions;
+- environment state is explicit (`napi_env`) and cannot be cached or reused
+  across incompatible runtime instances;
+- cleanup hooks are environment-scoped;
+- cross-thread callbacks require a special thread-safe function object with
+  acquire/release semantics.
+
+The `node-addon-api` lesson is equally important: a natural C++ API can be
+header-only/inlinable while still depending only on the stable C ABI. `napi-rs`
+adds the same idea for Rust: feature flags select a target N-API version, while
+the Rust-facing API hides most manual out-parameter and status-code ceremony.
+
+Phase 22 implication:
+
+- Loom should freeze the narrow C ABI first and treat any C++, Rust, DuckDB, or
+  future JavaScript/Python APIs as adapters over that ABI.
+- The C ABI should be boring: status codes, out parameters, opaque handles,
+  explicit environment/runtime context, and version/capability queries.
+- The natural API should be pleasant: RAII for handles, `Result`/exceptions for
+  diagnostics, typed builders for projection/predicate/splits, and iterator or
+  stream adapters for batches.
+- Host-specific wrappers must not smuggle extra trust. A natural DuckDB adapter
+  and a natural Rust adapter should call the same verifier-gated planning path
+  and produce the same `RuntimeCacheKey`.
+- A future `loom-runtime-rs` wrapper should be allowed to evolve faster than
+  `loom_runtime.h`, exactly as `node-addon-api` and `napi-rs` can improve
+  ergonomics while Node-API keeps ABI stability.
+
+Sources:
+
+- https://nodejs.org/api/n-api.html
+- https://github.com/nodejs/node-addon-api/blob/main/doc/README.md
+- https://docs.rs/napi/latest/napi/index.html
+
+### CPython Limited API and Stable ABI
+
+CPython's C API is a good cautionary model because it separates a broad public C
+API from a narrower Limited API and Stable ABI. Defining `Py_LIMITED_API` hides
+most version-specific implementation details, letting extensions compile once
+for multiple Python 3 versions, but with tradeoffs: some fast macros/inlined
+paths are unavailable, behavior can still change, and extensions must test
+against the versions they claim to support.
+
+Phase 22 implication:
+
+- Loom should name the stable subset explicitly. Not every internal
+  `runtime_abi` type should become part of `loom_runtime.h`.
+- A "limited C ABI" for Loom should prefer functions over macros and opaque
+  handles over exposed struct internals.
+- Performance-specific host adapters can use a version-specific native path,
+  but the portable ABI must stay correct and verifier-gated even if it is less
+  convenient or slightly slower.
+- Compatibility claims need tests across supported ABI versions and platforms;
+  a compile-time define alone is not enough evidence.
+
+Source: https://docs.python.org/3/c-api/stable.html
+
 ### Substrait
 
 Substrait is a cross-language relational algebra serialization project. It is
@@ -229,6 +302,8 @@ Before freezing `loom_runtime.h`, add:
 - `loom_runtime_abi_version()`;
 - `loom_runtime_implementation_version()`;
 - `loom_runtime_get_capabilities(...)`;
+- `loom_runtime_context_create(...)` or equivalent only if a process-wide
+  runtime context becomes necessary;
 - a request field for the caller's max supported ABI version;
 - reserved flags/fields for forward-compatible structs.
 
@@ -251,6 +326,21 @@ opaque in C. Do not expose Rust enums by layout, C++ classes, `std::string`,
 
 Use `#[repr(C)]` only for plain C-compatible request/result structs. Generate
 or validate headers with `cbindgen`/bindgen-style checks.
+
+### 2.1. Stable ABI vs Natural API
+
+Keep two API surfaces conceptually separate:
+
+| Layer | Stability goal | Shape |
+| --- | --- | --- |
+| `loom_runtime.h` | ABI stability | C status codes, out parameters, opaque handles, explicit release |
+| `loom-runtime-rs` | Rust ergonomics | `Result<T>`, RAII drops, builders, iterators |
+| DuckDB adapter | host ergonomics | bind/init/local-init mapping, `DataChunk` filling, DuckDB errors |
+| future C++ wrapper | C++ ergonomics | RAII classes, spans/views, exceptions optional |
+
+The natural APIs may feel host-native, but they must be mechanically reducible
+to the C ABI plus Arrow C Data ownership rules. This keeps host convenience from
+becoming a hidden second ABI.
 
 ### 3. Status Codes Plus Owned Diagnostics
 
@@ -365,7 +455,9 @@ Needs Phase 23/24 hardening:
 - richer status code taxonomy;
 - cancellation;
 - allocator contract;
+- explicit runtime context/environment lifetime if future adapters need one;
 - thread-safety matrix in the public C header;
+- stable low-level ABI plus separate natural wrapper policy;
 - Arrow export release-order tests across C/C++ consumer code;
 - second-consumer validation before ABI freeze.
 
@@ -377,6 +469,8 @@ Phase 23:
 - Emit native artifacts only for `native-candidate` reports.
 - Add cancellation and backend/toolchain identity into native prepare/execute.
 - Add ABI layout tests even if the C ABI remains marked unstable.
+- Start a thin Rust natural wrapper only if it helps tests; do not let wrapper
+  ergonomics define the C ABI.
 
 Phase 24:
 
@@ -405,6 +499,10 @@ Phase 27:
 - DuckDB C Table Functions: https://duckdb.org/docs/current/clients/c/table_functions
 - Rustonomicon FFI: https://doc.rust-lang.org/nightly/nomicon/ffi.html
 - Rustonomicon `repr(C)`: https://doc.rust-lang.org/beta/nomicon/other-reprs.html
+- Node-API / N-API: https://nodejs.org/api/n-api.html
+- node-addon-api documentation: https://github.com/nodejs/node-addon-api/blob/main/doc/README.md
+- napi-rs crate documentation: https://docs.rs/napi/latest/napi/index.html
+- CPython C API stability: https://docs.python.org/3/c-api/stable.html
 - ADBC Specification: https://arrow.apache.org/docs/14.0/format/ADBC.html
 - ADBC C API Specification: https://arrow.apache.org/docs/16.0/format/ADBC/C.html
 - nanoarrow C API: https://arrow.apache.org/nanoarrow/main/reference/c.html
