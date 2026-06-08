@@ -1627,6 +1627,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-source-ingress"
+version = "0.1.0"
+
+[[package]]
 name = "loom-vortex-ingress"
 version = "0.1.0"
 dependencies = [
