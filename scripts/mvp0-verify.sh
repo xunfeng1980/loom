@@ -113,6 +113,10 @@ info "Running Phase 23 production native backend gate..."
 bash scripts/production-backend-test.sh
 ok "scripts/production-backend-test.sh"
 
+info "Running Phase 24 DuckDB native integration gate..."
+bash scripts/duckdb-native-integration-test.sh
+ok "scripts/duckdb-native-integration-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"

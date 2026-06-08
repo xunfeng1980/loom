@@ -171,26 +171,42 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# CORE-01 (Phase 16): loom-core and loom-ffi must have zero MLIR/LLVM backend
-# dependencies. The optional melior backend lives only in loom-native-melior.
+# CORE-01 (Phase 16/24): loom-core must have zero MLIR/LLVM backend
+# dependencies. Phase 24 allows loom-ffi to depend on the internal
+# loom-native-melior bridge for DuckDB runtime preparation, but loom-ffi must
+# not directly depend on melior/mlir/llvm crates.
 # ---------------------------------------------------------------------------
 echo "--- CORE-01 (Phase 16): MLIR/LLVM backend dependency isolation ---"
-for crate in loom-core loom-ffi; do
-    backend_tree_exit=0
-    backend_out=$(cargo tree -p "$crate" 2>&1) || backend_tree_exit=$?
-    if [ "$backend_tree_exit" -ne 0 ]; then
-        fail "cargo tree -p $crate failed (exit $backend_tree_exit) — cannot verify MLIR/LLVM isolation:"
-        echo "$backend_out" | head -5 >&2
-        continue
-    fi
+backend_tree_exit=0
+backend_out=$(cargo tree -p loom-core 2>&1) || backend_tree_exit=$?
+if [ "$backend_tree_exit" -ne 0 ]; then
+    fail "cargo tree -p loom-core failed (exit $backend_tree_exit) — cannot verify MLIR/LLVM isolation:"
+    echo "$backend_out" | head -5 >&2
+else
     backend_refs=$(printf '%s\n' "$backend_out" | grep -v '^#' | grep -Ei 'melior|mlir|llvm' || true)
     if [ -z "$backend_refs" ]; then
-        pass "cargo tree -p $crate | grep melior/mlir/llvm → clean"
+        pass "cargo tree -p loom-core | grep melior/mlir/llvm → clean"
     else
-        fail "$crate has a MLIR/LLVM backend dependency — breaks Phase 16 optional-backend isolation:"
+        fail "loom-core has a MLIR/LLVM backend dependency — breaks core isolation:"
         echo "$backend_refs" >&2
     fi
-done
+fi
+
+backend_tree_exit=0
+backend_out=$(cargo tree -p loom-ffi --depth 1 2>&1) || backend_tree_exit=$?
+if [ "$backend_tree_exit" -ne 0 ]; then
+    fail "cargo tree -p loom-ffi --depth 1 failed (exit $backend_tree_exit) — cannot verify direct backend edges:"
+    echo "$backend_out" | head -5 >&2
+else
+    forbidden_direct_refs=$(printf '%s\n' "$backend_out" | grep -v '^#' | grep -Ei '(^|[[:space:]])(melior|mlir|llvm)[[:space:]]' || true)
+    unexpected_melior_refs=$(printf '%s\n' "$backend_out" | grep -v '^#' | grep -Ei 'melior|mlir|llvm' | grep -v 'loom-native-melior' || true)
+    if [ -n "$forbidden_direct_refs" ] || [ -n "$unexpected_melior_refs" ]; then
+        fail "loom-ffi has a direct MLIR/LLVM dependency outside the Phase 24 loom-native-melior bridge:"
+        printf '%s\n%s\n' "$forbidden_direct_refs" "$unexpected_melior_refs" >&2
+    else
+        pass "loom-ffi direct backend edge is limited to loom-native-melior"
+    fi
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
