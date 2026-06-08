@@ -802,7 +802,7 @@ Plans:
 **Goal:** Local Iceberg table/ref metadata can be bound to verifier-backed Loom artifacts through sidecar/reference evidence, preserving schema/snapshot identity, source/oracle evidence, and fail-closed verifier facts without adding query surfaces or a second source-ingress framework.
 **Requirements:** PHASE-28
 **Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 Plans:
 
 **Wave 1**
@@ -827,15 +827,15 @@ Plans:
 
 ### Phase 29: StarRocks + DuckDB Dual Query Surface
 
-**Status:** Skipped/deferred by user request on 2026-06-09. Context and pattern artifacts were captured, but no StarRocks integration or dual-query evidence was implemented.
+**Status:** In progress. Context, research, and pattern artifacts are captured; planning should proceed with an offline deterministic StarRocks-compatible query contract, executable DuckDB evidence via existing `loom_scan(path)`, and explicit current-phase tradeoffs.
 **Depends on:** Phase 28.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
 
 ### Phase 30: Full Vortex Semantic Compatibility
 
-**Status:** Ready for planning by explicit user override. The original dependency on Phase 29 dual-query evidence is not satisfied because Phase 29 was skipped/deferred.
+**Status:** Placeholder. Do not begin until Phase 29 dual-query surface evidence is complete.
 **Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 29.
-**Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase. Because Phase 29 was skipped, Phase 30 must not cite dual-query evidence as satisfied.
+**Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
 
 ## Progress
 
@@ -871,6 +871,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Iceberg Ref/Table Binding | 5/5 | Complete | 2026-06-09 |
-| 29. StarRocks + DuckDB Dual Query Surface | 0/0 | Skipped/deferred | 2026-06-09 |
+| 28. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
+| 29. StarRocks + DuckDB Dual Query Surface | 0/? | In Progress | - |
 | 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |

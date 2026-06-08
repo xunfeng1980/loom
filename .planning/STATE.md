@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Completed 28-05-PLAN.md
-last_updated: "2026-06-08T23:00:00.000Z"
-last_activity: 2026-06-09 -- Phase 28 plan 28-05 complete
+stopped_at: Phase 29 planning in progress
+last_updated: "2026-06-08T23:47:05Z"
+last_activity: 2026-06-09 -- Phase 29 reactivated after Phase 28 verification
 progress:
   total_phases: 30
-  completed_phases: 23
+  completed_phases: 28
   total_plans: 117
-  completed_plans: 98
-  percent: 74
+  completed_plans: 112
+  percent: 93
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 30 — Full Vortex Semantic Compatibility (started by user override after skipping Phase 29)
+**Current focus:** Phase 29 — StarRocks + DuckDB Dual Query Surface
 
 ## Current Position
 
-Phase: 28 (iceberg-ref-table-binding) — COMPLETE
-Plan: 5 of 5
-Status: Phase 28 complete; Phase 29 skipped/deferred by user request; Phase 30 starting with missing dual-query evidence recorded as a tradeoff
-Last activity: 2026-06-09 -- Phase 29 skipped/deferred; Phase 30 requested
+Phase: 29
+Plan: Not started
+Status: Phase 28 complete and verified; Phase 29 context/research/pattern map captured; planning next
+Last activity: 2026-06-09 -- Phase 29 reactivated after Phase 28 verification
 
-Progress: 90%
+Progress: 93%
 
 ## Progress Snapshot
 
-- Completed or skipped phases: 29 / 30
-- Completed executable plans: 112 / 112
+- Completed phases: 28 / 30
+- Completed executable plans: 112 / 117
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 30 starting by explicit user override; Phase 29 StarRocks/DuckDB dual-query evidence is deferred
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 28 Iceberg binding wired after Phase 27 Lance/Parquet and before DuckDB smoke
+- Current position: Phase 29 planning for StarRocks-compatible contract plus executable DuckDB query evidence
+- Last verified gate: Phase 28 `bash scripts/iceberg-binding-test.sh` passed after final review fixes; native DuckDB raw-copy gates also pass with non-zero artifact values
 
 **Completed phase plan counts:**
 
