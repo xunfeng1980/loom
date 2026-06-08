@@ -705,12 +705,25 @@ semantics remain deferred.
 **Goal:** DuckDB `loom_scan(path)` routes eligible complete-reader artifacts through the Phase 22 runtime policy and Phase 23 production backend while preserving interpreter fallback, fail-closed diagnostics, direct DataChunk output, projection evidence, and the existing public SQL surface.
 **Requirements:** PHASE-24
 **Plans:** 5 plans across 5 waves
-
 Plans:
+**Wave 1**
+
 - [ ] 24-01-PLAN.md - Internal Rust DuckDB runtime bridge and route policy tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 24-02-PLAN.md - Internal non-public DuckDB C ABI over opaque runtime/prepared handles
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 24-03-PLAN.md - DuckDB bind/global-init lifecycle routing over runtime/backend contracts
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 24-04-PLAN.md - Direct native/interpreter DataChunk output and single-batch scan behavior
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 24-05-PLAN.md - Route-aware DuckDB integration gate, release wiring, and final report
 
 ### Phase 25: Native Equivalence, Cache, and Fallback Hardening
