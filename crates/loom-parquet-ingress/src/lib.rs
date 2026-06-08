@@ -6,3 +6,6 @@
 //! Parquet SDK readers, file handles, credentials, object-store state, public
 //! SQL routes, DuckDB APIs, or FFI surfaces.
 
+pub mod source_contract;
+
+pub use source_contract::parquet_source_facts_from_path;

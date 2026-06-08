@@ -20,16 +20,9 @@ fn write_record_batch(path: &Path, batch: RecordBatch) {
 
 fn supported_int32_path(temp: &TempDir) -> std::path::PathBuf {
     let path = temp.path().join("supported-int32.parquet");
-    let schema = Arc::new(Schema::new(vec![Field::new(
-        "id",
-        DataType::Int32,
-        false,
-    )]));
-    let batch = RecordBatch::try_new(
-        schema,
-        vec![Arc::new(Int32Array::from(vec![7, -1, 42]))],
-    )
-    .expect("record batch");
+    let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, false)]));
+    let batch = RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![7, -1, 42]))])
+        .expect("record batch");
     write_record_batch(&path, batch);
     path
 }
@@ -82,10 +75,10 @@ fn parquet_facts_include_schema_and_row_group_metadata() {
         "expected row-group layout fact"
     );
     assert!(
-        facts
-            .layout_facts
+        facts.layout_facts.iter().any(|fact| fact
+            .physical_refs
             .iter()
-            .any(|fact| fact.physical_refs.iter().any(|item| item.contains("statistics="))),
+            .any(|item| item.contains("statistics="))),
         "expected column statistics presence to be summarized"
     );
     assert_eq!(facts.split_facts.len(), 1);
