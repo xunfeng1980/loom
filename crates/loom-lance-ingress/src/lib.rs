@@ -8,4 +8,7 @@
 
 mod source_contract;
 
-pub use source_contract::{lance_source_facts_from_path, source_ingress_report_from_lance_path};
+pub use source_contract::{
+    emit_source_ingress_lmc1_from_lance_path, lance_native_oracle_batches_from_path,
+    lance_source_facts_from_path, source_ingress_report_from_lance_path,
+};

@@ -5,6 +5,7 @@ edition = "2021"
 description = "Isolated local Lance dataset ingress adapter for Loom"
 
 [dependencies]
+arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 futures = { workspace = true }
 lance = { workspace = true }
@@ -12,6 +13,5 @@ loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 
 [dev-dependencies]
-arrow-array = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }

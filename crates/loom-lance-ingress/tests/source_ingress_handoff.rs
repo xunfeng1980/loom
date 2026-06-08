@@ -31,7 +31,11 @@ async fn write_lance_dataset(path: &Path, batch: RecordBatch) {
         .expect("write Lance dataset");
 }
 
-async fn lance_path_for_batch(temp: &TempDir, name: &str, batch: RecordBatch) -> std::path::PathBuf {
+async fn lance_path_for_batch(
+    temp: &TempDir,
+    name: &str,
+    batch: RecordBatch,
+) -> std::path::PathBuf {
     let path = temp.path().join(format!("{name}.lance"));
     write_lance_dataset(&path, batch).await;
     path
