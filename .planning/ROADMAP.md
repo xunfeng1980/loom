@@ -802,7 +802,7 @@ Plans:
 **Goal:** Local Iceberg table/ref metadata can be bound to verifier-backed Loom artifacts through sidecar/reference evidence, preserving schema/snapshot identity, source/oracle evidence, and fail-closed verifier facts without adding query surfaces or a second source-ingress framework.
 **Requirements:** PHASE-28
 **Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 
 **Wave 1**
@@ -819,7 +819,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 28-04-PLAN.md - Mismatch fail-closed matrix, fixture evidence, and binding report (PHASE-28)
+- [x] 28-04-PLAN.md - Mismatch fail-closed matrix, fixture evidence, and binding report (PHASE-28)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -871,6 +871,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Iceberg Ref/Table Binding | 3/5 | In Progress|  |
+| 28. Iceberg Ref/Table Binding | 4/5 | In Progress|  |
 | 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
 | 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |

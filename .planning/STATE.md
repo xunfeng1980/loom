@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-06-08T22:40:31.517Z"
-last_activity: 2026-06-08 -- Phase 28 plan 28-03 complete
+stopped_at: Completed 28-04-PLAN.md
+last_updated: "2026-06-08T22:50:17.415Z"
+last_activity: 2026-06-08 -- Phase 28 plan 28-04 complete
 progress:
   total_phases: 30
   completed_phases: 22
   total_plans: 117
-  completed_plans: 96
+  completed_plans: 97
   percent: 73
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 28 (iceberg-ref-table-binding) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
-Last activity: 2026-06-08 -- Phase 28 plan 28-03 complete
+Last activity: 2026-06-08 -- Phase 28 plan 28-04 complete
 
 Progress: 90%
 
@@ -37,7 +37,7 @@ Progress: 90%
 - Completed phases: 27 / 30
 - Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 plan 28-03 complete; next plan is 28-04
+- Current position: Phase 28 plan 28-04 complete; next plan is 28-05
 - Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed and is wired into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke
 
 **Completed phase plan counts:**
@@ -123,6 +123,8 @@ Recent decisions affecting current work:
 - [Phase 27]: The main release verifier runs Phase 27 after Phase 26 source ingress and before DuckDB SQL smoke.
 - [Phase 28]: 28-03: Accepted Iceberg bindings require local artifact bytes, recomputed SHA-256, live verify_artifact acceptance, and a sidecar-referenced evidence JSON artifact before bytes are returned.
 - [Phase 28]: 28-03: Sidecar verifier/source/oracle accepted flags are required descriptive inputs only; they are never sufficient to construct accepted binding evidence.
+- [Phase 28]: 28-04: Stale source/oracle evidence row count must match verified Loom artifact rows; sidecar flags remain descriptive only.
+- [Phase 28]: 28-04: Manifest-only sidecars fail before binding facts are considered complete; no official iceberg crate is added by default.
 
 ### Pending Todos
 
@@ -202,6 +204,7 @@ None yet.
 - Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
 - Phase 28 executing: 28-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
 - Phase 28 executing: 28-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
+- Phase 28 executing: 28-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 
@@ -266,8 +269,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T22:40:24.087Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-06-08T22:50:17.409Z
+Stopped at: Completed 28-04-PLAN.md
 
 Phase 17 handoff:
 
@@ -333,3 +336,4 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P05 | 57m | 3 tasks | 3 files |
 | Phase 28-iceberg-ref-table-binding P01 | 4m | 3 tasks | 8 files |
 | Phase 28-iceberg-ref-table-binding P03 | 5m37s | 3 tasks | 8 files |
+| Phase 28-iceberg-ref-table-binding P04 | 9min | 3 tasks | 9 files |
