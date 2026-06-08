@@ -125,6 +125,9 @@ pub enum LoomDecodeError {
 
     /// The FSST decoder failed or panicked.
     FsstKernelFailed(&'static str),
+
+    /// MVP0 layout payload bytes are malformed or truncated.
+    MalformedLayoutPayload(&'static str),
 }
 
 impl fmt::Display for LoomDecodeError {
@@ -222,6 +225,9 @@ impl fmt::Display for LoomDecodeError {
             }
             LoomDecodeError::FsstKernelFailed(reason) => {
                 write!(f, "FSST kernel failed: {reason}")
+            }
+            LoomDecodeError::MalformedLayoutPayload(reason) => {
+                write!(f, "malformed layout payload: {reason}")
             }
         }
     }

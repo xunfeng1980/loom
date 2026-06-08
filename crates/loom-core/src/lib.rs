@@ -16,6 +16,9 @@ pub mod error;
 /// Stable binary parameter format for the FSST L2 kernel.
 pub mod fsst_params;
 
+/// Minimal MVP0 layout payload codec used by the FFI boundary.
+pub mod layout_codec;
+
 /// Arrow builder output stage.
 ///
 /// Owns the typed Arrow builder operations (append_value / append_null) and
