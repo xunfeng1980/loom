@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Phase 06 complete
+status: active
+stopped_at: Phase 07 started
 last_updated: "2026-06-08T00:00:00.000Z"
-last_activity: 2026-06-08 -- Phase 06 marked complete
+last_activity: 2026-06-08 -- Phase 07 planning started
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 15
+  total_plans: 19
   completed_plans: 15
-  percent: 100
+  percent: 79
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over a Vortex-encoded column decoded by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
-**Current focus:** Phase 06 — mvp0-hardening-and-release-baseline complete; Phase 07 recommended next
+**Current focus:** Phase 07 — human-readable-layout-descriptor-and-cli
 
 ## Current Position
 
-Phase: 06 — COMPLETE
-Plan: 3 of 3
-Status: Phase 06 complete
-Last activity: 2026-06-08 -- Phase 06 marked complete
+Phase: 07 — PLANNED
+Plan: 0 of 4
+Status: Phase 07 planning started
+Last activity: 2026-06-08 -- Phase 07 planning started
 
-Progress: [██████████] 100%
+Progress: [███████▉  ] 79%
 
 ## Performance Metrics
 
@@ -107,7 +107,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 7 candidate: human-readable layout descriptor and CLI inspect/decode surface. See `.planning/phases/06-mvp0-hardening-and-release-baseline/06-HANDOFF.md`.
+- Phase 7 scope guard: implement descriptor/CLI usability only. Keep multi-column output, ArrowArrayStream replacement, additional L2 kernels, verifier, MLIR/native lowering, and full `.vortex` file container support out of Phase 7.
 - Phase 8 candidate: **arrow_scan / ArrowArrayStream import path.** Direct `DataChunk` population is acceptable for the single-column MVP0; revisit only when multi-column record-batch-shaped output exists.
 
 ### Quick Tasks Completed
@@ -120,16 +120,16 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v2 | DX-01: Human-readable L1 layout descriptor (TOML/S-expr) | Deferred | Roadmap |
-| v2 | DX-02: Multiple sample columns per encoding in verification harness | Deferred | Roadmap |
-| v2 | DX-03: CLI driver (loom decode <input> <column>) | Deferred | Roadmap |
-| v2 | DX-04: Wall-clock timing comparison | Deferred | Roadmap |
 | v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Deferred | Roadmap |
 | v2 | COV-02: Multi-column table function | Deferred | Roadmap |
 | v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
 | v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
 | v2 foundation | VERIFY-04: One-command MVP0 release gate | Complete | Phase 6 |
 | v2 foundation | BUILD-01: Rust/DuckDB stale-artifact build hygiene | Complete | Phase 6 |
+| v2 | DX-01: Human-readable L1 layout descriptor | Planned | Phase 7 |
+| v2 | DX-02: Multiple sample columns per encoding | Planned | Phase 7 |
+| v2 | DX-03: CLI inspect/decode driver | Planned | Phase 7 |
+| v2 | DX-04: Illustrative timing comparison | Planned | Phase 7 |
 
 ## Session Continuity
 

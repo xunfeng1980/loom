@@ -36,7 +36,9 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Recommended Phase 7: human-readable layout descriptor plus CLI inspect/decode surface
+- [ ] Phase 7: human-readable layout descriptor plus CLI inspect/decode surface
+- [ ] Phase 7: descriptor roundtrip tests and expanded fixture samples per supported encoding
+- [ ] Phase 7: illustrative Loom vs Vortex wall-clock timing output
 - [ ] Recommended Phase 8: multi-column table output and possible ArrowArrayStream revisit
 
 ### Out of Scope
@@ -85,7 +87,7 @@ If only one thing works, it is this end-to-end chain.
 | Acceptance = DuckDB SQL results match Vortex's decoder row-for-row | Concrete, end-to-end, falsifiable success bar | Complete — Phase 5 |
 | Defer the verifier / safety-boundary demo | MVP0 proves the decode chain, not the sandbox; safety is a later milestone | Still deferred |
 | Phase 6 before descriptor/CLI | A clean baseline prevents v2 work from inheriting stale docs or fragile verification steps | Complete — Phase 6 |
-| Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Recommended next |
+| Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Active |
 
 ## Evolution
 
@@ -105,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 6 (MVP0 Hardening and Release Baseline) — MVP0 has a one-command release gate via `scripts/mvp0-verify.sh`, public docs distinguish the interpreter demo from the full Loom design, and Phase 7 is ready to focus on human-readable descriptors plus CLI tooling.*
+*Last updated: 2026-06-08 starting Phase 7 (Human-Readable Layout Descriptor and CLI) — MVP0 has a one-command release gate via `scripts/mvp0-verify.sh`; Phase 7 focuses on making the Loom layout contract independent, inspectable, and decodable without reading Rust tests or Vortex bridge code.*
