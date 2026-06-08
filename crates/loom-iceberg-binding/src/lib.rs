@@ -1,0 +1,19 @@
+//! Adapter-local local-file Iceberg table/ref binding proof.
+//!
+//! This crate owns Phase 28 Iceberg binding vocabulary and keeps it out of
+//! `loom-core`, `loom-ffi`, `loom-source-ingress`, DuckDB host code, CLI public
+//! routes, and public headers. It does not add public SQL, C ABI, DuckDB,
+//! StarRocks, remote catalog, table commit, branch/tag mutation, warehouse, or
+//! object-store credential surfaces.
+//!
+//! The default implementation is a local metadata/sidecar binding proof. It
+//! intentionally does not depend on the official `iceberg` SDK because Phase 28
+//! keeps SDK and Arrow/Parquet-version churn out of the workspace default graph.
+
+pub mod binding_contract;
+
+pub use binding_contract::{
+    IcebergBindingAcceptedArtifact, IcebergBindingEvidence, IcebergBindingFacts,
+    IcebergBindingReport, IcebergBindingReportError, IcebergBindingStatus,
+    IcebergTableRefIdentity,
+};

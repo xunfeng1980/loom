@@ -1,0 +1,11 @@
+[package]
+name = "loom-iceberg-binding"
+version = "0.1.0"
+edition = "2021"
+description = "Adapter-local local-file Iceberg table/ref binding proof for Loom"
+
+[dependencies]
+loom-core = { path = "../loom-core" }
+loom-source-ingress = { path = "../loom-source-ingress" }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -3532,6 +3532,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-iceberg-binding"
+version = "0.1.0"
+dependencies = [
+ "loom-core",
+ "loom-source-ingress",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "loom-lance-ingress"
 version = "0.1.0"
 dependencies = [
