@@ -12,7 +12,7 @@
 //     └─ LoomScanState::~LoomScanState : release array+schema on every teardown path
 //
 // DECISION — D-01 (revised; see 02-CONTEXT.md "D-01 revised"):
-//   The original D-01 fed DuckDB via a one-shot ArrowArrayStream + the built-in
+//   The original D-01 fed DuckDB via a one-shot Arrow stream + the built-in
 //   arrow_scan. Execution surfaced a hard blocker: arrow_scan requires a
 //   STRUCT/record-batch schema at the top level, but loom_decode emits a BARE
 //   primitive Int32 array (format="i", n_children=0). Wrapping a single hardcoded
@@ -32,12 +32,16 @@
 
 extern "C" {
 #include "../crates/loom-ffi/include/loom.h"  // Phase 1: loom_decode signature
+#include "../crates/loom-ffi/include/loom_duckdb_internal.h"
 }
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <fstream>
 #include <limits>
+#include <memory>
+#include <sstream>
 
 using namespace duckdb;
 
@@ -52,6 +56,143 @@ enum class LoomValueKind : uint8_t {
 
 static LogicalType LogicalTypeForKind(LoomValueKind kind);
 
+static string CStringOrEmpty(const char *value) {
+    return value == nullptr ? string() : string(value);
+}
+
+struct LoomRouteDiagnostic {
+    string code;
+    string path;
+    string message;
+};
+
+struct LoomDuckDbPlanHolder {
+    LoomDuckDbPlan *plan = nullptr;
+
+    LoomDuckDbPlanHolder() = default;
+    explicit LoomDuckDbPlanHolder(LoomDuckDbPlan *plan_p) : plan(plan_p) {
+    }
+    LoomDuckDbPlanHolder(const LoomDuckDbPlanHolder &) = delete;
+    LoomDuckDbPlanHolder &operator=(const LoomDuckDbPlanHolder &) = delete;
+
+    LoomDuckDbPlanHolder(LoomDuckDbPlanHolder &&other) noexcept : plan(other.plan) {
+        other.plan = nullptr;
+    }
+
+    LoomDuckDbPlanHolder &operator=(LoomDuckDbPlanHolder &&other) noexcept {
+        if (this != &other) {
+            Reset();
+            plan = other.plan;
+            other.plan = nullptr;
+        }
+        return *this;
+    }
+
+    ~LoomDuckDbPlanHolder() {
+        Reset();
+    }
+
+    void Reset() {
+        if (plan != nullptr) {
+            loom_duckdb_plan_destroy(plan);
+            plan = nullptr;
+        }
+    }
+
+    LoomDuckDbPlan *Get() const {
+        return plan;
+    }
+};
+
+struct LoomDuckDbPreparedHolder {
+    LoomDuckDbPrepared *prepared = nullptr;
+
+    LoomDuckDbPreparedHolder() = default;
+    explicit LoomDuckDbPreparedHolder(LoomDuckDbPrepared *prepared_p) : prepared(prepared_p) {
+    }
+    LoomDuckDbPreparedHolder(const LoomDuckDbPreparedHolder &) = delete;
+    LoomDuckDbPreparedHolder &operator=(const LoomDuckDbPreparedHolder &) = delete;
+
+    LoomDuckDbPreparedHolder(LoomDuckDbPreparedHolder &&other) noexcept : prepared(other.prepared) {
+        other.prepared = nullptr;
+    }
+
+    LoomDuckDbPreparedHolder &operator=(LoomDuckDbPreparedHolder &&other) noexcept {
+        if (this != &other) {
+            Reset();
+            prepared = other.prepared;
+            other.prepared = nullptr;
+        }
+        return *this;
+    }
+
+    ~LoomDuckDbPreparedHolder() {
+        Reset();
+    }
+
+    void Reset() {
+        if (prepared != nullptr) {
+            loom_duckdb_prepare_destroy(prepared);
+            prepared = nullptr;
+        }
+    }
+
+    LoomDuckDbPrepared *Get() const {
+        return prepared;
+    }
+};
+
+static void RequireDuckDbRuntimeOk(int32_t status, const char *operation) {
+    if (status != 0) {
+        throw IOException("loom_scan: internal DuckDB runtime call %s failed with status %d",
+                          operation,
+                          static_cast<int>(status));
+    }
+}
+
+static vector<LoomRouteDiagnostic> CollectPlanDiagnostics(const LoomDuckDbPlanHolder &holder) {
+    uintptr_t count = 0;
+    RequireDuckDbRuntimeOk(loom_duckdb_plan_diagnostic_count(holder.Get(), &count),
+                           "loom_duckdb_plan_diagnostic_count");
+    vector<LoomRouteDiagnostic> diagnostics;
+    diagnostics.reserve(static_cast<idx_t>(count));
+    for (uintptr_t i = 0; i < count; i++) {
+        LoomDuckDbDiagnostic diagnostic {};
+        RequireDuckDbRuntimeOk(loom_duckdb_plan_diagnostic(holder.Get(), i, &diagnostic),
+                               "loom_duckdb_plan_diagnostic");
+        diagnostics.push_back({
+            CStringOrEmpty(diagnostic.code),
+            CStringOrEmpty(diagnostic.path),
+            CStringOrEmpty(diagnostic.message),
+        });
+    }
+    return diagnostics;
+}
+
+static string ReadPlanDecision(const LoomDuckDbPlanHolder &holder) {
+    const char *decision = nullptr;
+    RequireDuckDbRuntimeOk(loom_duckdb_plan_decision(holder.Get(), &decision),
+                           "loom_duckdb_plan_decision");
+    return CStringOrEmpty(decision);
+}
+
+static string ReadPlanCacheKey(const LoomDuckDbPlanHolder &holder) {
+    const char *cache_key = nullptr;
+    RequireDuckDbRuntimeOk(loom_duckdb_plan_cache_key(holder.Get(), &cache_key),
+                           "loom_duckdb_plan_cache_key");
+    return CStringOrEmpty(cache_key);
+}
+
+static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint8_t> &payload,
+                                                              bool allow_interpreter_fallback) {
+    LoomDuckDbPlan *plan = nullptr;
+    const auto *payload_ptr = payload.empty() ? nullptr : payload.data();
+    RequireDuckDbRuntimeOk(
+        loom_duckdb_plan_create(payload_ptr, payload.size(), allow_interpreter_fallback, false, &plan),
+        "loom_duckdb_plan_create");
+    return std::make_shared<LoomDuckDbPlanHolder>(plan);
+}
+
 struct LoomBindData : TableFunctionData {
     string payload_path;
     vector<uint8_t> payload;
@@ -59,6 +200,10 @@ struct LoomBindData : TableFunctionData {
     vector<LogicalType> column_types;
     vector<LoomValueKind> column_kinds;
     vector<vector<uint8_t>> column_payloads;
+    std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
+    string route_decision;
+    string route_cache_key;
+    vector<LoomRouteDiagnostic> route_diagnostics;
 
     unique_ptr<FunctionData> Copy() const override {
         auto copy = make_uniq<LoomBindData>();
@@ -68,13 +213,19 @@ struct LoomBindData : TableFunctionData {
         copy->column_types = column_types;
         copy->column_kinds = column_kinds;
         copy->column_payloads = column_payloads;
+        copy->runtime_plan = runtime_plan;
+        copy->route_decision = route_decision;
+        copy->route_cache_key = route_cache_key;
+        copy->route_diagnostics = route_diagnostics;
         return std::move(copy);
     }
 
     bool Equals(const FunctionData &other_p) const override {
         auto &other = other_p.Cast<LoomBindData>();
         return payload_path == other.payload_path && column_names == other.column_names &&
-               column_kinds == other.column_kinds;
+               column_types == other.column_types && column_kinds == other.column_kinds &&
+               column_payloads == other.column_payloads && route_decision == other.route_decision &&
+               route_cache_key == other.route_cache_key;
     }
 };
 
@@ -391,6 +542,10 @@ static unique_ptr<FunctionData> LoomBind(
         throw IOException("loom_scan: payload file '%s' is empty", bind_data->payload_path.c_str());
     }
     PopulateColumnSpecs(*bind_data);
+    bind_data->runtime_plan = CreateRuntimePlan(bind_data->payload, true);
+    bind_data->route_decision = ReadPlanDecision(*bind_data->runtime_plan);
+    bind_data->route_cache_key = ReadPlanCacheKey(*bind_data->runtime_plan);
+    bind_data->route_diagnostics = CollectPlanDiagnostics(*bind_data->runtime_plan);
 
     for (idx_t i = 0; i < bind_data->column_names.size(); i++) {
         return_types.push_back(bind_data->column_types[i]);
@@ -600,6 +755,7 @@ static void LoadInternal(ExtensionLoader &loader) {
         LoomScan,
         LoomBind,
         LoomInit);
+    fn.projection_pushdown = true;
     loader.RegisterFunction(fn);
 }
 
