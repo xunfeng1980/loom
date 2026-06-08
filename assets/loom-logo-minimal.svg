@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Loom logo</title>
+  <desc id="desc">A minimal Loom weave mark leading into an Apache Arrow inspired triple chevron.</desc>
+  <rect width="256" height="256" rx="28" fill="#fbfaf7"/>
+
+  <g fill="none" stroke="#1f2933" stroke-width="20" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M40 80L130 176L178 128L130 80L40 176"/>
+    <path d="M162 80L210 128L162 176"/>
+    <path d="M194 80L242 128L194 176"/>
+  </g>
+</svg>
