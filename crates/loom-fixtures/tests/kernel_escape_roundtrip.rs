@@ -2,6 +2,7 @@
 
 use arrow_schema::DataType;
 use loom_core::error::LoomDecodeError;
+use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 
@@ -11,7 +12,15 @@ fn kernel_escape_zero_returns_empty_utf8_array() {
         data_type: DataType::Utf8,
         root: LayoutNode::KernelEscape {
             kernel_id: 0,
-            params: vec![],
+            params: FsstParams {
+                symbols: vec![],
+                symbol_lengths: vec![],
+                codes_offsets: vec![0],
+                uncompressed_lengths: vec![],
+                validity: None,
+                codes_bytes: vec![],
+            }
+            .encode(),
             count: 0,
         },
         row_count: 0,
