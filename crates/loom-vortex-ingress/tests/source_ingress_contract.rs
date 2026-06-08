@@ -7,7 +7,6 @@ use loom_vortex_ingress::{
     reader_facts_from_vortex_buffer, source_facts_from_vortex_buffer, VortexReaderEmissionKind,
     VortexReaderSupport,
 };
-use vortex_array::arrays::struct_::StructArrayExt;
 use vortex_array::arrays::{StructArray, VarBinArray};
 use vortex_array::dtype::{DType, FieldNames, Nullability};
 use vortex_array::memory::MemorySession;
@@ -77,7 +76,14 @@ fn supported_non_null_primitive_maps_to_source_contract() {
     assert_eq!(source.row_count, 3);
     assert_eq!(source.identity.source_kind, "buffer");
     assert_eq!(source.identity.format, "external-source");
-    assert_eq!(source.root_schema.as_ref().expect("root schema").logical_kind, "primitive");
+    assert_eq!(
+        source
+            .root_schema
+            .as_ref()
+            .expect("root schema")
+            .logical_kind,
+        "primitive"
+    );
     assert_eq!(coverage.support, SourceIngressStatus::Accepted);
     assert_eq!(coverage.emission_kind, SourceEmissionKind::Lmp1);
     assert_eq!(
@@ -123,10 +129,20 @@ fn unsupported_utf8_maps_to_fail_closed_source_contract() {
     let coverage = source.coverage.as_ref().expect("source coverage");
 
     assert_eq!(source.row_count, 3);
-    assert_eq!(source.root_schema.as_ref().expect("root schema").logical_kind, "utf8");
+    assert_eq!(
+        source
+            .root_schema
+            .as_ref()
+            .expect("root schema")
+            .logical_kind,
+        "utf8"
+    );
     assert_eq!(coverage.support, SourceIngressStatus::Unsupported);
     assert_eq!(coverage.emission_kind, SourceEmissionKind::None);
-    assert_eq!(coverage.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(
+        coverage.emission_disposition,
+        SourceEmissionDisposition::None
+    );
     assert_eq!(
         coverage.lowering_disposition,
         SourceLoweringDisposition::FailClosedDeferred

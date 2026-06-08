@@ -1637,6 +1637,7 @@ dependencies = [
  "arrow",
  "arrow-schema",
  "loom-core",
+ "loom-source-ingress",
  "vortex-array",
  "vortex-buffer",
  "vortex-fastlanes",
