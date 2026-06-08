@@ -37,6 +37,14 @@ info "Running decode dialect manifest drift tests..."
 cargo test -p loom-native-melior --test decode_dialect_manifest
 ok "decode dialect manifest"
 
+info "Running production backend pipeline tests..."
+cargo test -p loom-native-melior --test production_backend_pipeline
+ok "production backend pipeline"
+
+info "Running production backend JIT seed tests..."
+cargo test -p loom-native-melior --test production_backend_jit
+ok "production backend JIT seed"
+
 info "Checking managed MLIR/LLVM toolchain for strict ODS validation..."
 set +e
 llvm_bin_dir="$(toolchain_llvm_bin_dir)"

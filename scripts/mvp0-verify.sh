@@ -109,6 +109,10 @@ info "Running Phase 22 runtime ABI gate..."
 bash scripts/runtime-abi-test.sh
 ok "scripts/runtime-abi-test.sh"
 
+info "Running Phase 23 production native backend gate..."
+bash scripts/production-backend-test.sh
+ok "scripts/production-backend-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"
