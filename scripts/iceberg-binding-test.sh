@@ -29,6 +29,54 @@ check_file() {
     fi
 }
 
+non_comment_lines() {
+    awk '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*\/\// { next }
+        /^[[:space:]]*$/ { next }
+        { print FILENAME ":" FNR ":" $0 }
+    ' "$@"
+}
+
+check_required_code_patterns() {
+    local label="$1"
+    shift
+    local -a files=()
+    while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+        files+=("$1")
+        shift
+    done
+    shift
+
+    local pattern matches
+    for pattern in "$@"; do
+        matches="$(non_comment_lines "${files[@]}" | grep -F "${pattern}" || true)"
+        if [ -z "${matches}" ]; then
+            fail "${label} missing required marker: ${pattern}"
+        fi
+    done
+}
+
+check_no_code_patterns() {
+    local label="$1"
+    shift
+    local -a files=()
+    while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+        files+=("$1")
+        shift
+    done
+    shift
+
+    local pattern matches
+    for pattern in "$@"; do
+        matches="$(non_comment_lines "${files[@]}" | grep -F "${pattern}" || true)"
+        if [ -n "${matches}" ]; then
+            printf '%s\n' "${matches}" >&2
+            fail "${label} found forbidden marker: ${pattern}"
+        fi
+    done
+}
+
 check_no_fixed_patterns() {
     local label="$1"
     shift
@@ -143,8 +191,10 @@ check_file "crates/loom-iceberg-binding/src/lib.rs"
 check_file "crates/loom-iceberg-binding/src/binding_contract.rs"
 check_file "crates/loom-iceberg-binding/tests/dependency_boundary.rs"
 check_file "crates/loom-iceberg-binding/tests/binding_contract.rs"
+check_file "crates/loom-iceberg-binding/tests/binding_handoff.rs"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-metadata.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/unsupported-remote-metadata.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/rejected-missing-identity.json"
 rg -q --fixed-strings '"crates/loom-iceberg-binding"' Cargo.toml \
@@ -154,6 +204,8 @@ ok "adapter crate scaffold and local parser fixtures"
 info "Running focused adapter dependency and contract tests..."
 cargo test -p loom-iceberg-binding --test dependency_boundary
 cargo test -p loom-iceberg-binding --test binding_contract
+cargo test -p loom-iceberg-binding --test binding_handoff
+cargo test -p loom-core --test artifact_verifier
 cargo check -p loom-iceberg-binding
 ok "focused adapter tests"
 
@@ -193,6 +245,52 @@ check_no_fixed_patterns "generic source-ingress crate" \
     -- \
     "ice""berg" \
     "Ice""berg"
+
+info "Checking accepted binding evidence and verifier markers..."
+binding_evidence_files=(
+    crates/loom-iceberg-binding/src/binding_contract.rs
+    crates/loom-iceberg-binding/tests/binding_handoff.rs
+)
+
+check_required_code_patterns "accepted binding source/test evidence" \
+    "${binding_evidence_files[@]}" \
+    -- \
+    "verify_artifact" \
+    "shasum" \
+    "DecodedRowFixture" \
+    "accepted-table-source-evidence" \
+    "row_count" \
+    "table_uuid" \
+    "schema_id" \
+    "snapshot_id" \
+    "artifact_sha256"
+
+check_required_code_patterns "manifest-only negative coverage" \
+    crates/loom-iceberg-binding/tests/binding_handoff.rs \
+    -- \
+    "sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance" \
+    "manifest_list_location"
+
+check_required_code_patterns "concrete source/oracle evidence fixture" \
+    crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json \
+    -- \
+    "accepted-table-source-evidence" \
+    "row_count" \
+    "table_uuid" \
+    "schema_id" \
+    "snapshot_id" \
+    "artifact_sha256"
+
+check_no_code_patterns "query-engine route evidence" \
+    crates/loom-iceberg-binding/src/binding_contract.rs \
+    crates/loom-iceberg-binding/tests/binding_handoff.rs \
+    -- \
+    "loom_scan_iceberg" \
+    "duckdb" \
+    "StarRocks" \
+    "starrocks"
+ok "accepted binding evidence markers"
 
 api_surfaces=(
     crates/loom-ffi/include/loom.h
