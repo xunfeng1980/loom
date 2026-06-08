@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 21 complete; Phase 22 host native runtime ABI and execution policy next
+stopped_at: Phase 22 host native runtime ABI planned; execution next
 last_updated: "2026-06-08T14:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 21 expanded Vortex encoding coverage implemented and release-gated
+last_activity: 2026-06-08 -- Phase 22 host native runtime ABI research and planning complete
 progress:
   total_phases: 28
   completed_phases: 21
-  total_plans: 82
+  total_plans: 87
   completed_plans: 82
   percent: 75
 ---
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 22 — host native runtime ABI and execution policy (research/planning next)
+**Current focus:** Phase 22 — host native runtime ABI and execution policy (planned; execution next)
 
 ## Current Position
 
 Phase: 22 (host-native-runtime-abi-and-execution-policy) — NEXT
-Plan: Phase 22 research/planning is next
-Status: Phase 21 closed the expanded Vortex encoding coverage matrix with facts, oracle evidence, release gate, and Phase 22/23 handoffs. Phase 22 should now lock host runtime ABI and execution policy before production backend and host integration work.
-Last activity: 2026-06-08 -- Phase 21 expanded Vortex encoding coverage implemented and release-gated
+Plan: Phase 22 planned as 22-01 through 22-05
+Status: Phase 22 research and planning are complete. The planned direction is a host-neutral runtime ABI/policy contract over verified artifact facts, production lowering facts, projection/predicate/split planning, cache identity, diagnostics, concurrency, and fallback semantics before Phase 23 backend or Phase 24 DuckDB integration.
+Last activity: 2026-06-08 -- Phase 22 host native runtime ABI research and planning complete
 
 Progress: 75%
 
 ## Progress Snapshot
 
 - Completed phases: 21 / 28
-- Completed executable plans: 82 / 82
+- Completed executable plans: 82 / 87
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 22 host native runtime ABI and execution policy is next
+- Current position: Phase 22 host native runtime ABI and execution policy is planned; execution is next
 - Last verified gate: Phase 21 focused gates passed; final `scripts/vortex-encoding-coverage-test.sh` / `scripts/mvp0-verify.sh` verification is recorded in Phase 21 summary
 
 **Completed phase plan counts:**
@@ -53,6 +53,7 @@ Progress: 75%
 | 19 | Solver-backed full artifact verifier | 5/5 complete |
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
+| 22 | Host native runtime ABI and execution policy | 0/5 planned |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -146,7 +147,8 @@ None yet.
 - Phase 21 planned: 21-01 through 21-05 cover the coverage/disposition matrix, nullable and chunked primitive facts, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression coverage, and release-gate/report handoff to Phase 22/23.
 - Phase 21 complete: expanded real Vortex coverage now records reader support, artifact emission, oracle evidence, and native-lowering disposition separately. Nullable primitives fail closed with null-preserving facts; chunked/dictionary/RLE/bitpack/FOR fixtures have row oracle evidence and canonical raw emission where safe; string/ALP/PCodec-style compression remains deferred until Loom-owned params are extracted and verified. `scripts/vortex-encoding-coverage-test.sh` is wired into the release gate.
 - Phase 22-25 split research complete: the former engine-integrated native execution MVP placeholder is now four placeholders covering host native runtime ABI/policy, production native backend implementation, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
-- Phase 22 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
+- Phase 22 research started: recommended a host-neutral runtime ABI and execution policy over verified artifact facts, Bitwuzla discharge, production-lowering facts, projection/predicate/split planning, cache identity, diagnostics, concurrency, and native/interpreter/fail-closed decisions before Phase 23 backend or Phase 24 DuckDB integration.
+- Phase 22 planned: 22-01 through 22-05 cover runtime ABI contract/lifecycle, verified-facts handoff and execution decisions, projection/predicate/split/concurrency planning, cache key/diagnostics/C ABI sketch, and final release-gate/backend handoff.
 - Phase 23 reserved as a roadmap placeholder only: production native backend implementation with compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution over the Phase 22 runtime contract.
 - Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
@@ -196,7 +198,7 @@ None yet.
 | v3 verifier | Solver-backed full artifact verifier | Complete | Phase 19 |
 | v3 native | Production decode dialect seed and raw primitive native lowering | Complete | Phase 20 |
 | v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
-| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 22 |
+| v3 engine | Host native runtime ABI and execution policy | Planned | Phase 22 |
 | v3 native | Production native backend implementation | Placeholder | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
@@ -206,8 +208,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T13:30:00.000Z
-Stopped at: Phase 21 complete; Phase 22 research/planning next
+Last session: 2026-06-08T14:30:00.000Z
+Stopped at: Phase 22 host native runtime ABI planned; execution next
 
 Phase 17 handoff:
 
