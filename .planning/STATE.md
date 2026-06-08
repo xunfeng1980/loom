@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: active
+status: executing
 stopped_at: Phase 16 planned; ready to execute
-last_updated: "2026-06-08T09:15:00.000Z"
-last_activity: 2026-06-08 -- Phase 16 planned with 5 verifier-gated melior/LLVM/JIT backend plans
+last_updated: "2026-06-08T08:37:07.254Z"
+last_activity: 2026-06-08 -- Phase 16 execution started
 progress:
   total_phases: 23
   completed_phases: 15
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 16 — full `melior`/LLVM/JIT backend integration planned, ready to execute; Phase 17-23 remain reserved follow-on work
+**Current focus:** Phase 16 — full-melior-llvm-jit-backend-integration
 
 ## Current Position
 
-Phase: 16 (full-melior-llvm-jit-backend-integration) — PLANNED
-Plan: 5 plans created; ready to execute
-Status: Phase 16 planned; Phase 17-23 remain reserved roadmap placeholders
-Last activity: 2026-06-08 -- Phase 16 planned with optional verifier-gated `melior`/LLVM/JIT backend scope
+Phase: 16 (full-melior-llvm-jit-backend-integration) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 16
+Last activity: 2026-06-08 -- Phase 16 execution started
 
 Progress: 65%
 
