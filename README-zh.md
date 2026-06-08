@@ -29,6 +29,11 @@ Loom 是一种**随数据分发的解码器表示**:面向服务端数据引擎,
 `mise install && mise run formal-tools`;缺失形式化工具是失败,不是 skipped
 evidence。
 
+外部 backend/solver 工具边界:LLVM/MLIR 22 和 Bitwuzla 通过
+`mise run external-tools` 管理,macOS 下由 Homebrew 安装。release gate 默认
+要求这些工具存在;只有显式配置 `LOOM_ALLOW_NATIVE_TOOL_SKIP=1` 或
+`LOOM_ALLOW_SOLVER_SKIP=1` 才允许跳过,不能因为工具没装就自动 skip。
+
 ---
 
 ## 1. 目标与非目标

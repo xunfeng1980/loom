@@ -7,7 +7,7 @@ by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, prod
 Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
 Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
 distribution containers, verifier-backed safety, native-lowering preparation, and real Vortex
-file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice. Phase 17 closed
+file ingress. Phase 16 completed verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice with managed LLVM/MLIR tooling. Phase 17 closed
 the largest verifier gap by unifying the current payload verifier and future `L2Core` verifier foundation into one artifact verification
 pipeline. Phase 18 completed the Vortex reader boundary beyond the narrow Phase 15 ingress slice. Phase 19
 completed the solver-backed full artifact verifier that upgrades collected obligations into Bitwuzla-discharged verifier evidence before
@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
-- [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
+- [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with managed LLVM/MLIR tooling and no production native-compiler claim (complete)
 - [x] **Phase 17: Unified Artifact Verification Pipeline** - Fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (complete)
 - [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
 - [x] **Phase 19: Solver-backed Full Artifact Verifier** - Real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (complete)
@@ -399,7 +399,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 14: MLIR/Native Lowering Spike
 
-**Goal**: Prove the first verifier-gated native-lowering boundary by accepting only a tiny Phase 13 `L2Core` bounded Int32 copy slice, rejecting unsupported programs fail-closed, emitting deterministic textual MLIR, and recording optional MLIR/native toolchain evidence without making MLIR/LLVM/JIT mandatory dependencies
+**Goal**: Prove the first verifier-gated native-lowering boundary by accepting only a tiny Phase 13 `L2Core` bounded Int32 copy slice, rejecting unsupported programs fail-closed, emitting deterministic textual MLIR, and validating it with managed MLIR/LLVM tooling while keeping MLIR/LLVM/JIT out of `loom-core`/`loom-ffi` dependencies
 **Depends on:** Phase 13
 **Requirements:** LOWER-01, LOWER-02, LOWER-03, LOWER-04, LOWER-05
 **Success Criteria** (what must be TRUE):
@@ -408,7 +408,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Unsupported accepted programs fail closed with stable lowering diagnostics before any MLIR/native artifact is emitted
   3. The bounded Int32 copy sample emits deterministic textual MLIR using standard `func`, `arith`, `scf`, and `memref` dialect operations without adding mandatory `melior`, LLVM, or Cranelift dependencies
   4. Focused tests compare the supported slice against typed primitive reference output and cover negative range/capacity cases
-  5. `scripts/native-lowering-test.sh` runs the focused gate and reports optional `mlir-opt`/toolchain validation as skipped when unavailable rather than failing the release gate
+  5. `scripts/native-lowering-test.sh` runs the focused gate and requires managed LLVM/MLIR validation by default; skip is allowed only by explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`
   6. Public and planning docs state that Phase 14 is a lowering spike, not production native compiler completion, custom Loom dialect, vectorization, or compiler correctness proof
 
 **Plans:** 4 plans across 4 waves
@@ -468,7 +468,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Status:** Complete (2026-06-08).
 **Depends on:** Phase 14 and Phase 15.
-**Ordering decision:** Promote the Phase 14 verifier-gated textual MLIR spike into an optional programmatic backend only after real Vortex artifact shapes are visible. Scope should remain verifier-gated and fail-closed, with `melior`/LLVM/JIT kept behind optional tooling until the backend is stable.
+**Ordering decision:** Promote the Phase 14 verifier-gated textual MLIR spike into a programmatic backend only after real Vortex artifact shapes are visible. Scope should remain verifier-gated and fail-closed, with `melior` kept isolated from `loom-core`/`loom-ffi` while LLVM/MLIR tools are managed externally.
 
 **Research:** `.planning/phases/16-full-melior-llvm-jit-backend-integration/16-RESEARCH.md`
 
@@ -476,7 +476,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [x] 16-01-PLAN.md - Toolchain contract and optional backend crate boundary
+- [x] 16-01-PLAN.md - Toolchain contract and isolated backend crate boundary
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -484,7 +484,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [x] 16-03-PLAN.md - MLIR validation pipeline and skip-aware backend gate
+- [x] 16-03-PLAN.md - MLIR validation pipeline and managed backend gate
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -498,9 +498,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - The backend remains verifier-gated and accepts only the Phase 14 bounded Int32 copy slice.
 - `loom-core` and `loom-ffi` remain free of mandatory MLIR/LLVM/JIT dependencies.
-- Missing or incompatible MLIR/LLVM is skip-aware in normal gates and fail-closed in strict mode.
+- Missing or incompatible MLIR/LLVM fails gates by default; skip is permitted only by explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
 - Phase 16 must not claim custom Loom dialect, vectorization, DuckDB native execution, or complete Vortex reader support.
-- Local Phase 16 evidence records LLVM/MLIR major 21 vs expected 22 as a normal-mode skip and strict-mode failure; compatible MLIR 22 environments are required for feature-enabled JIT evidence.
+- Local Phase 16 evidence now uses managed LLVM/MLIR 22.1.7; compatible MLIR 22 environments are required for feature-enabled JIT evidence unless the explicit skip configuration is set.
 
 ### Phase 17: Unified Artifact Verification Pipeline
 

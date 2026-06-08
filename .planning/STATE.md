@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Formal tools managed and verified; Phase 21 execution next
-last_updated: "2026-06-08T13:26:00.000Z"
-last_activity: 2026-06-08 -- Lean/TLC formal tools managed and full gate verified
+stopped_at: Formal/native/solver tools managed and verified; Phase 21 execution next
+last_updated: "2026-06-08T13:40:00.000Z"
+last_activity: 2026-06-08 -- Lean/TLC, LLVM/MLIR, and Bitwuzla tools managed and gates verified
 progress:
   total_phases: 27
   completed_phases: 20
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 Phase: 21 (expanded-vortex-encoding-coverage) — PLANNED
 Plan: 21-01 through 21-05 planned; execution next
 Status: Phase 21 is planned across five executable slices: coverage/disposition matrix, nullable and chunked primitive coverage, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression classification, and release-gate/report handoff to Phase 22/23.
-Last activity: 2026-06-08 -- Lean/TLC formal tools managed and full gate verified
+Last activity: 2026-06-08 -- Lean/TLC, LLVM/MLIR, and Bitwuzla tools managed and gates verified
 
 Progress: 74%
 
@@ -38,7 +38,7 @@ Progress: 74%
 - Completed executable plans: 77 / 82
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 21 expanded Vortex encoding coverage is planned; execution is next
-- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including managed Lean/TLC formal checks, Bitwuzla solver evidence, and the Phase 20 production native-lowering gate in normal and strict mode with LLVM/MLIR 22.1.7
+- Last verified gate: `mise run verify` passed with managed Lean/TLC, LLVM/MLIR 22.1.7, Bitwuzla 0.9.1, Phase 20 production native-lowering, and DuckDB SQL smoke coverage
 
 **Completed phase plan counts:**
 
@@ -112,9 +112,9 @@ None yet.
 - Phase 13 executing: 13-04 complete with Lean `LoomCore.lean` scaffold, TLA+ `LoweredImpliesVerified` lifecycle model, and `scripts/full-verifier-test.sh`.
 - Phase 13 evidence caveat: the current Lean file compiles as a scaffold, but `builder_events_typed` and `no_ambient_authority` are `True` placeholders; `accepted_program_safe` is not load-bearing safety evidence. Current load-bearing verifier evidence is Rust executable verification plus Phase 19 Bitwuzla-backed SMT discharge.
 - Phase 13 complete: verifier foundation closed with final report, public/planning docs, `scripts/full-verifier-test.sh` wired into `scripts/mvp0-verify.sh`, and VERIFIER-01 through VERIFIER-10 marked complete. Phase 14 consumed the verifier handoff for lowering planning.
-- Phase 14 research complete: recommended verifier-gated textual MLIR first, optional MLIR toolchain evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
+- Phase 14 research complete: recommended verifier-gated textual MLIR first, MLIR toolchain validation second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
 - Phase 14 planned: 4 plans across lowering contract/support predicate, textual MLIR emission, supported-slice equivalence gate, and final docs/release-gate closeout.
-- Phase 14 complete: verifier-gated support predicate, deterministic textual MLIR for bounded Int32 copy, typed primitive equivalence evidence, optional `mlir-opt` gate, final report, docs, and release-gate integration are complete.
+- Phase 14 complete: verifier-gated support predicate, deterministic textual MLIR for bounded Int32 copy, typed primitive equivalence evidence, managed `mlir-opt` gate, final report, docs, and release-gate integration are complete.
 - Phase 15 moved from roadmap placeholder to research: real Vortex file/container ingress before production native backend work.
 - Phase 15 research started: recommended an isolated real Vortex ingress bridge, scoped `vortex-file` allowlist, Loom-owned `VortexFileFacts`, fail-closed diagnostics, and one narrow supported `.vortex` -> `LMC1` slice before Phase 16 JIT work.
 - Phase 15 planned: 4 plans across ingress contract/dependency boundary, real Vortex metadata facts, supported real `.vortex` -> `LMC1` conversion, and CLI/docs/release-gate closeout.
@@ -122,7 +122,7 @@ None yet.
 - Phase 16 research started after Phase 15 real ingress evidence: full `melior`/LLVM/JIT backend integration remains optional, verifier-gated, and fail-closed.
 - Phase 16 research started: recommended an optional `loom-native-melior` backend crate, explicit LLVM/MLIR toolchain probing, verifier-gated programmatic MLIR construction, optional MLIR ExecutionEngine/JIT evidence, and fail-closed rejection before native artifact creation.
 - Phase 16 planned: 5 sequential plans across optional backend crate/toolchain contract, programmatic `melior` module construction, MLIR validation gate, ExecutionEngine/JIT equivalence, and docs/release-gate closeout.
-- Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR was upgraded to 22.1.7, and normal plus strict `melior-jit-test.sh` now pass with feature-enabled JIT evidence.
+- Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, managed `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR is managed at 22.1.7; skip is only allowed by explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
 - Phase 17 complete: `loom_core::artifact_verifier` now exposes `verify_artifact` and `verify_artifact_with_l2_core`, unifying `LMC1` container/manifest/L1 structural checks, optional accepted `L2Core` `VerifiedArtifactFacts`, constraint status, lowering readiness, `loom verify-artifact`, and `scripts/artifact-verifier-test.sh` release-gate evidence.
 - Phase 18 planned: 5 plans across reader facts contract/dependency boundary, recursive layout/dtype/segment inspection, supported single-column conversion matrix, supported struct/table conversion, and CLI/report/release-gate closeout.
 - Phase 18 executing: 18-01 complete with `18-READER-CONTRACT.md`, Loom-owned `VortexReaderFacts` / layout / dtype / segment facts, buffer/path reader fact extraction, support/emission classification, reader contract tests, and strengthened `vortex-file` / `vortex-layout` dependency gates.
@@ -134,7 +134,7 @@ None yet.
 - Phase 19 planned: 5 plans across solver contract/report model, deterministic Bitwuzla-primary `QF_BV` SMT-LIB emission, optional `loom-solver-smt` Bitwuzla backend, artifact verifier solver-discharge integration, and CLI/release-gate closeout.
 - Phase 19 executing: 19-01 complete with `19-SOLVER-CONTRACT.md`, `loom_core::solver`, `ArtifactVerificationFacts.solver_report`, backend declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla primary metadata, and focused solver contract tests.
 - Phase 19 executing: 19-02 complete with deterministic Bitwuzla-primary `QF_BV` SMT-LIB script emission, required/cross-check script family metadata, named bad-state assertions, stable FNV-style script IDs, and focused `smtlib_emitter` tests.
-- Phase 19 executing: 19-03 complete with optional `loom-solver-smt`, backend discovery/declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla subprocess execution/parsing, fail-closed strict mode, explicit normal-mode skip diagnostics, and `scripts/solver-verifier-test.sh`.
+- Phase 19 executing: 19-03 complete with optional `loom-solver-smt`, backend discovery/declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla subprocess execution/parsing, managed Bitwuzla gate requirements, explicit config-only skip diagnostics, and `scripts/solver-verifier-test.sh`.
 - Phase 19 executing: 19-04 complete with `apply_solver_discharge`, artifact verifier facts carrying trusted solver reports only after matching/discharged obligations, artifact lowering readiness blocked for `CollectedOnly` constraints, and `loom-solver-smt` artifact-level Bitwuzla helper tests.
 - Phase 19 complete: 19-05 closed with solver-backed `loom verify-artifact --solver-bitwuzla --l2core-sample`, release-gate wiring through `scripts/solver-verifier-test.sh` and `scripts/mvp0-verify.sh`, final solver report, public/planning docs, and Phase 20 handoff requiring discharged facts.
 - Phase 20 planned: 20-01 through 20-05 cover the production lowering contract/discharged-facts gate, `loom.decode` dialect contract and textual surface, Arrow raw-buffer builder lowering, primitive multi-column native kernel expansion, and MLIR validation/report/closeout.

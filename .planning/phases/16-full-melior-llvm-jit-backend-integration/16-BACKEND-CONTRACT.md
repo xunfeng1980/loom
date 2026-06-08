@@ -33,20 +33,25 @@ The backend records Loom-owned `MlirToolchainFacts` for:
 - detected LLVM/MLIR major version
 - expected MLIR major version
 
-Missing or incompatible tools are skip-aware in normal gates and fail-closed
-when strict JIT evidence is required.
+Missing or incompatible tools fail release gates by default. Skip is permitted
+only by explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`, so absence of LLVM/MLIR is not
+silently converted into passing evidence.
 
-Normal release verification runs `bash scripts/melior-jit-test.sh` as optional
-Phase 16 evidence. If compatible LLVM/MLIR 22 tooling is unavailable, the script
-must print `[SKIP]` and exit 0 after default verifier-gated backend tests pass.
+Normal release verification runs `bash scripts/melior-jit-test.sh` and requires
+compatible LLVM/MLIR 22 tooling for feature-enabled evidence.
 
-Strict native-backend evidence is requested with:
+Managed native-backend evidence can be installed and checked with:
 
 ```bash
-LOOM_REQUIRE_MELIOR_JIT=1 bash scripts/melior-jit-test.sh
+mise run external-tools
+bash scripts/melior-jit-test.sh
 ```
 
-In strict mode, missing or incompatible MLIR/LLVM tooling is a `[FAIL]`.
+Configured skip mode is explicit:
+
+```bash
+LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/melior-jit-test.sh
+```
 
 ## JIT ABI Contract
 

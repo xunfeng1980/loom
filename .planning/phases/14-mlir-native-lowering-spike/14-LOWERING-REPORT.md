@@ -89,15 +89,14 @@ Focused tests cover fail-closed rejection for:
 the supported slice. It is not a general `L2Core` interpreter and not a formal
 compiler-correctness proof.
 
-### optional toolchain evidence
+### Managed Toolchain Evidence
 
 `scripts/native-lowering-test.sh` runs focused Rust tests and checks Phase 14
-planning/docs. It also probes `mlir-opt` when available, including the Homebrew
-LLVM location used on macOS.
+planning/docs. It also requires managed LLVM/MLIR validation by default.
 
-On this machine, Homebrew LLVM provides `mlir-opt` 21.1.2 at
-`/opt/homebrew/opt/llvm/bin/mlir-opt`, and optional textual MLIR validation
-passed.
+On this machine, Homebrew LLVM provides LLVM/MLIR 22.1.7 at
+`/opt/homebrew/opt/llvm/bin`, and textual MLIR validation passed. Skip is
+permitted only by explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
 
 ## Deferred
 
@@ -128,8 +127,9 @@ bash scripts/mvp0-verify.sh
 git diff --check
 ```
 
-`scripts/native-lowering-test.sh` reports optional `mlir-opt` validation as
-passed when local MLIR tooling is available, and skipped when unavailable.
+`scripts/native-lowering-test.sh` requires managed `mlir-opt` validation by
+default; missing or incompatible LLVM/MLIR fails unless
+`LOOM_ALLOW_NATIVE_TOOL_SKIP=1` is explicitly configured.
 
 ## Requirement Closure
 
@@ -140,6 +140,6 @@ passed when local MLIR tooling is available, and skipped when unavailable.
 - `LOWER-03`: Complete. Focused typed primitive equivalence and negative tests
   exist.
 - `LOWER-04`: Complete. `scripts/native-lowering-test.sh` runs focused tests and
-  optional `mlir-opt` probing.
+  managed `mlir-opt` probing.
 - `LOWER-05`: Complete. Public/planning docs preserve the narrow Phase 14 spike
   scope.

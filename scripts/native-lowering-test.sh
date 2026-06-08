@@ -23,21 +23,7 @@ ok() { echo "${GRN}[PASS]${RST} $*"; }
 skip() { echo "${YLW}[SKIP]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
-find_mlir_opt() {
-    if command -v mlir-opt >/dev/null 2>&1; then
-        command -v mlir-opt
-        return 0
-    fi
-    for candidate in \
-        /opt/homebrew/opt/llvm/bin/mlir-opt \
-        /usr/local/opt/llvm/bin/mlir-opt; do
-        if [ -x "${candidate}" ]; then
-            echo "${candidate}"
-            return 0
-        fi
-    done
-    return 1
-}
+. "${REPO_ROOT}/scripts/toolchain-common.sh"
 
 PHASE_DIR=".planning/phases/14-mlir-native-lowering-spike"
 CONTRACT="${PHASE_DIR}/14-LOWERING-CONTRACT.md"
@@ -84,8 +70,18 @@ info "Running focused Rust native_lowering tests..."
 cargo test -p loom-core native_lowering
 ok "cargo test -p loom-core native_lowering"
 
-if mlir_opt="$(find_mlir_opt)"; then
-    info "Running optional mlir-opt parse validation..."
+info "Checking managed MLIR/LLVM toolchain..."
+set +e
+llvm_bin_dir="$(toolchain_llvm_bin_dir)"
+tool_status=$?
+set -e
+if [ "${tool_status}" -eq 2 ]; then
+    skip "MLIR/LLVM validation skipped by explicit LOOM_ALLOW_NATIVE_TOOL_SKIP=1"
+elif [ "${tool_status}" -ne 0 ]; then
+    fail "managed MLIR/LLVM toolchain is unavailable or incompatible"
+else
+    export PATH="${llvm_bin_dir}:${PATH}"
+    info "Running managed mlir-opt parse validation..."
     tmp_mlir="$(mktemp "${TMPDIR:-/tmp}/loom-native-lowering.XXXXXX.mlir")"
     trap 'rm -f "${tmp_mlir}"' EXIT
     cat >"${tmp_mlir}" <<'MLIR'
@@ -101,10 +97,8 @@ module {
   }
 }
 MLIR
-    "${mlir_opt}" "${tmp_mlir}" >/dev/null
-    ok "optional mlir-opt textual MLIR validation"
-else
-    skip "mlir-opt not installed; optional textual MLIR validation skipped"
+    mlir-opt "${tmp_mlir}" >/dev/null
+    ok "managed mlir-opt textual MLIR validation"
 fi
 
 echo ""

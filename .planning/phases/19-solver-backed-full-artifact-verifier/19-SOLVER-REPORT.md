@@ -14,7 +14,11 @@ The backend contract declares `z3`, `cvc5`, and `bitwuzla` command-line backend 
 
 ## Bitwuzla Evidence
 
-Bitwuzla is the implemented Phase 19 backend. Local strict evidence passed with Homebrew Bitwuzla `0.9.1` at `/opt/homebrew/bin/bitwuzla`. Normal mode keeps missing Bitwuzla explicit as `[SKIP]`; strict mode uses `LOOM_REQUIRE_SOLVER=1` and fails unless Bitwuzla-backed evidence is available.
+Bitwuzla is the implemented Phase 19 backend. Managed local evidence passed with
+Homebrew Bitwuzla `0.9.1` at `/opt/homebrew/bin/bitwuzla`. Missing Bitwuzla
+fails the release gate by default. Skip is permitted only by explicit
+`LOOM_ALLOW_SOLVER_SKIP=1`, and skipped evidence never marks constraints as
+discharged.
 
 ## SMT-LIB Emission
 
@@ -32,13 +36,13 @@ The required script family emits deterministic SMT-LIB v2.7 `QF_BV` scripts. Cur
 
 - `cargo test -p loom-cli`
 - `cargo run --bin loom -- verify-artifact --help | rg -n "solver|bitwuzla|discharge"`
+- `mise run external-tools`
 - `LOOM_REQUIRE_SOLVER=1 cargo run -q --bin loom -- verify-artifact --solver-bitwuzla --l2core-sample target/loom-duckdb-fixtures/bitpack-i32.loom`
 - `cargo test -p loom-core --test solver_contract`
 - `cargo test -p loom-core --test smtlib_emitter`
 - `cargo test -p loom-core --test artifact_solver_discharge`
 - `cargo test -p loom-solver-smt`
 - `bash scripts/solver-verifier-test.sh`
-- `LOOM_REQUIRE_SOLVER=1 bash scripts/solver-verifier-test.sh`
 - `bash scripts/mvp0-verify.sh`
 - `git diff --check`
 

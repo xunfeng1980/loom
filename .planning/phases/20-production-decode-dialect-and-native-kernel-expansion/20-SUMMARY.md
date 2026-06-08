@@ -9,8 +9,8 @@
   Float64 single-column/table slices.
 - Explicit deferred diagnostics for bitpack/FOR and complex encodings.
 - Phase 20 production MLIR validation hook in `loom-native-melior`.
-- `scripts/production-native-lowering-test.sh` release gate and strict
-  `LOOM_REQUIRE_PRODUCTION_NATIVE=1` mode.
+- `scripts/production-native-lowering-test.sh` release gate with managed
+  LLVM/MLIR tooling; skip requires explicit `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
 - Roadmap caveat that Phase 20/21 are coupled axes and Phase 22 must decide
   pushdown plus concurrency/thread ownership.
 
@@ -41,8 +41,8 @@ Final closeout commands:
 - `cargo test -p loom-core --test arrow_buffer_lowering`
 - `cargo test -p loom-core --test production_native_kernels`
 - `cargo test -p loom-native-melior --test production_pipeline`
+- `mise run external-tools`
 - `bash scripts/production-native-lowering-test.sh`
-- `LOOM_REQUIRE_PRODUCTION_NATIVE=1 bash scripts/production-native-lowering-test.sh`
 - `bash scripts/mvp0-verify.sh`
 - `git diff --check`
 

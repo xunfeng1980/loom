@@ -23,7 +23,7 @@ ok() { echo "${GRN}[PASS]${RST} $*"; }
 skip() { echo "${YLW}[SKIP]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
-STRICT="${LOOM_REQUIRE_SOLVER:-0}"
+ALLOW_SOLVER_SKIP="${LOOM_ALLOW_SOLVER_SKIP:-0}"
 
 echo "=== Loom Phase 19 solver-backed verifier gate ==="
 echo "Repository: ${REPO_ROOT}"
@@ -43,10 +43,10 @@ ok "cargo test -p loom-solver-smt"
 
 info "Checking Bitwuzla discovery..."
 if ! command -v bitwuzla >/dev/null 2>&1; then
-    if [ "${STRICT}" = "1" ]; then
-        fail "bitwuzla unavailable; strict solver evidence required by LOOM_REQUIRE_SOLVER=1"
+    if [ "${ALLOW_SOLVER_SKIP}" != "1" ]; then
+        fail "bitwuzla unavailable; solver evidence is required. Run: mise run external-tools"
     fi
-    skip "bitwuzla unavailable; strict solver evidence skipped"
+    skip "bitwuzla unavailable; solver evidence skipped by explicit LOOM_ALLOW_SOLVER_SKIP=1"
     echo ""
     echo "${GRN}=== Phase 19 solver-backed verifier gate PASSED WITH SKIP ===${RST}"
     exit 0

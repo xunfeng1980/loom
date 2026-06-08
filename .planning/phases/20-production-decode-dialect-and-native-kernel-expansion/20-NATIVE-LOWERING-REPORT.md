@@ -56,8 +56,9 @@ validity policy is all-valid only.
 ## MLIR Validation
 
 `loom-native-melior` now validates Phase 20 standard-MLIR text through
-`validate_production_standard_mlir`. Default tests are skip-aware when compatible
-MLIR tooling is unavailable. Strict gate evidence passed locally with LLVM/MLIR
+`validate_production_standard_mlir`. Release gates require managed compatible
+LLVM/MLIR tooling by default. Skip is permitted only by explicit
+`LOOM_ALLOW_NATIVE_TOOL_SKIP=1`. Managed local evidence passed with LLVM/MLIR
 22.1.7.
 
 ## Encoding/Lowering Coupling
@@ -78,8 +79,8 @@ each newly accepted Vortex encoding/layout as one of:
 - `cargo test -p loom-core --test production_native_kernels`
 - `cargo test -p loom-vortex-ingress table_to_loom`
 - `cargo test -p loom-native-melior --test production_pipeline`
+- `mise run external-tools`
 - `bash scripts/production-native-lowering-test.sh`
-- `LOOM_REQUIRE_PRODUCTION_NATIVE=1 bash scripts/production-native-lowering-test.sh`
 
 Final release-gate commands are recorded in `20-SUMMARY.md`.
 

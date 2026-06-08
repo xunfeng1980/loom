@@ -46,11 +46,14 @@ A discharge report is successful only when every required obligation is discharg
 
 `CollectedOnly` facts remain useful diagnostics, but later production native phases must not treat them as proof.
 
-## Normal vs Strict Mode
+## Managed Tool and Skip Policy
 
-Normal mode may record missing Bitwuzla as explicit `Skipped` evidence so local development remains usable.
+`scripts/solver-verifier-test.sh` requires managed Bitwuzla evidence by default.
+Install/check it with `mise run external-tools`.
 
-Strict mode must fail closed if Bitwuzla is unavailable or if any required obligation does not discharge.
+Missing Bitwuzla may be recorded as explicit `Skipped` evidence only when
+`LOOM_ALLOW_SOLVER_SKIP=1` is set. Any required obligation that returns `sat`,
+`unknown`, timeout, malformed output, or solver error still fails closed.
 
 ## Non-Goals
 
@@ -60,4 +63,3 @@ Strict mode must fail closed if Bitwuzla is unavailable or if any required oblig
 - Expanded Vortex encoding coverage.
 - Checked proof objects.
 - Direct solver FFI dependencies in `loom-core`.
-

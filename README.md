@@ -29,6 +29,12 @@ Formal tool boundary: Lean and TLC are required for the full-verifier gate. Use
 `mise install && mise run formal-tools`; missing formal tools are failures, not
 skipped evidence.
 
+External backend/solver tool boundary: LLVM/MLIR 22 and Bitwuzla are managed
+through `mise run external-tools` using Homebrew on macOS. Release gates require
+those tools by default. Skips are allowed only by explicit configuration
+(`LOOM_ALLOW_NATIVE_TOOL_SKIP=1` or `LOOM_ALLOW_SOLVER_SKIP=1`), not by passive
+tool absence.
+
 ---
 
 ## 1. Goals and Non-Goals
