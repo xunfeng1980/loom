@@ -1,5 +1,6 @@
 use std::ffi::CStr;
 use std::ptr;
+use std::sync::{Mutex, MutexGuard};
 
 use arrow::datatypes::DataType;
 use loom_core::container_codec::wrap_layout_payload;
@@ -17,6 +18,16 @@ use loom_ffi::duckdb_runtime::{
     LoomDuckDbNativeBuffer, LoomDuckDbPlan, LoomDuckDbPrepared,
 };
 use loom_native_melior::backend::NativeBackendCancellation;
+
+static PREPARE_CACHE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+fn isolated_prepare_cache() -> MutexGuard<'static, ()> {
+    let guard = PREPARE_CACHE_TEST_LOCK
+        .lock()
+        .expect("prepare cache test mutex poisoned");
+    duckdb_runtime_clear_native_preparation_cache_for_test();
+    guard
+}
 
 fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
     let values = (0..row_count as i32)
@@ -190,6 +201,7 @@ fn projected_plan_create_validates_projection_pointer_and_empty_projection() {
 
 #[test]
 fn prepare_create_returns_handle_and_route_without_unwinding() {
+    let _guard = isolated_prepare_cache();
     let artifact = raw_i32_lmc1(4);
     let mut plan: *mut LoomDuckDbPlan = ptr::null_mut();
     assert_eq!(
@@ -242,7 +254,7 @@ fn prepare_create_returns_handle_and_route_without_unwinding() {
 
 #[test]
 fn prepare_diagnostic_accessors_expose_cache_evidence() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_prepare_cache();
     let artifact = raw_i32_lmc1(4);
 
     let mut miss_plan: *mut LoomDuckDbPlan = ptr::null_mut();
@@ -448,6 +460,7 @@ fn diagnostic_out_of_range_returns_error_without_mutating_output() {
 
 #[test]
 fn cancelled_prepare_exposes_backend_diagnostic_and_no_native_buffers() {
+    let _guard = isolated_prepare_cache();
     let artifact = raw_i32_lmc1(4);
     let mut plan: *mut LoomDuckDbPlan = ptr::null_mut();
     assert_eq!(
@@ -489,6 +502,7 @@ fn cancelled_prepare_exposes_backend_diagnostic_and_no_native_buffers() {
 
 #[test]
 fn native_buffer_access_is_empty_unless_route_is_native_candidate() {
+    let _guard = isolated_prepare_cache();
     let artifact = raw_i32_lmc1(4);
     let mut plan: *mut LoomDuckDbPlan = ptr::null_mut();
     assert_eq!(
