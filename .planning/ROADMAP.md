@@ -27,6 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings — the MVP0 acceptance gate (completed 2026-06-08)
 - [x] **Phase 6: MVP0 Hardening and Release Baseline** - Convert the completed MVP0 into a reproducible, documented baseline with one-command verification, stale planning cleanup, and explicit next-milestone boundaries (completed 2026-06-08)
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
+- [ ] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision
 
 ## Phase Details
 
@@ -190,10 +191,36 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 07-03-PLAN.md - Add CLI commands `loom inspect` and `loom decode` for payload/descriptor inputs (DX-03)
 - [x] 07-04-PLAN.md - Expand fixture matrix, add optional timing output, update docs, and run the full release gate (DX-02, DX-04)
 
+### Phase 8: Multi-Column Table Output and Arrow Stream Evaluation
+
+**Goal**: Loom can describe, decode, inspect, and query a table-shaped payload with multiple named columns of mixed MVP0 types, while preserving the single-column release gate and making an explicit decision on whether to keep direct DuckDB DataChunk population or move to ArrowArrayStream
+**Depends on**: Phase 7
+**Requirements**: COV-02, TABLE-01, TABLE-02, TABLE-03, DUCK-05, STREAM-01, VERIFY-05
+**Success Criteria** (what must be TRUE):
+
+  1. A `TableDescription` or equivalent model represents multiple named columns, each carrying a `LayoutDescription`, dtype, row count, and nullable metadata
+  2. A checked table payload format can encode/decode mixed Int32, Boolean, and Utf8 columns without breaking existing single-column `.loom` payloads
+  3. Rust-side multi-column decode returns column arrays with a shared row count and typed errors on schema/length mismatch
+  4. `loom inspect` and `loom decode` can display table payloads, including column names and row-wise output
+  5. `loom_scan(<table-payload>)` in DuckDB returns multiple columns and supports SQL projections, filters, and aggregates over mixed column types
+  6. The phase records a concrete ArrowArrayStream decision: implement it if the DuckDB API path is stable in this repo, otherwise document why direct DataChunk population remains the Phase 8 path
+  7. `scripts/mvp0-verify.sh` remains green and a new multi-column SQL acceptance check passes
+
+**Plans**: 4 plans across 3 waves
+
+- **Wave 1**: `08-01` Table model and table payload codec
+- **Wave 2** *(blocked on Wave 1 completion)*: `08-02` Multi-column fixture emitter, CLI inspect/decode, and Rust table decode tests; `08-03` DuckDB multi-column bind/init/scan and ArrowArrayStream decision
+- **Wave 3** *(blocked on Wave 2 completion)*: `08-04` SQL acceptance gate, docs, requirements closure, and release verification
+
+- [ ] 08-01-PLAN.md - Add table-shaped descriptor/payload model with checked mixed-column encode/decode while preserving single-column payload compatibility (COV-02, TABLE-01, TABLE-02)
+- [ ] 08-02-PLAN.md - Generate multi-column fixtures, decode them in Rust, and extend CLI inspect/decode for row-wise table output (TABLE-02, TABLE-03)
+- [ ] 08-03-PLAN.md - Extend DuckDB `loom_scan` for multiple columns and decide ArrowArrayStream vs direct DataChunk population based on working API evidence (DUCK-05, STREAM-01)
+- [ ] 08-04-PLAN.md - Add multi-column SQL acceptance checks, update docs, close requirements, and run full release gates (VERIFY-05)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -204,3 +231,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. FSST L2 Kernel and Full Verification | 4/4 | Complete | 2026-06-08 |
 | 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
+| 8. Multi-Column Table Output and Arrow Stream Evaluation | 0/4 | Planned | - |

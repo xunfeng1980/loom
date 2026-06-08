@@ -75,7 +75,16 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 ### Decode Coverage
 
 - **COV-01**: Additional L2 kernels (ALP float decode, delta-of-delta)
-- **COV-02**: Multi-column table function and Arrow schema assembly across columns
+- [ ] **COV-02**: Multi-column table function and Arrow schema assembly across columns
+
+### Table Output
+
+- [ ] **TABLE-01**: A table-shaped description model represents multiple named columns with per-column `LayoutDescription`, dtype, row count, and nullability metadata
+- [ ] **TABLE-02**: A checked table payload format encodes and decodes mixed MVP0 column types while preserving compatibility with existing single-column payloads
+- [ ] **TABLE-03**: Rust-side multi-column decode returns typed column arrays with a shared row count and typed errors for schema or length mismatch
+- [ ] **DUCK-05**: DuckDB `loom_scan` binds and scans multiple output columns from one payload, supporting projection, filters, and aggregates over mixed Int32/Boolean/Utf8 columns
+- [ ] **STREAM-01**: ArrowArrayStream is either implemented for table-shaped output or explicitly deferred with repo-specific API evidence and rationale
+- [ ] **VERIFY-05**: Multi-column SQL acceptance checks pass and the existing `scripts/mvp0-verify.sh` release gate remains green
 
 ## Out of Scope
 
@@ -131,13 +140,21 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DX-02 | Phase 7 | Complete |
 | DX-03 | Phase 7 | Complete |
 | DX-04 | Phase 7 | Complete |
+| COV-02 | Phase 8 | Planned |
+| TABLE-01 | Phase 8 | Planned |
+| TABLE-02 | Phase 8 | Planned |
+| TABLE-03 | Phase 8 | Planned |
+| DUCK-05 | Phase 8 | Planned |
+| STREAM-01 | Phase 8 | Planned |
+| VERIFY-05 | Phase 8 | Planned |
 
 **Coverage:**
 
 - v1 requirements: 25 total
 - v2 foundation requirements: 5 total
 - v2 developer-experience requirements: 4 total
-- Mapped to phases: 34
+- v2 table-output requirements: 7 total
+- Mapped to phases: 41
 - Unmapped: 0 ✓
 
 ---

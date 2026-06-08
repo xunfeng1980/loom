@@ -37,7 +37,10 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Recommended Phase 8: multi-column table output and possible ArrowArrayStream revisit
+- [ ] Phase 8: table-shaped description and payload format with multiple named columns
+- [ ] Phase 8: Rust multi-column decode and CLI row-wise table output
+- [ ] Phase 8: DuckDB `loom_scan` returns mixed Int32/Boolean/Utf8 columns from one payload
+- [ ] Phase 8: ArrowArrayStream vs direct DataChunk decision is implemented or documented with repo-specific evidence
 
 ### Out of Scope
 
@@ -87,6 +90,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 6 before descriptor/CLI | A clean baseline prevents v2 work from inheriting stale docs or fragile verification steps | Complete — Phase 6 |
 | Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Complete — Phase 7 |
 | Descriptor format = RON for MVP0 | Recursive enum trees are clearer in RON than TOML; descriptor remains MVP0-scoped and unstable | Complete — Phase 7 |
+| Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Active |
 
 ## Evolution
 
@@ -106,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 7 (Human-Readable Layout Descriptor and CLI) — Loom payloads now have RON descriptor text, CLI inspect/decode workflows, expanded descriptor fixture coverage, and illustrative timing output. Phase 8 is ready to focus on multi-column table output and possible ArrowArrayStream revisit.*
+*Last updated: 2026-06-08 starting Phase 8 (Multi-Column Table Output and Arrow Stream Evaluation) — Phase 8 promotes Loom from single-column payloads to table-shaped output with mixed column types and a concrete ArrowArrayStream decision.*

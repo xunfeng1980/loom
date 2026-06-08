@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Phase 07 complete
+status: active
+stopped_at: Phase 08 started
 last_updated: "2026-06-08T00:00:00.000Z"
-last_activity: 2026-06-08 -- Phase 07 marked complete
+last_activity: 2026-06-08 -- Phase 08 planning started
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
-  total_plans: 19
+  total_plans: 23
   completed_plans: 19
-  percent: 100
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over a Vortex-encoded column decoded by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
-**Current focus:** Phase 07 — human-readable-layout-descriptor-and-cli complete; Phase 08 recommended next
+**Current focus:** Phase 08 — multi-column-table-output-and-arrow-stream-evaluation
 
 ## Current Position
 
-Phase: 07 — COMPLETE
-Plan: 4 of 4
-Status: Phase 07 complete
-Last activity: 2026-06-08 -- Phase 07 marked complete
+Phase: 08 — PLANNED
+Plan: 0 of 4
+Status: Phase 08 planning started
+Last activity: 2026-06-08 -- Phase 08 planning started
 
-Progress: [██████████] 100%
+Progress: [████████▎ ] 83%
 
 ## Performance Metrics
 
@@ -111,7 +111,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 8 candidate: **arrow_scan / ArrowArrayStream import path.** Direct `DataChunk` population is acceptable for the single-column MVP0; revisit only when multi-column record-batch-shaped output exists.
+- Phase 8 decision point: **ArrowArrayStream vs direct DataChunk population.** The phase must test the DuckDB API path against the current vendored/amalgamated headers and record a concrete decision. Do not block multi-column acceptance on ArrowArrayStream if the API remains unstable in this repo.
 
 ### Quick Tasks Completed
 
@@ -124,7 +124,7 @@ None yet.
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Deferred | Roadmap |
-| v2 | COV-02: Multi-column table function | Deferred | Roadmap |
+| v2 | COV-02: Multi-column table function | Planned | Phase 8 |
 | v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
 | v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
 | v2 foundation | VERIFY-04: One-command MVP0 release gate | Complete | Phase 6 |
@@ -133,6 +133,12 @@ None yet.
 | v2 | DX-02: Multiple sample columns per encoding | Complete | Phase 7 |
 | v2 | DX-03: CLI inspect/decode driver | Complete | Phase 7 |
 | v2 | DX-04: Illustrative timing comparison | Complete | Phase 7 |
+| v2 table | TABLE-01: Table description model | Planned | Phase 8 |
+| v2 table | TABLE-02: Mixed-column table payload codec | Planned | Phase 8 |
+| v2 table | TABLE-03: Rust multi-column decode | Planned | Phase 8 |
+| v2 table | DUCK-05: DuckDB multi-column loom_scan | Planned | Phase 8 |
+| v2 table | STREAM-01: ArrowArrayStream decision | Planned | Phase 8 |
+| v2 table | VERIFY-05: Multi-column SQL acceptance | Planned | Phase 8 |
 
 ## Session Continuity
 
