@@ -3,7 +3,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use loom_core::arrow_buffer_lowering::{
-    lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
+    lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 
 use crate::backend::{
@@ -171,7 +171,7 @@ fn production_mlir_artifact_from_request(
             .collect();
         return Err(diagnostics);
     };
-    let mlir_text = lower_arrow_buffers_to_standard_mlir(table).map_err(|report| {
+    let mlir_text = lower_arrow_raw_copy_to_standard_mlir(table).map_err(|report| {
         report
             .diagnostics()
             .iter()

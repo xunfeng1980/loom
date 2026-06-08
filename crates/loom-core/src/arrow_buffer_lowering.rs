@@ -254,6 +254,64 @@ pub fn lower_arrow_buffers_to_standard_mlir(
     Ok(text)
 }
 
+pub fn lower_arrow_raw_copy_to_standard_mlir(
+    plan: &ArrowTableBufferPlan,
+) -> Result<String, ArrowBufferLoweringReport> {
+    if plan.columns.is_empty() {
+        let mut report = ArrowBufferLoweringReport::default();
+        report.push(
+            ArrowBufferLoweringDiagnosticCode::UnsupportedShape,
+            "$.columns",
+            "standard MLIR raw-copy lowering requires at least one primitive column",
+        );
+        return Err(report);
+    }
+
+    let input_args = plan.columns.iter().map(|column| {
+        format!(
+            "%{}_in: memref<?x{}>",
+            sanitize_symbol(&column.builder_id),
+            column.primitive.primitive_type.mlir_type()
+        )
+    });
+    let output_args = plan.columns.iter().map(|column| {
+        format!(
+            "%{}_out: memref<?x{}>",
+            sanitize_symbol(&column.builder_id),
+            column.primitive.primitive_type.mlir_type()
+        )
+    });
+    let args = input_args
+        .chain(output_args)
+        .chain(std::iter::once("%rows: index".to_string()))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let mut text = String::new();
+    text.push_str("module {\n");
+    text.push_str(&format!(
+        "  func.func @loom_decode_build_buffers({args}) attributes {{ llvm.emit_c_interface }} {{\n"
+    ));
+    text.push_str("    %c0 = arith.constant 0 : index\n");
+    text.push_str("    %c1 = arith.constant 1 : index\n");
+    text.push_str("    scf.for %row = %c0 to %rows step %c1 {\n");
+    for column in plan.columns.iter() {
+        let id = sanitize_symbol(&column.builder_id);
+        let ty = column.primitive.primitive_type.mlir_type();
+        text.push_str(&format!(
+            "      %value_{id} = memref.load %{id}_in[%row] : memref<?x{ty}>\n"
+        ));
+        text.push_str(&format!(
+            "      memref.store %value_{id}, %{id}_out[%row] : memref<?x{ty}>\n"
+        ));
+    }
+    text.push_str("    }\n");
+    text.push_str("    return\n");
+    text.push_str("  }\n");
+    text.push_str("}\n");
+    Ok(text)
+}
+
 pub fn reference_zeroed_value_bytes(plan: &ArrowColumnBufferPlan) -> Vec<u8> {
     vec![0u8; plan.primitive.value_buffer_bytes as usize]
 }
