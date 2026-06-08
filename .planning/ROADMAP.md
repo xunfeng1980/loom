@@ -824,7 +824,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
 | 24. DuckDB Native Execution Integration MVP | 5/5 | Complete   | 2026-06-08 |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
-| 26. External Source Ingress Contract | 0/? | Next | - |
+| 26. External Source Ingress Contract | 3/5 | In Progress|  |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |
 | 28. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
 | 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
