@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 16 planned; ready to execute
-last_updated: "2026-06-08T08:37:07.254Z"
-last_activity: 2026-06-08 -- Phase 16 execution started
+status: active
+stopped_at: Phase 16 complete; Phase 17 placeholder next
+last_updated: "2026-06-08T09:30:00.000Z"
+last_activity: 2026-06-08 -- Phase 16 complete
 progress:
   total_phases: 23
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 57
-  completed_plans: 52
-  percent: 65
+  completed_plans: 57
+  percent: 70
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 16 — full-melior-llvm-jit-backend-integration
+**Current focus:** Phase 17 — production-decode-dialect-and-native-kernel-expansion (placeholder)
 
 ## Current Position
 
-Phase: 16 (full-melior-llvm-jit-backend-integration) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 16
-Last activity: 2026-06-08 -- Phase 16 execution started
+Phase: 17 (production-decode-dialect-and-native-kernel-expansion) — PLACEHOLDER
+Plan: 0 of ?
+Status: Phase 16 complete; Phase 17 ready for research/planning when requested
+Last activity: 2026-06-08 -- Phase 16 complete
 
-Progress: 65%
+Progress: 70%
 
 ## Progress Snapshot
 
-- Completed phases: 15 / 23
-- Completed executable plans: 52 / 57
+- Completed phases: 16 / 23
+- Completed executable plans: 57 / 57
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 16 planned; ready for `/gsd-execute-phase 16`
-- Last verified gate: `bash scripts/mvp0-verify.sh` passed before Phase 16 planning
+- Current position: Phase 16 complete; Phase 17 remains a placeholder for production decode dialect and native kernel expansion
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 16 JIT boundary work
 
 **Completed phase plan counts:**
 
@@ -47,6 +47,7 @@ Progress: 65%
 | 1-5 | Original MVP0 DuckDB demo path | 12/12 |
 | 6-10 | MVP0 hardening, DX, tables, verifier, ALP coverage | 19/19 |
 | 11-15 | MVP1/v3 distribution, safety proof, full verifier foundation, native-lowering spike, real ingress | 21/21 |
+| 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -115,6 +116,7 @@ None yet.
 - Phase 16 research started after Phase 15 real ingress evidence: full `melior`/LLVM/JIT backend integration remains optional, verifier-gated, and fail-closed.
 - Phase 16 research started: recommended an optional `loom-native-melior` backend crate, explicit LLVM/MLIR toolchain probing, verifier-gated programmatic MLIR construction, optional MLIR ExecutionEngine/JIT evidence, and fail-closed rejection before native artifact creation.
 - Phase 16 planned: 5 sequential plans across optional backend crate/toolchain contract, programmatic `melior` module construction, MLIR validation gate, ExecutionEngine/JIT equivalence, and docs/release-gate closeout.
+- Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR major 21 is recorded as normal-mode skip and strict-mode failure against expected major 22.
 - Phase 17 reserved as a roadmap placeholder only: production decode dialect and native kernel expansion.
 - Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
 - Phase 19-21 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -160,7 +162,7 @@ None yet.
 | v3 safety | Full Loom verifier | Complete | Phase 13 |
 | v3 native | MLIR/native lowering spike | Complete | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Complete | Phase 15 |
-| v3 native | Full melior/LLVM/JIT backend integration | Planned | Phase 16 |
+| v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 17 |
 | v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 19 |
@@ -171,11 +173,12 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T07:53:32.000Z
-Stopped at: Phase 16 planned; ready to execute
+Last session: 2026-06-08T09:30:00.000Z
+Stopped at: Phase 16 complete; Phase 17 placeholder next
 Phase 15 research: .planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md
 Phase 15 context: .planning/phases/15-real-vortex-file-container-ingress/15-CONTEXT.md
 Phase 15 report: .planning/phases/15-real-vortex-file-container-ingress/15-INGRESS-REPORT.md
 Phase 16 research: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-RESEARCH.md
-Phase 16 plans: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-0*-PLAN.md
+Phase 16 report: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-BACKEND-REPORT.md
+Phase 16 summary: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-SUMMARY.md
 Resume file: .planning/ROADMAP.md

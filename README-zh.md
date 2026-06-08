@@ -21,9 +21,9 @@ Loom 是一种**随数据分发的解码器表示**:面向服务端数据引擎,
 | 阶段 | 状态 | 已覆盖 | 边界 |
 |---|---|---|---|
 | MVP0 | 已完成 | `LMP1` 单列 layout payload、Rust interpreter、Arrow C Data Interface、DuckDB `loom_scan(...)` SQL 验收;覆盖 bitpack/FOR/dict/RLE/FSST/dict-over-FSST | 不包含分发容器、完整 verifier、真实 Vortex ingress、MLIR/native lowering 或 native speed claim |
-| MVP1 | 当前已推进到 Phase 15 | `LMT1` 多列、ALP Float32/Float64、fail-closed verifier、`LMC1` container、Safety Proof MVP、Full Verifier foundation、textual MLIR spike、窄范围 `.vortex` -> `LMC1` ingress | 不支持任意 Vortex layout、production MLIR/JIT、remote/object-store ingress、签名/attestation 或完整 correctness proof |
+| MVP1 | 当前已推进到 Phase 16 | `LMT1` 多列、ALP Float32/Float64、fail-closed verifier、`LMC1` container、Safety Proof MVP、Full Verifier foundation、textual MLIR spike、窄范围 `.vortex` -> `LMC1` ingress、针对 bounded Int32 copy slice 的可选 `melior`/LLVM/JIT backend evidence | Phase 16 不是 production native compiler, 不支持任意 Vortex/native lowering, 也不是 host-engine native execution;不包含 remote/object-store ingress、签名/attestation 或完整 correctness proof |
 
-验收边界:generated fixtures 的 DuckDB SQL 行/聚合结果与 oracle 一致;curated negative verifier/container/safety/full-verifier/native-lowering/ingress case 会在 successful output 前 fail closed。
+验收边界:generated fixtures 的 DuckDB SQL 行/聚合结果与 oracle 一致;curated negative verifier/container/safety/full-verifier/native-lowering/ingress/backend case 会在 successful output 前 fail closed。
 
 ---
 

@@ -7,8 +7,8 @@ by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, prod
 Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
 Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
 distribution containers, verifier-backed safety, native-lowering preparation, and narrow real Vortex
-file ingress. Phase 16 is reserved for full `melior`/LLVM/JIT backend integration. Phase 17 and Phase
-18 reserve the post-JIT productionization inputs from the final Loom goal: native decode-dialect/kernel
+file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice. Phase 17 and Phase
+18 reserve the post-backend productionization inputs from the final Loom goal: native decode-dialect/kernel
 expansion, then a complete Vortex reader beyond the narrow Phase 15 ingress slice. Phases 19-21 split
 the formerly oversized engine-integrated native execution placeholder into a runtime ABI/policy phase,
 a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 22 and Phase
@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
-- [ ] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Planned optional verifier-gated programmatic MLIR -> LLVM -> JIT backend over the bounded Int32 copy slice after real ingress evidence exists
+- [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
 - [ ] **Phase 17: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 18: Complete Vortex Reader** - Placeholder for expanding Phase 15's narrow real-ingress slice into a complete, isolated, fail-closed Vortex file/container reader before engine-integrated native execution (not expanded)
 - [ ] **Phase 19: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
@@ -457,7 +457,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 16: Full melior/LLVM/JIT Backend Integration
 
-**Status:** Planned. Ready for `/gsd-execute-phase 16`.
+**Status:** Complete (2026-06-08).
 **Depends on:** Phase 14 and Phase 15.
 **Ordering decision:** Promote the Phase 14 verifier-gated textual MLIR spike into an optional programmatic backend only after real Vortex artifact shapes are visible. Scope should remain verifier-gated and fail-closed, with `melior`/LLVM/JIT kept behind optional tooling until the backend is stable.
 
@@ -467,23 +467,23 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 16-01-PLAN.md - Toolchain contract and optional backend crate boundary
+- [x] 16-01-PLAN.md - Toolchain contract and optional backend crate boundary
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16-02-PLAN.md - Programmatic melior module construction for bounded Int32 copy
+- [x] 16-02-PLAN.md - Programmatic melior module construction for bounded Int32 copy
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16-03-PLAN.md - MLIR validation pipeline and skip-aware backend gate
+- [x] 16-03-PLAN.md - MLIR validation pipeline and skip-aware backend gate
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16-04-PLAN.md - MLIR ExecutionEngine/JIT execution and Rust reference equivalence
+- [x] 16-04-PLAN.md - MLIR ExecutionEngine/JIT execution and Rust reference equivalence
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 16-05-PLAN.md - Final docs, release-gate wiring, and roadmap/state closeout
+- [x] 16-05-PLAN.md - Final docs, release-gate wiring, and roadmap/state closeout
 
 **Cross-cutting constraints:**
 
@@ -491,12 +491,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 - `loom-core` and `loom-ffi` remain free of mandatory MLIR/LLVM/JIT dependencies.
 - Missing or incompatible MLIR/LLVM is skip-aware in normal gates and fail-closed in strict mode.
 - Phase 16 must not claim custom Loom dialect, vectorization, DuckDB native execution, or complete Vortex reader support.
+- Local Phase 16 evidence records LLVM/MLIR major 21 vs expected 22 as a normal-mode skip and strict-mode failure; compatible MLIR 22 environments are required for feature-enabled JIT evidence.
 
 ### Phase 17: Production Decode Dialect and Native Kernel Expansion
 
-**Status:** Placeholder only. Do not expand until Phase 16 proves the backend/toolchain boundary.
+**Status:** Placeholder only. Next phase to research/plan when requested; do not expand inline during Phase 16 closeout.
 **Depends on:** Phase 16.
-**Ordering decision:** After JIT works for the narrow verified slice, expand toward the final Loom execution model: custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, multi-column native lowering, and native kernels for more L1/L2 shapes.
+**Ordering decision:** After the bounded backend/toolchain boundary exists for the narrow verified slice, expand toward the final Loom execution model: custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, multi-column native lowering, and native kernels for more L1/L2 shapes.
 
 ### Phase 18: Complete Vortex Reader
 
@@ -558,7 +559,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
-| 16. Full melior/LLVM/JIT Backend Integration | 0/5 | Planned | - |
+| 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 18. Complete Vortex Reader | 0/? | Placeholder | - |
 | 19. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |

@@ -21,9 +21,9 @@ The repository has moved beyond MVP0 and is now in the **MVP1 / v3 distribution 
 | Stage | Status | Covered | Boundary |
 |---|---|---|---|
 | MVP0 | Complete | `LMP1` single-column layout payloads, Rust interpreter, Arrow C Data Interface, DuckDB `loom_scan(...)` SQL acceptance; bitpack/FOR/dict/RLE/FSST/dict-over-FSST | No distribution container, full verifier, real Vortex ingress, MLIR/native lowering, or native-speed claim |
-| MVP1 | Reached Phase 15 | `LMT1` multi-column payloads, ALP Float32/Float64, fail-closed verifier, `LMC1` container, Safety Proof MVP, Full Verifier foundation, textual MLIR spike, narrow `.vortex` -> `LMC1` ingress | No arbitrary Vortex layouts, production MLIR/JIT, remote/object-store ingress, signatures/attestation, or complete correctness proof |
+| MVP1 | Reached Phase 16 | `LMT1` multi-column payloads, ALP Float32/Float64, fail-closed verifier, `LMC1` container, Safety Proof MVP, Full Verifier foundation, textual MLIR spike, narrow `.vortex` -> `LMC1` ingress, optional `melior`/LLVM/JIT backend evidence for the bounded Int32 copy slice | Phase 16 is not a production native compiler, not arbitrary Vortex/native lowering, and not host-engine native execution; no remote/object-store ingress, signatures/attestation, or complete correctness proof |
 
-Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/safety/full-verifier/native-lowering/ingress cases must fail closed before successful output.
+Acceptance boundary: generated fixtures must match oracle row and aggregate results in DuckDB SQL; curated negative verifier/container/safety/full-verifier/native-lowering/ingress/backend cases must fail closed before successful output.
 
 ---
 

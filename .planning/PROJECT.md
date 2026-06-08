@@ -41,13 +41,13 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 - ✓ Full Loom Verifier foundation: a tiny `L2Core` spec, Rust executable verifier with stable diagnostics/facts, SMT-ready constraint IR, Lean/Rocq scaffold, TLA+ lifecycle invariant, and release-gated `scripts/full-verifier-test.sh` evidence without claiming complete production verification, native lowering safety, or real Vortex ingress — Phase 13
 - ✓ MLIR/native lowering spike: `loom_core::native_lowering` requires accepted `verify_l2_core` reports plus `VerifiedArtifactFacts`, rejects unsupported programs fail-closed, emits deterministic textual MLIR for bounded Int32 copy, and gates typed primitive equivalence evidence through `scripts/native-lowering-test.sh` without mandatory MLIR/LLVM/JIT dependencies — Phase 14
 - ✓ Real Vortex file/container ingress: isolated `loom-vortex-ingress` owns `vortex-file` usage, emits stable Loom-owned `VortexIngressReport` / `VortexFileFacts`, inspects real buffers/paths fail-closed, supports one generated non-null Int32 `.vortex` -> `LMC1` slice, exposes CLI inspection/emission, and gates the evidence through `scripts/vortex-ingress-test.sh` — Phase 15
+- ✓ Full melior/LLVM/JIT backend boundary: optional `loom-native-melior` crate, toolchain facts, verifier-gated builder, MLIR validation pipeline, JIT boundary diagnostics, and skip-aware `scripts/melior-jit-test.sh` evidence for the bounded Int32 copy slice without claiming a production native compiler or host-engine native execution — Phase 16
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 16 is planned and ready to execute: optional verifier-gated `melior`/LLVM/JIT backend integration for the bounded Int32 copy slice.
-- [ ] Phase 17 remains a roadmap placeholder only: production decode dialect and native kernel expansion.
+- [ ] Phase 17 remains a roadmap placeholder only and is the next productionization focus: production decode dialect and native kernel expansion.
 - [ ] Phase 18 remains a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice.
 - [ ] Phase 19 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
 - [ ] Phase 20 remains a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 19 runtime contract.
@@ -59,8 +59,8 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- Production MLIR `decode` dialect / lowering to LLVM / native-speed codegen — Phase 14 is only a verifier-gated textual lowering spike; Phase 16-21 reserve the production native path (`design.md` §8)
-- MLIR/native lowering correctness proof and arbitrary real Vortex ingress proof — Phase 14 is only a verifier-gated textual lowering spike; Phase 15 is only one narrow non-null Int32 real-ingress slice (`design.md` §5, §7, §13)
+- Production MLIR `decode` dialect / arbitrary lowering / native-speed host execution — Phase 14 is only a verifier-gated textual lowering spike and Phase 16 is only optional bounded Int32 backend evidence; Phase 17-21 reserve the production native path (`design.md` §8)
+- MLIR/native lowering correctness proof and arbitrary real Vortex ingress proof — Phase 14 is only a verifier-gated textual lowering spike; Phase 15 is only one narrow non-null Int32 real-ingress slice; Phase 16 is only bounded backend evidence (`design.md` §5, §7, §13)
 - Full arbitrary `.vortex` file layout support (footer / layout tree / multi-chunk / all encodings) — Phase 15 only supports a narrow generated ingress slice
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — current implementation focuses on schema/decode and SQL smoke paths
 - Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
@@ -72,7 +72,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets Loom use Vortex crates in oracle/fixture/ingress boundaries while keeping `loom-core` and `loom-ffi` Vortex-free.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
 - **Design philosophy carried into MVP1:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface before widening backend and engine integration.
-- **What MVP1 is *not* trying to prove yet:** native speed, arbitrary Vortex file ingress, complete production verification of all future Loom artifacts, Iceberg table binding, or multi-engine query execution. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation; Phase 14 starts only a narrow verifier-gated textual lowering spike; Phase 15 adds only a narrow real-ingress slice.
+- **What MVP1 is *not* trying to prove yet:** native speed, arbitrary Vortex file ingress, complete production verification of all future Loom artifacts, Iceberg table binding, or multi-engine query execution. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation; Phase 14 starts only a narrow verifier-gated textual lowering spike; Phase 15 adds only a narrow real-ingress slice; Phase 16 adds optional bounded backend evidence only.
 
 ## Constraints
 
@@ -111,7 +111,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
-| Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Planned — Phase 16 |
+| Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Complete — Phase 16 |
 | Phase 17-21 reserve the post-JIT production path | After full backend integration, the remaining final-goal path is production decode-dialect/kernel expansion, complete real-reader evidence, host native runtime policy, DuckDB integration, and native hardening over real artifacts. | Placeholder — Phases 17-21 |
 | Phase 18 should complete the Vortex reader before engine integration | Engine-integrated native execution needs stable real artifact/fact/schema semantics; those should come from a complete reader boundary, not the Phase 15 narrow ingress slice. | Placeholder — Phase 18 |
 | Phase 19 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Placeholder — Phase 19 |
@@ -138,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 16 planning — optional verifier-gated melior/LLVM/JIT backend plans created; Phase 17 remains the next production decode-dialect expansion placeholder.*
+*Last updated: 2026-06-08 after Phase 16 completion — optional verifier-gated melior/LLVM/JIT backend evidence is in place for the bounded Int32 slice; Phase 17 remains the next production decode-dialect expansion placeholder.*
