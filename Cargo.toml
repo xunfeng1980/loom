@@ -6,6 +6,7 @@ members = [
     "crates/loom-fixtures",
     "crates/loom-cli",
     "crates/loom-vortex-ingress",
+    "crates/loom-source-ingress",
     "crates/loom-native-melior",
     "crates/loom-solver-smt",
 ]
