@@ -129,31 +129,29 @@ fallback_payload="${PAYLOAD_DIR}/fsst-utf8.loom"
 bitpack_payload="${PAYLOAD_DIR}/bitpack-i32.loom"
 
 info "Checking native primitive table SQL rows and route diagnostics..."
-unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
-unset LOOM_DUCKDB_TEST_USE_NATIVE_FACTS
+export LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK=0
+export LOOM_DUCKDB_TEST_USE_NATIVE_FACTS=1
 unset LOOM_DUCKDB_TEST_CANCEL_PREPARE
 native_out="${TMP_DIR}/native-agg.csv"
 sql_to_file "SELECT COUNT(*), SUM(i32_col), SUM(i64_col) FROM loom_scan('${native_payload}')" "${native_out}"
-[ "$(cat "${native_out}")" = "4,0,0" ] || fail "native primitive aggregate mismatch: $(cat "${native_out}")"
-if rg -q 'native-candidate' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
-    echo "native: route=native-candidate" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
-elif rg -q 'toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
-    echo "native: route unavailable because native toolchain diagnostic was emitted" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
-else
-    require_report 'interpreter-fallback'
-    echo "native: route used interpreter fallback for unsupported native preparation" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
-fi
-if ! rg -q 'toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
-    echo "toolchain-not-observed: native route completed or fell back before a toolchain skip" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
+[ "$(cat "${native_out}")" = "4,10,100" ] || fail "native primitive aggregate mismatch: $(cat "${native_out}")"
+require_report 'route=native-candidate'
+require_report 'native-raw-copy-output'
+if rg -q 'interpreter-fallback|toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
+    echo "Route report:" >&2
+    cat "${LOOM_DUCKDB_TEST_ROUTE_REPORT}" >&2
+    fail "native primitive query must not pass through fallback or toolchain skip"
 fi
 ok "native primitive table SQL and route diagnostics"
 
 info "Checking projection order over public loom_scan(path)..."
 projection_out="${TMP_DIR}/projection.csv"
 sql_to_file "SELECT f64_col, i32_col FROM loom_scan('${native_payload}')" "${projection_out}"
-awk -F, 'NF == 2 && ($1 == "0" || $1 == "0.0") && $2 == "0" { ok++ } END { exit ok == 4 ? 0 : 1 }' \
+awk -F, 'NF == 2 && (($1 == "0.25" && $2 == "1") || ($1 == "1.25" && $2 == "2") || ($1 == "2.25" && $2 == "3") || ($1 == "3.25" && $2 == "4")) { ok++ } END { exit ok == 4 ? 0 : 1 }' \
     "${projection_out}" || fail "projection output column order mismatch"
 require_report 'projection=columns:3>0,0>1'
+unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
+unset LOOM_DUCKDB_TEST_USE_NATIVE_FACTS
 ok "projection preserves requested column order"
 
 info "Checking policy-controlled interpreter fallback..."
@@ -182,7 +180,7 @@ info "Checking cancellation path through test-only adapter control..."
 export LOOM_DUCKDB_TEST_USE_NATIVE_FACTS=1
 export LOOM_DUCKDB_TEST_CANCEL_PREPARE=1
 cancel_err="${TMP_DIR}/cancel.err"
-sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${bitpack_payload}');" "${cancel_err}"
+sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${native_payload}');" "${cancel_err}"
 cat "${cancel_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 require_report 'cancelled'
 unset LOOM_DUCKDB_TEST_USE_NATIVE_FACTS

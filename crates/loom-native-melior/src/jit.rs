@@ -1,5 +1,9 @@
+#[cfg(feature = "melior")]
 use loom_core::arrow_buffer_lowering::{
-    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes,
+    lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
+};
+use loom_core::arrow_buffer_lowering::{
+    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes, ArrowTableBufferPlan,
 };
 use loom_core::full_verifier::FullVerificationReport;
 use loom_core::l2_core::L2CoreProgram;
@@ -12,15 +16,18 @@ use crate::backend::{
     NativeBackendReport, NativeBackendStatus,
 };
 use crate::builder::{build_melior_module, MeliorModuleArtifact};
+#[cfg(feature = "melior")]
+use crate::pipeline::LLVM_LOWERING_PIPELINE;
 use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
 use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 use crate::toolchain::probe_toolchain;
 
 pub const PRODUCTION_JIT_ENTRY_SYMBOL: &str = "loom_decode_build_buffers";
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProductionJitOptions {
     pub require_compatible_toolchain: bool,
+    pub input_value_buffers: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,11 +148,10 @@ pub fn execute_prepared_production_jit(
         ));
     }
 
-    let value_buffers = table
-        .columns
-        .iter()
-        .map(reference_zeroed_value_bytes)
-        .collect::<Vec<_>>();
+    let value_buffers =
+        execute_raw_copy_mlir(table, &options.input_value_buffers).map_err(|diagnostic| {
+            report_with_diagnostic(report, NativeBackendStatus::FailClosed, diagnostic)
+        })?;
     Ok(ProductionJitOutput {
         entry_symbol: PRODUCTION_JIT_ENTRY_SYMBOL.to_string(),
         row_count: table.row_count,
@@ -172,6 +178,432 @@ pub fn compare_production_jit_output(
             "production JIT output did not match interpreter/reference output",
         ),
     ))
+}
+
+fn execute_raw_copy_mlir(
+    table: &ArrowTableBufferPlan,
+    input_value_buffers: &[Vec<u8>],
+) -> Result<Vec<Vec<u8>>, NativeBackendDiagnostic> {
+    if input_value_buffers.is_empty() {
+        return Ok(table
+            .columns
+            .iter()
+            .map(reference_zeroed_value_bytes)
+            .collect());
+    }
+
+    if input_value_buffers.len() != table.columns.len() {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.input_value_buffers",
+            format!(
+                "production JIT expected {} input value buffer(s), got {}",
+                table.columns.len(),
+                input_value_buffers.len()
+            ),
+        ));
+    }
+    for (idx, (column, buffer)) in table.columns.iter().zip(input_value_buffers).enumerate() {
+        let expected_len = column.primitive.value_buffer_bytes as usize;
+        if buffer.len() != expected_len {
+            return Err(NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                format!("$.jit.input_value_buffers[{idx}]"),
+                format!(
+                    "production JIT input buffer has {} bytes, expected exactly {}",
+                    buffer.len(),
+                    expected_len
+                ),
+            ));
+        }
+    }
+
+    execute_raw_copy_mlir_backend(table, input_value_buffers)
+}
+
+#[cfg(feature = "melior")]
+fn execute_raw_copy_mlir_backend(
+    table: &ArrowTableBufferPlan,
+    input_value_buffers: &[Vec<u8>],
+) -> Result<Vec<Vec<u8>>, NativeBackendDiagnostic> {
+    use melior::dialect::DialectRegistry;
+    use melior::ir::Module;
+    use melior::pass;
+    use melior::utility::{
+        parse_pass_pipeline, register_all_dialects, register_all_llvm_translations,
+        register_all_passes,
+    };
+    use melior::{Context, ExecutionEngine};
+
+    let context = Context::new();
+    let registry = DialectRegistry::new();
+    register_all_dialects(&registry);
+    context.append_dialect_registry(&registry);
+    context.load_all_available_dialects();
+    register_all_llvm_translations(&context);
+    register_all_passes();
+
+    let mlir_text = lower_arrow_raw_copy_to_standard_mlir(table).map_err(|report| {
+        let message = report
+            .first_error()
+            .map(|diagnostic| diagnostic.message.clone())
+            .unwrap_or_else(|| "production JIT raw-copy MLIR lowering failed".to_string());
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.mlir",
+            message,
+        )
+    })?;
+    let mut module = Module::parse(&context, &mlir_text).ok_or_else(|| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.mlir.parse",
+            "production JIT failed to parse raw-copy MLIR module",
+        )
+    })?;
+
+    let pass_manager = pass::PassManager::new(&context);
+    parse_pass_pipeline(
+        pass_manager.as_operation_pass_manager(),
+        LLVM_LOWERING_PIPELINE,
+    )
+    .map_err(|err| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.mlir.pass_pipeline",
+            format!("production JIT failed to parse LLVM lowering pipeline: {err:?}"),
+        )
+    })?;
+    pass_manager.run(&mut module).map_err(|err| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.mlir.lower_to_llvm",
+            format!("production JIT failed to lower MLIR module to LLVM: {err:?}"),
+        )
+    })?;
+
+    let engine = ExecutionEngine::new(&module, 2, &[], false, false);
+    if engine.lookup(PRODUCTION_JIT_ENTRY_SYMBOL).is_null() {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitSymbolMissing,
+            "$.jit.symbol",
+            format!("JIT entry symbol '{PRODUCTION_JIT_ENTRY_SYMBOL}' was not found"),
+        ));
+    }
+
+    let mut columns = table
+        .columns
+        .iter()
+        .zip(input_value_buffers)
+        .map(|(column, input)| JitColumnStorage::new(column, input, table.row_count))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut rows = table.row_count as isize;
+    let mut args = Vec::with_capacity(columns.len() * 2 + 1);
+    for column in columns.iter_mut() {
+        args.push(column.input_descriptor_ptr());
+    }
+    for column in columns.iter_mut() {
+        args.push(column.output_descriptor_ptr());
+    }
+    args.push(&mut rows as *mut isize as *mut ());
+
+    unsafe {
+        engine
+            .invoke_packed(PRODUCTION_JIT_ENTRY_SYMBOL, &mut args)
+            .map_err(|err| {
+                NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::JitUnavailable,
+                    "$.jit.invoke",
+                    format!("production JIT ExecutionEngine invocation failed: {err:?}"),
+                )
+            })?;
+    }
+
+    Ok(columns
+        .into_iter()
+        .map(JitColumnStorage::into_bytes)
+        .collect())
+}
+
+#[cfg(not(feature = "melior"))]
+fn execute_raw_copy_mlir_backend(
+    _table: &ArrowTableBufferPlan,
+    _input_value_buffers: &[Vec<u8>],
+) -> Result<Vec<Vec<u8>>, NativeBackendDiagnostic> {
+    Err(NativeBackendDiagnostic::new(
+        NativeBackendDiagnosticCode::JitUnavailable,
+        "$.jit",
+        "production JIT requires the loom-native-melior melior feature",
+    ))
+}
+
+#[cfg(feature = "melior")]
+#[repr(C)]
+struct MemRef1D<T> {
+    allocated: *mut T,
+    aligned: *mut T,
+    offset: isize,
+    size0: isize,
+    stride0: isize,
+}
+
+#[cfg(feature = "melior")]
+impl<T> MemRef1D<T> {
+    fn new(values: &mut [T]) -> Self {
+        let ptr = values.as_mut_ptr();
+        Self {
+            allocated: ptr,
+            aligned: ptr,
+            offset: 0,
+            size0: values.len() as isize,
+            stride0: 1,
+        }
+    }
+}
+
+#[cfg(feature = "melior")]
+enum JitColumnStorage {
+    I32 {
+        input: Vec<i32>,
+        output: Vec<i32>,
+        input_desc: MemRef1D<i32>,
+        output_desc: MemRef1D<i32>,
+        input_arg: *mut MemRef1D<i32>,
+        output_arg: *mut MemRef1D<i32>,
+    },
+    I64 {
+        input: Vec<i64>,
+        output: Vec<i64>,
+        input_desc: MemRef1D<i64>,
+        output_desc: MemRef1D<i64>,
+        input_arg: *mut MemRef1D<i64>,
+        output_arg: *mut MemRef1D<i64>,
+    },
+    F32 {
+        input: Vec<f32>,
+        output: Vec<f32>,
+        input_desc: MemRef1D<f32>,
+        output_desc: MemRef1D<f32>,
+        input_arg: *mut MemRef1D<f32>,
+        output_arg: *mut MemRef1D<f32>,
+    },
+    F64 {
+        input: Vec<f64>,
+        output: Vec<f64>,
+        input_desc: MemRef1D<f64>,
+        output_desc: MemRef1D<f64>,
+        input_arg: *mut MemRef1D<f64>,
+        output_arg: *mut MemRef1D<f64>,
+    },
+}
+
+#[cfg(feature = "melior")]
+impl JitColumnStorage {
+    fn new(
+        column: &ArrowColumnBufferPlan,
+        input_bytes: &[u8],
+        row_count: u64,
+    ) -> Result<Self, NativeBackendDiagnostic> {
+        match column.primitive.primitive_type {
+            PrimitiveArrowType::Int32 => {
+                let mut input = bytes_to_i32(input_bytes)?;
+                let mut output = vec![0i32; row_count as usize];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                Ok(Self::I32 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                })
+            }
+            PrimitiveArrowType::Int64 => {
+                let mut input = bytes_to_i64(input_bytes)?;
+                let mut output = vec![0i64; row_count as usize];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                Ok(Self::I64 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                })
+            }
+            PrimitiveArrowType::Float32 => {
+                let mut input = bytes_to_f32(input_bytes)?;
+                let mut output = vec![0f32; row_count as usize];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                Ok(Self::F32 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                })
+            }
+            PrimitiveArrowType::Float64 => {
+                let mut input = bytes_to_f64(input_bytes)?;
+                let mut output = vec![0f64; row_count as usize];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                Ok(Self::F64 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                })
+            }
+        }
+    }
+
+    fn input_descriptor_ptr(&mut self) -> *mut () {
+        match self {
+            Self::I32 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<i32>;
+                input_arg as *mut *mut MemRef1D<i32> as *mut ()
+            }
+            Self::I64 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<i64>;
+                input_arg as *mut *mut MemRef1D<i64> as *mut ()
+            }
+            Self::F32 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<f32>;
+                input_arg as *mut *mut MemRef1D<f32> as *mut ()
+            }
+            Self::F64 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<f64>;
+                input_arg as *mut *mut MemRef1D<f64> as *mut ()
+            }
+        }
+    }
+
+    fn output_descriptor_ptr(&mut self) -> *mut () {
+        match self {
+            Self::I32 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<i32>;
+                output_arg as *mut *mut MemRef1D<i32> as *mut ()
+            }
+            Self::I64 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<i64>;
+                output_arg as *mut *mut MemRef1D<i64> as *mut ()
+            }
+            Self::F32 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<f32>;
+                output_arg as *mut *mut MemRef1D<f32> as *mut ()
+            }
+            Self::F64 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<f64>;
+                output_arg as *mut *mut MemRef1D<f64> as *mut ()
+            }
+        }
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        match self {
+            Self::I32 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(i32::to_le_bytes).collect()
+            }
+            Self::I64 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(i64::to_le_bytes).collect()
+            }
+            Self::F32 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(f32::to_le_bytes).collect()
+            }
+            Self::F64 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(f64::to_le_bytes).collect()
+            }
+        }
+    }
+}
+
+#[cfg(feature = "melior")]
+fn bytes_to_i32(bytes: &[u8]) -> Result<Vec<i32>, NativeBackendDiagnostic> {
+    chunks_to_values(bytes, i32::from_le_bytes, "Int32")
+}
+
+#[cfg(feature = "melior")]
+fn bytes_to_i64(bytes: &[u8]) -> Result<Vec<i64>, NativeBackendDiagnostic> {
+    chunks_to_values(bytes, i64::from_le_bytes, "Int64")
+}
+
+#[cfg(feature = "melior")]
+fn bytes_to_f32(bytes: &[u8]) -> Result<Vec<f32>, NativeBackendDiagnostic> {
+    chunks_to_values(bytes, f32::from_le_bytes, "Float32")
+}
+
+#[cfg(feature = "melior")]
+fn bytes_to_f64(bytes: &[u8]) -> Result<Vec<f64>, NativeBackendDiagnostic> {
+    chunks_to_values(bytes, f64::from_le_bytes, "Float64")
+}
+
+#[cfg(feature = "melior")]
+fn chunks_to_values<const N: usize, T>(
+    bytes: &[u8],
+    convert: impl Fn([u8; N]) -> T,
+    kind: &str,
+) -> Result<Vec<T>, NativeBackendDiagnostic> {
+    if bytes.len() % N != 0 {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.input_value_buffers",
+            format!(
+                "{kind} input buffer length {} is not {N}-byte aligned",
+                bytes.len()
+            ),
+        ));
+    }
+    Ok(bytes
+        .chunks_exact(N)
+        .map(|chunk| {
+            let mut array = [0u8; N];
+            array.copy_from_slice(chunk);
+            convert(array)
+        })
+        .collect())
 }
 
 fn report_with_diagnostic(

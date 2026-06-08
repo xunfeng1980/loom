@@ -204,11 +204,19 @@ COPY (
     FROM loom_scan('${native_payload}')
 ) TO '${second_native}' (FORMAT CSV, HEADER FALSE);
 "
-[ "$(cat "${first_native}")" = "4,0,0,0.0,0.0" ] || \
-    fail "native aggregate mismatch: $(cat "${first_native}")"
 cmp -s "${first_native}" "${second_native}" || fail "identical scan aggregate output changed"
-require_report 'route=native-candidate|route=interpreter-fallback|toolchain-skipped|toolchain-failed'
-assert_cache_smoke_or_toolchain_skip "identical native-primitives-table scans"
+[ "$(cat "${first_native}")" = "4,10,100,12.0,7.0" ] || \
+    fail "native aggregate mismatch: $(cat "${first_native}")"
+require_report 'route=native-candidate'
+require_report 'native-raw-copy-output'
+require_report 'cache-miss'
+require_report 'cache-inserted'
+require_report 'cache-hit'
+require_ordered_report 'cache-miss' 'cache-hit'
+if rg -q 'interpreter-fallback|toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
+    print_report
+    fail "native primitive scans must not pass through fallback or toolchain skip"
+fi
 ok "native primitive aggregate equality is stable"
 
 info "Checking reordered projection equality and cache-key drift..."
@@ -233,7 +241,7 @@ COPY (
 ) TO '${projection_second}' (FORMAT CSV, HEADER FALSE);
 "
 [ "$(cat "${full_projection_seed}")" = "4" ] || fail "full projection seed mismatch"
-awk -F, 'NF == 2 && ($1 == "0" || $1 == "0.0") && $2 == "0" { ok++ } END { exit ok == 4 ? 0 : 1 }' \
+awk -F, 'NF == 2 && (($1 == "0.25" && $2 == "1") || ($1 == "1.25" && $2 == "2") || ($1 == "2.25" && $2 == "3") || ($1 == "3.25" && $2 == "4")) { ok++ } END { exit ok == 4 ? 0 : 1 }' \
     "${projection_first}" || fail "reordered projection output mismatch"
 cmp -s "${projection_first}" "${projection_second}" || fail "repeated projection output changed"
 require_report 'projection=columns:3>0,0>1'
@@ -292,7 +300,7 @@ reset_report
 export LOOM_DUCKDB_TEST_USE_NATIVE_FACTS=1
 export LOOM_DUCKDB_TEST_CANCEL_PREPARE=1
 cancel_err="${TMP_DIR}/cancel.err"
-sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${bitpack_payload}');" "${cancel_err}"
+sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${native_payload}');" "${cancel_err}"
 cat "${cancel_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 require_report 'cancelled'
 require_report 'cache-non-cacheable'

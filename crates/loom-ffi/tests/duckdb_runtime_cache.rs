@@ -96,14 +96,26 @@ fn table_native_input_with_projection(projection: DuckDbProjection) -> DuckDbRun
             test_native_facts: Some(DuckDbTestNativeFacts {
                 row_count: 4,
                 columns: vec![DataType::Int32, DataType::Int64],
-                test_jit_value_buffers: Some(vec![vec![0; 16], vec![0; 32]]),
+                test_jit_value_buffers: None,
             }),
         },
     }
 }
 
 fn native_plan() -> DuckDbRuntimePlanReport {
-    plan_duckdb_runtime(native_input_with_buffers(vec![vec![0; 16]])).expect("native plan")
+    plan_duckdb_runtime(DuckDbRuntimePlanInput {
+        artifact_bytes: raw_i32_lmc1(4),
+        projection: DuckDbProjection::All,
+        policy: DuckDbRuntimePolicy {
+            allow_interpreter_fallback: false,
+            test_native_facts: Some(DuckDbTestNativeFacts {
+                row_count: 4,
+                columns: vec![DataType::Int32],
+                test_jit_value_buffers: None,
+            }),
+        },
+    })
+    .expect("native plan")
 }
 
 fn prepare(plan: &DuckDbRuntimePlanReport) -> Vec<DuckDbRuntimeDiagnostic> {
@@ -191,7 +203,18 @@ fn projection_and_policy_drift_miss_instead_of_reusing_prior_entry() {
     assert!(projected_codes.contains(&"cache-miss"));
     assert!(!projected_codes.contains(&"cache-hit"));
 
-    let mut policy_drift = native_input_with_buffers(vec![vec![0; 16]]);
+    let mut policy_drift = DuckDbRuntimePlanInput {
+        artifact_bytes: raw_i32_lmc1(4),
+        projection: DuckDbProjection::All,
+        policy: DuckDbRuntimePolicy {
+            allow_interpreter_fallback: false,
+            test_native_facts: Some(DuckDbTestNativeFacts {
+                row_count: 4,
+                columns: vec![DataType::Int32],
+                test_jit_value_buffers: None,
+            }),
+        },
+    };
     policy_drift.policy.allow_interpreter_fallback = true;
     let policy_drift = plan_duckdb_runtime(policy_drift).expect("policy drift native plan");
     let policy_diagnostics = prepare(&policy_drift);
@@ -240,7 +263,18 @@ fn unsafe_routes_are_non_cacheable_and_do_not_seed_hits() {
     assert!(mismatch_codes.contains(&"native-output-mismatch"));
     assert!(mismatch_codes.contains(&"cache-non-cacheable"));
 
-    let mut fallback_input = native_input_with_buffers(vec![vec![0; 16]]);
+    let mut fallback_input = DuckDbRuntimePlanInput {
+        artifact_bytes: raw_i32_lmc1(4),
+        projection: DuckDbProjection::All,
+        policy: DuckDbRuntimePolicy {
+            allow_interpreter_fallback: false,
+            test_native_facts: Some(DuckDbTestNativeFacts {
+                row_count: 4,
+                columns: vec![DataType::Int32],
+                test_jit_value_buffers: None,
+            }),
+        },
+    };
     fallback_input.policy.test_native_facts = None;
     fallback_input.policy.allow_interpreter_fallback = true;
     let fallback = plan_duckdb_runtime(fallback_input).expect("fallback plan");

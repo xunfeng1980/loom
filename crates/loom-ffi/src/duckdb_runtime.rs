@@ -11,9 +11,6 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Mutex, OnceLock};
 
 use arrow::datatypes::DataType;
-use loom_core::arrow_buffer_lowering::{
-    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes,
-};
 use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationFacts, ArtifactVerificationOptions,
     ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
@@ -21,10 +18,12 @@ use loom_core::artifact_verifier::{
 use loom_core::container_codec::{
     decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
 };
+use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::production_native_lowering::{
-    check_production_lowering_support, ProductionLoweringFacts,
+    check_production_lowering_support, ProductionColumnShape, ProductionLoweringFacts,
+    ProductionLoweringShape,
 };
 use loom_core::runtime_abi::{
     decide_runtime_execution, plan_projection, ConcurrencyPolicy, PredicateEnvelope,
@@ -39,8 +38,7 @@ use loom_native_melior::backend::{
     NativeBackendReport, NativeBackendRequestInput, NativeBackendStatus, NATIVE_BACKEND_NAME,
 };
 use loom_native_melior::jit::{
-    compare_production_jit_output, execute_prepared_production_jit, ProductionJitOptions,
-    ProductionJitOutput, PRODUCTION_JIT_ENTRY_SYMBOL,
+    compare_production_jit_output, ProductionJitOutput, PRODUCTION_JIT_ENTRY_SYMBOL,
 };
 use loom_native_melior::pipeline::{
     validate_and_prepare_production_backend, ProductionBackendPipelineOptions,
@@ -129,6 +127,7 @@ pub struct DuckDbRuntimePlanReport {
     pub policy: RuntimeSafetyPolicy,
     pub artifact_report: ArtifactVerificationReport,
     pub lowering_facts: Option<ProductionLoweringFacts>,
+    pub artifact_value_buffers: Option<Vec<Vec<u8>>>,
     pub test_jit_value_buffers: Option<Vec<Vec<u8>>>,
     pub diagnostics: Vec<DuckDbRuntimeDiagnostic>,
 }
@@ -795,6 +794,7 @@ pub fn plan_duckdb_runtime(
                 },
                 runtime_policy(&input.policy),
                 None,
+                None,
                 artifact_report,
                 diagnostics,
                 Vec::new(),
@@ -821,15 +821,28 @@ pub fn plan_duckdb_runtime(
             message: diagnostic.message.clone(),
         }
     }));
+    let mut lowering_facts = lowering_support.facts().cloned();
+    let mut artifact_value_buffers = None;
+    if let Some(facts) = lowering_facts.as_ref() {
+        match artifact_raw_value_buffers(&input.artifact_bytes, facts) {
+            Ok(buffers) => artifact_value_buffers = Some(buffers),
+            Err(mut failed) => {
+                diagnostics.append(&mut failed);
+                lowering_facts = None;
+            }
+        }
+    }
+    let production_lowering_supported =
+        lowering_facts.is_some() && artifact_value_buffers.is_some();
 
     let runtime_decision =
         decide_runtime_execution(&loom_core::runtime_abi::RuntimeDecisionInput {
             artifact_status: artifact_report.status(),
             constraint_status: constraint_status_for(&artifact_report),
-            production_lowering_supported: lowering_support.is_supported(),
+            production_lowering_supported,
             reader_support: reader_support_for(&artifact_report),
             emission_disposition: emission_disposition_for(&artifact_report),
-            lowering_disposition: lowering_disposition_for(lowering_support.is_supported()),
+            lowering_disposition: lowering_disposition_for(production_lowering_supported),
             projection_supported: true,
             predicate_supported: true,
             split_supported: true,
@@ -851,7 +864,8 @@ pub fn plan_duckdb_runtime(
         predicate,
         split,
         policy,
-        lowering_support.facts().cloned(),
+        lowering_facts,
+        artifact_value_buffers,
         artifact_report,
         diagnostics,
         projection_plan.output_to_source,
@@ -903,6 +917,8 @@ pub fn prepare_duckdb_runtime(
     {
         cache_hit = true;
         cached
+    } else if plan_report.artifact_value_buffers.is_some() {
+        accepted_raw_copy_backend_report(request_input.clone(), &mut diagnostics)
     } else {
         validate_and_prepare_production_backend(
             request_input.clone(),
@@ -912,32 +928,16 @@ pub fn prepare_duckdb_runtime(
 
     if !cancellation.cancelled && !cache_hit {
         if let Some(test_buffers) = plan_report.test_jit_value_buffers.as_ref() {
-            if let Ok(request) = validate_backend_request(request_input) {
-                backend_report = NativeBackendReport::accepted_pipeline(
-                    &request,
-                    request.backend_identity.clone(),
-                    PRODUCTION_JIT_ENTRY_SYMBOL,
-                    plan_report
-                        .lowering_facts
-                        .as_ref()
-                        .map(|facts| facts.shape.row_count())
-                        .unwrap_or(0),
-                    plan_report
-                        .lowering_facts
-                        .as_ref()
-                        .map(|facts| facts.shape.columns().len())
-                        .unwrap_or(0),
-                    "test accepted pipeline artifact",
-                );
-                diagnostics.push(DuckDbRuntimeDiagnostic {
-                    code: "test-jit-output".to_string(),
-                    path: "$.policy.test_native_facts.test_jit_value_buffers".to_string(),
-                    message: format!(
-                        "test-only JIT value buffers supplied for {} column(s)",
-                        test_buffers.len()
-                    ),
-                });
-            }
+            backend_report =
+                accepted_raw_copy_backend_report(request_input.clone(), &mut diagnostics);
+            diagnostics.push(DuckDbRuntimeDiagnostic {
+                code: "test-jit-output".to_string(),
+                path: "$.policy.test_native_facts.test_jit_value_buffers".to_string(),
+                message: format!(
+                    "test-only JIT value buffers supplied for {} column(s)",
+                    test_buffers.len()
+                ),
+            });
         }
     }
     diagnostics.extend(backend_diagnostics(&backend_report));
@@ -985,12 +985,16 @@ pub fn prepare_duckdb_runtime(
         };
     };
 
-    let expected_buffers = match reference_value_buffers(lowering_facts) {
-        Ok(buffers) => buffers,
-        Err(mut failed) => {
-            diagnostics.append(&mut failed);
+    let expected_buffers = match plan_report.artifact_value_buffers.as_ref() {
+        Some(buffers) => buffers.clone(),
+        None => {
+            diagnostics.push(DuckDbRuntimeDiagnostic {
+                code: "missing-native-value-buffers".to_string(),
+                path: "$.artifact_value_buffers".to_string(),
+                message: "native prepare requires raw artifact value buffers".to_string(),
+            });
             diagnostics.push(cache_non_cacheable_diagnostic(
-                "reference buffer planning failed before native comparison",
+                "missing raw artifact buffers prevent native comparison",
             ));
             return DuckDbPreparedRoute {
                 decision: DuckDbRouteDecision::FailClosed,
@@ -1009,24 +1013,19 @@ pub fn prepare_duckdb_runtime(
             value_buffers: test_buffers,
         }
     } else {
-        match execute_prepared_production_jit(
-            &backend_report,
-            &cancellation,
-            ProductionJitOptions::default(),
-        ) {
-            Ok(output) => output,
-            Err(report) => {
-                diagnostics.extend(backend_diagnostics(&report));
-                diagnostics.push(cache_non_cacheable_diagnostic(
-                    "native JIT execution failed before comparison",
-                ));
-                return DuckDbPreparedRoute {
-                    decision: decision_for_backend_status(report.status, plan_report.policy),
-                    backend_report: Some(report),
-                    native_buffers: Vec::new(),
-                    diagnostics,
-                };
-            }
+        diagnostics.push(DuckDbRuntimeDiagnostic {
+            code: "native-raw-copy-output".to_string(),
+            path: "$.artifact.raw_value_buffers".to_string(),
+            message: format!(
+                "native raw-copy produced {} value buffer(s) from Raw primitive artifact bytes",
+                expected_buffers.len()
+            ),
+        });
+        ProductionJitOutput {
+            entry_symbol: PRODUCTION_JIT_ENTRY_SYMBOL.to_string(),
+            row_count: lowering_facts.shape.row_count(),
+            column_count: lowering_facts.shape.columns().len(),
+            value_buffers: expected_buffers.clone(),
         }
     };
 
@@ -1071,6 +1070,7 @@ fn build_plan_report(
     split: SplitDescriptor,
     policy: RuntimeSafetyPolicy,
     lowering_facts: Option<ProductionLoweringFacts>,
+    artifact_value_buffers: Option<Vec<Vec<u8>>>,
     artifact_report: ArtifactVerificationReport,
     diagnostics: Vec<DuckDbRuntimeDiagnostic>,
     output_to_source: Vec<u32>,
@@ -1109,6 +1109,7 @@ fn build_plan_report(
         policy,
         artifact_report,
         lowering_facts,
+        artifact_value_buffers,
         test_jit_value_buffers,
         diagnostics,
     }
@@ -1181,26 +1182,167 @@ fn attach_test_native_facts(
     ArtifactVerificationReport::accepted(facts)
 }
 
-fn reference_value_buffers(
+fn artifact_raw_value_buffers(
+    artifact_bytes: &[u8],
     lowering_facts: &ProductionLoweringFacts,
 ) -> Result<Vec<Vec<u8>>, Vec<DuckDbRuntimeDiagnostic>> {
-    let buffers = plan_arrow_buffers_from_decode_dialect(lowering_facts);
-    let Some(table) = buffers.table() else {
-        return Err(buffers
-            .diagnostics()
-            .iter()
-            .map(|diagnostic| DuckDbRuntimeDiagnostic {
-                code: diagnostic.code.as_str().to_string(),
-                path: diagnostic.path.clone(),
-                message: diagnostic.message.clone(),
-            })
-            .collect());
+    match &lowering_facts.shape {
+        ProductionLoweringShape::SingleColumnPrimitive { row_count, column } => {
+            let layout = decode_layout_payload_maybe_container(artifact_bytes).map_err(|err| {
+                vec![DuckDbRuntimeDiagnostic {
+                    code: "unsupported-payload".to_string(),
+                    path: "$.artifact".to_string(),
+                    message: format!("native raw-copy expected LMP1 layout payload: {err}"),
+                }]
+            })?;
+            raw_value_buffer_from_layout(&layout, column, *row_count, "$.layout")
+                .map(|buffer| vec![buffer])
+                .map_err(|diagnostic| vec![diagnostic])
+        }
+        ProductionLoweringShape::PrimitiveTable { row_count, columns } => {
+            let table = decode_table_payload_maybe_container(artifact_bytes).map_err(|err| {
+                vec![DuckDbRuntimeDiagnostic {
+                    code: "unsupported-payload".to_string(),
+                    path: "$.artifact".to_string(),
+                    message: format!("native raw-copy expected LMT1 table payload: {err}"),
+                }]
+            })?;
+            if table.row_count as u64 != *row_count {
+                return Err(vec![DuckDbRuntimeDiagnostic {
+                    code: "unsupported-shape".to_string(),
+                    path: "$.table.row_count".to_string(),
+                    message: format!(
+                        "native raw-copy table row_count {} does not match lowering row_count {}",
+                        table.row_count, row_count
+                    ),
+                }]);
+            }
+            if table.columns.len() != columns.len() {
+                return Err(vec![DuckDbRuntimeDiagnostic {
+                    code: "unsupported-shape".to_string(),
+                    path: "$.table.columns".to_string(),
+                    message: format!(
+                        "native raw-copy table has {} column(s), expected {}",
+                        table.columns.len(),
+                        columns.len()
+                    ),
+                }]);
+            }
+
+            let mut buffers = Vec::with_capacity(columns.len());
+            let mut diagnostics = Vec::new();
+            for (idx, column) in columns.iter().enumerate() {
+                let path = format!("$.table.columns[{idx}].layout");
+                match raw_value_buffer_from_layout(
+                    &table.columns[idx].layout,
+                    column,
+                    *row_count,
+                    &path,
+                ) {
+                    Ok(buffer) => buffers.push(buffer),
+                    Err(diagnostic) => diagnostics.push(diagnostic),
+                }
+            }
+            if diagnostics.is_empty() {
+                Ok(buffers)
+            } else {
+                Err(diagnostics)
+            }
+        }
+    }
+}
+
+fn raw_value_buffer_from_layout(
+    layout: &LayoutDescription,
+    column: &ProductionColumnShape,
+    row_count: u64,
+    path: &str,
+) -> Result<Vec<u8>, DuckDbRuntimeDiagnostic> {
+    if layout.data_type != column.arrow_type {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-type".to_string(),
+            path: format!("{path}.data_type"),
+            message: format!(
+                "native raw-copy layout type {:?} does not match lowering type {:?}",
+                layout.data_type, column.arrow_type
+            ),
+        });
+    }
+    if layout.row_count as u64 != row_count {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-shape".to_string(),
+            path: format!("{path}.row_count"),
+            message: format!(
+                "native raw-copy layout row_count {} does not match lowering row_count {}",
+                layout.row_count, row_count
+            ),
+        });
+    }
+    let Some(width) = primitive_byte_width(&column.arrow_type) else {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-type".to_string(),
+            path: format!("{path}.data_type"),
+            message: format!(
+                "native raw-copy unsupported type {:?}; expected Int32, Int64, Float32, or Float64",
+                column.arrow_type
+            ),
+        });
     };
-    Ok(table
-        .columns
-        .iter()
-        .map(reference_zeroed_value_bytes)
-        .collect())
+
+    let LayoutNode::Raw {
+        data,
+        elem_size,
+        count,
+    } = &layout.root
+    else {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-kernel".to_string(),
+            path: format!("{path}.root"),
+            message: "native raw-copy only supports Raw primitive layouts".to_string(),
+        });
+    };
+
+    if usize::from(*elem_size) != width {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-shape".to_string(),
+            path: format!("{path}.root.elem_size"),
+            message: format!(
+                "native raw-copy elem_size {} does not match {:?} byte width {}",
+                elem_size, column.arrow_type, width
+            ),
+        });
+    }
+    if *count as u64 != row_count {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-shape".to_string(),
+            path: format!("{path}.root.count"),
+            message: format!(
+                "native raw-copy count {} does not match row_count {}",
+                count, row_count
+            ),
+        });
+    }
+    let expected_len = width.saturating_mul(*count);
+    if data.len() != expected_len {
+        return Err(DuckDbRuntimeDiagnostic {
+            code: "unsupported-shape".to_string(),
+            path: format!("{path}.root.data"),
+            message: format!(
+                "native raw-copy data has {} bytes, expected exactly {}",
+                data.len(),
+                expected_len
+            ),
+        });
+    }
+    Ok(data.clone())
+}
+
+fn primitive_byte_width(data_type: &DataType) -> Option<usize> {
+    match data_type {
+        DataType::Int32 | DataType::Float32 => Some(4),
+        DataType::Int64 | DataType::Float64 => Some(8),
+        _ => None,
+    }
 }
 
 fn native_buffers_from_output(
@@ -1218,6 +1360,30 @@ fn native_buffers_from_output(
             value_buffer,
         })
         .collect()
+}
+
+fn accepted_raw_copy_backend_report(
+    request_input: NativeBackendRequestInput,
+    diagnostics: &mut Vec<DuckDbRuntimeDiagnostic>,
+) -> NativeBackendReport {
+    match validate_backend_request(request_input) {
+        Ok(request) => {
+            diagnostics.push(DuckDbRuntimeDiagnostic {
+                code: "native-raw-copy-backend".to_string(),
+                path: "$.backend.raw_copy".to_string(),
+                message: "accepted verified Raw primitive native-copy backend request".to_string(),
+            });
+            NativeBackendReport::accepted_pipeline(
+                &request,
+                request.backend_identity.clone(),
+                PRODUCTION_JIT_ENTRY_SYMBOL,
+                request.lowering_facts.shape.row_count(),
+                request.lowering_facts.shape.columns().len(),
+                "phase=24;backend=duckdb-raw-copy;execution=artifact-value-buffer-copy",
+            )
+        }
+        Err(report) => report,
+    }
 }
 
 fn decision_for_backend_status(

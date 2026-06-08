@@ -107,25 +107,45 @@ fn emit_mixed_table(out_dir: &Path) {
 }
 
 fn emit_native_primitives_table(out_dir: &Path, manifest: &mut String) {
-    let row_count = 4usize;
+    let i32_values = [1i32, 2, 3, 4];
+    let i64_values = [10i64, 20, 30, 40];
+    let f32_values = [1.5f32, 2.5, 3.5, 4.5];
+    let f64_values = [0.25f64, 1.25, 2.25, 3.25];
+    let row_count = i32_values.len();
     let table = TableDescription {
         row_count,
         columns: vec![
             TableColumn {
                 name: "i32_col".to_string(),
-                layout: raw_zeros(DataType::Int32, 4, row_count),
+                layout: raw_values(
+                    DataType::Int32,
+                    4,
+                    i32_values.iter().flat_map(|v| v.to_le_bytes()),
+                ),
             },
             TableColumn {
                 name: "i64_col".to_string(),
-                layout: raw_zeros(DataType::Int64, 8, row_count),
+                layout: raw_values(
+                    DataType::Int64,
+                    8,
+                    i64_values.iter().flat_map(|v| v.to_le_bytes()),
+                ),
             },
             TableColumn {
                 name: "f32_col".to_string(),
-                layout: raw_zeros(DataType::Float32, 4, row_count),
+                layout: raw_values(
+                    DataType::Float32,
+                    4,
+                    f32_values.iter().flat_map(|v| v.to_le_bytes()),
+                ),
             },
             TableColumn {
                 name: "f64_col".to_string(),
-                layout: raw_zeros(DataType::Float64, 8, row_count),
+                layout: raw_values(
+                    DataType::Float64,
+                    8,
+                    f64_values.iter().flat_map(|v| v.to_le_bytes()),
+                ),
             },
         ],
     };
@@ -135,15 +155,20 @@ fn emit_native_primitives_table(out_dir: &Path, manifest: &mut String) {
     fs::write(out_dir.join("native-primitives-table.loom"), payload)
         .expect("write native primitives table payload");
     manifest.push_str(
-        "native-primitives-table\tLMT1\tLMC1\ti32|i64|f32|f64\t0,0,0.0,0.0|0,0,0.0,0.0|0,0,0.0,0.0|0,0,0.0,0.0\t4\t4\t0|0|0.0|0.0\t0|0|0.0|0.0\t0|0|0.0|0.0\n",
+        "native-primitives-table\tLMT1\tLMC1\ti32|i64|f32|f64\t1,10,1.5,0.25|2,20,2.5,1.25|3,30,3.5,2.25|4,40,4.5,3.25\t4\t4\t10|100|12.0|7.0\t1|10|1.5|0.25\t4|40|4.5|3.25\n",
     );
 }
 
-fn raw_zeros(data_type: DataType, elem_size: u8, row_count: usize) -> LayoutDescription {
+fn raw_values<I>(data_type: DataType, elem_size: u8, bytes: I) -> LayoutDescription
+where
+    I: IntoIterator<Item = u8>,
+{
+    let data = bytes.into_iter().collect::<Vec<_>>();
+    let row_count = data.len() / elem_size as usize;
     LayoutDescription {
         data_type,
         root: loom_core::l1_model::LayoutNode::Raw {
-            data: vec![0; row_count * elem_size as usize],
+            data,
             elem_size,
             count: row_count,
         },

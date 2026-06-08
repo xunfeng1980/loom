@@ -89,10 +89,6 @@ fn primitive_byte_width(data_type: &DataType) -> usize {
     }
 }
 
-fn zero_reference_buffer(data_type: &DataType, row_count: usize) -> Vec<u8> {
-    vec![0; primitive_byte_width(data_type) * row_count]
-}
-
 fn primitive_table_lmc1(row_count: usize, columns: Vec<(&str, DataType)>) -> Vec<u8> {
     let table = TableDescription {
         row_count,
@@ -158,25 +154,11 @@ mod equivalence_matrix {
         let plan = plan_duckdb_runtime(input).expect("native runtime plan");
         let route = prepare_duckdb_runtime(&plan, NativeBackendCancellation::default());
         assert_eq!(route.decision, DuckDbRouteDecision::NativeCandidate);
-        assert!(
-            route.native_buffers.iter().all(|buffer| {
-                buffer.value_buffer
-                    == zero_reference_buffer(
-                        &buffer.arrow_type,
-                        plan.lowering_facts
-                            .as_ref()
-                            .expect("lowering facts")
-                            .shape
-                            .row_count() as usize,
-                    )
-            }),
-            "native buffers must match interpreter/reference zeroed value bytes"
-        );
         route
     }
 
     #[test]
-    fn raw_non_null_i32_single_column_matches_interpreter_reference_bytes() {
+    fn raw_non_null_i32_single_column_matches_artifact_value_bytes() {
         let route = prepare_native(DuckDbRuntimePlanInput {
             artifact_bytes: raw_i32_lmc1(4),
             projection: DuckDbProjection::All,
@@ -185,7 +167,7 @@ mod equivalence_matrix {
                 test_native_facts: Some(DuckDbTestNativeFacts {
                     row_count: 4,
                     columns: vec![DataType::Int32],
-                    test_jit_value_buffers: Some(vec![zero_reference_buffer(&DataType::Int32, 4)]),
+                    test_jit_value_buffers: None,
                 }),
             },
         });
@@ -196,12 +178,12 @@ mod equivalence_matrix {
         assert_eq!(route.native_buffers[0].value_buffer.len(), 16);
         assert_eq!(
             route.native_buffers[0].value_buffer,
-            zero_reference_buffer(&DataType::Int32, 4)
+            primitive_value_bytes(&DataType::Int32, 4)
         );
     }
 
     #[test]
-    fn raw_non_null_primitive_table_matches_interpreter_reference_bytes_by_column() {
+    fn raw_non_null_primitive_table_matches_artifact_value_bytes_by_column() {
         let column_types = vec![
             DataType::Int32,
             DataType::Int64,
@@ -210,7 +192,7 @@ mod equivalence_matrix {
         ];
         let expected_buffers = column_types
             .iter()
-            .map(|data_type| zero_reference_buffer(data_type, 4))
+            .map(|data_type| primitive_value_bytes(data_type, 4))
             .collect::<Vec<_>>();
         let route = prepare_native(DuckDbRuntimePlanInput {
             artifact_bytes: primitive_table_lmc1(
@@ -228,7 +210,7 @@ mod equivalence_matrix {
                 test_native_facts: Some(DuckDbTestNativeFacts {
                     row_count: 4,
                     columns: column_types.clone(),
-                    test_jit_value_buffers: Some(expected_buffers.clone()),
+                    test_jit_value_buffers: None,
                 }),
             },
         });
@@ -252,7 +234,7 @@ mod equivalence_matrix {
         ];
         let expected_buffers = column_types
             .iter()
-            .map(|data_type| zero_reference_buffer(data_type, 4))
+            .map(|data_type| primitive_value_bytes(data_type, 4))
             .collect::<Vec<_>>();
         let input = DuckDbRuntimePlanInput {
             artifact_bytes: primitive_table_lmc1(
@@ -270,7 +252,7 @@ mod equivalence_matrix {
                 test_native_facts: Some(DuckDbTestNativeFacts {
                     row_count: 4,
                     columns: column_types.clone(),
-                    test_jit_value_buffers: Some(expected_buffers.clone()),
+                    test_jit_value_buffers: None,
                 }),
             },
         };
@@ -294,15 +276,9 @@ mod equivalence_matrix {
         assert_eq!(
             projected,
             vec![
-                (
-                    DataType::Float64,
-                    zero_reference_buffer(&DataType::Float64, 4)
-                ),
-                (DataType::Int32, zero_reference_buffer(&DataType::Int32, 4)),
-                (
-                    DataType::Float32,
-                    zero_reference_buffer(&DataType::Float32, 4)
-                ),
+                (DataType::Float64, expected_buffers[3].clone()),
+                (DataType::Int32, expected_buffers[0].clone()),
+                (DataType::Float32, expected_buffers[2].clone()),
             ]
         );
     }

@@ -119,13 +119,28 @@ fn accepted_backend_report() -> NativeBackendReport {
     )
 }
 
+fn i32_value_buffer(values: &[i32]) -> Vec<u8> {
+    values
+        .iter()
+        .flat_map(|value| value.to_le_bytes())
+        .collect()
+}
+
+fn jit_options_with_i32(values: &[i32]) -> ProductionJitOptions {
+    ProductionJitOptions {
+        require_compatible_toolchain: true,
+        input_value_buffers: vec![i32_value_buffer(values)],
+    }
+}
+
 #[test]
 fn production_jit_runs_only_from_accepted_backend_artifact() {
     let report = accepted_backend_report();
+    let expected = i32_value_buffer(&[10, 20, 30, 40]);
     let output = execute_prepared_production_jit(
         &report,
         &NativeBackendCancellation::default(),
-        ProductionJitOptions::default(),
+        jit_options_with_i32(&[10, 20, 30, 40]),
     );
 
     match output {
@@ -133,17 +148,15 @@ fn production_jit_runs_only_from_accepted_backend_artifact() {
             assert_eq!(output.entry_symbol, PRODUCTION_JIT_ENTRY_SYMBOL);
             assert_eq!(output.row_count, 4);
             assert_eq!(output.column_count, 1);
-            assert_eq!(output.value_buffers, vec![vec![0u8; 16]]);
+            assert_eq!(output.value_buffers, vec![expected]);
         }
         Err(err) => {
-            assert!(matches!(
-                err.status,
-                NativeBackendStatus::SkippedToolchain | NativeBackendStatus::FailClosed
-            ));
+            assert_eq!(err.status, NativeBackendStatus::FailClosed);
             assert!(matches!(
                 err.diagnostics[0].code,
-                NativeBackendDiagnosticCode::ToolchainSkipped
-                    | NativeBackendDiagnosticCode::ToolchainFailed
+                NativeBackendDiagnosticCode::ToolchainFailed
+                    | NativeBackendDiagnosticCode::JitUnavailable
+                    | NativeBackendDiagnosticCode::JitSymbolMissing
             ));
         }
     }
@@ -306,18 +319,19 @@ fn invalid_and_malformed_backend_artifacts_do_not_execute() {
 #[test]
 fn production_jit_output_matches_reference_buffers_or_reports_mismatch() {
     let report = accepted_backend_report();
+    let expected = i32_value_buffer(&[10, 20, 30, 40]);
     let output = execute_prepared_production_jit(
         &report,
         &NativeBackendCancellation::default(),
-        ProductionJitOptions::default(),
+        jit_options_with_i32(&[10, 20, 30, 40]),
     );
 
     let Ok(output) = output else {
         return;
     };
 
-    compare_production_jit_output(&report, &[vec![0u8; 16]], &output)
-        .expect("zeroed output should match reference");
+    compare_production_jit_output(&report, &[expected], &output)
+        .expect("JIT output should match reference");
     let mismatch = compare_production_jit_output(&report, &[vec![1u8; 16]], &output)
         .expect_err("mismatch should produce diagnostic");
     assert_eq!(
@@ -334,14 +348,20 @@ fn strict_missing_toolchain_is_fail_closed_unless_execution_succeeds() {
         &NativeBackendCancellation::default(),
         ProductionJitOptions {
             require_compatible_toolchain: true,
+            input_value_buffers: vec![i32_value_buffer(&[10, 20, 30, 40])],
         },
     );
 
     if let Err(err) = result {
         assert_eq!(err.status, NativeBackendStatus::FailClosed);
-        assert_eq!(
-            err.diagnostics[0].code,
-            NativeBackendDiagnosticCode::ToolchainFailed
+        assert!(
+            matches!(
+                err.diagnostics[0].code,
+                NativeBackendDiagnosticCode::ToolchainFailed
+                    | NativeBackendDiagnosticCode::JitUnavailable
+            ),
+            "unexpected diagnostic: {:?}",
+            err.diagnostics
         );
     }
 }
