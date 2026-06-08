@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
 - [x] **Phase 19: Solver-backed Full Artifact Verifier** - Real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (complete)
 - [x] **Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence, without claiming a complete compiled dialect or production JIT backend (complete)
-- [ ] **Phase 21: Expanded Vortex Encoding Coverage** - Placeholder for widening supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (not expanded)
+- [ ] **Phase 21: Expanded Vortex Encoding Coverage** - Planned widening of supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout
 - [ ] **Phase 22: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
 - [ ] **Phase 23: Production Native Backend Implementation** - Placeholder for the real compiled `loom.decode` ODS dialect, melior pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend that consumes Phase 22 ABI/policy decisions (not expanded)
 - [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
@@ -589,10 +589,18 @@ LMC1 artifact
 
 ### Phase 21: Expanded Vortex Encoding Coverage
 
-**Status:** Placeholder only. Do not expand until Phase 19 provides solver-backed artifact verifier evidence and Phase 20 identifies the production decode/native lowering seed.
+**Status:** Planned.
 **Depends on:** Phase 18, Phase 19, and Phase 20.
 **Ordering decision:** Widen real Vortex coverage after the verifier and first production lowering seed exist, not because that seed is permanently complete. This phase should add representative Vortex encodings, layouts, and storage modes beyond the Phase 18 accepted matrix, preserve Loom-owned facts and diagnostics, emit artifacts only when verifier/lowering facts accept them, and add Vortex oracle/equivalence gates. For every new encoding/layout, Phase 21 must record a paired decision: interpreter-only for now, production-lowering-supported with dialect/native delta, or fail-closed/deferred with stable diagnostics. It must not become solver work, host-runtime ABI work, production backend implementation, or DuckDB/Iceberg integration.
 **Research:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-RESEARCH.md`
+**Context:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-CONTEXT.md`
+
+**Suggested plan split:**
+- [ ] 21-01-PLAN.md - Coverage matrix and reader fact contract
+- [ ] 21-02-PLAN.md - Nullable primitive and chunked primitive coverage
+- [ ] 21-03-PLAN.md - Dictionary, RunEnd, and sequence coverage
+- [ ] 21-04-PLAN.md - Bitpack, FOR, and numeric compression coverage
+- [ ] 21-05-PLAN.md - Report, release gate, and Phase 22/23 handoff
 
 ### Phase 22: Host Native Runtime ABI and Execution Policy
 
@@ -659,7 +667,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
 | 19. Solver-backed Full Artifact Verifier | 5/5 | Complete | 2026-06-08 |
 | 20. Production Decode Dialect Seed and Raw Primitive Native Lowering | 5/5 | Complete | 2026-06-08 |
-| 21. Expanded Vortex Encoding Coverage | 0/? | Placeholder | - |
+| 21. Expanded Vortex Encoding Coverage | 0/5 | Planned | - |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
 | 23. Production Native Backend Implementation | 0/? | Placeholder | - |
 | 24. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |

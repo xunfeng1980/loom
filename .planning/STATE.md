@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 20 complete; Phase 21 next
+stopped_at: Phase 21 planned; execution next
 last_updated: "2026-06-08T13:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 20 complete
+last_activity: 2026-06-08 -- Phase 21 planned
 progress:
   total_phases: 27
   completed_phases: 20
-  total_plans: 77
+  total_plans: 82
   completed_plans: 77
   percent: 74
 ---
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 21 — expanded Vortex encoding coverage (placeholder; discuss/research next)
+**Current focus:** Phase 21 — expanded Vortex encoding coverage (planned; execution next)
 
 ## Current Position
 
-Phase: 20 (production-decode-dialect-and-native-kernel-expansion) — COMPLETE
-Plan: 20-01 through 20-05 complete; Phase 21 next
-Status: Phase 20 shipped a verifier-backed production native-lowering seed: discharged-facts gate, `loom.decode` dialect contract/textual surface, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column native kernel matrix, deferred diagnostics for complex encodings, optional/strict MLIR 22 validation, release-gate wiring, and final report. The compiled ODS dialect, production `melior` pass pipeline, LLVM lowering, and LLVM/JIT execution backend are reserved for Phase 23.
-Last activity: 2026-06-08 -- Phase 20 complete
+Phase: 21 (expanded-vortex-encoding-coverage) — PLANNED
+Plan: 21-01 through 21-05 planned; execution next
+Status: Phase 21 is planned across five executable slices: coverage/disposition matrix, nullable and chunked primitive coverage, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression classification, and release-gate/report handoff to Phase 22/23.
+Last activity: 2026-06-08 -- Phase 21 planned
 
 Progress: 74%
 
 ## Progress Snapshot
 
 - Completed phases: 20 / 27
-- Completed executable plans: 77 / 77
+- Completed executable plans: 77 / 82
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 20 complete; Phase 21 expanded Vortex encoding coverage is next to discuss/research
+- Current position: Phase 21 expanded Vortex encoding coverage is planned; execution is next
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed, including the Phase 20 production native-lowering gate in normal and strict mode with LLVM/MLIR 22.1.7
 
 **Completed phase plan counts:**
@@ -52,6 +52,7 @@ Progress: 74%
 | 18 | Complete Vortex reader | 5/5 |
 | 19 | Solver-backed full artifact verifier | 5/5 complete |
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
+| 21 | Expanded Vortex encoding coverage | 0/5 planned |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -141,6 +142,7 @@ None yet.
 - Phase 20 complete: production native-lowering seed, `loom.decode` textual surface, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, explicit bitpack/FOR/complex-encoding deferral, production MLIR validation hook, `scripts/production-native-lowering-test.sh`, release-gate wiring, and final report are complete; compiled ODS dialect, production `melior` pass pipeline, LLVM lowering, and LLVM/JIT execution are explicitly deferred to Phase 23.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout.
 - Phase 21 research started: recommended a finite coverage matrix over dtype/nullability/array encoding/layout/statistics/emission/lowering disposition, with priority on nullable primitives, chunked primitives, dictionary/run-end/sequence, bitpack/FOR integer facts, and explicit Phase 22 ABI plus Phase 23 backend handoff.
+- Phase 21 planned: 21-01 through 21-05 cover the coverage/disposition matrix, nullable and chunked primitive facts, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression coverage, and release-gate/report handoff to Phase 22/23.
 - Phase 22-25 split research complete: the former engine-integrated native execution MVP placeholder is now four placeholders covering host native runtime ABI/policy, production native backend implementation, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 22 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
 - Phase 23 reserved as a roadmap placeholder only: production native backend implementation with compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution over the Phase 22 runtime contract.
@@ -190,7 +192,7 @@ None yet.
 | v3 ingress | Complete Vortex reader | Complete | Phase 18 |
 | v3 verifier | Solver-backed full artifact verifier | Complete | Phase 19 |
 | v3 native | Production decode dialect seed and raw primitive native lowering | Complete | Phase 20 |
-| v3 ingress | Expanded Vortex encoding coverage | Placeholder | Phase 21 |
+| v3 ingress | Expanded Vortex encoding coverage | Planned | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 22 |
 | v3 native | Production native backend implementation | Placeholder | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
@@ -201,7 +203,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T13:30:00.000Z
-Stopped at: Phase 20 complete; Phase 21 next
+Stopped at: Phase 21 planned; execution next
 
 Phase 17 handoff:
 
@@ -239,4 +241,7 @@ Phase 20 context: .planning/phases/20-production-decode-dialect-and-native-kerne
 Phase 20 plans: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-01-PLAN.md through 20-05-PLAN.md
 Phase 20 report: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-NATIVE-LOWERING-REPORT.md
 Phase 20 summary: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-SUMMARY.md
+Phase 21 research: .planning/phases/21-expanded-vortex-encoding-coverage/21-RESEARCH.md
+Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTEXT.md
+Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Resume file: .planning/ROADMAP.md
