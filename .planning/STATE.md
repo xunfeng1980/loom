@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 19 19-03 complete; 19-04 next
-last_updated: "2026-06-08T11:55:26.000Z"
-last_activity: 2026-06-08 -- Phase 19 19-03 complete
+stopped_at: Phase 19 19-04 complete; 19-05 next
+last_updated: "2026-06-08T12:00:09.000Z"
+last_activity: 2026-06-08 -- Phase 19 19-04 complete
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 72
-  completed_plans: 70
-  percent: 70
+  completed_plans: 71
+  percent: 71
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 19 (solver-backed-full-artifact-verifier) — IN PROGRESS
-Plan: 19-01 through 19-03 complete; 19-04 next
-Status: Phase 19 19-03 added the optional `loom-solver-smt` crate, declared `z3`/`cvc5`/`bitwuzla` command backends, implemented Bitwuzla subprocess execution/parsing, and added a skip-aware solver verifier gate.
-Last activity: 2026-06-08 -- Phase 19 19-03 complete
+Plan: 19-01 through 19-04 complete; 19-05 next
+Status: Phase 19 19-04 wired Bitwuzla-backed solver discharge into artifact verifier facts, gated artifact lowering readiness on `Discharged` constraints, and added artifact-level solver helper/tests.
+Last activity: 2026-06-08 -- Phase 19 19-04 complete
 
-Progress: 70%
+Progress: 71%
 
 ## Progress Snapshot
 
 - Completed phases: 18 / 26
-- Completed executable plans: 70 / 72
+- Completed executable plans: 71 / 72
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-04 artifact verifier solver-discharge integration next
+- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-05 CLI/release-gate closeout next
 - Last verified gate: `LOOM_REQUIRE_SOLVER=1 bash scripts/solver-verifier-test.sh` passed with Homebrew Bitwuzla 0.9.1 at `/opt/homebrew/bin/bitwuzla`
 
 **Completed phase plan counts:**
@@ -50,7 +50,7 @@ Progress: 70%
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
 | 18 | Complete Vortex reader | 5/5 |
-| 19 | Solver-backed full artifact verifier | 3/5 in progress |
+| 19 | Solver-backed full artifact verifier | 4/5 in progress |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -132,6 +132,7 @@ None yet.
 - Phase 19 executing: 19-01 complete with `19-SOLVER-CONTRACT.md`, `loom_core::solver`, `ArtifactVerificationFacts.solver_report`, backend declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla primary metadata, and focused solver contract tests.
 - Phase 19 executing: 19-02 complete with deterministic Bitwuzla-primary `QF_BV` SMT-LIB script emission, required/cross-check script family metadata, named bad-state assertions, stable FNV-style script IDs, and focused `smtlib_emitter` tests.
 - Phase 19 executing: 19-03 complete with optional `loom-solver-smt`, backend discovery/declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla subprocess execution/parsing, fail-closed strict mode, explicit normal-mode skip diagnostics, and `scripts/solver-verifier-test.sh`.
+- Phase 19 executing: 19-04 complete with `apply_solver_discharge`, artifact verifier facts carrying trusted solver reports only after matching/discharged obligations, artifact lowering readiness blocked for `CollectedOnly` constraints, and `loom-solver-smt` artifact-level Bitwuzla helper tests.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
 - Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -192,7 +193,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T11:10:32.000Z
-Stopped at: Phase 19 19-03 complete; 19-04 next
+Stopped at: Phase 19 19-04 complete; 19-05 next
 
 Phase 17 handoff:
 
@@ -222,4 +223,5 @@ Phase 19 plans: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-P
 Phase 19 19-01 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-SUMMARY.md
 Phase 19 19-02 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-02-SUMMARY.md
 Phase 19 19-03 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-03-SUMMARY.md
+Phase 19 19-04 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-04-SUMMARY.md
 Resume file: .planning/ROADMAP.md

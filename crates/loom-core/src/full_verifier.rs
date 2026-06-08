@@ -124,6 +124,7 @@ pub struct FullVerificationReport {
     diagnostics: Vec<FullVerificationDiagnostic>,
     proof_obligations: Vec<ProofObligationTrace>,
     facts: Option<VerifiedArtifactFacts>,
+    constraints: ConstraintSet,
     constraint_comments: String,
 }
 
@@ -146,6 +147,10 @@ impl FullVerificationReport {
 
     pub fn facts(&self) -> Option<&VerifiedArtifactFacts> {
         self.facts.as_ref()
+    }
+
+    pub fn constraints(&self) -> &ConstraintSet {
+        &self.constraints
     }
 
     pub fn constraint_comments(&self) -> &str {
@@ -184,6 +189,7 @@ pub fn verify_l2_core(program: &L2CoreProgram) -> FullVerificationReport {
         );
     }
 
+    report.constraints = state.constraints.clone();
     report.constraint_comments = state.constraints.to_smtlib_comments();
     report.proof_obligations = proof_obligations(&state);
 

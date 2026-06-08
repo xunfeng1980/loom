@@ -15,6 +15,16 @@ use loom_core::solver::{
     SmtLibScript, SolverBackendInfo, SolverBackendKind, SolverDischargeReport,
     SolverObligationResult, SolverObligationStatus, SolverRawResult,
 };
+use loom_core::{
+    artifact_verifier::{
+        apply_solver_discharge, verify_artifact_with_l2_core, ArtifactVerificationOptions,
+        ArtifactVerificationReport, ArtifactVerificationStatus,
+    },
+    full_verifier::verify_l2_core,
+    l2_core::L2CoreProgram,
+    l2_kernel_registry::L2KernelRegistry,
+    solver::emit_required_qfbv_script,
+};
 
 const DEFAULT_TIMEOUT_MS: u64 = 5_000;
 const EXCERPT_LIMIT: usize = 4_096;
@@ -268,6 +278,24 @@ pub fn execute_bitwuzla_script(
             None,
         ),
     }
+}
+
+pub fn verify_artifact_with_l2_core_and_bitwuzla(
+    bytes: &[u8],
+    registry: &L2KernelRegistry,
+    program: &L2CoreProgram,
+    artifact_options: &ArtifactVerificationOptions,
+    solver_options: &SolverRunOptions,
+) -> ArtifactVerificationReport {
+    let artifact_report = verify_artifact_with_l2_core(bytes, registry, program, artifact_options);
+    if artifact_report.status() != ArtifactVerificationStatus::Accepted {
+        return artifact_report;
+    }
+
+    let l2_report = verify_l2_core(program);
+    let script = emit_required_qfbv_script("artifact-l2core.required", l2_report.constraints());
+    let solver_report = execute_bitwuzla_script(&script, solver_options);
+    apply_solver_discharge(artifact_report, solver_report)
 }
 
 pub fn parse_decisive_result(stdout: &str) -> Option<SolverRawResult> {

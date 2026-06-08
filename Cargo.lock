@@ -1620,6 +1620,7 @@ dependencies = [
 name = "loom-solver-smt"
 version = "0.1.0"
 dependencies = [
+ "arrow-schema",
  "loom-core",
 ]
 

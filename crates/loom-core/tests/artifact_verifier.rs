@@ -412,7 +412,7 @@ fn verify_artifact_without_l2_core_is_not_lowering_ready() {
 }
 
 #[test]
-fn verify_artifact_with_l2_core_marks_supported_copy_lowering_ready() {
+fn verify_artifact_with_l2_core_keeps_collected_constraints_not_lowering_ready() {
     let bytes = wrapped_i32_layout(4);
     let program = sample_l2core_program();
     let options = ArtifactVerificationOptions {
@@ -426,12 +426,16 @@ fn verify_artifact_with_l2_core_marks_supported_copy_lowering_ready() {
     let facts = report
         .facts()
         .expect("accepted artifact should expose facts");
-    assert!(facts.lowering_ready.ready);
+    assert!(!facts.lowering_ready.ready);
     assert_eq!(
         facts.lowering_ready.backend.as_deref(),
         Some("textual-mlir")
     );
-    assert!(facts.lowering_ready.diagnostics.is_empty());
+    assert!(facts
+        .lowering_ready
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "constraints-not-discharged"));
 }
 
 #[test]
