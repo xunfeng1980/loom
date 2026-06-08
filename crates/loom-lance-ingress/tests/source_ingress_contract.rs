@@ -309,3 +309,47 @@ async fn lance_classifies_supported_and_unsupported_shapes() {
         );
     }
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn lance_non_dataset_paths_are_rejected_without_facts() {
+    let temp = TempDir::new().expect("tempdir");
+    let regular_file = temp.path().join("not-a-dataset.lance");
+    std::fs::write(&regular_file, b"not a Lance dataset").expect("write non-dataset file");
+
+    let regular_report = source_ingress_report_from_lance_path(&regular_file).await;
+    assert_eq!(regular_report.status, SourceIngressStatus::Rejected);
+    assert!(regular_report.facts.is_none());
+    assert_eq!(regular_report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(
+        regular_report.emission_disposition,
+        SourceEmissionDisposition::None
+    );
+    assert_eq!(
+        regular_report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(regular_report.oracle_evidence.is_none());
+    assert_eq!(regular_report.diagnostics.len(), 1);
+    assert_eq!(
+        regular_report.diagnostics[0].code,
+        SourceDiagnosticCode::OpenFailed
+    );
+    assert_eq!(regular_report.diagnostics[0].path, "$.open");
+
+    let missing = temp.path().join("missing.lance");
+    let missing_report = source_ingress_report_from_lance_path(&missing).await;
+    assert_eq!(missing_report.status, SourceIngressStatus::Rejected);
+    assert!(missing_report.facts.is_none());
+    assert_eq!(missing_report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(
+        missing_report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(missing_report.oracle_evidence.is_none());
+    assert_eq!(missing_report.diagnostics.len(), 1);
+    assert_eq!(
+        missing_report.diagnostics[0].code,
+        SourceDiagnosticCode::OpenFailed
+    );
+    assert_eq!(missing_report.diagnostics[0].path, "$.open");
+}
