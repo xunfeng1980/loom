@@ -322,7 +322,7 @@ fn prepare_diagnostic_accessors_expose_cache_evidence() {
             test_native_facts: Some(DuckDbTestNativeFacts {
                 row_count: 4,
                 columns: vec![DataType::Int32],
-                test_jit_value_buffers: Some(vec![vec![0; 16]]),
+                test_jit_value_buffers: None,
             }),
         },
     })
