@@ -704,11 +704,11 @@ semantics remain deferred.
 **Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should consume `23-BACKEND-REPORT.md`, `23-BACKEND-CONTRACT.md`, and the Phase 22 runtime ABI report, then wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts. Select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. The DuckDB layer must be a natural adapter over the Phase 22 runtime contract, not a second ABI: map DuckDB bind/init/local-init/function lifecycle to runtime/backend plan/scan/worker/next-batch, derive projection pushdown and max-thread behavior from runtime planning, and test Arrow C Data release plus error/cancel paths. It must not absorb Iceberg binding or StarRocks comparison.
 **Goal:** DuckDB `loom_scan(path)` routes eligible complete-reader artifacts through the Phase 22 runtime policy and Phase 23 production backend while preserving interpreter fallback, fail-closed diagnostics, direct DataChunk output, projection evidence, and the existing public SQL surface.
 **Requirements:** PHASE-24
-**Plans:** 5 plans across 5 waves
+**Plans:** 1/5 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 24-01-PLAN.md - Internal Rust DuckDB runtime bridge and route policy tests
+- [x] 24-01-PLAN.md - Internal Rust DuckDB runtime bridge and route policy tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -792,7 +792,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 21. Expanded Vortex Encoding Coverage | 5/5 | Complete | 2026-06-08 |
 | 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
-| 24. DuckDB Native Execution Integration MVP | 0/? | Ready for planning | - |
+| 24. DuckDB Native Execution Integration MVP | 1/5 | In Progress | - |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
 | 26. External Source Ingress Contract | 0/? | Placeholder | - |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |

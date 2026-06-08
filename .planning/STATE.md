@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-06-08T16:01:16.705Z"
-last_activity: 2026-06-08 -- Phase 24 execution started
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-06-08T16:13:45.835Z"
+last_activity: 2026-06-08 -- Completed Phase 24 Plan 01
 progress:
   total_phases: 30
   completed_phases: 18
   total_plans: 97
-  completed_plans: 73
+  completed_plans: 74
   percent: 60
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 24 (duckdb-native-execution-integration-mvp) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 24
-Last activity: 2026-06-08 -- Phase 24 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-06-08 -- Completed Phase 24 Plan 01
 
 Progress: 77%
 
@@ -37,7 +37,7 @@ Progress: 77%
 - Completed phases: 23 / 30
 - Completed executable plans: 92 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 DuckDB native execution integration is ready for research/planning
+- Current position: Phase 24 Plan 01 complete; Plan 02 is next
 - Last verified gate: Phase 23 focused backend gate passed; `scripts/production-backend-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
@@ -83,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 3 P01]: FrameOfReference.reference stored as i128 (not i64) to handle u64 columns without truncation
 - [Phase 3 P01]: unpack_all returns Vec<u64> (unsigned); callers apply wrapping_add of FOR reference after (Pitfall 4)
 - [Phase 3 P01]: OutputBuilder::t_bits() drives both unpack_all t_bits and emit-width — builder is single authority for type width
+- [Phase 24 P01]: DuckDB route planning remains inside Rust runtime policy; C++ should consume reports rather than duplicate native/fallback switches.
+- [Phase 24 P01]: Native buffers are exposed only after backend prepare/JIT output comparison succeeds; mismatch and cancellation return no buffers.
 - [Phase 3 P01]: Array trait must be explicitly imported in arrow-rs 58.3 for .into_data() and .is_null() on PrimitiveArray<T>
 - [Phase ?]: BufferHandle .as_host().as_ref() (option A) confirmed for packed bytes access
 - [Phase ?]: FoR+BitPack: use FoR::try_new(bp.into_array(), ref) with manual deltas, not FoRData::encode
@@ -159,6 +161,7 @@ None yet.
 - Phase 23 executing: 23-04 complete with production JIT seed entry points over accepted `NativeBackendReport` artifacts, deterministic primitive reference-output comparison, cancellation checks, unsupported-shape rejection before toolchain probing, and focused `production_backend_jit` tests.
 - Phase 23 complete: `scripts/production-backend-test.sh` gates backend contract, ODS manifest, production pipeline, JIT seed, and strict ODS validation when local LLVM/MLIR tooling is available; it is wired into `scripts/mvp0-verify.sh`. Final report and summary document supported non-null primitive native evidence, deferred paths, Backend Identity, Cancellation, Unfrozen `loom_runtime.h`, and the Phase 24 DuckDB handoff.
 - Phase 24 ready for research/planning: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime/backend contract, mapping bind/init/local-init/function to plan/scan/worker/next-batch and testing projection/threading plus Arrow release/error/cancel paths.
+- Phase 24 executing: 24-01 complete with `loom_ffi::duckdb_runtime`, verifier-backed runtime planning, projection/no-predicate/full-scan/single-worker route evidence, backend prepare/JIT comparison routing, and fail-closed mismatch/cancellation diagnostics.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
 - Phase 27 reserved as a roadmap placeholder only: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
@@ -217,7 +220,7 @@ None yet.
 | v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Complete | Phase 22 |
 | v3 native | Production native backend implementation | Complete | Phase 23 |
-| v3 engine | DuckDB native execution integration MVP | Ready for planning | Phase 24 |
+| v3 engine | DuckDB native execution integration MVP | In progress | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
 | v3 ingress | External source ingress contract | Placeholder | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Placeholder | Phase 27 |
@@ -227,8 +230,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T15:29:57.354Z
-Stopped at: Phase 24 context gathered
+Last session: 2026-06-08T16:13:45.827Z
+Stopped at: Completed 24-01-PLAN.md
 
 Phase 17 handoff:
 
