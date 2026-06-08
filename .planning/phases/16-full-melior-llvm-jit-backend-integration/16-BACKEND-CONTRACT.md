@@ -48,6 +48,19 @@ LOOM_REQUIRE_MELIOR_JIT=1 bash scripts/melior-jit-test.sh
 
 In strict mode, missing or incompatible MLIR/LLVM tooling is a `[FAIL]`.
 
+## JIT ABI Contract
+
+The initial `execute_copy_i32_jit` ABI is deliberately narrow:
+
+- typed primitive `i32` input and output buffers only
+- no Arrow buffers and no DuckDB execution path
+- row count comes from verifier `row_count_bound`
+- stable entry symbol `loom_l2core_copy_i32`
+- unsupported programs fail closed before ExecutionEngine creation
+- short input buffers fail closed before native invocation
+- missing JIT symbol reports `jit-symbol-missing`
+- native/reference divergence reports `native-output-mismatch`
+
 ## Non-Goals
 
 Phase 16 does not implement:

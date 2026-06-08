@@ -63,10 +63,11 @@ info "Running default loom-native-melior tests..."
 cargo test -p loom-native-melior
 ok "cargo test -p loom-native-melior"
 
-info "Running focused builder and pipeline tests..."
+info "Running focused builder, pipeline, and JIT boundary tests..."
 cargo test -p loom-native-melior builder
 cargo test -p loom-native-melior pipeline
-ok "builder and pipeline tests"
+cargo test -p loom-native-melior jit
+ok "builder, pipeline, and JIT boundary tests"
 
 info "Checking optional MLIR/LLVM toolchain..."
 llvm_config="$(find_tool llvm-config || true)"
@@ -92,9 +93,9 @@ fi
 
 ok "compatible LLVM/MLIR ${EXPECTED_MLIR_MAJOR} toolchain detected"
 
-info "Running feature-enabled melior builder/pipeline tests..."
-cargo test -p loom-native-melior --features melior builder pipeline
-ok "cargo test -p loom-native-melior --features melior builder pipeline"
+info "Running feature-enabled melior jit equivalence tests..."
+cargo test -p loom-native-melior --features melior jit
+ok "cargo test -p loom-native-melior --features melior jit"
 
 echo ""
 echo "${GRN}=== Phase 16 melior/LLVM/JIT backend gate PASSED ===${RST}"
