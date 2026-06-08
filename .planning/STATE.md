@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: complete
-stopped_at: Phase 14 complete
-last_updated: "2026-06-08T09:45:00.000Z"
-last_activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike complete
+status: active
+stopped_at: Phase 15 planned
+last_updated: "2026-06-08T10:45:00.000Z"
+last_activity: 2026-06-08 -- Phase 15 real Vortex file/container ingress planned
 progress:
-  total_phases: 15
+  total_phases: 18
   completed_phases: 14
-  total_plans: 48
+  total_plans: 52
   completed_plans: 48
-  percent: 93
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 15 — real Vortex file/container ingress placeholder
+**Current focus:** Phase 15 — real Vortex file/container ingress planned, with Phase 16-18 reserved for the post-ingress native backend path
 
 ## Current Position
 
-Phase: 14 (mlir-native-lowering-spike) — COMPLETE
-Plan: 4 of 4 complete
-Status: Phase 14 complete; Phase 15 remains placeholder until explicitly planned
-Last activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike complete
+Phase: 15 (real-vortex-file-container-ingress) — PLANNED
+Plan: 0 of 4 complete
+Status: Phase 15 planned; ready to execute 15-01 through 15-04; Phase 16-18 are reserved roadmap placeholders
+Last activity: 2026-06-08 -- Phase 15 real Vortex file/container ingress planned
 
-Progress: [█████████░] 93%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -162,7 +162,12 @@ None yet.
 - Phase 14 research complete: recommended verifier-gated textual MLIR first, optional MLIR toolchain evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
 - Phase 14 planned: 4 plans across lowering contract/support predicate, textual MLIR emission, supported-slice equivalence gate, and final docs/release-gate closeout.
 - Phase 14 complete: verifier-gated support predicate, deterministic textual MLIR for bounded Int32 copy, typed primitive equivalence evidence, optional `mlir-opt` gate, final report, docs, and release-gate integration are complete.
-- Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
+- Phase 15 moved from roadmap placeholder to research: real Vortex file/container ingress before production native backend work.
+- Phase 15 research started: recommended an isolated real Vortex ingress bridge, scoped `vortex-file` allowlist, Loom-owned `VortexFileFacts`, fail-closed diagnostics, and one narrow supported `.vortex` -> `LMC1` slice before Phase 16 JIT work.
+- Phase 15 planned: 4 plans across ingress contract/dependency boundary, real Vortex metadata facts, supported real `.vortex` -> `LMC1` conversion, and CLI/docs/release-gate closeout.
+- Phase 16 reserved as a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence.
+- Phase 17 reserved as a roadmap placeholder only: production decode dialect and native kernel expansion.
+- Phase 18 reserved as a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
 
 ### Quick Tasks Completed
 
@@ -199,11 +204,15 @@ None yet.
 | v3 safety | Formal verifier / safety proof MVP | Complete | Phase 12 |
 | v3 safety | Full Loom verifier | Complete | Phase 13 |
 | v3 native | MLIR/native lowering spike | Complete | Phase 14 |
-| v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 15 |
+| v3 ingress | Real Vortex file/container ingress | Planned | Phase 15 |
+| v3 native | Full melior/LLVM/JIT backend integration | Placeholder | Phase 16 |
+| v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 17 |
+| v3 engine | Engine-integrated native execution MVP | Placeholder | Phase 18 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T09:45:00.000Z
-Stopped at: Phase 14 complete
-Phase 14 context: .planning/phases/14-mlir-native-lowering-spike/14-CONTEXT.md
+Last session: 2026-06-08T10:45:00.000Z
+Stopped at: Phase 15 planned
+Phase 15 research: .planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md
+Phase 15 context: .planning/phases/15-real-vortex-file-container-ingress/15-CONTEXT.md
 Resume file: .planning/ROADMAP.md

@@ -135,6 +135,14 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **LOWER-04**: A `scripts/native-lowering-test.sh` gate runs focused native-lowering tests and treats `mlir-opt`/native toolchain validation as explicit optional evidence when unavailable
 - [x] **LOWER-05**: Public and planning docs state the narrow Phase 14 spike scope and do not claim production native compiler completion, custom Loom dialect completion, vectorization, mandatory JIT, or compiler correctness proof
 
+### Real Vortex File/Container Ingress
+
+- [ ] **INGEST-01**: Real Vortex file APIs are isolated to a dedicated ingress boundary; `loom-core` and `loom-ffi` remain free of `vortex-*` dependencies, and scoped dependency/API guards enforce the allowlist
+- [ ] **INGEST-02**: A stable Loom-owned `VortexIngressReport` / `VortexFileFacts` model records file facts, supported/unsupported status, and stable diagnostics without exposing Vortex types
+- [ ] **INGEST-03**: Real Vortex buffers and local paths can be inspected, while malformed/truncated/unsupported inputs fail closed with diagnostics rather than panics or partial output
+- [ ] **INGEST-04**: At least one generated real `.vortex` fixture emits an existing `LMC1` payload, passes the existing verifier/decode path, and matches Vortex oracle rows
+- [ ] **INGEST-05**: CLI, documentation, and release gates expose the narrow real-ingress behavior without claiming arbitrary Vortex layout support, remote/object-store ingress, native lowering, or production speed
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -144,7 +152,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
 | MLIR/native lowering correctness proof and real Vortex file ingress proof | Phase 14 completes only a verifier-gated textual MLIR spike; production compiler lowering/proof and real file-ingress proofs remain later phases (design.md §5, §7, §13) |
 | Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
-| Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
+| Full arbitrary `.vortex` file layout support (all layouts / multi-chunk / object-store / encrypted or compressed variants) | Phase 15 is planned as one narrow real-ingress slice, not a complete Vortex reader |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
 | Content-hash URI, signatures, attestation, encryption, remote fetch, and native fast-path | Phase 11 completed only the local `LMC1` container boundary; remote trust/distribution features remain later work (design.md §10–11) |
 | Correctness guarantees beyond matching the reference decoder | Loom guarantees safety + well-formedness, never correctness (design.md §7) |
@@ -227,6 +235,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | LOWER-03 | Phase 14 | Complete |
 | LOWER-04 | Phase 14 | Complete |
 | LOWER-05 | Phase 14 | Complete |
+| INGEST-01 | Phase 15 | Planned |
+| INGEST-02 | Phase 15 | Planned |
+| INGEST-03 | Phase 15 | Planned |
+| INGEST-04 | Phase 15 | Planned |
+| INGEST-05 | Phase 15 | Planned |
 
 **Coverage:**
 
@@ -240,9 +253,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 formal-safety-proof requirements: 5 total
 - v3 full-loom-verifier requirements: 10 total
 - v3 mlir-native-lowering-spike requirements: 5 total
-- Mapped to phases: 72
+- v3 real-vortex-ingress requirements: 5 total
+- Mapped to phases: 77
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 14 MLIR/Native Lowering Spike complete*
+*Last updated: 2026-06-08 — Phase 15 Real Vortex File/Container Ingress planned*

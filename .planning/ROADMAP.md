@@ -9,7 +9,11 @@ complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final
 introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
 reviewable as a formal safety-proof MVP. Phase 13 completes the full Loom verifier foundation
 over a tiny future `L2Core` slice. Phase 14 completes a verifier-gated textual MLIR/native lowering
-spike after the verifier handoff exists. Phase 15 remains a roadmap placeholder for real Vortex file ingress.
+spike after the verifier handoff exists. Phase 15 should bring real Vortex file/container ingress
+before production native backend work, so the later backend consumes real artifact shapes instead of
+only synthetic slices. Phase 16 is reserved for full `melior`/LLVM/JIT backend integration. Phase 17
+and Phase 18 remain placeholders for the post-JIT productionization path from the final Loom goal:
+native decode-dialect/kernel expansion, then engine-integrated end-to-end execution.
 
 ## Phases
 
@@ -34,7 +38,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
-- [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
+- [ ] **Phase 15: Real Vortex File/Container Ingress** - Planned narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work
+- [ ] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Placeholder for promoting the Phase 14 textual spike into an optional programmatic MLIR -> LLVM -> JIT backend after real ingress evidence exists (not expanded)
+- [ ] **Phase 17: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
+- [ ] **Phase 18: Engine-Integrated Native Execution MVP** - Placeholder for an end-to-end verified native execution path inside a host engine over real ingested artifacts, with interpreter fallback and oracle/equivalence evidence (not expanded)
 
 ## Phase Details
 
@@ -410,13 +417,60 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 15: Real Vortex File/Container Ingress
 
-**Status:** Placeholder only. Do not expand until an explicit phase-planning decision.
-**Depends on:** Phase 11; may move after Phase 13 or Phase 14 depending on milestone goals.
+**Goal:** Add a narrow real Vortex file/container ingress boundary that keeps `vortex-file` isolated outside `loom-core`, emits Loom-owned file/layout/segment facts with stable diagnostics, opens real `.vortex` buffers/paths fail-closed, and proves one supported real `.vortex` fixture can enter the existing `LMC1` verifier/decode path with Vortex oracle equality.
+**Depends on:** Phase 11, Phase 13, and Phase 14.
+**Requirements:** INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05
+**Research:** `.planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md`
+**Ordering decision:** Keep Phase 15 before full `melior`/LLVM/JIT integration. Real Vortex ingress should stabilize the file/container/layout evidence that Phase 16 consumes; Phase 15 must not add native lowering or native-speed claims.
+**Success Criteria** (what must be TRUE):
+
+  1. `vortex-file` is introduced only through an isolated ingress boundary; `loom-core` and `loom-ffi` remain free of `vortex-*` dependencies, and scoped guard scripts enforce that boundary
+  2. A stable `VortexIngressReport` / `VortexFileFacts` model records row count, dtype/layout summaries, segment ranges/alignment, statistics presence, supported/unsupported status, and stable diagnostic codes without exposing Vortex types
+  3. Real Vortex buffers and local paths can be inspected; malformed/truncated/unsupported files fail closed with diagnostics instead of panics or partial `.loom` output
+  4. At least one generated real `.vortex` fixture emits an existing `LMC1` payload, passes `verify_container`, decodes through Loom, and matches Vortex oracle rows
+  5. CLI/docs/release gates expose the narrow ingress behavior without claiming arbitrary Vortex layout support, remote/object-store ingress, native lowering, or production speed
+
+**Plans:** 4 plans across 4 waves
+
+**Wave 1**
+
+- [x] 15-RESEARCH.md - Research real Vortex file/container ingress, `vortex-file` 0.74.0 APIs, file-format shape, dependency boundary, and recommended plan split
+- [ ] 15-01-PLAN.md - Define ingress contract, isolated ingress crate, and scoped `vortex-file` dependency/API guards (INGEST-01, INGEST-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 15-02-PLAN.md - Open real Vortex buffers/paths and emit deterministic metadata facts with malformed-input diagnostics (INGEST-02, INGEST-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 15-03-PLAN.md - Generate a supported real `.vortex` fixture, emit `LMC1`, verify/decode it through Loom, and compare against Vortex oracle rows (INGEST-04)
+
+**Wave 4** *(blocked on Waves 1-3 completion)*
+
+- [ ] 15-04-PLAN.md - Add CLI inspection, wire the ingress gate, update docs/planning state, write final report, and run final verification (INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05)
+
+### Phase 16: Full melior/LLVM/JIT Backend Integration
+
+**Status:** Placeholder only. Do not expand until Phase 15 produces real-ingress evidence.
+**Depends on:** Phase 14 and Phase 15.
+**Ordering decision:** Promote the Phase 14 verifier-gated textual MLIR spike into an optional programmatic backend only after real Vortex artifact shapes are visible. Scope should remain verifier-gated and fail-closed, with `melior`/LLVM/JIT kept behind optional tooling until the backend is stable.
+
+### Phase 17: Production Decode Dialect and Native Kernel Expansion
+
+**Status:** Placeholder only. Do not expand until Phase 16 proves the backend/toolchain boundary.
+**Depends on:** Phase 16.
+**Ordering decision:** After JIT works for the narrow verified slice, expand toward the final Loom execution model: custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, multi-column native lowering, and native kernels for more L1/L2 shapes.
+
+### Phase 18: Engine-Integrated Native Execution MVP
+
+**Status:** Placeholder only. Do not expand until Phase 17 identifies the production native lowering surface.
+**Depends on:** Phase 15, Phase 16, and Phase 17.
+**Ordering decision:** Close the final-goal loop by running verified native decode inside a host engine over real ingested artifacts, with interpreter fallback, cache/fail-closed policy, and oracle/equivalence evidence. This is the first placeholder for an end-to-end native Loom story, not just a standalone JIT demo.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -434,4 +488,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
 | 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
-| 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |
+| 15. Real Vortex File/Container Ingress | 0/4 | Planned | - |
+| 16. Full melior/LLVM/JIT Backend Integration | 0/? | Placeholder | - |
+| 17. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
+| 18. Engine-Integrated Native Execution MVP | 0/? | Placeholder | - |

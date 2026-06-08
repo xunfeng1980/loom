@@ -46,7 +46,10 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
+- [ ] Phase 15 is planned: real Vortex file/container ingress before production native backend work, using an isolated ingress boundary, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice.
+- [ ] Phase 16 remains a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence exists.
+- [ ] Phase 17 remains a roadmap placeholder only: production decode dialect and native kernel expansion.
+- [ ] Phase 18 remains a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
 
 ### Out of Scope
 
@@ -103,6 +106,9 @@ If only one thing works, it is this end-to-end chain.
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
+| Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Planned — Phase 15 |
+| Phase 16 should be the full `melior`/LLVM/JIT integration placeholder | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. | Placeholder — Phase 16 |
+| Phase 17/18 reserve the post-JIT production path | After full backend integration, the remaining final-goal path is production decode-dialect/kernel expansion followed by engine-integrated native execution over real artifacts. | Placeholder — Phases 17-18 |
 
 ## Evolution
 
