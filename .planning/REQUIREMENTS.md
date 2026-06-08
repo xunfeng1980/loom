@@ -75,16 +75,16 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 ### Decode Coverage
 
 - **COV-01**: Additional L2 kernels (ALP float decode, delta-of-delta)
-- [ ] **COV-02**: Multi-column table function and Arrow schema assembly across columns
+- [x] **COV-02**: Multi-column table function and Arrow schema assembly across columns
 
 ### Table Output
 
-- [ ] **TABLE-01**: A table-shaped description model represents multiple named columns with per-column `LayoutDescription`, dtype, row count, and nullability metadata
-- [ ] **TABLE-02**: A checked table payload format encodes and decodes mixed MVP0 column types while preserving compatibility with existing single-column payloads
-- [ ] **TABLE-03**: Rust-side multi-column decode returns typed column arrays with a shared row count and typed errors for schema or length mismatch
-- [ ] **DUCK-05**: DuckDB `loom_scan` binds and scans multiple output columns from one payload, supporting projection, filters, and aggregates over mixed Int32/Boolean/Utf8 columns
-- [ ] **STREAM-01**: ArrowArrayStream is either implemented for table-shaped output or explicitly deferred with repo-specific API evidence and rationale
-- [ ] **VERIFY-05**: Multi-column SQL acceptance checks pass and the existing `scripts/mvp0-verify.sh` release gate remains green
+- [x] **TABLE-01**: A table-shaped description model represents multiple named columns with per-column `LayoutDescription`, dtype, row count, and nullability metadata
+- [x] **TABLE-02**: A checked table payload format encodes and decodes mixed MVP0 column types while preserving compatibility with existing single-column payloads
+- [x] **TABLE-03**: Rust-side multi-column decode returns typed column arrays with a shared row count and typed errors for schema or length mismatch
+- [x] **DUCK-05**: DuckDB `loom_scan` binds and scans multiple output columns from one payload, supporting projection, filters, and aggregates over mixed Int32/Boolean/Utf8 columns
+- [x] **STREAM-01**: ArrowArrayStream is either implemented for table-shaped output or explicitly deferred with repo-specific API evidence and rationale
+- [x] **VERIFY-05**: Multi-column SQL acceptance checks pass and the existing `scripts/mvp0-verify.sh` release gate remains green
 
 ## Out of Scope
 
@@ -140,13 +140,13 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DX-02 | Phase 7 | Complete |
 | DX-03 | Phase 7 | Complete |
 | DX-04 | Phase 7 | Complete |
-| COV-02 | Phase 8 | Planned |
-| TABLE-01 | Phase 8 | Planned |
-| TABLE-02 | Phase 8 | Planned |
-| TABLE-03 | Phase 8 | Planned |
-| DUCK-05 | Phase 8 | Planned |
-| STREAM-01 | Phase 8 | Planned |
-| VERIFY-05 | Phase 8 | Planned |
+| COV-02 | Phase 8 | Complete |
+| TABLE-01 | Phase 8 | Complete |
+| TABLE-02 | Phase 8 | Complete |
+| TABLE-03 | Phase 8 | Complete |
+| DUCK-05 | Phase 8 | Complete |
+| STREAM-01 | Phase 8 | Complete |
+| VERIFY-05 | Phase 8 | Complete |
 
 **Coverage:**
 
@@ -159,4 +159,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 5 MVP0 acceptance gate completed*
+*Last updated: 2026-06-08 — Phase 8 multi-column table output completed*

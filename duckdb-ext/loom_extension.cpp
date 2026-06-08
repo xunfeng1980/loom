@@ -35,6 +35,7 @@ extern "C" {
 }
 
 #include <cstdint>
+#include <cstddef>
 #include <fstream>
 
 using namespace duckdb;
@@ -46,24 +47,31 @@ enum class LoomValueKind : uint8_t {
     UTF8,
 };
 
+static LogicalType LogicalTypeForKind(LoomValueKind kind);
+
 struct LoomBindData : TableFunctionData {
     string payload_path;
     vector<uint8_t> payload;
-    LogicalType value_type;
-    LoomValueKind value_kind;
+    vector<string> column_names;
+    vector<LogicalType> column_types;
+    vector<LoomValueKind> column_kinds;
+    vector<vector<uint8_t>> column_payloads;
 
     unique_ptr<FunctionData> Copy() const override {
         auto copy = make_uniq<LoomBindData>();
         copy->payload_path = payload_path;
         copy->payload = payload;
-        copy->value_type = value_type;
-        copy->value_kind = value_kind;
+        copy->column_names = column_names;
+        copy->column_types = column_types;
+        copy->column_kinds = column_kinds;
+        copy->column_payloads = column_payloads;
         return std::move(copy);
     }
 
     bool Equals(const FunctionData &other_p) const override {
         auto &other = other_p.Cast<LoomBindData>();
-        return payload_path == other.payload_path && value_kind == other.value_kind;
+        return payload_path == other.payload_path && column_names == other.column_names &&
+               column_kinds == other.column_kinds;
     }
 };
 
@@ -110,6 +118,85 @@ static LoomValueKind PayloadKindFromHeader(const vector<uint8_t> &payload) {
     }
 }
 
+static uint16_t ReadU16LE(const vector<uint8_t> &payload, idx_t &pos) {
+    if (pos + 2 > payload.size()) {
+        throw IOException("loom_scan: truncated payload while reading u16");
+    }
+    auto value = static_cast<uint16_t>(payload[pos]) | (static_cast<uint16_t>(payload[pos + 1]) << 8);
+    pos += 2;
+    return value;
+}
+
+static uint64_t ReadU64LE(const vector<uint8_t> &payload, idx_t &pos) {
+    if (pos + 8 > payload.size()) {
+        throw IOException("loom_scan: truncated payload while reading u64");
+    }
+    uint64_t value = 0;
+    for (idx_t i = 0; i < 8; i++) {
+        value |= static_cast<uint64_t>(payload[pos + i]) << (8 * i);
+    }
+    pos += 8;
+    return value;
+}
+
+static vector<uint8_t> ReadBytes(const vector<uint8_t> &payload, idx_t &pos) {
+    const auto len = ReadU64LE(payload, pos);
+    if (len > payload.size() || pos + static_cast<idx_t>(len) > payload.size()) {
+        throw IOException("loom_scan: truncated length-prefixed payload segment");
+    }
+    vector<uint8_t> out(payload.begin() + static_cast<std::ptrdiff_t>(pos),
+                        payload.begin() + static_cast<std::ptrdiff_t>(pos + static_cast<idx_t>(len)));
+    pos += static_cast<idx_t>(len);
+    return out;
+}
+
+static string ReadString(const vector<uint8_t> &payload, idx_t &pos) {
+    auto bytes = ReadBytes(payload, pos);
+    if (bytes.empty()) {
+        throw IOException("loom_scan: empty table column name");
+    }
+    return string(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+}
+
+static bool IsTablePayload(const vector<uint8_t> &payload) {
+    return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'T' && payload[3] == '1';
+}
+
+static void PopulateColumnSpecs(LoomBindData &bind_data) {
+    if (!IsTablePayload(bind_data.payload)) {
+        bind_data.column_names.push_back("value");
+        bind_data.column_kinds.push_back(PayloadKindFromHeader(bind_data.payload));
+        bind_data.column_types.push_back(LogicalTypeForKind(bind_data.column_kinds.back()));
+        bind_data.column_payloads.push_back(bind_data.payload);
+        return;
+    }
+
+    idx_t pos = 4;
+    const auto version = ReadU16LE(bind_data.payload, pos);
+    if (version != 1) {
+        throw IOException("loom_scan: unsupported LMT1 table payload version %d", static_cast<int>(version));
+    }
+    ReadU64LE(bind_data.payload, pos); // row_count; Rust validation owns semantic checks.
+    const auto column_count = ReadU64LE(bind_data.payload, pos);
+    if (column_count == 0) {
+        throw IOException("loom_scan: table payload has no columns");
+    }
+
+    for (uint64_t col = 0; col < column_count; col++) {
+        auto name = ReadString(bind_data.payload, pos);
+        auto payload = ReadBytes(bind_data.payload, pos);
+        auto kind = PayloadKindFromHeader(payload);
+        bind_data.column_names.push_back(std::move(name));
+        bind_data.column_types.push_back(LogicalTypeForKind(kind));
+        bind_data.column_kinds.push_back(kind);
+        bind_data.column_payloads.push_back(std::move(payload));
+    }
+
+    if (pos != bind_data.payload.size()) {
+        throw IOException("loom_scan: trailing bytes in LMT1 table payload");
+    }
+}
+
 static LogicalType LogicalTypeForKind(LoomValueKind kind) {
     switch (kind) {
     case LoomValueKind::BOOL:
@@ -141,21 +228,25 @@ static LogicalType LogicalTypeForKind(LoomValueKind kind) {
 //   scan protocol; it does NOT affect ownership.
 
 struct LoomScanState : GlobalTableFunctionState {
-    ArrowArray  arrow_array  = {};   // zero-init: release == nullptr until populated
-    ArrowSchema arrow_schema = {};
-    LoomValueKind value_kind = LoomValueKind::I32;
+    vector<ArrowArray> arrow_arrays;
+    vector<ArrowSchema> arrow_schemas;
+    vector<LoomValueKind> column_kinds;
     bool batch_emitted = false;      // true after the single batch is delivered
 
     ~LoomScanState() {
         // DUCK-03: release on ALL teardown paths. The array is never transferred
         // to a consumer (direct DataChunk copy), so we always own it here.
-        if (arrow_array.release) {
-            arrow_array.release(&arrow_array);
-            arrow_array.release = nullptr;
+        for (auto &arrow_array : arrow_arrays) {
+            if (arrow_array.release) {
+                arrow_array.release(&arrow_array);
+                arrow_array.release = nullptr;
+            }
         }
-        if (arrow_schema.release) {
-            arrow_schema.release(&arrow_schema);
-            arrow_schema.release = nullptr;
+        for (auto &arrow_schema : arrow_schemas) {
+            if (arrow_schema.release) {
+                arrow_schema.release(&arrow_schema);
+                arrow_schema.release = nullptr;
+            }
         }
     }
 };
@@ -180,11 +271,12 @@ static unique_ptr<FunctionData> LoomBind(
     if (bind_data->payload.empty()) {
         throw IOException("loom_scan: payload file '%s' is empty", bind_data->payload_path.c_str());
     }
-    bind_data->value_kind = PayloadKindFromHeader(bind_data->payload);
-    bind_data->value_type = LogicalTypeForKind(bind_data->value_kind);
+    PopulateColumnSpecs(*bind_data);
 
-    return_types.push_back(bind_data->value_type);
-    names.push_back("value");
+    for (idx_t i = 0; i < bind_data->column_names.size(); i++) {
+        return_types.push_back(bind_data->column_types[i]);
+        names.push_back(bind_data->column_names[i]);
+    }
 
     return std::move(bind_data);
 }
@@ -199,20 +291,26 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
 {
     auto state = make_uniq<LoomScanState>();
     auto &bind_data = input.bind_data->Cast<LoomBindData>();
-    state->value_kind = bind_data.value_kind;
 
-    int32_t rc = loom_decode(
-        bind_data.payload.data(),
-        bind_data.payload.size(),
-        reinterpret_cast<FFI_ArrowArray *>(&state->arrow_array),
-        reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schema));
+    state->column_kinds = bind_data.column_kinds;
+    state->arrow_arrays.resize(bind_data.column_payloads.size());
+    state->arrow_schemas.resize(bind_data.column_payloads.size());
 
-    // PITFALLS P5 / panic-safety: check the return code BEFORE touching outputs.
-    // On nonzero the output pointers contain uninitialized data — never use them.
-    // (loom_decode wraps its body in catch_unwind, so a Rust panic arrives here
-    // as a nonzero rc rather than aborting the DuckDB process — DUCK-04.)
-    if (rc != 0) {
-        throw IOException("loom_decode failed with code %d", static_cast<int>(rc));
+    for (idx_t i = 0; i < bind_data.column_payloads.size(); i++) {
+        auto &payload = bind_data.column_payloads[i];
+        int32_t rc = loom_decode(
+            payload.data(),
+            payload.size(),
+            reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[i]),
+            reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[i]));
+
+        // PITFALLS P5 / panic-safety: check the return code BEFORE touching outputs.
+        // On nonzero the output pointers contain uninitialized data — never use them.
+        if (rc != 0) {
+            throw IOException("loom_decode failed for column %llu with code %d",
+                              static_cast<unsigned long long>(i),
+                              static_cast<int>(rc));
+        }
     }
 
     return state;
@@ -321,7 +419,13 @@ static void LoomScan(
         return;
     }
 
-    const auto &arr = state.arrow_array;
+    if (state.arrow_arrays.empty()) {
+        output.SetCardinality(0);
+        state.batch_emitted = true;
+        return;
+    }
+
+    const auto &arr = state.arrow_arrays[0];
     const idx_t count = static_cast<idx_t>(arr.length);  // = 4 for Phase 2
 
     if (count == 0) {
@@ -331,21 +435,27 @@ static void LoomScan(
     }
 
     output.SetCardinality(count);
-    auto &vec = output.data[0];
 
-    switch (state.value_kind) {
-    case LoomValueKind::BOOL:
-        FillBooleanVector(arr, vec, count);
-        break;
-    case LoomValueKind::I32:
-        FillFixedWidthVector<int32_t>(arr, vec, count, "Int32");
-        break;
-    case LoomValueKind::I64:
-        FillFixedWidthVector<int64_t>(arr, vec, count, "Int64");
-        break;
-    case LoomValueKind::UTF8:
-        FillUtf8Vector(arr, vec, count);
-        break;
+    for (idx_t col = 0; col < state.arrow_arrays.size(); col++) {
+        const auto &col_arr = state.arrow_arrays[col];
+        if (static_cast<idx_t>(col_arr.length) != count) {
+            throw IOException("loom_scan: decoded column length mismatch");
+        }
+        auto &vec = output.data[col];
+        switch (state.column_kinds[col]) {
+        case LoomValueKind::BOOL:
+            FillBooleanVector(col_arr, vec, count);
+            break;
+        case LoomValueKind::I32:
+            FillFixedWidthVector<int32_t>(col_arr, vec, count, "Int32");
+            break;
+        case LoomValueKind::I64:
+            FillFixedWidthVector<int64_t>(col_arr, vec, count, "Int64");
+            break;
+        case LoomValueKind::UTF8:
+            FillUtf8Vector(col_arr, vec, count);
+            break;
+        }
     }
 
     // The array stays owned by LoomScanState and is released in ~LoomScanState()

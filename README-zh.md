@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致。
 
 运行完整 Phase 6 release gate:
 
@@ -40,7 +40,7 @@ rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/l
 bash scripts/duckdb-smoke-test.sh
 ```
 
-当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。人类可读 descriptor、CLI、多列输出、verifier、MLIR/native lowering、完整 `.vortex` 文件支持都属于后续 milestone。
+当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。verifier、MLIR/native lowering、Arrow stream ABI、完整 `.vortex` 文件支持都属于后续 milestone。
 
 Phase 7 增加面向 reviewer 的 descriptor 和 CLI 工具:
 
@@ -52,6 +52,17 @@ cargo run -p loom-fixtures --bin loom_fixture_timing
 ```
 
 timing 命令只输出 Loom interpreter decode 与 Vortex oracle decode 的示意性 wall-clock 数字。它不是 benchmark,也没有速度阈值。
+
+Phase 8 增加一个小型多列表 fixture 和 DuckDB SQL 验收路径:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/mixed-table.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
+bash scripts/duckdb-smoke-test.sh
+```
+
+`mixed-table.loom` 通过 `loom_scan(...)` 暴露 `id INT32`、`flag BOOLEAN`、`label VARCHAR`。扩展当前仍采用直接填充 DataChunk 的路径;ArrowArrayStream 仍是后续 ABI 决策,不是 Phase 8 的实现路径。
 
 ---
 

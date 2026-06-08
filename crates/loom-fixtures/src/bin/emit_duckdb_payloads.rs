@@ -6,6 +6,7 @@ use std::path::Path;
 use arrow_schema::DataType;
 use loom_core::l1_model::LayoutDescription;
 use loom_core::layout_codec::encode_layout_payload;
+use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
 use loom_fixtures::vortex_reader;
 use vortex_array::arrays::{DictArray, PrimitiveArray, VarBinArray};
 use vortex_array::dtype::{DType, Nullability};
@@ -27,9 +28,74 @@ fn main() {
     emit_fsst(out_dir, &mut manifest);
     emit_fsst_edge(out_dir, &mut manifest);
     emit_dict_fsst(out_dir, &mut manifest);
+    emit_mixed_table(out_dir);
 
     fs::write(out_dir.join("manifest.tsv"), manifest).expect("write manifest");
     println!("wrote {}", out_dir.display());
+}
+
+fn emit_mixed_table(out_dir: &Path) {
+    let id_desc = {
+        let values = [1i32, 2, 3, 4, 5];
+        let input = PrimitiveArray::from_iter(values);
+        let mut ctx = LEGACY_SESSION.create_execution_ctx();
+        let packed = BitPackedData::encode(&input.into_array(), 3, &mut ctx)
+            .expect("BitPackedData::encode failed");
+        LayoutDescription {
+            data_type: DataType::Int32,
+            root: vortex_reader::from_bitpacked_array(&packed),
+            row_count: values.len(),
+        }
+    };
+
+    let flag_desc = {
+        LayoutDescription {
+            data_type: DataType::Boolean,
+            root: loom_core::l1_model::LayoutNode::Raw {
+                data: vec![1, 0, 1, 1, 0],
+                elem_size: 1,
+                count: 5,
+            },
+            row_count: 5,
+        }
+    };
+
+    let label_desc = {
+        let rows = [
+            Some("alpha"),
+            None,
+            Some("beta"),
+            Some("gamma"),
+            Some("delta"),
+        ];
+        let fsst = make_fsst(&rows);
+        LayoutDescription {
+            data_type: DataType::Utf8,
+            root: vortex_reader::from_fsst_array(&fsst),
+            row_count: rows.len(),
+        }
+    };
+
+    let table = TableDescription {
+        row_count: 5,
+        columns: vec![
+            TableColumn {
+                name: "id".to_string(),
+                layout: id_desc,
+            },
+            TableColumn {
+                name: "flag".to_string(),
+                layout: flag_desc,
+            },
+            TableColumn {
+                name: "label".to_string(),
+                layout: label_desc,
+            },
+        ],
+    };
+
+    let payload = encode_table_payload(&table).expect("encode mixed table payload");
+    fs::write(out_dir.join("mixed-table.loom"), payload).expect("write table payload");
 }
 
 fn emit_nullable_bitpack(out_dir: &Path, manifest: &mut String) {

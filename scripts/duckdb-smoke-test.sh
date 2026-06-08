@@ -39,6 +39,7 @@ test -f "${PAYLOAD_DIR}/dict-i32.loom"
 test -f "${PAYLOAD_DIR}/rle-i32.loom"
 test -f "${PAYLOAD_DIR}/fsst-utf8.loom"
 test -f "${PAYLOAD_DIR}/dict-fsst-utf8.loom"
+test -f "${PAYLOAD_DIR}/mixed-table.loom"
 ok "Generated payloads in ${PAYLOAD_DIR}"
 
 info "Building loom.duckdb_extension..."
@@ -159,6 +160,36 @@ check_string_aggregate() {
     ok "SELECT COUNT/MIN/MAX for ${name} matched"
 }
 
+check_mixed_table() {
+    local payload="${PAYLOAD_DIR}/mixed-table.loom"
+    local rows_out="${TMP_DIR}/mixed-table-rows.csv"
+    local agg_out="${TMP_DIR}/mixed-table-agg.csv"
+    local expected_rows=$'1,true,alpha\n2,false,NULL\n3,true,beta\n4,true,gamma\n5,false,delta'
+    local expected_agg="5,15,4,8"
+
+    info "SELECT rows for mixed-table..."
+    sql_to_file "SELECT id, CAST(flag AS VARCHAR), COALESCE(label, 'NULL') FROM loom_scan('${payload}')" "${rows_out}"
+    local actual_rows
+    actual_rows="$(cat "${rows_out}")"
+    if [ "${actual_rows}" != "${expected_rows}" ]; then
+        echo "Expected rows:" >&2
+        echo "${expected_rows}" >&2
+        echo "Actual rows:" >&2
+        echo "${actual_rows}" >&2
+        fail "row mismatch for mixed-table"
+    fi
+    ok "SELECT id, flag, label FROM loom_scan('mixed-table') matched"
+
+    info "SELECT multi-column aggregates for mixed-table..."
+    sql_to_file "SELECT COUNT(*), SUM(id), COUNT(label), SUM(CASE WHEN flag THEN id ELSE 0 END) FROM loom_scan('${payload}')" "${agg_out}"
+    local actual_agg
+    actual_agg="$(cat "${agg_out}")"
+    if [ "${actual_agg}" != "${expected_agg}" ]; then
+        fail "aggregate mismatch for mixed-table: expected '${expected_agg}', got '${actual_agg}'"
+    fi
+    ok "SELECT COUNT/SUM/COUNT(label)/filtered SUM for mixed-table matched"
+}
+
 check_rows "bitpack-i32" $'1\n2\n3\n4'
 check_numeric_aggregate "bitpack-i32" "4,10"
 
@@ -177,9 +208,11 @@ check_string_aggregate "fsst-utf8" "3,2,alpha,beta"
 check_rows "dict-fsst-utf8" $'beta\nalpha\ngamma\nbeta'
 check_string_aggregate "dict-fsst-utf8" "4,4,alpha,gamma"
 
+check_mixed_table
+
 echo ""
 echo "${GRN}=== Smoke-test PASSED ===${RST}"
 echo "  Extension: ${EXT_PATH}"
 echo "  DuckDB CLI: ${DUCKDB_BIN} (${DUCKDB_VERSION})"
-echo "  Covered: bitpack-i32, for-i32, dict-i32, rle-i32, fsst-utf8, dict-fsst-utf8"
+echo "  Covered: bitpack-i32, for-i32, dict-i32, rle-i32, fsst-utf8, dict-fsst-utf8, mixed-table"
 echo ""

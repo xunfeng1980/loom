@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures.
 
 Run the full Phase 6 release gate:
 
@@ -40,7 +40,7 @@ rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/l
 bash scripts/duckdb-smoke-test.sh
 ```
 
-The current `.loom` payload format is an MVP0 internal fixture format. Human-readable descriptors, CLI tooling, multi-column output, the verifier, MLIR/native lowering, and full `.vortex` file support are future milestones.
+The current `.loom` payload format is an MVP0 internal fixture format. The verifier, MLIR/native lowering, Arrow stream ABI, and full `.vortex` file support are future milestones.
 
 Phase 7 adds reviewer-facing descriptor and CLI tooling:
 
@@ -52,6 +52,17 @@ cargo run -p loom-fixtures --bin loom_fixture_timing
 ```
 
 The timing command reports illustrative wall-clock numbers for Loom interpreter decode vs Vortex oracle decode. It is not a benchmark and has no pass/fail speed threshold.
+
+Phase 8 adds a small multi-column table fixture and DuckDB SQL acceptance path:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/mixed-table.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
+bash scripts/duckdb-smoke-test.sh
+```
+
+`mixed-table.loom` exposes `id INT32`, `flag BOOLEAN`, and `label VARCHAR` through `loom_scan(...)`. The extension still uses direct DataChunk population; the ArrowArrayStream route remains a future ABI decision rather than Phase 8's implementation path.
 
 ---
 

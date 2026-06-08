@@ -19,6 +19,9 @@ pub mod fsst_params;
 /// Minimal MVP0 layout payload codec used by the FFI boundary.
 pub mod layout_codec;
 
+/// MVP0 table-shaped payload codec composed from one-column layout payloads.
+pub mod table_codec;
+
 /// Human-readable MVP0 layout descriptor codec.
 pub mod descriptor;
 

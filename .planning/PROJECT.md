@@ -5,16 +5,17 @@
 Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
 (full design in `design.md`). **This project is MVP0** — a runnable prototype that
-proves the core chain end-to-end on a real engine: a single Vortex-encoded column
-is decoded through Loom's declarative **L1 layout layer** plus one total-function
+proves the core chain end-to-end on a real engine: Vortex-style encoded payloads
+are decoded through Loom's declarative **L1 layout layer** plus one total-function
 **L2 kernel (FSST)** into legal Arrow, handed to **DuckDB** via the Arrow C Data
-Interface, and queried with SQL. It is for the author/systems audience evaluating
+Interface, and queried with SQL, including a small mixed-column table payload. It is for the author/systems audience evaluating
 whether the L1/L2 + "output-as-typed-Arrow" idea actually works in practice.
 
 ## Core Value
 
-A user can run a SQL query in DuckDB over a Vortex-encoded column that was decoded
-by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
+A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads,
+including a mixed-column table payload, and get row/aggregate results that match
+the expected decoded values.
 If only one thing works, it is this end-to-end chain.
 
 ## Requirements
@@ -32,15 +33,14 @@ If only one thing works, it is this end-to-end chain.
 - ✓ MVP0 DuckDB acceptance gate: generated `.loom` payloads for bitpack, FOR, dict, RLE, FSST, and dict-over-FSST all pass exact SQL row and aggregate checks through `loom_scan` — Phase 5
 - ✓ MVP0 release baseline: README and planning state reflect the completed MVP0 surface, `scripts/mvp0-verify.sh` runs the full release gate, and Phase 7 descriptor/CLI handoff notes are recorded — Phase 6
 - ✓ Human-readable descriptor and CLI: RON descriptor text roundtrips through `LayoutDescription`, binary payloads can be inspected, `loom inspect`/`loom decode` expose reviewer workflows, fixture samples expanded, and illustrative Loom-vs-Vortex timing output is available — Phase 7
+- ✓ Multi-column table output: `LMT1` table payloads wrap named `LMP1` column payloads, Rust and CLI can decode row-wise table output, DuckDB `loom_scan` returns mixed Int32/Boolean/Utf8 columns, and SQL row/projection/filter/aggregate checks are part of the release gate — Phase 8
+- ✓ ArrowArrayStream decision: direct DuckDB DataChunk population remains the Phase 8 path; ArrowArrayStream is deferred until a later table/record-batch FFI ABI is introduced — Phase 8
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 8: table-shaped description and payload format with multiple named columns
-- [ ] Phase 8: Rust multi-column decode and CLI row-wise table output
-- [ ] Phase 8: DuckDB `loom_scan` returns mixed Int32/Boolean/Utf8 columns from one payload
-- [ ] Phase 8: ArrowArrayStream vs direct DataChunk decision is implemented or documented with repo-specific evidence
+- [ ] Next milestone scope not selected yet
 
 ### Out of Scope
 
@@ -49,7 +49,6 @@ If only one thing works, it is this end-to-end chain.
 - MLIR `decode` dialect / lowering to LLVM / native-speed codegen — MVP0 interprets directly; speed layer is the design's later act (`design.md` §8)
 - Formal verifier, totality/termination proofs, the safety-boundary demo (rejecting out-of-bounds / non-terminating L1/L2 input) — the chosen acceptance bar is "correct query results"; the verifier is a later phase (`design.md` §5, §7, §13)
 - Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
-- Multi-column tables and schema assembly across columns — single column first
 - Additional L2 kernels (ALP float decode, decompression blocks, etc.) — one kernel (FSST) is enough to prove the L2 escape
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
 - Versioned distribution container, feature flags, content-hash URI, native fast-path (`design.md` §10–11) — distribution concerns come after the decode chain works
@@ -90,7 +89,8 @@ If only one thing works, it is this end-to-end chain.
 | Phase 6 before descriptor/CLI | A clean baseline prevents v2 work from inheriting stale docs or fragile verification steps | Complete — Phase 6 |
 | Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Complete — Phase 7 |
 | Descriptor format = RON for MVP0 | Recursive enum trees are clearer in RON than TOML; descriptor remains MVP0-scoped and unstable | Complete — Phase 7 |
-| Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Active |
+| Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Complete — Phase 8 |
+| Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
 
 ## Evolution
 
@@ -110,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 starting Phase 8 (Multi-Column Table Output and Arrow Stream Evaluation) — Phase 8 promotes Loom from single-column payloads to table-shaped output with mixed column types and a concrete ArrowArrayStream decision.*
+*Last updated: 2026-06-08 completing Phase 8 (Multi-Column Table Output and Arrow Stream Evaluation) — Loom now supports table-shaped MVP0 payloads with mixed column types and a documented ArrowArrayStream deferral.*

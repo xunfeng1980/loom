@@ -9,6 +9,7 @@ use loom_core::error::LoomDecodeError;
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
+use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 
 fn main() {
     if let Err(err) = run() {
@@ -42,6 +43,22 @@ fn usage() -> String {
 
 fn inspect(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    if is_table_payload(&bytes) {
+        let table = decode_table_payload(&bytes).map_err(display_decode_error)?;
+        println!("input: {}", path.display());
+        println!("table_row_count: {}", table.row_count);
+        println!("columns:");
+        for column in &table.columns {
+            println!(
+                "  {}: {} rows={}",
+                column.name,
+                data_type_name(&column.layout.data_type),
+                column.layout.row_count
+            );
+            print_node(&column.layout.root, 2);
+        }
+        return Ok(());
+    }
     let desc = load_layout(&bytes)?;
     println!("input: {}", path.display());
     println!("data_type: {}", data_type_name(&desc.data_type));
@@ -63,6 +80,9 @@ fn inspect(path: &Path) -> Result<(), String> {
 
 fn decode(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    if is_table_payload(&bytes) {
+        return decode_table(&bytes);
+    }
     let desc = load_layout(&bytes)?;
     let registry = L2KernelRegistry::default_for_mvp0();
     let data = decode_layout_to_array_data(&desc, &registry).map_err(display_decode_error)?;
@@ -112,6 +132,74 @@ fn decode(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn decode_table(bytes: &[u8]) -> Result<(), String> {
+    let table = decode_table_payload(bytes).map_err(display_decode_error)?;
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let arrays = decode_table_to_array_data(&table, &registry).map_err(display_decode_error)?;
+
+    for (i, column) in table.columns.iter().enumerate() {
+        if i > 0 {
+            print!("\t");
+        }
+        print!("{}", column.name);
+    }
+    println!();
+
+    for row in 0..table.row_count {
+        for (col_idx, column) in table.columns.iter().enumerate() {
+            if col_idx > 0 {
+                print!("\t");
+            }
+            print_cell(&arrays[col_idx], &column.layout.data_type, row)?;
+        }
+        println!();
+    }
+    Ok(())
+}
+
+fn print_cell(
+    data: &arrow_data::ArrayData,
+    data_type: &DataType,
+    row: usize,
+) -> Result<(), String> {
+    match data_type {
+        DataType::Boolean => {
+            let array = BooleanArray::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
+        DataType::Int32 => {
+            let array = Int32Array::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
+        DataType::Int64 => {
+            let array = Int64Array::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
+        DataType::Utf8 => {
+            let array = StringArray::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
+        other => return Err(format!("unsupported table output type {other:?}")),
+    }
+    Ok(())
+}
+
 fn load_layout(bytes: &[u8]) -> Result<LayoutDescription, String> {
     if is_binary_payload(bytes) {
         return decode_layout_payload(bytes).map_err(display_decode_error);
@@ -133,7 +221,10 @@ fn print_node(node: &LayoutNode, depth: usize) {
             count,
             data,
         } => {
-            println!("{indent}Raw(elem_size={elem_size}, count={count}, bytes={})", data.len());
+            println!(
+                "{indent}Raw(elem_size={elem_size}, count={count}, bytes={})",
+                data.len()
+            );
         }
         LayoutNode::BitPack {
             bit_width,
