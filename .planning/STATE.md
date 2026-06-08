@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
+status: in_progress
 stopped_at: Completed 25-02-PLAN.md
 last_updated: "2026-06-08T18:04:04.204Z"
-last_activity: 2026-06-08 -- Phase 24 verified complete; ready for Phase 25
+last_activity: 2026-06-08 -- Phase 25 25-02 complete; ready for 25-03
 progress:
   total_phases: 30
   completed_phases: 24
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 25
-Plan: Not started
-Status: Phase 24 complete — Phase 25 not started
-Last activity: 2026-06-08 -- Phase 24 verified complete; ready for Phase 25
+Plan: 25-03 next
+Status: Phase 25 in progress — 25-02 complete, 25-03 next
+Last activity: 2026-06-08 -- Phase 25 25-02 complete; ready for 25-03
 
 Progress: 80%
 
 ## Progress Snapshot
 
 - Completed phases: 24 / 30
-- Completed executable plans: 94 / 97
+- Completed executable plans: 96 / 102
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 complete; Phase 25 not started
+- Current position: Phase 25 in progress; 2/5 plans complete
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 24 DuckDB native integration wired before DuckDB SQL smoke
 
 **Completed phase plan counts:**
