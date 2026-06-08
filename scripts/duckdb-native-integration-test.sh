@@ -51,10 +51,15 @@ ok "generated Phase 24 native primitive fixture"
 info "Building loom-ffi and DuckDB extension..."
 cargo build -p loom-ffi --release
 rm -f "${EXT_PATH}"
-cmake -S "${REPO_ROOT}/duckdb-ext" \
-      -B "${REPO_ROOT}/duckdb-ext/build" \
-      -DCMAKE_BUILD_TYPE=Release \
-      2>&1 | grep -v '^--' || true
+cmake_out="${TMP_DIR}/cmake-configure.log"
+if ! cmake -S "${REPO_ROOT}/duckdb-ext" \
+          -B "${REPO_ROOT}/duckdb-ext/build" \
+          -DCMAKE_BUILD_TYPE=Release \
+          >"${cmake_out}" 2>&1; then
+    cat "${cmake_out}" >&2
+    fail "CMake configure failed"
+fi
+grep -v '^--' "${cmake_out}" || true
 cmake --build "${REPO_ROOT}/duckdb-ext/build" 2>&1
 test -f "${EXT_PATH}" || fail "loom.duckdb_extension was not built"
 ok "built ${EXT_PATH}"
