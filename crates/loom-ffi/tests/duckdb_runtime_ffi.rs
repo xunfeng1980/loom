@@ -6,14 +6,17 @@ use loom_core::container_codec::wrap_layout_payload;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::duckdb_runtime::{
-    loom_duckdb_plan_cache_input, loom_duckdb_plan_cache_key, loom_duckdb_plan_create,
-    loom_duckdb_plan_create_projected, loom_duckdb_plan_decision, loom_duckdb_plan_destroy,
-    loom_duckdb_plan_diagnostic, loom_duckdb_plan_diagnostic_count, loom_duckdb_prepare_create,
-    loom_duckdb_prepare_destroy, loom_duckdb_prepare_diagnostic,
-    loom_duckdb_prepare_diagnostic_count, loom_duckdb_prepare_native_buffer,
-    loom_duckdb_prepare_native_buffer_count, loom_duckdb_prepare_route, LoomDuckDbDiagnostic,
+    duckdb_runtime_clear_native_preparation_cache_for_test, loom_duckdb_plan_cache_input,
+    loom_duckdb_plan_cache_key, loom_duckdb_plan_create, loom_duckdb_plan_create_projected,
+    loom_duckdb_plan_decision, loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic,
+    loom_duckdb_plan_diagnostic_count, loom_duckdb_prepare_create, loom_duckdb_prepare_destroy,
+    loom_duckdb_prepare_diagnostic, loom_duckdb_prepare_diagnostic_count,
+    loom_duckdb_prepare_native_buffer, loom_duckdb_prepare_native_buffer_count,
+    loom_duckdb_prepare_route, plan_duckdb_runtime, prepare_duckdb_runtime, DuckDbProjection,
+    DuckDbRuntimePlanInput, DuckDbRuntimePolicy, DuckDbTestNativeFacts, LoomDuckDbDiagnostic,
     LoomDuckDbNativeBuffer, LoomDuckDbPlan, LoomDuckDbPrepared,
 };
+use loom_native_melior::backend::NativeBackendCancellation;
 
 fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
     let values = (0..row_count as i32)
@@ -238,6 +241,117 @@ fn prepare_create_returns_handle_and_route_without_unwinding() {
 }
 
 #[test]
+fn prepare_diagnostic_accessors_expose_cache_evidence() {
+    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let artifact = raw_i32_lmc1(4);
+
+    let mut miss_plan: *mut LoomDuckDbPlan = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_plan_create(
+                artifact.as_ptr(),
+                artifact.len(),
+                false,
+                true,
+                &mut miss_plan as *mut _,
+            )
+        },
+        0
+    );
+    let mut miss_prepared: *mut LoomDuckDbPrepared = ptr::null_mut();
+    assert_eq!(
+        unsafe { loom_duckdb_prepare_create(miss_plan, false, &mut miss_prepared as *mut _) },
+        0
+    );
+    let miss_codes = unsafe { prepare_diagnostic_codes(miss_prepared) };
+    assert!(
+        miss_codes.iter().any(|code| code == "cache-miss"),
+        "prepare diagnostics should expose cache miss evidence: {miss_codes:?}"
+    );
+    assert_eq!(unsafe { loom_duckdb_prepare_destroy(miss_prepared) }, 0);
+    assert_eq!(unsafe { loom_duckdb_plan_destroy(miss_plan) }, 0);
+
+    let mut fallback_plan: *mut LoomDuckDbPlan = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_plan_create(
+                artifact.as_ptr(),
+                artifact.len(),
+                true,
+                false,
+                &mut fallback_plan as *mut _,
+            )
+        },
+        0
+    );
+    let mut fallback_prepared: *mut LoomDuckDbPrepared = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_prepare_create(fallback_plan, false, &mut fallback_prepared as *mut _)
+        },
+        0
+    );
+    let fallback_codes = unsafe { prepare_diagnostic_codes(fallback_prepared) };
+    assert!(
+        fallback_codes
+            .iter()
+            .any(|code| code == "cache-non-cacheable"),
+        "fallback prepare should expose non-cacheable cache evidence: {fallback_codes:?}"
+    );
+    assert_eq!(unsafe { loom_duckdb_prepare_destroy(fallback_prepared) }, 0);
+    assert_eq!(unsafe { loom_duckdb_plan_destroy(fallback_plan) }, 0);
+
+    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let seeded = plan_duckdb_runtime(DuckDbRuntimePlanInput {
+        artifact_bytes: artifact.clone(),
+        projection: DuckDbProjection::All,
+        policy: DuckDbRuntimePolicy {
+            allow_interpreter_fallback: false,
+            test_native_facts: Some(DuckDbTestNativeFacts {
+                row_count: 4,
+                columns: vec![DataType::Int32],
+                test_jit_value_buffers: Some(vec![vec![0; 16]]),
+            }),
+        },
+    })
+    .expect("seed native plan");
+    let seeded_route = prepare_duckdb_runtime(&seeded, NativeBackendCancellation::default());
+    assert!(
+        seeded_route
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "cache-inserted"),
+        "Rust seed route should insert cache evidence"
+    );
+
+    let mut hit_plan: *mut LoomDuckDbPlan = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_plan_create(
+                artifact.as_ptr(),
+                artifact.len(),
+                false,
+                true,
+                &mut hit_plan as *mut _,
+            )
+        },
+        0
+    );
+    let mut hit_prepared: *mut LoomDuckDbPrepared = ptr::null_mut();
+    assert_eq!(
+        unsafe { loom_duckdb_prepare_create(hit_plan, false, &mut hit_prepared as *mut _) },
+        0
+    );
+    let hit_codes = unsafe { prepare_diagnostic_codes(hit_prepared) };
+    assert!(
+        hit_codes.iter().any(|code| code == "cache-hit"),
+        "prepare diagnostics should expose cache hit evidence: {hit_codes:?}"
+    );
+    assert_eq!(unsafe { loom_duckdb_prepare_destroy(hit_prepared) }, 0);
+    assert_eq!(unsafe { loom_duckdb_plan_destroy(hit_plan) }, 0);
+}
+
+#[test]
 fn public_header_excludes_internal_duckdb_symbols() {
     let public_header =
         std::fs::read_to_string(format!("{}/include/loom.h", env!("CARGO_MANIFEST_DIR")))
@@ -245,6 +359,7 @@ fn public_header_excludes_internal_duckdb_symbols() {
     assert!(public_header.contains("loom_decode"));
     assert!(!public_header.contains("loom_duckdb_"));
     assert!(!public_header.contains("LoomDuckDb"));
+    assert!(!public_header.contains("cache"));
 }
 
 #[test]
@@ -435,6 +550,9 @@ fn public_header_leakage_gate_blocks_route_and_stream_symbols() {
     for forbidden in [
         "loom_duckdb_",
         "LoomDuckDb",
+        "duckdb_runtime",
+        "cache",
+        "native_preparation",
         "loom_scan_native",
         "loom_scan_interpreter",
         "ArrowArrayStream",
