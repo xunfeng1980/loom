@@ -30,24 +30,24 @@ pub fn parquet_source_facts_from_path(path: &Path) -> Result<SourceFacts, Source
     let file = File::open(path).map_err(|error| {
         rejected_report(
             path,
-            SourceDiagnostic::new(
+            diagnostic_with_detail(
                 SourceDiagnosticCode::OpenFailed,
                 "$.open",
                 "local Parquet file could not be opened",
-            )
-            .with_source_detail(sanitized_detail(error.to_string())),
+                error.to_string(),
+            ),
         )
     })?;
 
     let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|error| {
         rejected_report(
             path,
-            SourceDiagnostic::new(
+            diagnostic_with_detail(
                 SourceDiagnosticCode::ReadFailed,
                 "$.metadata",
                 "local Parquet metadata could not be read",
-            )
-            .with_source_detail(sanitized_detail(error.to_string())),
+                error.to_string(),
+            ),
         )
     })?;
 
@@ -94,12 +94,12 @@ pub fn parquet_arrow_oracle_batches_from_path(
     let file = File::open(path).map_err(|error| {
         rejected_report(
             path,
-            SourceDiagnostic::new(
+            diagnostic_with_detail(
                 SourceDiagnosticCode::OpenFailed,
                 "$.oracle.open",
                 "local Parquet file could not be opened for Arrow oracle scan",
-            )
-            .with_source_detail(sanitized_detail(error.to_string())),
+                error.to_string(),
+            ),
         )
     })?;
     let reader = ParquetRecordBatchReaderBuilder::try_new(file)
@@ -107,24 +107,24 @@ pub fn parquet_arrow_oracle_batches_from_path(
         .map_err(|error| {
             rejected_report(
                 path,
-                SourceDiagnostic::new(
+                diagnostic_with_detail(
                     SourceDiagnosticCode::ReadFailed,
                     "$.oracle.scan",
                     "local Parquet file could not be scanned as Arrow batches",
-                )
-                .with_source_detail(sanitized_detail(error.to_string())),
+                    error.to_string(),
+                ),
             )
         })?;
 
     reader.collect::<Result<Vec<_>, _>>().map_err(|error| {
         rejected_report(
             path,
-            SourceDiagnostic::new(
+            diagnostic_with_detail(
                 SourceDiagnosticCode::ReadFailed,
                 "$.oracle.scan",
                 "local Parquet Arrow oracle scan failed",
-            )
-            .with_source_detail(sanitized_detail(error.to_string())),
+                error.to_string(),
+            ),
         )
     })
 }
@@ -747,12 +747,35 @@ fn rejected_report(path: &Path, diagnostic: SourceDiagnostic) -> SourceIngressRe
     )
 }
 
+fn diagnostic_with_detail(
+    code: SourceDiagnosticCode,
+    path: impl Into<String>,
+    message: impl Into<String>,
+    detail: String,
+) -> SourceDiagnostic {
+    let sanitized = sanitized_detail(detail);
+    if sanitized.is_empty() {
+        SourceDiagnostic::new(code, path, message)
+    } else {
+        SourceDiagnostic::new(code, path, message).with_source_detail(sanitized)
+    }
+}
+
 fn sanitized_detail(detail: String) -> String {
-    detail
+    let first_line = detail
         .lines()
         .next()
         .unwrap_or("Parquet adapter error")
-        .chars()
-        .take(240)
-        .collect()
+        .trim();
+    let lowered = first_line.to_ascii_lowercase();
+    if lowered.contains("credential")
+        || lowered.contains("secret")
+        || lowered.contains("token")
+        || lowered.contains("access_key")
+        || lowered.contains("://")
+    {
+        return String::new();
+    }
+
+    first_line.chars().take(240).collect()
 }
