@@ -1567,6 +1567,7 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "loom-core",
+ "loom-solver-smt",
  "loom-vortex-ingress",
 ]
 

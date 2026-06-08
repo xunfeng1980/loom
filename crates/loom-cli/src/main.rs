@@ -8,7 +8,8 @@ use arrow::array::{
 use arrow_schema::DataType;
 use loom_core::alp_params::AlpParams;
 use loom_core::artifact_verifier::{
-    verify_artifact, ArtifactVerificationReport, ArtifactVerificationStatus,
+    verify_artifact, ArtifactVerificationOptions, ArtifactVerificationReport,
+    ArtifactVerificationStatus,
 };
 use loom_core::container_codec::{
     decode_container, decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
@@ -32,6 +33,7 @@ use loom_vortex_ingress::{
     emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, reader_facts_from_vortex_path,
     VortexIngressReport, VortexReaderEmissionKind,
 };
+use loom_solver_smt::{verify_artifact_with_l2_core_and_bitwuzla, SolverRunOptions};
 
 fn main() {
     if let Err(err) = run() {
@@ -67,11 +69,7 @@ fn run() -> Result<(), String> {
             verify_l2core(&mode)
         }
         "verify-artifact" => {
-            let input = args.next().ok_or_else(usage)?;
-            if args.next().is_some() {
-                return Err(usage());
-            }
-            verify_artifact_cli(Path::new(&input))
+            verify_artifact_cli(args.collect())
         }
         "ingest-vortex" => {
             let mode = args.next().ok_or_else(usage)?;
@@ -86,16 +84,66 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: loom <inspect|decode|verify-artifact> <payload-or-descriptor>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
+    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-artifact <artifact.loom>\n       loom verify-artifact --solver-bitwuzla --l2core-sample <artifact.loom>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
         .to_string()
 }
 
-fn verify_artifact_cli(path: &Path) -> Result<(), String> {
+fn verify_artifact_cli(args: Vec<String>) -> Result<(), String> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("{}", usage());
+        return Ok(());
+    }
+
+    let mut solver_bitwuzla = false;
+    let mut l2core_sample = false;
+    let mut input = None;
+    for arg in args {
+        match arg.as_str() {
+            "--solver-bitwuzla" => solver_bitwuzla = true,
+            "--l2core-sample" => l2core_sample = true,
+            _ if input.is_none() => input = Some(arg),
+            _ => return Err(usage()),
+        }
+    }
+
+    let input = input.ok_or_else(usage)?;
+    let path = Path::new(&input);
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
     let registry = L2KernelRegistry::default_for_mvp0();
-    let report = verify_artifact(&bytes, &registry, &Default::default());
+    let report = if solver_bitwuzla {
+        if !l2core_sample {
+            return Err(
+                "solver-backed artifact verification currently requires --l2core-sample"
+                    .to_string(),
+            );
+        }
+        let artifact_options = ArtifactVerificationOptions {
+            compute_lowering_readiness: true,
+            lowering_backend: Some("textual-mlir".to_string()),
+            ..Default::default()
+        };
+        verify_artifact_with_l2_core_and_bitwuzla(
+            &bytes,
+            &registry,
+            &sample_l2core_program(),
+            &artifact_options,
+            &SolverRunOptions::default(),
+        )
+    } else {
+        if l2core_sample {
+            return Err("--l2core-sample requires --solver-bitwuzla".to_string());
+        }
+        verify_artifact(&bytes, &registry, &Default::default())
+    };
 
     println!("input: {}", path.display());
+    if solver_bitwuzla {
+        println!("artifact_verification_mode: solver-backed");
+        println!("solver_primary_backend: bitwuzla");
+        println!("solver_l2core: sample");
+    } else {
+        println!("artifact_verification_mode: structural");
+    }
     print_artifact_verification_report(&report);
     if report.status() == ArtifactVerificationStatus::Rejected {
         return Err("artifact verification failed".to_string());
@@ -803,10 +851,17 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
         );
         println!("constraint_status: {}", facts.constraint_status.as_str());
         println!("lowering_ready: {}", facts.lowering_ready.ready);
+        println!(
+            "production_discharge_ready: {}",
+            facts.lowering_ready.ready && facts.constraint_status.as_str() == "discharged"
+        );
+        print_solver_report(facts.solver_report.as_ref());
     } else {
         println!("facts: none");
         println!("constraint_status: none");
         println!("lowering_ready: false");
+        println!("production_discharge_ready: false");
+        print_solver_report(None);
     }
 
     if report.diagnostics().is_empty() {
@@ -822,6 +877,38 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
                 diagnostic.message
             );
         }
+    }
+}
+
+fn print_solver_report(report: Option<&loom_core::solver::SolverDischargeReport>) {
+    let Some(report) = report else {
+        println!("solver_report: none");
+        return;
+    };
+    let backend = report
+        .backend_results
+        .first()
+        .map(|result| result.backend.kind.as_str())
+        .unwrap_or("unknown");
+    let logic = report
+        .scripts
+        .first()
+        .map(|script| script.logic.as_str())
+        .unwrap_or("unknown");
+    println!("solver_report: present");
+    println!("solver_backend: {backend}");
+    println!("solver_script_logic: {logic}");
+    println!("solver_status: {}", report.status.as_str());
+    println!(
+        "solver_required_obligations: {}",
+        report.required_obligation_count
+    );
+    println!("solver_discharged: {}", report.discharged_count);
+    println!("solver_failed: {}", report.failed_count);
+    println!("solver_unknown: {}", report.unknown_count);
+    println!("solver_skipped: {}", report.skipped_count);
+    if report.status.as_str() == "skipped" {
+        println!("solver_strict_hint: set LOOM_REQUIRE_SOLVER=1 to require Bitwuzla evidence");
     }
 }
 

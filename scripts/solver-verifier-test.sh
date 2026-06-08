@@ -60,5 +60,20 @@ info "Running focused Bitwuzla execution tests..."
 LOOM_REQUIRE_SOLVER=1 cargo test -p loom-solver-smt bitwuzla
 ok "Bitwuzla execution tests"
 
+info "Checking CLI solver-backed artifact report..."
+cargo run -q -p loom-fixtures --bin emit_duckdb_payloads >/dev/null
+cli_output="$(LOOM_REQUIRE_SOLVER=1 cargo run -q --bin loom -- verify-artifact --solver-bitwuzla --l2core-sample target/loom-duckdb-fixtures/bitpack-i32.loom)"
+grep -q "artifact_verification_mode: solver-backed" <<<"${cli_output}" \
+    || fail "CLI solver-backed mode missing"
+grep -q "solver_primary_backend: bitwuzla" <<<"${cli_output}" \
+    || fail "CLI missing Bitwuzla primary backend"
+grep -q "solver_backend: bitwuzla" <<<"${cli_output}" \
+    || fail "CLI solver report missing Bitwuzla backend"
+grep -q "constraint_status: discharged" <<<"${cli_output}" \
+    || fail "CLI solver report did not discharge constraints"
+grep -q "production_discharge_ready: true" <<<"${cli_output}" \
+    || fail "CLI did not expose production discharge readiness"
+ok "CLI solver-backed artifact report"
+
 echo ""
 echo "${GRN}=== Phase 19 solver-backed verifier gate PASSED ===${RST}"

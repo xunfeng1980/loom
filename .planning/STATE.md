@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 19 19-04 complete; 19-05 next
+stopped_at: Phase 19 complete; Phase 20 next
 last_updated: "2026-06-08T12:00:09.000Z"
-last_activity: 2026-06-08 -- Phase 19 19-04 complete
+last_activity: 2026-06-08 -- Phase 19 complete
 progress:
   total_phases: 26
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 72
-  completed_plans: 71
-  percent: 71
+  completed_plans: 72
+  percent: 72
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 19 — solver-backed full artifact verifier (executing)
+**Current focus:** Phase 20 — production decode dialect and native kernel expansion (placeholder; plan next)
 
 ## Current Position
 
-Phase: 19 (solver-backed-full-artifact-verifier) — IN PROGRESS
-Plan: 19-01 through 19-04 complete; 19-05 next
-Status: Phase 19 19-04 wired Bitwuzla-backed solver discharge into artifact verifier facts, gated artifact lowering readiness on `Discharged` constraints, and added artifact-level solver helper/tests.
-Last activity: 2026-06-08 -- Phase 19 19-04 complete
+Phase: 19 (solver-backed-full-artifact-verifier) — COMPLETE
+Plan: 19-01 through 19-05 complete; Phase 20 next
+Status: Phase 19 closed with Bitwuzla-backed solver discharge, artifact verifier integration, CLI visibility, release-gate wiring, final solver report, and a Phase 20 handoff requiring `Discharged` facts.
+Last activity: 2026-06-08 -- Phase 19 complete
 
-Progress: 71%
+Progress: 72%
 
 ## Progress Snapshot
 
-- Completed phases: 18 / 26
-- Completed executable plans: 71 / 72
+- Completed phases: 19 / 26
+- Completed executable plans: 72 / 72
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-05 CLI/release-gate closeout next
-- Last verified gate: `LOOM_REQUIRE_SOLVER=1 bash scripts/solver-verifier-test.sh` passed with Homebrew Bitwuzla 0.9.1 at `/opt/homebrew/bin/bitwuzla`
+- Current position: Phase 19 complete; Phase 20 production decode dialect/native kernel expansion placeholder is next to plan
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including Phase 19 solver-backed verifier gate with Homebrew Bitwuzla 0.9.1 at `/opt/homebrew/bin/bitwuzla`
 
 **Completed phase plan counts:**
 
@@ -50,7 +50,7 @@ Progress: 71%
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
 | 18 | Complete Vortex reader | 5/5 |
-| 19 | Solver-backed full artifact verifier | 4/5 in progress |
+| 19 | Solver-backed full artifact verifier | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -133,6 +133,7 @@ None yet.
 - Phase 19 executing: 19-02 complete with deterministic Bitwuzla-primary `QF_BV` SMT-LIB script emission, required/cross-check script family metadata, named bad-state assertions, stable FNV-style script IDs, and focused `smtlib_emitter` tests.
 - Phase 19 executing: 19-03 complete with optional `loom-solver-smt`, backend discovery/declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla subprocess execution/parsing, fail-closed strict mode, explicit normal-mode skip diagnostics, and `scripts/solver-verifier-test.sh`.
 - Phase 19 executing: 19-04 complete with `apply_solver_discharge`, artifact verifier facts carrying trusted solver reports only after matching/discharged obligations, artifact lowering readiness blocked for `CollectedOnly` constraints, and `loom-solver-smt` artifact-level Bitwuzla helper tests.
+- Phase 19 complete: 19-05 closed with solver-backed `loom verify-artifact --solver-bitwuzla --l2core-sample`, release-gate wiring through `scripts/solver-verifier-test.sh` and `scripts/mvp0-verify.sh`, final solver report, public/planning docs, and Phase 20 handoff requiring discharged facts.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
 - Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -193,7 +194,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T11:10:32.000Z
-Stopped at: Phase 19 19-04 complete; 19-05 next
+Stopped at: Phase 19 complete; Phase 20 next
 
 Phase 17 handoff:
 
@@ -224,4 +225,6 @@ Phase 19 19-01 summary: .planning/phases/19-solver-backed-full-artifact-verifier
 Phase 19 19-02 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-02-SUMMARY.md
 Phase 19 19-03 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-03-SUMMARY.md
 Phase 19 19-04 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-04-SUMMARY.md
+Phase 19 solver report: .planning/phases/19-solver-backed-full-artifact-verifier/19-SOLVER-REPORT.md
+Phase 19 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-SUMMARY.md
 Resume file: .planning/ROADMAP.md

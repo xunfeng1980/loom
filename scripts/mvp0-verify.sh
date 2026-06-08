@@ -93,6 +93,10 @@ info "Running Phase 18 complete Vortex reader gate..."
 bash scripts/complete-vortex-reader-test.sh
 ok "scripts/complete-vortex-reader-test.sh"
 
+info "Running Phase 19 solver-backed verifier gate..."
+bash scripts/solver-verifier-test.sh
+ok "scripts/solver-verifier-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"
