@@ -1,8 +1,9 @@
 use loom_core::artifact_verifier::{ArtifactVerificationStatus, ConstraintDischargeStatus};
 use loom_core::runtime_abi::{
-    decide_runtime_execution, RuntimeDecisionInput, RuntimeEmissionDisposition,
-    RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimeLoweringDisposition,
-    RuntimeReaderSupport, RuntimeSafetyPolicy, UnsupportedPredicatePolicy,
+    decide_runtime_execution, plan_split, ConcurrencyPolicy, RuntimeDecisionInput,
+    RuntimeDiagnosticCode, RuntimeEmissionDisposition, RuntimeExecutionDecision,
+    RuntimeFallbackPolicy, RuntimeLoweringDisposition, RuntimeReaderSupport, RuntimeSafetyPolicy,
+    ScanShape, SplitDescriptor, UnsupportedPredicatePolicy,
 };
 
 fn native_ready_input() -> RuntimeDecisionInput {
@@ -61,6 +62,16 @@ fn interpreter_only_requires_explicit_fallback() {
 
     let report = decide_runtime_execution(&input);
     assert_eq!(report.decision, RuntimeExecutionDecision::FailClosed);
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        RuntimeDiagnosticCode::FallbackDisabled
+    );
+    assert_eq!(report.diagnostics[0].path, "$.policy.fallback");
+    assert_eq!(
+        report.diagnostics[0].message,
+        "native lowering is unavailable and interpreter fallback is disabled"
+    );
 
     input.policy.fallback = RuntimeFallbackPolicy::AllowInterpreter;
     let report = decide_runtime_execution(&input);
@@ -68,6 +79,12 @@ fn interpreter_only_requires_explicit_fallback() {
         report.decision,
         RuntimeExecutionDecision::InterpreterFallback
     );
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        RuntimeDiagnosticCode::LoweringUnsupported
+    );
+    assert_eq!(report.diagnostics[0].path, "$.lowering.disposition");
 }
 
 #[test]
@@ -78,9 +95,43 @@ fn unsupported_predicate_policy_can_scan_all_or_fail_closed() {
     let report = decide_runtime_execution(&input);
     assert_eq!(report.decision, RuntimeExecutionDecision::FailClosed);
     assert_eq!(report.diagnostics[0].code.as_str(), "unsupported-predicate");
+    assert_eq!(
+        report.diagnostics[0].code,
+        RuntimeDiagnosticCode::UnsupportedPredicate
+    );
+    assert_eq!(report.diagnostics[0].path, "$.predicate");
 
     input.policy.unsupported_predicate = UnsupportedPredicatePolicy::ScanAll;
     let report = decide_runtime_execution(&input);
     assert_eq!(report.decision, RuntimeExecutionDecision::NativeCandidate);
     assert_eq!(report.diagnostics[0].code.as_str(), "unsupported-predicate");
+    assert_eq!(report.diagnostics[0].path, "$.predicate");
+}
+
+#[test]
+fn invalid_split_remains_runtime_policy_owned() {
+    let mut input = native_ready_input();
+    input.split_supported = false;
+
+    let report = decide_runtime_execution(&input);
+    assert_eq!(report.decision, RuntimeExecutionDecision::FailClosed);
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        RuntimeDiagnosticCode::InvalidSplit
+    );
+    assert_eq!(report.diagnostics[0].path, "$.split");
+
+    let err = plan_split(
+        SplitDescriptor::RowRange { start: 4, end: 4 },
+        ScanShape {
+            column_count: 1,
+            row_count: 8,
+            splittable: true,
+        },
+        ConcurrencyPolicy::SingleWorker,
+    )
+    .expect_err("empty split should fail in runtime planning");
+    assert_eq!(err.code, RuntimeDiagnosticCode::InvalidSplit);
+    assert_eq!(err.path, "$.split");
 }

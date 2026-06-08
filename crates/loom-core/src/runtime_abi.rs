@@ -123,6 +123,16 @@ impl ConcurrencyPolicy {
             Self::ParallelSplits { .. } => "parallel-splits",
         }
     }
+
+    pub fn as_key(self) -> String {
+        match self {
+            Self::SingleWorker => "single-worker".to_string(),
+            Self::SerializeSharedScan => "serialize-shared-scan".to_string(),
+            Self::ParallelSplits { requested_workers } => {
+                format!("parallel-splits:{requested_workers}")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -450,6 +460,29 @@ pub struct RuntimeCacheKey {
     pub canonical_input: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RuntimeCacheCompatibilityStatus {
+    Hit,
+    Miss,
+    KeyMismatch,
+}
+
+impl RuntimeCacheCompatibilityStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Hit => "hit",
+            Self::Miss => "miss",
+            Self::KeyMismatch => "key-mismatch",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeCacheCompatibility {
+    pub status: RuntimeCacheCompatibilityStatus,
+    pub diagnostics: Vec<RuntimeDiagnostic>,
+}
+
 impl RuntimeCacheKey {
     pub fn build(input: &RuntimeCacheKeyInput) -> Self {
         let canonical_input = canonical_cache_input(input);
@@ -457,6 +490,31 @@ impl RuntimeCacheKey {
         Self {
             stable_id: format!("loom-runtime-v{}-{hash:016x}", input.abi_version.as_key()),
             canonical_input,
+        }
+    }
+
+    pub fn compatibility_with(&self, candidate: &Self) -> RuntimeCacheCompatibility {
+        if self.stable_id != candidate.stable_id {
+            return RuntimeCacheCompatibility {
+                status: RuntimeCacheCompatibilityStatus::Miss,
+                diagnostics: Vec::new(),
+            };
+        }
+
+        if self.canonical_input == candidate.canonical_input {
+            return RuntimeCacheCompatibility {
+                status: RuntimeCacheCompatibilityStatus::Hit,
+                diagnostics: Vec::new(),
+            };
+        }
+
+        RuntimeCacheCompatibility {
+            status: RuntimeCacheCompatibilityStatus::KeyMismatch,
+            diagnostics: vec![RuntimeDiagnostic::new(
+                RuntimeDiagnosticCode::CacheKeyMismatch,
+                "$.cache.key",
+                "runtime cache key stable id matched but canonical input differed",
+            )],
         }
     }
 }
@@ -475,7 +533,7 @@ fn canonical_cache_input(input: &RuntimeCacheKeyInput) -> String {
         input.split.as_key(),
         input.policy.fallback.as_str(),
         input.policy.unsupported_predicate.as_str(),
-        input.policy.concurrency.as_str(),
+        input.policy.concurrency.as_key(),
     )
 }
 
