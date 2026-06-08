@@ -441,6 +441,16 @@ pub struct SourceIngressReport {
     pub oracle_evidence: Option<SourceOracleEvidence>,
 }
 
+/// Verifier-accepted source artifact handoff.
+///
+/// This wrapper is intentionally source-neutral: adapters may return bytes only
+/// together with the accepted source-ingress report that justifies them.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceIngressAcceptedArtifact {
+    pub bytes: Vec<u8>,
+    pub report: SourceIngressReport,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SourceIngressReportError {
     MissingArtifactEmission,

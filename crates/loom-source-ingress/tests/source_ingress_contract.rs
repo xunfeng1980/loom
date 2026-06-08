@@ -1,7 +1,8 @@
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic,
     SourceDiagnosticCode, SourceDiagnosticFamily, SourceEmissionDisposition, SourceEmissionKind,
-    SourceFacts, SourceIdentity, SourceIngressReport, SourceIngressStatus,
+    SourceFacts, SourceIdentity, SourceIngressAcceptedArtifact, SourceIngressReport,
+    SourceIngressStatus,
     SourceLayoutFact, SourceLoweringDisposition, SourceOracleEvidence, SourceOracleStrategy,
     SourceSchemaFact, SourceSegmentFact, SourceSplitFact,
 };
@@ -75,6 +76,13 @@ fn source_ingress_contract_public_types_exist() {
     let _ = SourceOracleStrategy::Unsupported;
     let _ = SourceOracleEvidence::unsupported("not supported by mock adapter");
     let _ = SourceArtifactVerificationSummary::not_applicable();
+    let _ = SourceIngressAcceptedArtifact {
+        bytes: vec![0, 1, 2],
+        report: SourceIngressReport::rejected(
+            SourceIdentity::new("mock", "mock-format"),
+            SourceDiagnostic::new(SourceDiagnosticCode::OpenFailed, "$", "open failed"),
+        ),
+    };
     let _ = SourceIngressReport::rejected(
         SourceIdentity::new("mock", "mock-format"),
         SourceDiagnostic::new(SourceDiagnosticCode::OpenFailed, "$", "open failed"),
@@ -217,6 +225,33 @@ fn accepted_report_requires_facts_verifier_acceptance_and_oracle_evidence() {
         SourceOracleEvidence::unsupported("oracle not checked"),
     );
     assert!(no_oracle.is_err());
+}
+
+#[test]
+fn accepted_artifact_handoff_carries_only_bytes_and_report() {
+    let artifact = SourceArtifactVerificationSummary::accepted(4, "artifact accepted");
+    let oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::DecodedRowFixture, 3);
+    let report = SourceIngressReport::accepted(
+        mock_facts(3),
+        SourceEmissionKind::Lmp1,
+        SourceEmissionDisposition::CanonicalRaw,
+        SourceLoweringDisposition::ProductionLoweringSupported,
+        artifact,
+        oracle,
+    )
+    .expect("accepted report");
+
+    let handoff = SourceIngressAcceptedArtifact {
+        bytes: vec![b'L', b'M', b'C', b'1'],
+        report,
+    };
+
+    assert_eq!(handoff.bytes, b"LMC1");
+    assert_eq!(handoff.report.status, SourceIngressStatus::Accepted);
+    assert_eq!(
+        handoff.report.artifact_verification.artifact_byte_len,
+        Some(handoff.bytes.len())
+    );
 }
 
 #[test]
