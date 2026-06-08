@@ -487,22 +487,25 @@ compare_production_jit_output(&report, &expected_value_buffers, &native_output)?
 | A1 | Warning signs and helper naming recommendations are inferred implementation guidance, not verified behavior. | Common Pitfalls / Recommended Project Structure | Planner may need to adjust exact hook names after implementation inspection. |
 | A2 | An internal `loom_duckdb_internal.h` is an acceptable way to expose a non-public helper if C++ needs it. | Architecture Patterns / Pitfall 5 | Planner may choose a different bridge mechanism, such as keeping all orchestration inside existing `loom.h` build plumbing without a new header. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where should route diagnostics be exposed for tests?**
    - What we know: public SQL API must stay `loom_scan(path)`, and test-only controls are allowed. [CITED: .planning/phases/24-duckdb-native-execution-integration-mvp/24-CONTEXT.md]
    - What's unclear: whether the implementation should use env-gated stderr/report files, a private SQL/debug function, or a C++ unit-test hook. [ASSUMED]
    - Recommendation: prefer an internal env-gated JSON/text report consumed only by `scripts/duckdb-native-integration-test.sh`, because it avoids public SQL API expansion. [ASSUMED]
+   - **RESOLVED:** Phase 24 exposes diagnostics only through internal runtime/C bridge helpers and the route-aware integration gate. It does not add a public SQL mode knob or public debug table function. Tradeoff: tests get enough observability to prove native-vs-interpreter routing, while user-facing SQL remains stable and narrow.
 
 2. **Can DuckDB interruption be observed directly in this extension path?**
    - What we know: Phase 23 has explicit `NativeBackendCancellation`, and Phase 24 should map host cancellation if observable. [CITED: crates/loom-native-melior/src/backend.rs] [CITED: .planning/phases/24-duckdb-native-execution-integration-mvp/24-CONTEXT.md]
    - What's unclear: the current `LoomScan` signature uses `ClientContext &`, but no cancellation API has been verified in local extension code. [VERIFIED: codebase grep]
    - Recommendation: include cancellation model tests at the Rust helper level, and add DuckDB host cancellation only if a stable 1.5.3 API is found during implementation. [ASSUMED]
+   - **RESOLVED:** Phase 24 requires Rust helper/backend cancellation coverage and C++ error/release-path coverage. Direct host interruption is opportunistic: wire it only if the local DuckDB 1.5.3 extension API exposes a stable cancellation check during implementation, otherwise record the limitation in `24-DUCKDB-NATIVE-REPORT.md`. Tradeoff: cancellation semantics stay tested at Loom's native boundary without betting the MVP on an unverified DuckDB hook.
 
 3. **How should native value buffers map to actual decoded values?**
    - What we know: Phase 23 JIT seed currently produces deterministic primitive value-buffer evidence and has mismatch diagnostics. [CITED: crates/loom-native-melior/src/jit.rs]
    - What's unclear: whether Phase 24 must execute actual artifact-derived native values or can prove the adapter over current Phase 23 zero-buffer seed while comparing/failing closed. [CITED: .planning/phases/23-production-native-backend-implementation/23-BACKEND-REPORT.md]
    - Recommendation: plan the MVP to call current Phase 23 JIT seed, compare against interpreter/reference buffers, and only emit native buffers when comparison succeeds. [CITED: .planning/phases/24-duckdb-native-execution-integration-mvp/24-CONTEXT.md]
+   - **RESOLVED:** Phase 24 proves the adapter over the current Phase 23 primitive native value-buffer seed, maps supported fixed-width primitive buffers into DuckDB `DataChunk` output through internal helpers, and fails closed on mismatches. It does not claim full artifact-derived native execution semantics beyond the Phase 23 seed. Tradeoff: this creates a real DuckDB integration slice now, while leaving broader native equivalence and coverage hardening to Phase 25.
 
 ## Environment Availability
 
