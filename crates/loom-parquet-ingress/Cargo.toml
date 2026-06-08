@@ -1,0 +1,14 @@
+[package]
+name = "loom-parquet-ingress"
+version = "0.1.0"
+edition = "2021"
+description = "Isolated local Parquet file ingress adapter for Loom"
+
+[dependencies]
+arrow-schema = { workspace = true }
+loom-core = { path = "../loom-core" }
+loom-source-ingress = { path = "../loom-source-ingress" }
+parquet = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
