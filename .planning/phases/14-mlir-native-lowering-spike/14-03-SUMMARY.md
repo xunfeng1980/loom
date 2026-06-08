@@ -35,8 +35,9 @@
 
 ## Toolchain Evidence
 
-`mlir-opt` was not installed on this machine, so optional textual MLIR validation
-was explicitly skipped. This is expected for Phase 14.
+Homebrew LLVM provides `mlir-opt` 21.1.2 at
+`/opt/homebrew/opt/llvm/bin/mlir-opt`, and optional textual MLIR validation
+passed.
 
 ## Follow-Up
 

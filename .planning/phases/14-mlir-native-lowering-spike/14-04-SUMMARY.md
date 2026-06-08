@@ -40,8 +40,9 @@
 - `git diff --check`
 - `for plan in 01 02 03 04; do test -f ".planning/phases/14-mlir-native-lowering-spike/14-${plan}-SUMMARY.md"; done`
 
-All gates passed. `mlir-opt` was not installed, so optional textual MLIR
-validation was skipped explicitly by `scripts/native-lowering-test.sh`.
+All gates passed. Homebrew LLVM provides `mlir-opt` 21.1.2 at
+`/opt/homebrew/opt/llvm/bin/mlir-opt`, and optional textual MLIR validation
+passed through `scripts/native-lowering-test.sh`.
 
 ## Requirements
 

@@ -92,10 +92,12 @@ compiler-correctness proof.
 ### optional toolchain evidence
 
 `scripts/native-lowering-test.sh` runs focused Rust tests and checks Phase 14
-planning/docs. It also probes `mlir-opt` when available.
+planning/docs. It also probes `mlir-opt` when available, including the Homebrew
+LLVM location used on macOS.
 
-On this machine, `mlir-opt` was not installed, so optional textual MLIR
-validation was skipped explicitly. This is expected and does not fail the gate.
+On this machine, Homebrew LLVM provides `mlir-opt` 21.1.2 at
+`/opt/homebrew/opt/llvm/bin/mlir-opt`, and optional textual MLIR validation
+passed.
 
 ## Deferred
 
@@ -127,7 +129,7 @@ git diff --check
 ```
 
 `scripts/native-lowering-test.sh` reports optional `mlir-opt` validation as
-skipped when local MLIR tooling is unavailable.
+passed when local MLIR tooling is available, and skipped when unavailable.
 
 ## Requirement Closure
 

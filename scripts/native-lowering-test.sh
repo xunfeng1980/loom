@@ -23,6 +23,22 @@ ok() { echo "${GRN}[PASS]${RST} $*"; }
 skip() { echo "${YLW}[SKIP]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
+find_mlir_opt() {
+    if command -v mlir-opt >/dev/null 2>&1; then
+        command -v mlir-opt
+        return 0
+    fi
+    for candidate in \
+        /opt/homebrew/opt/llvm/bin/mlir-opt \
+        /usr/local/opt/llvm/bin/mlir-opt; do
+        if [ -x "${candidate}" ]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    return 1
+}
+
 PHASE_DIR=".planning/phases/14-mlir-native-lowering-spike"
 CONTRACT="${PHASE_DIR}/14-LOWERING-CONTRACT.md"
 
@@ -68,7 +84,7 @@ info "Running focused Rust native_lowering tests..."
 cargo test -p loom-core native_lowering
 ok "cargo test -p loom-core native_lowering"
 
-if command -v mlir-opt >/dev/null 2>&1; then
+if mlir_opt="$(find_mlir_opt)"; then
     info "Running optional mlir-opt parse validation..."
     tmp_mlir="$(mktemp "${TMPDIR:-/tmp}/loom-native-lowering.XXXXXX.mlir")"
     trap 'rm -f "${tmp_mlir}"' EXIT
@@ -85,7 +101,7 @@ module {
   }
 }
 MLIR
-    mlir-opt "${tmp_mlir}" >/dev/null
+    "${mlir_opt}" "${tmp_mlir}" >/dev/null
     ok "optional mlir-opt textual MLIR validation"
 else
     skip "mlir-opt not installed; optional textual MLIR validation skipped"
