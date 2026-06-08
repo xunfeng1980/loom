@@ -38,7 +38,10 @@ fn raw_i32_desc(values: &[i32]) -> LayoutDescription {
     LayoutDescription {
         data_type: DataType::Int32,
         root: LayoutNode::Raw {
-            data: values.iter().flat_map(|value| value.to_le_bytes()).collect(),
+            data: values
+                .iter()
+                .flat_map(|value| value.to_le_bytes())
+                .collect(),
             elem_size: 4,
             count: values.len(),
         },
@@ -186,7 +189,10 @@ fn accepted_fixture_bundle() -> (PathBuf, PathBuf, PathBuf, PathBuf, Vec<u8>, St
     let artifact_sha256 = sha256_bytes(&bytes);
     std::fs::write(&artifact, &bytes).expect("write artifact");
     write_json(&evidence, accepted_evidence_json(&artifact_sha256));
-    write_json(&sidecar, accepted_sidecar_json(&artifact, &artifact_sha256, &evidence));
+    write_json(
+        &sidecar,
+        accepted_sidecar_json(&artifact, &artifact_sha256, &evidence),
+    );
     (
         local_fixture("accepted-table-metadata.json"),
         sidecar,
@@ -218,7 +224,10 @@ fn accepted_binding_requires_hash_verifier_and_source_oracle_evidence() {
     assert_eq!(decode_i32_table(&accepted.bytes), vec![7, -1, 42]);
     assert_eq!(accepted.report.status, IcebergBindingStatus::Accepted);
     let facts = accepted.report.facts.as_ref().expect("accepted facts");
-    assert_eq!(facts.identity.table_uuid, "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30");
+    assert_eq!(
+        facts.identity.table_uuid,
+        "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30"
+    );
     assert_eq!(facts.identity.table_name, "demo.events");
     assert_eq!(facts.identity.schema_id, 7);
     assert_eq!(facts.identity.snapshot_id, 314159);
@@ -229,7 +238,11 @@ fn accepted_binding_requires_hash_verifier_and_source_oracle_evidence() {
     );
     assert_eq!(facts.artifact_sha256, expected_sha);
 
-    let evidence = accepted.report.evidence.as_ref().expect("accepted evidence");
+    let evidence = accepted
+        .report
+        .evidence
+        .as_ref()
+        .expect("accepted evidence");
     assert!(evidence.artifact_verification.required);
     assert!(evidence.artifact_verification.accepted);
     assert_eq!(
@@ -239,7 +252,10 @@ fn accepted_binding_requires_hash_verifier_and_source_oracle_evidence() {
     assert!(evidence.artifact_verification.summary.contains("LMC1"));
     assert!(evidence.artifact_verification.summary.contains("LMT1"));
     assert_eq!(evidence.source_report.status, SourceIngressStatus::Accepted);
-    assert_eq!(evidence.source_report.emission_kind, SourceEmissionKind::Lmt1);
+    assert_eq!(
+        evidence.source_report.emission_kind,
+        SourceEmissionKind::Lmt1
+    );
     assert_eq!(
         evidence.source_report.emission_disposition,
         SourceEmissionDisposition::CanonicalTable
@@ -302,7 +318,11 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
     let missing_evidence_sidecar = sidecar.with_file_name("missing-evidence-sidecar.json");
     write_json(
         &missing_evidence_sidecar,
-        accepted_sidecar_json(&artifact, &artifact_sha256, &evidence.with_file_name("missing-evidence.json")),
+        accepted_sidecar_json(
+            &artifact,
+            &artifact_sha256,
+            &evidence.with_file_name("missing-evidence.json"),
+        ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &missing_evidence_sidecar, &artifact)
         .expect_err("missing evidence file must fail closed");
