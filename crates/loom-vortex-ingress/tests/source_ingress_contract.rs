@@ -1,16 +1,17 @@
+use std::path::Path;
+use std::process::Command;
 use std::sync::LazyLock;
 
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceDiagnosticFamily,
     SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
 };
-use loom_vortex_ingress::source_contract::{
-    source_diagnostic_from_vortex_ingress_diagnostic,
-    source_diagnostic_from_vortex_reader_diagnostic,
-};
 use loom_vortex_ingress::{
-    reader_facts_from_vortex_buffer, source_facts_from_vortex_buffer,
-    source_ingress_report_from_vortex_buffer, VortexIngressDiagnostic, VortexIngressDiagnosticCode,
+    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_buffer, reader_facts_from_vortex_buffer,
+    source_coverage_from_vortex_coverage, source_diagnostic_from_vortex_ingress_diagnostic,
+    source_diagnostic_from_vortex_reader_diagnostic, source_facts_from_vortex_buffer,
+    source_ingress_report_from_vortex_buffer, source_report_from_vortex_reader_facts,
+    VortexIngressDiagnostic, VortexIngressDiagnosticCode, VortexIngressStatus,
     VortexReaderDiagnostic, VortexReaderDiagnosticCode, VortexReaderEmissionKind,
     VortexReaderSupport,
 };
@@ -264,4 +265,72 @@ fn unsupported_valid_source_report_keeps_facts_without_artifact_or_oracle() {
         SourceArtifactVerificationSummary::not_applicable()
     );
     assert!(report.oracle_evidence.is_none());
+}
+
+#[test]
+fn old_vortex_api_and_new_source_helpers_compile_together() {
+    let bytes = vortex_file_bytes(buffer![7i32, -1, 42]);
+
+    let legacy_inspect = inspect_vortex_buffer(&bytes);
+    let legacy_facts = reader_facts_from_vortex_buffer(&bytes).expect("legacy reader facts");
+    let legacy_artifact =
+        emit_supported_lmc1_from_vortex_buffer(&bytes).expect("legacy artifact emission");
+
+    let source_facts = source_facts_from_vortex_buffer(&bytes).expect("source facts");
+    let source_report = source_report_from_vortex_reader_facts(&legacy_facts);
+    let source_coverage = source_coverage_from_vortex_coverage(&legacy_facts.coverage);
+    let source_diagnostic =
+        source_diagnostic_from_vortex_reader_diagnostic(&VortexReaderDiagnostic::new(
+            VortexReaderDiagnosticCode::VerificationRequired,
+            "$.verification",
+            "verification required",
+        ));
+    let ingress_diagnostic =
+        source_diagnostic_from_vortex_ingress_diagnostic(&VortexIngressDiagnostic::new(
+            VortexIngressDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            "conversion unsupported",
+        ));
+
+    assert_eq!(legacy_inspect.status, VortexIngressStatus::Accepted);
+    assert_eq!(legacy_facts.support, VortexReaderSupport::Accepted);
+    assert_eq!(legacy_facts.emission_kind, VortexReaderEmissionKind::Lmp1);
+    assert!(!legacy_artifact.is_empty());
+    assert_eq!(source_facts.row_count, legacy_facts.row_count);
+    assert_eq!(source_report.status, SourceIngressStatus::Accepted);
+    assert_eq!(source_coverage.emission_kind, SourceEmissionKind::Lmp1);
+    assert_eq!(
+        source_diagnostic.code,
+        SourceDiagnosticCode::VerificationFailed
+    );
+    assert_eq!(
+        ingress_diagnostic.code,
+        SourceDiagnosticCode::UnsupportedConversion
+    );
+}
+
+#[test]
+fn generic_contract_sources_remain_source_neutral() {
+    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .expect("workspace root");
+    let output = Command::new("rg")
+        .args([
+            "-n",
+            "Vortex|vortex",
+            "crates/loom-source-ingress/src",
+            "crates/loom-source-ingress/tests",
+        ])
+        .current_dir(&workspace_root)
+        .output()
+        .expect("run rg source-neutral guard");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "generic source-ingress crate must not contain source-specific vocabulary:\n{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
