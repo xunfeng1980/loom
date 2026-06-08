@@ -35,6 +35,7 @@ fn main() {
     emit_alp_f32(out_dir, &mut manifest);
     emit_alp_f64(out_dir, &mut manifest);
     emit_mixed_table(out_dir);
+    emit_native_primitives_table(out_dir, &mut manifest);
 
     fs::write(out_dir.join("manifest.tsv"), manifest).expect("write manifest");
     println!("wrote {}", out_dir.display());
@@ -103,6 +104,51 @@ fn emit_mixed_table(out_dir: &Path) {
     let payload = encode_table_payload(&table).expect("encode mixed table payload");
     let payload = wrap_table_payload(&payload).expect("wrap mixed table payload");
     fs::write(out_dir.join("mixed-table.loom"), payload).expect("write table payload");
+}
+
+fn emit_native_primitives_table(out_dir: &Path, manifest: &mut String) {
+    let row_count = 4usize;
+    let table = TableDescription {
+        row_count,
+        columns: vec![
+            TableColumn {
+                name: "i32_col".to_string(),
+                layout: raw_zeros(DataType::Int32, 4, row_count),
+            },
+            TableColumn {
+                name: "i64_col".to_string(),
+                layout: raw_zeros(DataType::Int64, 8, row_count),
+            },
+            TableColumn {
+                name: "f32_col".to_string(),
+                layout: raw_zeros(DataType::Float32, 4, row_count),
+            },
+            TableColumn {
+                name: "f64_col".to_string(),
+                layout: raw_zeros(DataType::Float64, 8, row_count),
+            },
+        ],
+    };
+
+    let payload = encode_table_payload(&table).expect("encode native primitives table payload");
+    let payload = wrap_table_payload(&payload).expect("wrap native primitives table payload");
+    fs::write(out_dir.join("native-primitives-table.loom"), payload)
+        .expect("write native primitives table payload");
+    manifest.push_str(
+        "native-primitives-table\tLMT1\tLMC1\ti32|i64|f32|f64\t0,0,0.0,0.0|0,0,0.0,0.0|0,0,0.0,0.0|0,0,0.0,0.0\t4\t4\t0|0|0.0|0.0\t0|0|0.0|0.0\t0|0|0.0|0.0\n",
+    );
+}
+
+fn raw_zeros(data_type: DataType, elem_size: u8, row_count: usize) -> LayoutDescription {
+    LayoutDescription {
+        data_type,
+        root: loom_core::l1_model::LayoutNode::Raw {
+            data: vec![0; row_count * elem_size as usize],
+            elem_size,
+            count: row_count,
+        },
+        row_count,
+    }
 }
 
 fn emit_nullable_bitpack(out_dir: &Path, manifest: &mut String) {
