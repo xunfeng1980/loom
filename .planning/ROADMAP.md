@@ -643,7 +643,7 @@ or arbitrary Vortex semantic compatibility.
 
 ### Phase 23: Production Native Backend Implementation
 
-**Status:** Executing (2026-06-08). 23-01 and 23-02 complete; 23-03 next.
+**Status:** Executing (2026-06-08). 23-01 through 23-03 complete; 23-04 next.
 **Depends on:** Phase 22.
 **Ordering decision:** Implement the real production backend after the ABI/policy is explicit and before any host engine depends on it. This phase should move beyond the Phase 20 textual seed by adding a compiled `loom.decode` ODS dialect, op verifiers, lowering/conversion passes, a `melior` pass pipeline, LLVM lowering, verifier-gated LLVM/JIT execution, strict toolchain/release gates, and equivalence evidence against the interpreter for the supported Phase 21 matrix. It must consume the Phase 22 `RuntimePlan` and `RuntimeCacheKey` as mandatory backend inputs, add ABI version/capability and layout evidence while keeping public `loom_runtime.h` unfrozen, and model cancellation plus backend/toolchain identity before long-running native kernels. It must not let a Rust/C++ natural wrapper define the C ABI, and it must not become DuckDB integration, cache hardening, Iceberg binding, or StarRocks comparison.
 **Research:** `.planning/phases/23-production-native-backend-implementation/23-RESEARCH.md`
@@ -670,7 +670,7 @@ or arbitrary Vortex semantic compatibility.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 23-03-PLAN.md - Production melior and LLVM lowering pipeline
+- [x] 23-03-PLAN.md - Production melior and LLVM lowering pipeline
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
