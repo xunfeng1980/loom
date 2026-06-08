@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: complete
-stopped_at: Phase 08 completed
+status: active
+stopped_at: Phase 09 started
 last_updated: "2026-06-08T00:00:00.000Z"
-last_activity: 2026-06-08 -- Phase 08 multi-column table output completed
+last_activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP started
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 8
   total_plans: 23
   completed_plans: 23
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 08 complete — ready for next milestone planning
+**Current focus:** Phase 09 — verifier-and-safety-boundary-mvp
 
 ## Current Position
 
-Phase: 08 — COMPLETE
-Plan: 4 of 4
-Status: Phase 08 completed
-Last activity: 2026-06-08 -- Phase 08 multi-column table output completed
+Phase: 09 — NOT PLANNED
+Plan: 0 of 0
+Status: Phase 09 started; discussion/planning pending
+Last activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP started
 
-Progress: [██████████] 100%
+Progress: [████████▉ ] 89%
 
 ## Performance Metrics
 
@@ -111,11 +111,15 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Discuss and plan Phase 09 verifier scope.
 
 ### Blockers/Concerns
 
 - ArrowArrayStream remains deferred after Phase 8. Current evidence favors direct DataChunk population because the existing FFI emits bare Arrow column arrays and the direct path supports mixed table payloads without widening the ABI.
+
+### Roadmap Evolution
+
+- Phase 9 added: Verifier and Safety Boundary MVP.
 
 ### Quick Tasks Completed
 
@@ -143,6 +147,11 @@ None yet.
 | v2 table | DUCK-05: DuckDB multi-column loom_scan | Complete | Phase 8 |
 | v2 table | STREAM-01: ArrowArrayStream decision | Complete | Phase 8 |
 | v2 table | VERIFY-05: Multi-column SQL acceptance | Complete | Phase 8 |
+| v2 safety | SAFE-01: Verifier module with typed diagnostics | Planned | Phase 9 |
+| v2 safety | SAFE-02: Structural invariant rejection coverage | Planned | Phase 9 |
+| v2 safety | SAFE-03: Decode entry verifier routing | Planned | Phase 9 |
+| v2 safety | SAFE-04: CLI verifier visibility | Planned | Phase 9 |
+| v2 safety | VERIFY-06: Negative verifier release gate | Planned | Phase 9 |
 
 ## Session Continuity
 

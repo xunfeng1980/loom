@@ -86,6 +86,14 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 - [x] **STREAM-01**: ArrowArrayStream is either implemented for table-shaped output or explicitly deferred with repo-specific API evidence and rationale
 - [x] **VERIFY-05**: Multi-column SQL acceptance checks pass and the existing `scripts/mvp0-verify.sh` release gate remains green
 
+### Safety Boundary
+
+- [ ] **SAFE-01**: A verifier module walks MVP0 layout and table descriptions before decode and returns typed diagnostics rather than panicking
+- [ ] **SAFE-02**: Verifier coverage rejects malformed structural invariants, including truncated buffers, invalid row/count relationships, non-monotonic run ends, unsupported type/layout combinations, unknown kernels, and table column mismatches
+- [ ] **SAFE-03**: Decode entry points either call the verifier or explicitly route through an existing authoritative decode-time check for each invariant
+- [ ] **SAFE-04**: `loom inspect` exposes verifier pass/fail status for binary payloads and descriptors
+- [ ] **VERIFY-06**: Negative verifier fixtures are included in the release gate and prove malformed inputs fail closed before DuckDB execution
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -93,8 +101,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
-| Formal verifier, totality/termination proofs | Acceptance bar is "correct query results"; the verifier is a later milestone (design.md §5, §7, §13) |
-| Safety-boundary demo (rejecting out-of-bounds / non-terminating input) | Belongs with the verifier; not part of the decode-chain proof |
+| Formal verifier, totality/termination proofs | Phase 9 is only a first-pass structural verifier; formal totality proofs remain later work (design.md §5, §7, §13) |
+| Non-terminating-input safety demo | Phase 9 covers malformed structural payloads; full totality/non-termination proof belongs to the formal verifier |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
 | Versioned distribution container, feature flags, content-hash URI, native fast-path | Distribution concerns follow the decode chain (design.md §10–11) |
@@ -147,6 +155,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DUCK-05 | Phase 8 | Complete |
 | STREAM-01 | Phase 8 | Complete |
 | VERIFY-05 | Phase 8 | Complete |
+| SAFE-01 | Phase 9 | Planned |
+| SAFE-02 | Phase 9 | Planned |
+| SAFE-03 | Phase 9 | Planned |
+| SAFE-04 | Phase 9 | Planned |
+| VERIFY-06 | Phase 9 | Planned |
 
 **Coverage:**
 
@@ -154,9 +167,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v2 foundation requirements: 5 total
 - v2 developer-experience requirements: 4 total
 - v2 table-output requirements: 7 total
-- Mapped to phases: 41
+- v2 safety-boundary requirements: 5 total
+- Mapped to phases: 46
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 8 multi-column table output completed*
+*Last updated: 2026-06-08 — Phase 9 verifier and safety boundary MVP started*

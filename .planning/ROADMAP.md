@@ -28,6 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: MVP0 Hardening and Release Baseline** - Convert the completed MVP0 into a reproducible, documented baseline with one-command verification, stale planning cleanup, and explicit next-milestone boundaries (completed 2026-06-08)
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
+- [ ] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command
 
 ## Phase Details
 
@@ -217,10 +218,30 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 08-03-PLAN.md - Extend DuckDB `loom_scan` for multiple columns and decide ArrowArrayStream vs direct DataChunk population based on working API evidence (DUCK-05, STREAM-01)
 - [x] 08-04-PLAN.md - Add multi-column SQL acceptance checks, update docs, close requirements, and run full release gates (VERIFY-05)
 
+### Phase 9: Verifier and Safety Boundary MVP
+
+**Goal**: Loom rejects malformed or unsafe MVP0 layout/table payloads before decode, with typed verifier diagnostics, CLI visibility, and regression cases that prove the safety boundary exists independently of successful SQL output
+**Depends on**: Phase 8
+**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04, VERIFY-06
+**Success Criteria** (what must be TRUE):
+
+  1. A verifier module walks `LayoutDescription` and `TableDescription` before decode and returns typed diagnostics instead of panicking
+  2. The verifier rejects at least truncated buffers, invalid row/count relationships, invalid dictionary codes domain assumptions, non-monotonic run ends, unknown kernels, unsupported data-type/layout combinations, and table column mismatches
+  3. Decode entry points call the verifier or document why an existing decode-time check is the authoritative verifier for that invariant
+  4. `loom inspect` exposes verifier pass/fail status for payloads and descriptors
+  5. A negative fixture/test suite proves malformed payloads fail closed without crossing into DuckDB execution
+  6. `scripts/mvp0-verify.sh` remains green and includes the verifier regression suite
+
+**Plans**: 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-discuss-phase 9, then /gsd-plan-phase 9)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -232,3 +253,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
+| 9. Verifier and Safety Boundary MVP | 0/0 | Not planned | - |
