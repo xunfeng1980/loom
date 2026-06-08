@@ -99,7 +99,7 @@ fn write_json(path: &Path, text: String) {
 fn sidecar_json(
     artifact_path: &Path,
     artifact_sha256: &str,
-    evidence_path: Option<&Path>,
+    evidence_path: Option<&str>,
     source_status: bool,
     verifier_status: bool,
     oracle_status: bool,
@@ -109,7 +109,7 @@ fn sidecar_json(
             format!(
                 r#",
   "source_oracle_evidence_path": "{}""#,
-                path.display()
+                path
             )
         })
         .unwrap_or_default();
@@ -125,7 +125,9 @@ fn sidecar_json(
   "loom_artifact_sha256": "{}"{},
   "source_evidence": {{
     "accepted": {},
-    "status": "{}"
+    "status": "{}",
+    "path": "source/demo-events.parquet",
+    "sha256": "{}"
   }},
   "verifier_evidence": {{
     "accepted": {},
@@ -141,12 +143,33 @@ fn sidecar_json(
         artifact_sha256,
         evidence_path,
         source_status,
-        if source_status { "accepted" } else { "rejected" },
+        if source_status {
+            "accepted"
+        } else {
+            "rejected"
+        },
+        source_sha256(),
         verifier_status,
-        if verifier_status { "accepted" } else { "rejected" },
+        if verifier_status {
+            "accepted"
+        } else {
+            "rejected"
+        },
         oracle_status,
-        if oracle_status { "accepted" } else { "rejected" }
+        if oracle_status {
+            "accepted"
+        } else {
+            "rejected"
+        }
     )
+}
+
+fn source_sha256() -> String {
+    sha256_bytes(b"demo.events source rows: 7,-1,42\n")
+}
+
+fn accepted_values_sha256() -> String {
+    sha256_bytes(b"loom-decoded-int32-v1\ncolumn=id\nrow_count=3\n7\n-1\n42\n")
 }
 
 fn accepted_evidence_json(artifact_sha256: &str) -> String {
@@ -157,6 +180,8 @@ fn accepted_evidence_json(artifact_sha256: &str) -> String {
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "{}",
+  "source_path": "source/demo-events.parquet",
+  "source_sha256": "{}",
   "source": {{
     "accepted": true,
     "status": "accepted"
@@ -165,12 +190,15 @@ fn accepted_evidence_json(artifact_sha256: &str) -> String {
     "identity": "demo.events#snapshot=314159#schema=7",
     "strategy": "decoded-row-fixture",
     "row_count": 3,
+    "values_sha256": "{}",
     "accepted": true,
     "oracle_accepted": true,
     "status": "accepted"
   }}
 }}"#,
-        artifact_sha256
+        artifact_sha256,
+        source_sha256(),
+        accepted_values_sha256()
     )
 }
 
@@ -189,7 +217,7 @@ fn accepted_bundle() -> (PathBuf, PathBuf, PathBuf, PathBuf, String) {
         sidecar_json(
             &artifact,
             &artifact_sha256,
-            Some(&evidence),
+            Some("accepted-table-source-evidence.json"),
             true,
             true,
             true,
@@ -236,13 +264,20 @@ fn static_mismatch_sidecars_fail_before_artifact_bytes_are_trusted() {
 
 #[test]
 fn schema_snapshot_table_and_artifact_mismatches_return_no_bytes() {
-    let (metadata, sidecar, artifact, evidence, artifact_sha256) = accepted_bundle();
+    let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
 
     let schema_sidecar = sidecar.with_file_name("schema-mismatch.json");
     write_json(
         &schema_sidecar,
-        sidecar_json(&artifact, &artifact_sha256, Some(&evidence), true, true, true)
-            .replace(r#""schema_id": 7"#, r#""schema_id": 8"#),
+        sidecar_json(
+            &artifact,
+            &artifact_sha256,
+            Some("accepted-table-source-evidence.json"),
+            true,
+            true,
+            true,
+        )
+        .replace(r#""schema_id": 7"#, r#""schema_id": 8"#),
     );
     assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
         &metadata,
@@ -253,8 +288,15 @@ fn schema_snapshot_table_and_artifact_mismatches_return_no_bytes() {
     let snapshot_sidecar = sidecar.with_file_name("snapshot-mismatch.json");
     write_json(
         &snapshot_sidecar,
-        sidecar_json(&artifact, &artifact_sha256, Some(&evidence), true, true, true)
-            .replace(r#""snapshot_id": 314159"#, r#""snapshot_id": 271828"#),
+        sidecar_json(
+            &artifact,
+            &artifact_sha256,
+            Some("accepted-table-source-evidence.json"),
+            true,
+            true,
+            true,
+        )
+        .replace(r#""snapshot_id": 314159"#, r#""snapshot_id": 271828"#),
     );
     assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
         &metadata,
@@ -265,7 +307,15 @@ fn schema_snapshot_table_and_artifact_mismatches_return_no_bytes() {
     let table_sidecar = sidecar.with_file_name("table-mismatch.json");
     write_json(
         &table_sidecar,
-        sidecar_json(&artifact, &artifact_sha256, Some(&evidence), true, true, true).replace(
+        sidecar_json(
+            &artifact,
+            &artifact_sha256,
+            Some("accepted-table-source-evidence.json"),
+            true,
+            true,
+            true,
+        )
+        .replace(
             "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30",
             "00000000-0000-0000-0000-000000000000",
         ),
@@ -282,7 +332,7 @@ fn schema_snapshot_table_and_artifact_mismatches_return_no_bytes() {
         sidecar_json(
             &artifact,
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-            Some(&evidence),
+            Some("accepted-table-source-evidence.json"),
             true,
             true,
             true,
@@ -297,7 +347,7 @@ fn schema_snapshot_table_and_artifact_mismatches_return_no_bytes() {
 
 #[test]
 fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
-    let (metadata, sidecar, artifact, evidence, artifact_sha256) = accepted_bundle();
+    let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
 
     let verifier_status_sidecar = sidecar.with_file_name("verifier-status-mismatch.json");
     write_json(
@@ -305,7 +355,7 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
         sidecar_json(
             &artifact,
             &artifact_sha256,
-            Some(&evidence),
+            Some("accepted-table-source-evidence.json"),
             true,
             false,
             true,
@@ -327,7 +377,7 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
         sidecar_json(
             &malformed_artifact,
             &malformed_sha,
-            Some(&evidence),
+            Some("accepted-table-source-evidence.json"),
             true,
             true,
             true,
@@ -340,15 +390,27 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
     ));
 
     let missing_source = sidecar.with_file_name("missing-source-evidence.json");
-    let missing_source_json =
-        sidecar_json(&artifact, &artifact_sha256, Some(&evidence), true, true, true).replace(
+    let missing_source_json = sidecar_json(
+        &artifact,
+        &artifact_sha256,
+        Some("accepted-table-source-evidence.json"),
+        true,
+        true,
+        true,
+    )
+    .replace(
+        &format!(
             r#",
-  "source_evidence": {
+  "source_evidence": {{
     "accepted": true,
-    "status": "accepted"
-  }"#,
-            "",
-        );
+    "status": "accepted",
+    "path": "source/demo-events.parquet",
+    "sha256": "{}"
+  }}"#,
+            source_sha256()
+        ),
+        "",
+    );
     write_json(&missing_source, missing_source_json);
     assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
         &metadata,
@@ -357,16 +419,23 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
     ));
 
     let missing_oracle = sidecar.with_file_name("missing-oracle-evidence.json");
-    let missing_oracle_json =
-        sidecar_json(&artifact, &artifact_sha256, Some(&evidence), true, true, true).replace(
-            r#",
+    let missing_oracle_json = sidecar_json(
+        &artifact,
+        &artifact_sha256,
+        Some("accepted-table-source-evidence.json"),
+        true,
+        true,
+        true,
+    )
+    .replace(
+        r#",
   "oracle_evidence": {
     "accepted": true,
     "status": "accepted",
     "strategy": "decoded-row-fixture"
   }"#,
-            "",
-        );
+        "",
+    );
     write_json(&missing_oracle, missing_oracle_json);
     assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
         &metadata,
@@ -379,25 +448,46 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
 fn stale_source_and_forged_oracle_evidence_flags_return_no_bytes() {
     let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
 
-    for fixture in [
-        "stale-source-evidence.json",
-        "forged-oracle-evidence.json",
-    ] {
+    for fixture in ["stale-source-evidence.json", "forged-oracle-evidence.json"] {
         let forged_sidecar = sidecar.with_file_name(format!("{fixture}.sidecar.json"));
         write_json(
             &forged_sidecar,
-            sidecar_json(
-                &artifact,
-                &artifact_sha256,
-                Some(&local_fixture(fixture)),
-                true,
-                true,
-                true,
-            ),
+            sidecar_json(&artifact, &artifact_sha256, Some(fixture), true, true, true),
         );
         assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
             &metadata,
             &forged_sidecar,
+            &artifact,
+        ));
+    }
+}
+
+#[test]
+fn source_oracle_evidence_paths_are_local_sidecar_relative() {
+    let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
+
+    for path in [
+        "s3://bucket/evidence.json",
+        "gs://bucket/evidence.json",
+        "abfs://container/evidence.json",
+        "warehouse/evidence.json",
+        "catalog/evidence.json",
+        "credential/evidence.json",
+        "token/evidence.json",
+        "secret/evidence.json",
+        "access_key/evidence.json",
+        "/tmp/evidence.json",
+        "../accepted-table-source-evidence.json",
+    ] {
+        let policy_sidecar =
+            sidecar.with_file_name(format!("policy-{}.json", path.replace(['/', ':'], "_")));
+        write_json(
+            &policy_sidecar,
+            sidecar_json(&artifact, &artifact_sha256, Some(path), true, true, true),
+        );
+        assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
+            &metadata,
+            &policy_sidecar,
             &artifact,
         ));
     }

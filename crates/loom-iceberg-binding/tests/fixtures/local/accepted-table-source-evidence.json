@@ -4,6 +4,8 @@
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7",
+  "source_path": "source/demo-events.parquet",
+  "source_sha256": "bb6b66e15e903679917b57081ac69055e09609301a2b2492018ccae99d50fb97",
   "source": {
     "accepted": true,
     "status": "accepted"
@@ -12,6 +14,7 @@
     "identity": "demo.events#snapshot=314159#schema=7",
     "strategy": "decoded-row-fixture",
     "row_count": 3,
+    "values_sha256": "3b65eb8437363680576abab8834307d5437c52f05aef69c69cb1b7854df4d90e",
     "accepted": true,
     "oracle_accepted": true,
     "status": "accepted"

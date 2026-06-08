@@ -119,7 +119,8 @@ fn write_json(path: &Path, text: String) {
 fn accepted_sidecar_json(
     artifact_path: &Path,
     artifact_sha256: &str,
-    evidence_path: &Path,
+    evidence_path: &str,
+    source_sha256: &str,
 ) -> String {
     format!(
         r#"{{
@@ -135,7 +136,8 @@ fn accepted_sidecar_json(
   "source_evidence": {{
     "accepted": true,
     "status": "accepted",
-    "path": "tests/fixtures/local/source/demo-events.parquet"
+    "path": "source/demo-events.parquet",
+    "sha256": "{}"
   }},
   "verifier_evidence": {{
     "accepted": true,
@@ -150,11 +152,24 @@ fn accepted_sidecar_json(
 }}"#,
         artifact_path.display(),
         artifact_sha256,
-        evidence_path.display()
+        evidence_path,
+        source_sha256
     )
 }
 
-fn accepted_evidence_json(artifact_sha256: &str) -> String {
+fn source_sha256() -> String {
+    sha256_bytes(b"demo.events source rows: 7,-1,42\n")
+}
+
+fn accepted_values_sha256() -> String {
+    sha256_bytes(b"loom-decoded-int32-v1\ncolumn=id\nrow_count=3\n7\n-1\n42\n")
+}
+
+fn accepted_evidence_json(
+    artifact_sha256: &str,
+    source_sha256: &str,
+    values_sha256: &str,
+) -> String {
     format!(
         r#"{{
   "row_count": 3,
@@ -162,6 +177,8 @@ fn accepted_evidence_json(artifact_sha256: &str) -> String {
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "{}",
+  "source_path": "source/demo-events.parquet",
+  "source_sha256": "{}",
   "source": {{
     "accepted": true,
     "status": "accepted"
@@ -170,12 +187,13 @@ fn accepted_evidence_json(artifact_sha256: &str) -> String {
     "identity": "demo.events#snapshot=314159#schema=7",
     "strategy": "decoded-row-fixture",
     "row_count": 3,
+    "values_sha256": "{}",
     "accepted": true,
     "oracle_accepted": true,
     "status": "accepted"
   }}
 }}"#,
-        artifact_sha256
+        artifact_sha256, source_sha256, values_sha256
     )
 }
 
@@ -187,11 +205,21 @@ fn accepted_fixture_bundle() -> (PathBuf, PathBuf, PathBuf, PathBuf, Vec<u8>, St
     let bytes = accepted_lmc1_table_bytes();
     assert_verifier_accepts(&bytes);
     let artifact_sha256 = sha256_bytes(&bytes);
+    let source_sha256 = source_sha256();
+    let values_sha256 = accepted_values_sha256();
     std::fs::write(&artifact, &bytes).expect("write artifact");
-    write_json(&evidence, accepted_evidence_json(&artifact_sha256));
+    write_json(
+        &evidence,
+        accepted_evidence_json(&artifact_sha256, &source_sha256, &values_sha256),
+    );
     write_json(
         &sidecar,
-        accepted_sidecar_json(&artifact, &artifact_sha256, &evidence),
+        accepted_sidecar_json(
+            &artifact,
+            &artifact_sha256,
+            "accepted-table-source-evidence.json",
+            &source_sha256,
+        ),
     );
     (
         local_fixture("accepted-table-metadata.json"),
@@ -283,7 +311,8 @@ fn sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance() {
         accepted_sidecar_json(
             &artifact,
             "0000000000000000000000000000000000000000000000000000000000000000",
-            &sidecar.with_file_name("accepted-table-source-evidence.json"),
+            "accepted-table-source-evidence.json",
+            &source_sha256(),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &stale_sidecar, &artifact)
@@ -301,7 +330,8 @@ fn sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance() {
         accepted_sidecar_json(
             &mutated_artifact,
             &artifact_sha256,
-            &sidecar.with_file_name("accepted-table-source-evidence.json"),
+            "accepted-table-source-evidence.json",
+            &source_sha256(),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &mutated_sidecar, &mutated_artifact)
@@ -321,7 +351,8 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
         accepted_sidecar_json(
             &artifact,
             &artifact_sha256,
-            &evidence.with_file_name("missing-evidence.json"),
+            "missing-evidence.json",
+            &source_sha256(),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &missing_evidence_sidecar, &artifact)
@@ -357,6 +388,23 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
                 .to_string(),
         ),
         (
+            "source-path",
+            r#""source_path": "source/demo-events.parquet""#.to_string(),
+            r#""source_path": "source/other-events.parquet""#.to_string(),
+        ),
+        (
+            "source-sha",
+            format!(r#""source_sha256": "{}""#, source_sha256()),
+            r#""source_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff""#
+                .to_string(),
+        ),
+        (
+            "values-sha",
+            format!(r#""values_sha256": "{}""#, accepted_values_sha256()),
+            r#""values_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff""#
+                .to_string(),
+        ),
+        (
             "source-status",
             r#""accepted": true"#.to_string(),
             r#""accepted": false"#.to_string(),
@@ -375,9 +423,19 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
             .replacen(&from, &to, 1);
         write_json(&mutated_evidence, text);
         let mutated_sidecar = sidecar.with_file_name(format!("{name}-sidecar.json"));
+        let evidence_file_name = mutated_evidence
+            .file_name()
+            .expect("mutated evidence file name")
+            .to_str()
+            .expect("utf8 evidence file name");
         write_json(
             &mutated_sidecar,
-            accepted_sidecar_json(&artifact, &artifact_sha256, &mutated_evidence),
+            accepted_sidecar_json(
+                &artifact,
+                &artifact_sha256,
+                evidence_file_name,
+                &source_sha256(),
+            ),
         );
 
         let report = bind_iceberg_ref_from_paths(&metadata, &mutated_sidecar, &artifact)

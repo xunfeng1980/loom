@@ -7,9 +7,10 @@ description = "Adapter-local local-file Iceberg table/ref binding proof for Loom
 [dependencies]
 loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
+arrow-array = { workspace = true }
+arrow-data = { workspace = true }
+arrow-schema = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-arrow-array = { workspace = true }
-arrow-schema = { workspace = true }
