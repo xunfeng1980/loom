@@ -42,7 +42,7 @@ If only one thing works, it is this end-to-end chain.
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- No active MVP0/v2 execution scope. Phase 10 is ready for final milestone review.
+- [ ] Phase 11: Distribution Container v0 (`DIST-01` through `DIST-05`)
 
 ### Out of Scope
 
@@ -52,7 +52,7 @@ If only one thing works, it is this end-to-end chain.
 - Formal verifier and totality/termination proofs — Phase 9 is only a first-pass structural verifier; full formal proof remains later work (`design.md` §5, §7, §13)
 - Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
-- Versioned distribution container, feature flags, content-hash URI, native fast-path (`design.md` §10–11) — distribution concerns come after the decode chain works
+- Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
 - Correctness guarantees beyond matching the reference decoder — Loom guarantees safety + well-formedness, never correctness (`design.md` §7)
 
 ## Context
@@ -95,6 +95,7 @@ If only one thing works, it is this end-to-end chain.
 | Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
 | Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Complete — Phase 9 |
 | Phase 10 should return to L2 numeric compression coverage | COV-01 was the remaining explicit v2 decode coverage item; ALP Float32/Float64 exercised the L2 path without jumping to MLIR or formal verification scope | Complete — Phase 10 |
+| Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Active — Phase 11 |
 
 ## Evolution
 
@@ -114,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 10 (Additional L2 Kernels and Numeric Compression Coverage) — ALP Float32/Float64 L2 coverage is complete. Formal verifier, MLIR/native lowering, and distribution container work remain future scope.*
+*Last updated: 2026-06-08 after Phase 11 research — active scope is Distribution Container v0. Formal verifier, MLIR/native lowering, and real Vortex file/container ingress are roadmap placeholders.*

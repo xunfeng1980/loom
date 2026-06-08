@@ -2,14 +2,12 @@
 
 ## Overview
 
-Loom MVP0 proves one narrow chain end-to-end: a single Vortex-encoded column is decoded by a
-pure-Rust interpreter through four L1 declarative encodings (bitpack, FOR, dict, RLE) and one L2
-total-function kernel (FSST), producing well-formed Apache Arrow that crosses a C ABI seam into a
-C++ DuckDB table function and is queried with SQL. The five phases follow the build-order dependency
-graph exactly: FFI invariants first (they cannot be retrofitted), DuckDB scaffold second (proves
-linkage before decode logic is written), L1 bitpack+FOR+Arrow builders third (the foundation all
-other decoders write into), L1 dict+RLE+L2 escape fourth (incremental completions that unlock Phase
-5), and FSST+full verification last (highest complexity, requires all prior phases).
+Loom MVP0 proves one narrow chain end-to-end: Vortex-style encoded payloads are decoded by a
+pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed Apache
+Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL. Phases 1-10
+complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
+introducing a versioned distribution container boundary; Phases 12-14 are roadmap placeholders for
+formal safety proof, native lowering, and real Vortex file ingress.
 
 ## Phases
 
@@ -30,6 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
+- [ ] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (research complete, ready for discussion/planning)
+- [ ] **Phase 12: Formal Verifier / Safety Proof MVP** - Placeholder for moving beyond structural validation into a formal safety proof surface (not expanded)
+- [ ] **Phase 13: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the distribution boundary exists (not expanded)
+- [ ] **Phase 14: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
 ## Phase Details
 
@@ -277,10 +279,43 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] 10-04-PLAN.md - Document ALP coverage, run final gates, close COV-01, and write Phase 10 summaries (COV-01)
 
+### Phase 11: Distribution Container v0
+
+**Goal:** Introduce the first explicit Loom distribution artifact boundary by wrapping existing single-column `LMP1` and table-shaped `LMT1` payloads in a versioned `LMC1` container with magic/version, required and optional feature flags, a checked section directory, verifier routing, CLI visibility, and release-gate coverage.
+**Requirements:** DIST-01, DIST-02, DIST-03, DIST-04, DIST-05
+**Depends on:** Phase 10
+**Research:** `.planning/phases/11-distribution-container-v0/11-RESEARCH.md`
+**Success Criteria** (what must be TRUE):
+
+  1. `LMC1` container encode/decode roundtrips both single-column and table payloads while preserving raw `LMP1`/`LMT1` compatibility
+  2. The container header exposes version, required features, optional features, and a checked section directory with offset/length validation
+  3. Unknown required features, unsupported versions, duplicate required sections, truncated sections, and offset overflows fail closed with typed diagnostics
+  4. `loom inspect` shows container version, feature sets, section summary, schema/payload kind, and verifier pass/fail status
+  5. Generated fixtures and `scripts/mvp0-verify.sh` cover container-wrapped payload success plus negative container rejection cases
+
+**Plans:** TBD by `/gsd-plan-phase 11`
+
+**Recommended Waves:** TBD after discussion; research suggests separating core container codec, verifier/CLI integration, and fixture/DuckDB release-gate conversion.
+
+### Phase 12: Formal Verifier / Safety Proof MVP
+
+**Status:** Placeholder only. Do not expand until Phase 11 is planned or complete.
+**Depends on:** Phase 11
+
+### Phase 13: MLIR/Native Lowering Spike
+
+**Status:** Placeholder only. Do not expand until Phase 11 is planned or complete.
+**Depends on:** Phase 12 or an explicit revised dependency decision.
+
+### Phase 14: Real Vortex File/Container Ingress
+
+**Status:** Placeholder only. Do not expand until Phase 11 is planned or complete.
+**Depends on:** Phase 11; may move after Phase 13 depending on milestone goals.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -294,3 +329,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
+| 11. Distribution Container v0 | 0/? | Research Complete | - |
+| 12. Formal Verifier / Safety Proof MVP | 0/? | Placeholder | - |
+| 13. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
+| 14. Real Vortex File/Container Ingress | 0/? | Placeholder | - |

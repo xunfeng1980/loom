@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: complete
-stopped_at: Phase 10 complete
+status: planning
+stopped_at: Phase 11 research complete
 last_updated: "2026-06-08T02:30:27.270Z"
-last_activity: 2026-06-08 -- Phase 10 complete; COV-01 closed after full MVP0 release gate
+last_activity: 2026-06-08 -- Phase 11 Distribution Container v0 research completed; Phase 12-14 placeholders added
 progress:
-  total_phases: 10
+  total_phases: 14
   completed_phases: 10
   total_plans: 31
   completed_plans: 31
-  percent: 100
+  percent: 71
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 10 complete — additional-l2-kernels-and-numeric-compression-coverage
+**Current focus:** Phase 11 — distribution-container-v0
 
 ## Current Position
 
-Phase: 10 (additional-l2-kernels-and-numeric-compression-coverage) — COMPLETE
-Plan: 4 of 4
-Status: Phase 10 complete
-Last activity: 2026-06-08 -- Phase 10 complete; COV-01 closed after full MVP0 release gate
+Phase: 11 (distribution-container-v0) — RESEARCH COMPLETE
+Plan: not planned yet
+Status: Ready for Phase 11 discussion/planning
+Last activity: 2026-06-08 -- Phase 11 Distribution Container v0 research completed; Phase 12-14 placeholders added
 
-Progress: [██████████] 100%
+Progress: [███████   ] 71%
 
 ## Performance Metrics
 
@@ -129,6 +129,8 @@ None yet.
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
 - Phase 10 complete: ALP Float32/Float64 has core kernel support, fixtures and Vortex primitive oracle comparisons, FFI roundtrips, CLI inspect/decode output, DuckDB SQL smoke coverage, documentation, and full release-gate verification.
+- Phase 11 research complete: recommended `LMC1` container v0 with magic/version, required/optional feature flags, checked section directory, `LMP1`/`LMT1` compatibility wrappers, verifier/CLI visibility, and negative release-gate coverage.
+- Phase 12, Phase 13, and Phase 14 added as roadmap placeholders only: formal verifier/safety proof MVP, MLIR/native lowering spike, and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
 
@@ -161,9 +163,13 @@ None yet.
 | v2 safety | SAFE-03: Decode entry verifier routing | Complete | Phase 9 |
 | v2 safety | SAFE-04: CLI verifier visibility | Complete | Phase 9 |
 | v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
+| v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Planned | Phase 11 |
+| v3 safety | Formal verifier / safety proof MVP | Placeholder | Phase 12 |
+| v3 native | MLIR/native lowering spike | Placeholder | Phase 13 |
+| v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 14 |
 
 ## Session Continuity
 
 Last session: 2026-06-08T02:20:31.197Z
-Stopped at: Phase 10 complete
-Resume file: .planning/PROJECT.md
+Stopped at: Phase 11 research complete
+Resume file: .planning/phases/11-distribution-container-v0/11-RESEARCH.md

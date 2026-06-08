@@ -94,6 +94,18 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 - [x] **SAFE-04**: `loom inspect` exposes verifier pass/fail status for binary payloads and descriptors
 - [x] **VERIFY-06**: Negative verifier fixtures are included in the release gate and prove malformed inputs fail closed before DuckDB execution
 
+## v3 Requirements
+
+Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the final distribution-IR goal.
+
+### Distribution Container
+
+- [ ] **DIST-01**: A versioned Loom distribution container (`LMC1`) wraps existing single-column `LMP1` and table `LMT1` payloads without breaking raw payload compatibility
+- [ ] **DIST-02**: The container records required and optional feature flags, and unknown required features fail closed before decode
+- [ ] **DIST-03**: A checked section directory records section kind, flags, offset, and length with overflow/truncation rejection
+- [ ] **DIST-04**: `loom inspect` exposes container version, features, sections, payload kind, schema summary, and verifier status
+- [ ] **DIST-05**: The release gate covers container-wrapped payload success and negative container rejection cases
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -161,6 +173,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | SAFE-03 | Phase 9 | Complete |
 | SAFE-04 | Phase 9 | Complete |
 | VERIFY-06 | Phase 9 | Complete |
+| DIST-01 | Phase 11 | Planned |
+| DIST-02 | Phase 11 | Planned |
+| DIST-03 | Phase 11 | Planned |
+| DIST-04 | Phase 11 | Planned |
+| DIST-05 | Phase 11 | Planned |
 
 **Coverage:**
 
@@ -170,9 +187,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v2 decode-coverage requirements: 2 total
 - v2 table-output requirements: 7 total
 - v2 safety-boundary requirements: 5 total
-- Mapped to phases: 47
+- v3 distribution-container requirements: 5 total
+- Mapped to phases: 52
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 10 ALP Float32/Float64 L2 coverage complete*
+*Last updated: 2026-06-08 — Phase 11 distribution container research added; Phase 12-14 placeholders recorded*
