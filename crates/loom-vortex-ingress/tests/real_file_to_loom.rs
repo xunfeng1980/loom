@@ -9,6 +9,8 @@ use loom_vortex_ingress::{
     emit_supported_lmc1_from_vortex_buffer, scan_i32_values_from_vortex_buffer,
     VortexIngressDiagnosticCode, VortexIngressStatus,
 };
+use vortex_array::arrays::VarBinArray;
+use vortex_array::dtype::{DType, Nullability};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
 use vortex_array::session::ArraySession;
@@ -75,9 +77,11 @@ fn real_file_to_loom_supported_i32_roundtrips_with_oracle_rows() {
 }
 
 #[test]
-fn real_file_to_loom_unsupported_i64_fails_closed() {
-    let vortex = vortex_file_bytes(buffer![7i64, -1, 42, 99]);
-    let report = emit_supported_lmc1_from_vortex_buffer(&vortex).expect_err("unsupported i64");
+fn real_file_to_loom_unsupported_utf8_fails_closed() {
+    let rows = [Some("a"), Some("b"), Some("c")];
+    let array = VarBinArray::from_iter(rows, DType::Utf8(Nullability::Nullable));
+    let vortex = vortex_file_bytes(array);
+    let report = emit_supported_lmc1_from_vortex_buffer(&vortex).expect_err("unsupported utf8");
     assert_eq!(report.status, VortexIngressStatus::Unsupported);
     assert_eq!(
         report.diagnostics[0].code,

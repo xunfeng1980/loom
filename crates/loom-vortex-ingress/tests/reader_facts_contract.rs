@@ -4,6 +4,8 @@ use loom_vortex_ingress::{
     reader_facts_from_vortex_buffer, VortexIngressStatus, VortexReaderDiagnosticCode,
     VortexReaderEmissionKind, VortexReaderSupport,
 };
+use vortex_array::arrays::VarBinArray;
+use vortex_array::dtype::{DType, Nullability};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
 use vortex_array::session::ArraySession;
@@ -101,13 +103,17 @@ fn reader_facts_contract_supported_i32_reports_complete_boundary_fields() {
 
 #[test]
 fn reader_facts_contract_unsupported_valid_file_emits_no_artifact_kind() {
-    let bytes = vortex_file_bytes(buffer![7i64, -1, 42]);
+    let rows = [Some("a"), Some("b"), Some("c")];
+    let bytes = vortex_file_bytes(VarBinArray::from_iter(
+        rows,
+        DType::Utf8(Nullability::Nullable),
+    ));
     let facts = reader_facts_from_vortex_buffer(&bytes).expect("reader facts");
 
     assert_eq!(facts.row_count, 3);
     assert_eq!(facts.support, VortexReaderSupport::Unsupported);
     assert_eq!(facts.emission_kind, VortexReaderEmissionKind::None);
-    assert!(facts.root_dtype.summary.contains("I64"));
+    assert_eq!(facts.root_dtype.kind, "utf8");
 }
 
 #[test]

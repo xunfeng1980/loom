@@ -32,6 +32,13 @@ use vortex_session::VortexSession;
 
 static RUNTIME: LazyLock<CurrentThreadRuntime> = LazyLock::new(CurrentThreadRuntime::new);
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SingleColumnSupport {
+    ptype: PType,
+    data_type: DataType,
+    elem_size: u8,
+}
+
 /// High-level classification of an ingress attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VortexIngressStatus {
@@ -356,7 +363,7 @@ fn report_for_opened_file(
     source_kind: VortexIngressSourceKind,
 ) -> VortexIngressReport {
     let mut facts = facts_from_file(file, source_kind);
-    if supported_int32_non_nullable(file).is_ok() {
+    if single_column_support(file).is_ok() {
         facts.supported_loom_payload = true;
         return VortexIngressReport::accepted(facts);
     }
@@ -406,7 +413,7 @@ fn reader_facts_from_file(
 ) -> VortexReaderFacts {
     let footer = file.footer();
     let layout = footer.layout();
-    let support = if supported_int32_non_nullable(file).is_ok() {
+    let support = if single_column_support(file).is_ok() {
         VortexReaderSupport::Accepted
     } else {
         VortexReaderSupport::Unsupported
@@ -772,7 +779,7 @@ pub fn emit_supported_lmc1_from_vortex_buffer(
     let file = opened_buffer_or_report(bytes)?;
     let mut facts = facts_from_file(&file, VortexIngressSourceKind::Buffer);
 
-    let values = scan_supported_i32_values(&file).map_err(|message| {
+    let desc = scan_supported_single_column_layout(&file).map_err(|message| {
         facts.supported_loom_payload = false;
         VortexIngressReport::unsupported(
             Some(facts.clone()),
@@ -783,7 +790,6 @@ pub fn emit_supported_lmc1_from_vortex_buffer(
     })?;
 
     facts.supported_loom_payload = true;
-    let desc = raw_i32_layout(values);
     let payload = encode_layout_payload(&desc);
     wrap_layout_payload(&payload).map_err(|err| {
         VortexIngressReport::unsupported(
@@ -812,27 +818,135 @@ pub fn scan_i32_values_from_vortex_buffer(bytes: &[u8]) -> Result<Vec<i32>, Vort
     })
 }
 
-fn supported_int32_non_nullable(file: &VortexFile) -> Result<(), String> {
-    if !matches!(
-        file.dtype(),
-        DType::Primitive(PType::I32, Nullability::NonNullable)
-    ) {
-        return Err(format!(
-            "supported slice requires non-null Int32 rows, found {:?}",
-            file.dtype()
-        ));
-    }
-
-    scan_supported_i32_values(file).map(|_| ())
+/// Scan the supported real Vortex Int64 slice through Vortex for oracle evidence.
+pub fn scan_i64_values_from_vortex_buffer(bytes: &[u8]) -> Result<Vec<i64>, VortexIngressReport> {
+    let file = opened_buffer_or_report(bytes)?;
+    let facts = facts_from_file(&file, VortexIngressSourceKind::Buffer);
+    scan_supported_i64_values(&file).map_err(|message| {
+        VortexIngressReport::unsupported(
+            Some(facts),
+            VortexIngressDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            message,
+        )
+    })
 }
 
-fn scan_supported_i32_values(file: &VortexFile) -> Result<Vec<i32>, String> {
-    if !matches!(
-        file.dtype(),
-        DType::Primitive(PType::I32, Nullability::NonNullable)
-    ) {
+/// Scan the supported real Vortex Float32 slice through Vortex for oracle evidence.
+pub fn scan_f32_values_from_vortex_buffer(bytes: &[u8]) -> Result<Vec<f32>, VortexIngressReport> {
+    let file = opened_buffer_or_report(bytes)?;
+    let facts = facts_from_file(&file, VortexIngressSourceKind::Buffer);
+    scan_supported_f32_values(&file).map_err(|message| {
+        VortexIngressReport::unsupported(
+            Some(facts),
+            VortexIngressDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            message,
+        )
+    })
+}
+
+/// Scan the supported real Vortex Float64 slice through Vortex for oracle evidence.
+pub fn scan_f64_values_from_vortex_buffer(bytes: &[u8]) -> Result<Vec<f64>, VortexIngressReport> {
+    let file = opened_buffer_or_report(bytes)?;
+    let facts = facts_from_file(&file, VortexIngressSourceKind::Buffer);
+    scan_supported_f64_values(&file).map_err(|message| {
+        VortexIngressReport::unsupported(
+            Some(facts),
+            VortexIngressDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            message,
+        )
+    })
+}
+
+fn single_column_support(file: &VortexFile) -> Result<SingleColumnSupport, String> {
+    match file.dtype() {
+        DType::Primitive(PType::I32, Nullability::NonNullable) => Ok(SingleColumnSupport {
+            ptype: PType::I32,
+            data_type: DataType::Int32,
+            elem_size: 4,
+        }),
+        DType::Primitive(PType::I64, Nullability::NonNullable) => Ok(SingleColumnSupport {
+            ptype: PType::I64,
+            data_type: DataType::Int64,
+            elem_size: 8,
+        }),
+        DType::Primitive(PType::F32, Nullability::NonNullable) => Ok(SingleColumnSupport {
+            ptype: PType::F32,
+            data_type: DataType::Float32,
+            elem_size: 4,
+        }),
+        DType::Primitive(PType::F64, Nullability::NonNullable) => Ok(SingleColumnSupport {
+            ptype: PType::F64,
+            data_type: DataType::Float64,
+            elem_size: 8,
+        }),
+        dtype => Err(format!(
+            "supported single-column matrix requires non-null Int32/Int64/Float32/Float64 rows, found {dtype:?}"
+        )),
+    }
+}
+
+fn scan_supported_single_column_layout(file: &VortexFile) -> Result<LayoutDescription, String> {
+    let support = single_column_support(file)?;
+    let (data, count) = scan_supported_single_column_raw(file, &support)?;
+
+    Ok(LayoutDescription {
+        data_type: support.data_type.clone(),
+        row_count: count,
+        root: LayoutNode::Raw {
+            data,
+            elem_size: support.elem_size,
+            count,
+        },
+    })
+}
+
+fn scan_supported_single_column_raw(
+    file: &VortexFile,
+    support: &SingleColumnSupport,
+) -> Result<(Vec<u8>, usize), String> {
+    let canonical = scan_supported_primitive_array(file, support)?;
+    let len = canonical.as_ref().len();
+    let data = match support.ptype {
+        PType::I32 => canonical
+            .as_slice::<i32>()
+            .iter()
+            .flat_map(|value| value.to_le_bytes())
+            .collect(),
+        PType::I64 => canonical
+            .as_slice::<i64>()
+            .iter()
+            .flat_map(|value| value.to_le_bytes())
+            .collect(),
+        PType::F32 => canonical
+            .as_slice::<f32>()
+            .iter()
+            .flat_map(|value| value.to_le_bytes())
+            .collect(),
+        PType::F64 => canonical
+            .as_slice::<f64>()
+            .iter()
+            .flat_map(|value| value.to_le_bytes())
+            .collect(),
+        other => {
+            return Err(format!(
+                "supported single-column matrix cannot encode {other:?} rows"
+            ))
+        }
+    };
+
+    Ok((data, len))
+}
+
+fn scan_supported_primitive_array(
+    file: &VortexFile,
+    support: &SingleColumnSupport,
+) -> Result<PrimitiveArray, String> {
+    if !matches!(file.dtype(), DType::Primitive(_, Nullability::NonNullable)) {
         return Err(format!(
-            "supported slice requires non-null Int32 rows, found {:?}",
+            "supported single-column matrix requires non-null rows, found {:?}",
             file.dtype()
         ));
     }
@@ -854,34 +968,72 @@ fn scan_supported_i32_values(file: &VortexFile) -> Result<Vec<i32>, String> {
         .execute::<PrimitiveArray>(&mut ctx)
         .map_err(|err| format!("supported slice requires primitive rows: {err}"))?;
 
-    if canonical.ptype() != PType::I32 {
+    if canonical.ptype() != support.ptype {
         return Err(format!(
-            "supported slice requires Int32 rows, found {:?}",
-            canonical.ptype()
+            "supported single-column matrix expected {:?} rows, found {:?}",
+            support.ptype,
+            canonical.ptype(),
         ));
     }
 
     let validity = PrimitiveArrayExt::validity(&canonical);
     if has_nulls(&validity, canonical.as_ref().len()) {
-        return Err("supported slice requires non-null Int32 rows".to_string());
+        return Err("supported single-column matrix requires non-null rows".to_string());
     }
 
-    Ok(canonical.as_slice::<i32>().to_vec())
+    Ok(canonical)
 }
 
-fn raw_i32_layout(values: Vec<i32>) -> LayoutDescription {
-    LayoutDescription {
-        data_type: DataType::Int32,
-        row_count: values.len(),
-        root: LayoutNode::Raw {
-            data: values
-                .iter()
-                .flat_map(|value| value.to_le_bytes())
-                .collect(),
-            elem_size: 4,
-            count: values.len(),
-        },
+fn scan_supported_i32_values(file: &VortexFile) -> Result<Vec<i32>, String> {
+    let support = single_column_support(file)?;
+    if support.ptype != PType::I32 {
+        return Err(format!(
+            "supported Int32 oracle requires Int32 rows, found {:?}",
+            file.dtype()
+        ));
     }
+    Ok(scan_supported_primitive_array(file, &support)?
+        .as_slice::<i32>()
+        .to_vec())
+}
+
+fn scan_supported_i64_values(file: &VortexFile) -> Result<Vec<i64>, String> {
+    let support = single_column_support(file)?;
+    if support.ptype != PType::I64 {
+        return Err(format!(
+            "supported Int64 oracle requires Int64 rows, found {:?}",
+            file.dtype()
+        ));
+    }
+    Ok(scan_supported_primitive_array(file, &support)?
+        .as_slice::<i64>()
+        .to_vec())
+}
+
+fn scan_supported_f32_values(file: &VortexFile) -> Result<Vec<f32>, String> {
+    let support = single_column_support(file)?;
+    if support.ptype != PType::F32 {
+        return Err(format!(
+            "supported Float32 oracle requires Float32 rows, found {:?}",
+            file.dtype()
+        ));
+    }
+    Ok(scan_supported_primitive_array(file, &support)?
+        .as_slice::<f32>()
+        .to_vec())
+}
+
+fn scan_supported_f64_values(file: &VortexFile) -> Result<Vec<f64>, String> {
+    let support = single_column_support(file)?;
+    if support.ptype != PType::F64 {
+        return Err(format!(
+            "supported Float64 oracle requires Float64 rows, found {:?}",
+            file.dtype()
+        ));
+    }
+    Ok(scan_supported_primitive_array(file, &support)?
+        .as_slice::<f64>()
+        .to_vec())
 }
 
 fn has_nulls(validity: &Validity, len: usize) -> bool {
