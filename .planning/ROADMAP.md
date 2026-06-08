@@ -342,7 +342,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 13: Full Loom Verifier
 
-**Status:** Active context/research. Plan not yet generated.
+**Status:** Executing. Progress 1/5 plans complete.
 **Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, mechanized Lean/Rocq soundness scaffolding, and TLA+ lifecycle/pipeline invariants.
 **Depends on:** Phase 12
 **Requirements:** VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10
@@ -361,7 +361,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 13-01-PLAN.md - Define the normative `L2Core` verifier spec and Phase 13 proof-obligation matrix (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-10)
+- [x] 13-01-PLAN.md - Define the normative `L2Core` verifier spec and Phase 13 proof-obligation matrix (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
