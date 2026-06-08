@@ -11,6 +11,16 @@ pub enum SourceIngressStatus {
     Rejected,
 }
 
+impl SourceIngressStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Unsupported => "unsupported",
+            Self::Rejected => "rejected",
+        }
+    }
+}
+
 /// Loom-owned source identity facts. These fields are descriptive only and do
 /// not imply a trusted artifact handoff.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -291,12 +301,33 @@ pub enum SourceEmissionKind {
     Lmt1,
 }
 
+impl SourceEmissionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Lmp1 => "LMP1",
+            Self::Lmt1 => "LMT1",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SourceEmissionDisposition {
     None,
     CanonicalRaw,
     CanonicalTable,
     StructuredLayout,
+}
+
+impl SourceEmissionDisposition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::CanonicalRaw => "canonical-raw",
+            Self::CanonicalTable => "canonical-table",
+            Self::StructuredLayout => "structured-layout",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -306,12 +337,33 @@ pub enum SourceLoweringDisposition {
     FailClosedDeferred,
 }
 
+impl SourceLoweringDisposition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::InterpreterOnly => "interpreter-only",
+            Self::ProductionLoweringSupported => "production-lowering-supported",
+            Self::FailClosedDeferred => "fail-closed/deferred",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SourceOracleStrategy {
     SourceNativeScan,
     ArrowScan,
     DecodedRowFixture,
     Unsupported,
+}
+
+impl SourceOracleStrategy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::SourceNativeScan => "source-native-scan",
+            Self::ArrowScan => "arrow-scan",
+            Self::DecodedRowFixture => "decoded-row-fixture",
+            Self::Unsupported => "unsupported",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -389,7 +441,72 @@ pub struct SourceIngressReport {
     pub oracle_evidence: Option<SourceOracleEvidence>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SourceIngressReportError {
+    MissingArtifactEmission,
+    ArtifactVerificationNotAccepted,
+    OracleEvidenceNotAccepted,
+}
+
 impl SourceIngressReport {
+    pub fn accepted(
+        facts: SourceFacts,
+        emission_kind: SourceEmissionKind,
+        emission_disposition: SourceEmissionDisposition,
+        lowering_disposition: SourceLoweringDisposition,
+        artifact_verification: SourceArtifactVerificationSummary,
+        oracle_evidence: SourceOracleEvidence,
+    ) -> Result<Self, SourceIngressReportError> {
+        if !matches!(
+            emission_kind,
+            SourceEmissionKind::Lmp1 | SourceEmissionKind::Lmt1
+        ) {
+            return Err(SourceIngressReportError::MissingArtifactEmission);
+        }
+
+        if !artifact_verification.accepted
+            || !artifact_verification.required
+            || artifact_verification.artifact_byte_len.is_none()
+        {
+            return Err(SourceIngressReportError::ArtifactVerificationNotAccepted);
+        }
+
+        if !oracle_evidence.accepted {
+            return Err(SourceIngressReportError::OracleEvidenceNotAccepted);
+        }
+
+        Ok(Self {
+            status: SourceIngressStatus::Accepted,
+            identity: facts.identity.clone(),
+            facts: Some(facts),
+            diagnostics: Vec::new(),
+            emission_kind,
+            emission_disposition,
+            lowering_disposition,
+            artifact_verification,
+            oracle_evidence: Some(oracle_evidence),
+        })
+    }
+
+    pub fn unsupported(facts: Option<SourceFacts>, diagnostic: SourceDiagnostic) -> Self {
+        let identity = facts
+            .as_ref()
+            .map(|facts| facts.identity.clone())
+            .unwrap_or_else(|| SourceIdentity::new("unknown", "unknown"));
+
+        Self {
+            status: SourceIngressStatus::Unsupported,
+            identity,
+            facts,
+            diagnostics: vec![diagnostic],
+            emission_kind: SourceEmissionKind::None,
+            emission_disposition: SourceEmissionDisposition::None,
+            lowering_disposition: SourceLoweringDisposition::FailClosedDeferred,
+            artifact_verification: SourceArtifactVerificationSummary::not_applicable(),
+            oracle_evidence: None,
+        }
+    }
+
     pub fn rejected(identity: SourceIdentity, diagnostic: SourceDiagnostic) -> Self {
         Self {
             status: SourceIngressStatus::Rejected,
