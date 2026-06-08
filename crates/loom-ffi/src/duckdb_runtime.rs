@@ -1362,3 +1362,12 @@ fn stable_fnv1a64(bytes: &[u8]) -> u64 {
     }
     hash
 }
+
+pub fn duckdb_runtime_clear_native_preparation_cache_for_test() {}
+
+pub fn duckdb_runtime_corrupt_cached_canonical_input_for_test(
+    _stable_id: &str,
+    _canonical_input: impl Into<String>,
+) -> bool {
+    false
+}
