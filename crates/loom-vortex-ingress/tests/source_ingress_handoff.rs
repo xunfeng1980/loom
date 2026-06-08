@@ -9,12 +9,12 @@ use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::table_codec::decode_table_to_array_data;
 use loom_source_ingress::{
-    SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
-    SourceOracleStrategy,
+    SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
+    SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition, SourceOracleStrategy,
 };
 use loom_vortex_ingress::emit_source_ingress_lmc1_from_vortex_buffer;
-use vortex_array::arrays::StructArray;
-use vortex_array::dtype::FieldNames;
+use vortex_array::arrays::{StructArray, VarBinArray};
+use vortex_array::dtype::{DType, FieldNames, Nullability};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
 use vortex_array::session::ArraySession;
@@ -63,6 +63,30 @@ fn supported_table_bytes() -> Vec<u8> {
     let array = StructArray::try_new(
         FieldNames::from(["id", "score"]),
         vec![ids, scores],
+        3,
+        Validity::NonNullable,
+    )
+    .expect("struct array");
+    vortex_file_bytes(array)
+}
+
+fn unsupported_utf8_bytes() -> Vec<u8> {
+    vortex_file_bytes(VarBinArray::from_iter(
+        [Some("a"), Some("b"), Some("c")],
+        DType::Utf8(Nullability::Nullable),
+    ))
+}
+
+fn unsupported_table_bytes() -> Vec<u8> {
+    let ids = buffer![1i32, 2, 3].into_array();
+    let names = VarBinArray::from_iter(
+        [Some("a"), Some("b"), Some("c")],
+        DType::Utf8(Nullability::Nullable),
+    )
+    .into_array();
+    let array = StructArray::try_new(
+        FieldNames::from(["id", "name"]),
+        vec![ids, names],
         3,
         Validity::NonNullable,
     )
@@ -215,4 +239,78 @@ fn accepted_table_records_source_native_oracle_evidence() {
         decode_table_values(&accepted.bytes),
         (vec![1, 2, 3], vec![10, 20, 30])
     );
+}
+
+#[test]
+fn unsupported_valid_utf8_fails_closed_without_artifact_or_checked_oracle() {
+    let vortex = unsupported_utf8_bytes();
+    let report = emit_source_ingress_lmc1_from_vortex_buffer(&vortex)
+        .expect_err("unsupported source report");
+
+    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert!(report.facts.is_some());
+    assert_eq!(
+        report
+            .facts
+            .as_ref()
+            .expect("unsupported facts")
+            .root_schema
+            .as_ref()
+            .expect("root schema")
+            .logical_kind,
+        "utf8"
+    );
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(
+        report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(report.oracle_evidence.is_none());
+}
+
+#[test]
+fn unsupported_valid_table_shape_fails_closed_with_diagnostics() {
+    let vortex = unsupported_table_bytes();
+    let report = emit_source_ingress_lmc1_from_vortex_buffer(&vortex)
+        .expect_err("unsupported source report");
+
+    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert!(report.facts.is_some());
+    assert_eq!(
+        report
+            .facts
+            .as_ref()
+            .expect("unsupported facts")
+            .root_schema
+            .as_ref()
+            .expect("root schema")
+            .field_names,
+        vec!["id", "name"]
+    );
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code
+        == SourceDiagnosticCode::UnsupportedConversion
+        && diagnostic.path == "$.payload"));
+    assert!(report.oracle_evidence.is_none());
+}
+
+#[test]
+fn malformed_source_fails_closed_without_facts_or_oracle() {
+    let report = emit_source_ingress_lmc1_from_vortex_buffer(b"not a vortex file")
+        .expect_err("malformed source report");
+
+    assert_eq!(report.status, SourceIngressStatus::Rejected);
+    assert!(report.facts.is_none());
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(
+        report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(report.oracle_evidence.is_none());
+    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code
+        == SourceDiagnosticCode::OpenFailed
+        && diagnostic.path == "$"));
 }
