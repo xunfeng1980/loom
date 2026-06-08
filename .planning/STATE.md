@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-06-08T16:13:45.835Z"
-last_activity: 2026-06-08 -- Completed Phase 24 Plan 01
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-06-08T16:24:18.706Z"
+last_activity: 2026-06-08 -- Completed Phase 24 Plan 02
 progress:
   total_phases: 30
   completed_phases: 18
   total_plans: 97
-  completed_plans: 74
+  completed_plans: 75
   percent: 60
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 24 (duckdb-native-execution-integration-mvp) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
-Last activity: 2026-06-08 -- Completed Phase 24 Plan 01
+Last activity: 2026-06-08 -- Completed Phase 24 Plan 02
 
 Progress: 77%
 
@@ -37,7 +37,7 @@ Progress: 77%
 - Completed phases: 23 / 30
 - Completed executable plans: 92 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 Plan 01 complete; Plan 02 is next
+- Current position: Phase 24 Plan 02 complete; Plan 03 is next
 - Last verified gate: Phase 23 focused backend gate passed; `scripts/production-backend-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
@@ -89,6 +89,7 @@ Recent decisions affecting current work:
 - [Phase ?]: BufferHandle .as_host().as_ref() (option A) confirmed for packed bytes access
 - [Phase ?]: FoR+BitPack: use FoR::try_new(bp.into_array(), ref) with manual deltas, not FoRData::encode
 - [Phase ?]: BitPackedArrayExt::validity explicit UFCS avoids ArrayRef::validity ambiguity
+- [Phase 24]: DuckDB route controls are exposed only through loom_duckdb_internal.h; generated public loom.h excludes every loom_duckdb_* symbol and LoomDuckDb* type. — Preserves Phase 24 internal adapter boundary while preventing public ABI freeze creep.
 
 ### Pending Todos
 
@@ -162,6 +163,7 @@ None yet.
 - Phase 23 complete: `scripts/production-backend-test.sh` gates backend contract, ODS manifest, production pipeline, JIT seed, and strict ODS validation when local LLVM/MLIR tooling is available; it is wired into `scripts/mvp0-verify.sh`. Final report and summary document supported non-null primitive native evidence, deferred paths, Backend Identity, Cancellation, Unfrozen `loom_runtime.h`, and the Phase 24 DuckDB handoff.
 - Phase 24 ready for research/planning: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime/backend contract, mapping bind/init/local-init/function to plan/scan/worker/next-batch and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 24 executing: 24-01 complete with `loom_ffi::duckdb_runtime`, verifier-backed runtime planning, projection/no-predicate/full-scan/single-worker route evidence, backend prepare/JIT comparison routing, and fail-closed mismatch/cancellation diagnostics.
+- Phase 24 executing: 24-02 complete with internal `loom_duckdb_*` FFI handles, `loom_duckdb_internal.h`, panic-safe route/diagnostic/native-buffer accessors, and public-header leakage gates.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
 - Phase 27 reserved as a roadmap placeholder only: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
@@ -230,8 +232,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T16:13:45.827Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-06-08T16:24:00.827Z
+Stopped at: Completed 24-02-PLAN.md
 
 Phase 17 handoff:
 
@@ -278,4 +280,10 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/24-duckdb-native-execution-integration-mvp/24-CONTEXT.md
+Resume file: None
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 24 P02 | 5min | 2 tasks | 5 files |

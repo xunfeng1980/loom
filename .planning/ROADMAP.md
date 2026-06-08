@@ -542,6 +542,7 @@ LMC1 artifact
 - production MLIR decode dialect, Arrow/raw-buffer native writes, vectorization, and broad native kernel expansion
 
 **Plan Files:**
+
 - [x] 17-01-PLAN.md - Artifact verifier contract and report model
 - [x] 17-02-PLAN.md - Container and L1 structural artifact pipeline
 - [x] 17-03-PLAN.md - L2Core adapter and verifier facts fusion
@@ -557,6 +558,7 @@ LMC1 artifact
 **Research recommendation:** Complete reader means complete reader boundary, not arbitrary native decode of every Vortex encoding. Phase 18 should deliver recursive dtype/layout/segment/statistics facts, explicit accepted/unsupported/rejected support classification, `LMC1`/`LMT1` emission only for supported shapes, Phase 17 artifact verifier checks on emitted artifacts, and Vortex scan oracle evidence for every emitted fixture. `vortex-file` / `vortex-layout` APIs remain isolated to `loom-vortex-ingress`; `loom-core` and `loom-ffi` remain Vortex-free.
 
 **Suggested plan split:**
+
 - [x] 18-01-PLAN.md - Reader facts contract and dependency boundary
 - [x] 18-02-PLAN.md - Recursive layout/dtype/segment inspection
 - [x] 18-03-PLAN.md - Supported single-column conversion matrix
@@ -572,6 +574,7 @@ LMC1 artifact
 **Research recommendation:** Keep `loom-core` solver-neutral, emit deterministic SMT-LIB v2.7 scripts from Loom-owned obligation/report types, and add an optional `loom-solver-smt` backend crate whose command-line backend trait declares `z3`, `cvc5`, and `bitwuzla` from day one. Phase 19 implements Bitwuzla as the primary backend with a Bitwuzla-supported `QF_BV` required path; Z3/cvc5 remain optional adapters or strict cross-check paths, including possible `QF_LIA` alternate scripts. Treat `unsat` on negated bad-state queries as discharged evidence; treat `sat`, `unknown`, timeout, parse error, solver crash, missing strict solver, or cross-check disagreement as fail-closed. Phase 20+ must consume discharged facts, not `CollectedOnly` obligations.
 
 **Suggested plan split:**
+
 - [x] 19-01-PLAN.md - Solver contract and obligation report model
 - [x] 19-02-PLAN.md - Deterministic Bitwuzla-primary SMT-LIB emitter
 - [x] 19-03-PLAN.md - Optional `loom-solver-smt` crate with Bitwuzla backend
@@ -591,6 +594,7 @@ LMC1 artifact
 **Research recommendation:** Treat Phase 20 as the first production native-lowering surface seed, not a host-engine execution phase and not the full production backend. Define a `loom.decode` dialect contract and deterministic textual surface over a narrow primitive seed, require accepted artifact verification plus solver-backed `Discharged` facts before emission, lower to standard MLIR dialects for validation, and expand first through primitive Arrow/raw-buffer builders and multi-column primitive table slices. Default workspace builds must remain MLIR-free; strict native-lowering gates may require LLVM/MLIR 22. Move the real compiled C++/ODS dialect registration, `melior` pass pipeline, LLVM lowering, and LLVM/JIT execution backend to Phase 23 after Phase 22 locks the host runtime ABI/policy. This is not a claim that Phase 21 can widen encodings without touching lowering; each new encoding must declare whether it is interpreter-only, lowering-supported, or intentionally deferred with diagnostics.
 
 **Suggested plan split:**
+
 - [x] 20-01-PLAN.md - Production lowering contract and discharged-facts gate
 - [x] 20-02-PLAN.md - `loom.decode` dialect contract and textual surface
 - [x] 20-03-PLAN.md - Arrow raw-buffer builder lowering
@@ -607,6 +611,7 @@ LMC1 artifact
 **Context:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-CONTEXT.md`
 
 **Delivered plan split:**
+
 - [x] 21-01-PLAN.md - Coverage matrix and reader fact contract
 - [x] 21-02-PLAN.md - Nullable primitive and chunked primitive coverage
 - [x] 21-03-PLAN.md - Dictionary, RunEnd, and sequence coverage
@@ -633,6 +638,7 @@ remains a Phase 23 backend delta.
 **Context:** `.planning/phases/22-host-native-runtime-abi-and-execution-policy/22-CONTEXT.md`
 
 **Delivered split:**
+
 - [x] 22-01-PLAN.md - Runtime ABI contract and lifecycle model
 - [x] 22-02-PLAN.md - Verified facts handoff and execution decision policy
 - [x] 22-03-PLAN.md - Projection, predicate, and split planning envelope
@@ -704,7 +710,7 @@ semantics remain deferred.
 **Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should consume `23-BACKEND-REPORT.md`, `23-BACKEND-CONTRACT.md`, and the Phase 22 runtime ABI report, then wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts. Select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. The DuckDB layer must be a natural adapter over the Phase 22 runtime contract, not a second ABI: map DuckDB bind/init/local-init/function lifecycle to runtime/backend plan/scan/worker/next-batch, derive projection pushdown and max-thread behavior from runtime planning, and test Arrow C Data release plus error/cancel paths. It must not absorb Iceberg binding or StarRocks comparison.
 **Goal:** DuckDB `loom_scan(path)` routes eligible complete-reader artifacts through the Phase 22 runtime policy and Phase 23 production backend while preserving interpreter fallback, fail-closed diagnostics, direct DataChunk output, projection evidence, and the existing public SQL surface.
 **Requirements:** PHASE-24
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 Plans:
 **Wave 1**
 
@@ -712,7 +718,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 24-02-PLAN.md - Internal non-public DuckDB C ABI over opaque runtime/prepared handles
+- [x] 24-02-PLAN.md - Internal non-public DuckDB C ABI over opaque runtime/prepared handles
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -792,7 +798,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 21. Expanded Vortex Encoding Coverage | 5/5 | Complete | 2026-06-08 |
 | 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
-| 24. DuckDB Native Execution Integration MVP | 1/5 | In Progress | - |
+| 24. DuckDB Native Execution Integration MVP | 2/5 | In Progress|  |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
 | 26. External Source Ingress Contract | 0/? | Placeholder | - |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |
