@@ -6,10 +6,11 @@
 
 pub mod source_contract;
 pub use source_contract::{
-    source_facts_from_vortex_buffer, source_facts_from_vortex_path,
-    source_facts_from_vortex_reader_facts, source_ingress_report_from_vortex_buffer,
-    source_ingress_report_from_vortex_path, source_report_from_vortex_ingress_report,
-    source_report_from_vortex_reader_facts,
+    source_coverage_from_vortex_coverage, source_diagnostic_from_vortex_ingress_diagnostic,
+    source_diagnostic_from_vortex_reader_diagnostic, source_facts_from_vortex_buffer,
+    source_facts_from_vortex_path, source_facts_from_vortex_reader_facts,
+    source_ingress_report_from_vortex_buffer, source_ingress_report_from_vortex_path,
+    source_report_from_vortex_ingress_report, source_report_from_vortex_reader_facts,
 };
 
 use std::fmt;
