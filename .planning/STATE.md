@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Phase 27 complete
-last_updated: "2026-06-09T05:49:28+08:00"
-last_activity: 2026-06-09 -- Phase 27 complete
+status: executing
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-06-08T22:24:29Z"
+last_activity: 2026-06-08 -- Phase 28 plan 28-01 complete
 progress:
   total_phases: 30
-  completed_phases: 27
-  total_plans: 112
-  completed_plans: 112
-  percent: 90
+  completed_phases: 22
+  total_plans: 117
+  completed_plans: 94
+  percent: 73
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 28 — iceberg-ref/table-binding
+**Current focus:** Phase 28 — iceberg-ref-table-binding
 
 ## Current Position
 
-Phase: 28
-Plan: Not started
-Status: Phase 27 complete; ready to discuss Phase 28
-Last activity: 2026-06-09 -- Phase 27 complete
+Phase: 28 (iceberg-ref-table-binding) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 28
+Last activity: 2026-06-08 -- Phase 28 plan 28-01 complete
 
 Progress: 90%
 
@@ -37,7 +37,7 @@ Progress: 90%
 - Completed phases: 27 / 30
 - Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 not started; Phase 27 completed with verifier status `passed`
+- Current position: Phase 28 plan 28-01 complete; next plan is 28-02 local Iceberg metadata and sidecar fixture parsing
 - Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed and is wired into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke
 
 **Completed phase plan counts:**
@@ -198,7 +198,7 @@ None yet.
 - Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
 - Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
 - Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
-- Phase 28 next: Iceberg ref/table binding after the hardened native execution contract, source-ingress contract, and Lance/Parquet archival-readability proof are credible.
+- Phase 28 executing: 28-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 
@@ -257,14 +257,14 @@ None yet.
 | v3 engine | Native equivalence, cache, and fallback hardening | Complete | Phase 25 |
 | v3 ingress | External source ingress contract | Complete | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Next | Phase 27 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 28 |
+| v3 table | Iceberg ref/table binding | Executing | Phase 28 |
 | v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
 | v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 30 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T21:24:42.057Z
-Stopped at: Completed 27-03-PLAN.md
+Last session: 2026-06-08T22:24:29Z
+Stopped at: Completed 28-01-PLAN.md
 
 Phase 17 handoff:
 
@@ -328,3 +328,4 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P03 | 5m23s | 3 tasks | 5 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P04 | 62m | 3 tasks | 20 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P05 | 57m | 3 tasks | 3 files |
+| Phase 28-iceberg-ref-table-binding P01 | 4m | 3 tasks | 8 files |
