@@ -20,7 +20,12 @@
 //! DUCK-02: Wave-0 assurance that the C ABI seam carries correct data.
 //! T-02-IDX: Arrow buffer index assumptions pinned before any C++ buffer logic.
 
-use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
+use arrow::array::{Array, StringArray};
+use arrow::datatypes::DataType;
+use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::fsst_params::FsstParams;
+use loom_core::l1_model::{LayoutDescription, LayoutNode};
+use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::ffi::loom_decode;
 
 /// Asserts the Arrow buffer layout produced by `loom_decode`:
@@ -95,4 +100,98 @@ fn buffer_layout_n_buffers_validity_values() {
 
     // If this point is reached without a crash or ASAN report, the release path
     // is sound (no double-free, no leak detectable in the test harness).
+}
+
+#[test]
+fn buffer_layout_utf8_validity_offsets_values() {
+    let rows = [Some("alpha"), None, Some("beta")];
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: DataType::Utf8,
+        root: LayoutNode::KernelEscape {
+            kernel_id: 0,
+            params: fsst_params_for_strings(&rows),
+            count: rows.len(),
+        },
+        row_count: rows.len(),
+    });
+
+    let mut array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
+    let mut schema: FFI_ArrowSchema = unsafe { std::mem::zeroed() };
+
+    let rc = unsafe {
+        loom_decode(
+            payload.as_ptr(),
+            payload.len(),
+            &mut array as *mut _,
+            &mut schema as *mut _,
+        )
+    };
+    assert_eq!(rc, 0, "loom_decode returned nonzero rc={}", rc);
+
+    assert_eq!(array.length, 3);
+    assert_eq!(array.null_count, 1);
+    assert!(
+        array.n_buffers >= 3,
+        "Utf8 array must expose validity, offsets, and data buffers"
+    );
+    assert!(
+        !array.buffers.is_null(),
+        "buffers pointer itself must be non-null"
+    );
+
+    let validity = unsafe { *array.buffers.add(0) };
+    let offsets = unsafe { *array.buffers.add(1) };
+    let data = unsafe { *array.buffers.add(2) };
+    assert!(!validity.is_null(), "Utf8 validity buffer must be non-null");
+    assert!(!offsets.is_null(), "Utf8 offsets buffer must be non-null");
+    assert!(!data.is_null(), "Utf8 data buffer must be non-null");
+
+    let array_data =
+        unsafe { from_ffi(array, &schema) }.expect("from_ffi must succeed for Utf8 payload");
+    assert_eq!(array_data.data_type(), &DataType::Utf8);
+    let decoded = StringArray::from(array_data);
+    assert_eq!(decoded.value(0), "alpha");
+    assert!(decoded.is_null(1));
+    assert_eq!(decoded.value(2), "beta");
+    drop(decoded);
+
+    if let Some(release_fn) = schema.release {
+        unsafe { release_fn(&mut { schema } as *mut _) };
+    }
+}
+
+fn fsst_params_for_strings(rows: &[Option<&str>]) -> Vec<u8> {
+    let mut codes_offsets = Vec::with_capacity(rows.len() + 1);
+    let mut uncompressed_lengths = Vec::with_capacity(rows.len());
+    let mut validity = Vec::with_capacity(rows.len());
+    let mut codes_bytes = Vec::new();
+
+    codes_offsets.push(0);
+    for row in rows {
+        match row {
+            Some(value) => {
+                validity.push(true);
+                uncompressed_lengths.push(value.len() as u64);
+                for byte in value.as_bytes() {
+                    codes_bytes.push(255);
+                    codes_bytes.push(*byte);
+                }
+            }
+            None => {
+                validity.push(false);
+                uncompressed_lengths.push(0);
+            }
+        }
+        codes_offsets.push(codes_bytes.len() as u64);
+    }
+
+    FsstParams {
+        symbols: vec![],
+        symbol_lengths: vec![],
+        codes_offsets,
+        uncompressed_lengths,
+        validity: Some(validity),
+        codes_bytes,
+    }
+    .encode()
 }
