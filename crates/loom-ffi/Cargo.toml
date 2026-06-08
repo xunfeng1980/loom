@@ -11,8 +11,9 @@ description = "FFI staticlib — carries the extern C surface and the global all
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-loom-core = { path = "../loom-core" }
-arrow     = { workspace = true, features = ["ffi"] }
+loom-core          = { path = "../loom-core" }
+loom-native-melior = { path = "../loom-native-melior" }
+arrow              = { workspace = true, features = ["ffi"] }
 
 [build-dependencies]
 cbindgen = { workspace = true }

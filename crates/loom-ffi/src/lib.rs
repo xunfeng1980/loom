@@ -35,5 +35,8 @@ static GLOBAL: System = System;
 /// See [`ffi::loom_decode`] for the locked FFI contract.
 pub mod ffi;
 
+/// Internal DuckDB runtime planning bridge over the host-neutral runtime ABI.
+pub mod duckdb_runtime;
+
 /// Re-export the primary FFI entry point at the crate root for discoverability.
 pub use ffi::loom_decode;

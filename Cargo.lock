@@ -1591,6 +1591,7 @@ dependencies = [
  "arrow",
  "cbindgen",
  "loom-core",
+ "loom-native-melior",
 ]
 
 [[package]]
