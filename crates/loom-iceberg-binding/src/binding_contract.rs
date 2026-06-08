@@ -12,6 +12,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::container_codec::{
+    decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
+};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic, SourceDiagnosticCode,
@@ -179,6 +182,23 @@ pub fn iceberg_binding_facts_from_paths(
     let identity = table_ref_identity_from_metadata(metadata_path, &metadata)?;
 
     validate_sidecar_identity(&identity, &sidecar)?;
+    require_sidecar_evidence_accepted(
+        sidecar.source_evidence.as_ref(),
+        "sidecar source evidence accepted status is required",
+    )?;
+    require_sidecar_evidence_accepted(
+        sidecar.verifier_evidence.as_ref(),
+        "sidecar verifier evidence accepted status is required",
+    )?;
+    require_sidecar_evidence_accepted(
+        sidecar.oracle_evidence.as_ref(),
+        "sidecar oracle evidence accepted status is required",
+    )?;
+    required_sidecar_text(
+        sidecar.source_oracle_evidence_path.clone(),
+        "$.source_oracle_evidence_path",
+        "sidecar source/oracle evidence artifact path is required",
+    )?;
 
     let facts = IcebergBindingFacts {
         identity,
@@ -330,6 +350,8 @@ pub fn bind_iceberg_ref_from_paths(
         .payload_kind
         .as_deref()
         .unwrap_or("unknown payload");
+    let artifact_row_count = artifact_row_count_bound(&artifact_bytes, payload_kind)
+        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
     let artifact_verification = SourceArtifactVerificationSummary::accepted(
         artifact_bytes.len(),
         format!(
@@ -350,6 +372,7 @@ pub fn bind_iceberg_ref_from_paths(
         &facts,
         &evidence,
         &actual_sha256,
+        artifact_row_count,
         SourceOracleStrategy::DecodedRowFixture,
     )?;
 
@@ -808,6 +831,7 @@ fn validate_source_oracle_evidence(
     facts: &IcebergBindingFacts,
     evidence: &SourceOracleEvidenceArtifact,
     artifact_sha256: &str,
+    artifact_row_count: u64,
     expected_strategy: SourceOracleStrategy,
 ) -> Result<(), IcebergBindingReport> {
     let decoded = &evidence.decoded_row_fixture;
@@ -866,6 +890,12 @@ fn validate_source_oracle_evidence(
             "decoded-row fixture row count does not match source evidence row count",
         ));
     }
+    if evidence.row_count != artifact_row_count {
+        return Err(IcebergBindingReport::unsupported(
+            Some(facts.clone()),
+            "source/oracle evidence row count does not match verified Loom artifact row count",
+        ));
+    }
     if !decoded.accepted
         || !decoded.oracle_accepted
         || decoded.status.as_deref() != Some("accepted")
@@ -877,6 +907,24 @@ fn validate_source_oracle_evidence(
     }
 
     Ok(())
+}
+
+fn artifact_row_count_bound(bytes: &[u8], payload_kind: &str) -> Result<u64, String> {
+    if payload_kind.contains("LMT1") {
+        return decode_table_payload_maybe_container(bytes)
+            .map(|table| table.row_count as u64)
+            .map_err(|error| format!("verified LMT1 artifact row count could not be read: {error}"));
+    }
+
+    if payload_kind.contains("LMP1") {
+        return decode_layout_payload_maybe_container(bytes)
+            .map(|layout| layout.row_count as u64)
+            .map_err(|error| format!("verified LMP1 artifact row count could not be read: {error}"));
+    }
+
+    Err(format!(
+        "verified artifact payload kind does not expose a row count: {payload_kind}"
+    ))
 }
 
 fn validate_sidecar_identity(
