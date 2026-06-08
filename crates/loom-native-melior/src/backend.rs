@@ -208,6 +208,10 @@ pub enum NativeBackendDiagnosticCode {
     ToolchainSkipped,
     ToolchainFailed,
     BackendFailed,
+    InvalidBackendArtifact,
+    JitUnavailable,
+    JitSymbolMissing,
+    NativeOutputMismatch,
 }
 
 impl NativeBackendDiagnosticCode {
@@ -222,6 +226,10 @@ impl NativeBackendDiagnosticCode {
             Self::ToolchainSkipped => "toolchain-skipped",
             Self::ToolchainFailed => "toolchain-failed",
             Self::BackendFailed => "backend-failed",
+            Self::InvalidBackendArtifact => "invalid-backend-artifact",
+            Self::JitUnavailable => "jit-unavailable",
+            Self::JitSymbolMissing => "jit-symbol-missing",
+            Self::NativeOutputMismatch => "native-output-mismatch",
         }
     }
 }

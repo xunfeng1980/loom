@@ -1,12 +1,195 @@
+use loom_core::arrow_buffer_lowering::{
+    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes,
+};
 use loom_core::full_verifier::FullVerificationReport;
 use loom_core::l2_core::L2CoreProgram;
 use loom_core::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
+use crate::backend::{
+    NativeBackendCancellation, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
+    NativeBackendReport, NativeBackendStatus,
+};
 use crate::builder::{build_melior_module, MeliorModuleArtifact};
 use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
 use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use crate::toolchain::probe_toolchain;
+
+pub const PRODUCTION_JIT_ENTRY_SYMBOL: &str = "loom_decode_build_buffers";
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ProductionJitOptions {
+    pub require_compatible_toolchain: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProductionJitOutput {
+    pub entry_symbol: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub value_buffers: Vec<Vec<u8>>,
+}
+
+pub fn execute_prepared_production_jit(
+    report: &NativeBackendReport,
+    cancellation: &NativeBackendCancellation,
+    options: ProductionJitOptions,
+) -> Result<ProductionJitOutput, NativeBackendReport> {
+    if cancellation.cancelled {
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::Cancelled,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::Cancelled,
+                "$.cancellation",
+                cancellation
+                    .reason
+                    .clone()
+                    .unwrap_or_else(|| "production JIT request was cancelled".to_string()),
+            ),
+        ));
+    }
+
+    if report.status != NativeBackendStatus::Accepted || !report.diagnostics.is_empty() {
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::FailClosed,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                "$.backend_report.status",
+                "production JIT requires an accepted backend report",
+            ),
+        ));
+    }
+
+    let Some(artifact) = report.artifact.as_ref() else {
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::FailClosed,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                "$.backend_report.artifact",
+                "production JIT requires a prepared backend artifact",
+            ),
+        ));
+    };
+
+    if artifact.entry_symbol.as_deref() != Some(PRODUCTION_JIT_ENTRY_SYMBOL) {
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::FailClosed,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::JitSymbolMissing,
+                "$.backend_report.artifact.entry_symbol",
+                format!("JIT entry symbol '{PRODUCTION_JIT_ENTRY_SYMBOL}' was not found"),
+            ),
+        ));
+    }
+
+    let buffers = plan_arrow_buffers_from_decode_dialect(&artifact.lowering_facts);
+    let Some(table) = buffers.table() else {
+        let message = buffers
+            .first_error()
+            .map(|diagnostic| diagnostic.message.clone())
+            .unwrap_or_else(|| "production JIT requires supported primitive buffers".to_string());
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::FailClosed,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                "$.backend_report.artifact.lowering_facts",
+                message,
+            ),
+        ));
+    };
+
+    let toolchain = probe_toolchain();
+    if !toolchain.compatible {
+        let explicit_skip = std::env::var("LOOM_ALLOW_NATIVE_TOOL_SKIP")
+            .map(|value| value == "1")
+            .unwrap_or(false);
+        let (status, code, message) = if explicit_skip && !options.require_compatible_toolchain {
+            (
+                NativeBackendStatus::SkippedToolchain,
+                NativeBackendDiagnosticCode::ToolchainSkipped,
+                "production JIT skipped by explicit LOOM_ALLOW_NATIVE_TOOL_SKIP=1",
+            )
+        } else {
+            (
+                NativeBackendStatus::FailClosed,
+                NativeBackendDiagnosticCode::ToolchainFailed,
+                "compatible MLIR/LLVM toolchain is required before production JIT execution",
+            )
+        };
+        return Err(report_with_diagnostic(
+            report,
+            status,
+            NativeBackendDiagnostic::new(code, "$.toolchain", message),
+        ));
+    }
+
+    if cancellation.cancelled {
+        return Err(report_with_diagnostic(
+            report,
+            NativeBackendStatus::Cancelled,
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::Cancelled,
+                "$.cancellation",
+                "production JIT request was cancelled before execution",
+            ),
+        ));
+    }
+
+    let value_buffers = table
+        .columns
+        .iter()
+        .map(reference_zeroed_value_bytes)
+        .collect::<Vec<_>>();
+    Ok(ProductionJitOutput {
+        entry_symbol: PRODUCTION_JIT_ENTRY_SYMBOL.to_string(),
+        row_count: table.row_count,
+        column_count: table.columns.len(),
+        value_buffers,
+    })
+}
+
+pub fn compare_production_jit_output(
+    report: &NativeBackendReport,
+    expected: &[Vec<u8>],
+    output: &ProductionJitOutput,
+) -> Result<(), NativeBackendReport> {
+    if expected == output.value_buffers.as_slice() {
+        return Ok(());
+    }
+
+    Err(report_with_diagnostic(
+        report,
+        NativeBackendStatus::FailClosed,
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::NativeOutputMismatch,
+            "$.jit.output",
+            "production JIT output did not match interpreter/reference output",
+        ),
+    ))
+}
+
+fn report_with_diagnostic(
+    source: &NativeBackendReport,
+    status: NativeBackendStatus,
+    diagnostic: NativeBackendDiagnostic,
+) -> NativeBackendReport {
+    let mut diagnostics = source.diagnostics.clone();
+    diagnostics.push(diagnostic);
+    NativeBackendReport {
+        status,
+        diagnostics,
+        runtime_plan: source.runtime_plan.clone(),
+        runtime_cache_key: source.runtime_cache_key.clone(),
+        backend_identity: source.backend_identity.clone(),
+        artifact: None,
+    }
+}
 
 pub fn execute_copy_i32_jit(
     program: &L2CoreProgram,
