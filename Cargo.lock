@@ -3535,6 +3535,7 @@ dependencies = [
 name = "loom-lance-ingress"
 version = "0.1.0"
 dependencies = [
+ "arrow-array",
  "arrow-schema",
  "futures",
  "lance",
