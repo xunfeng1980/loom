@@ -63,7 +63,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Bounded oracle/equivalence gates, in-process native preparation cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (completed 2026-06-09)
 - [x] **Phase 26: External Source Ingress Contract** - Next active focus for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (completed 2026-06-09)
 - [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and actual older-version fixture compatibility as the value proof (completed 2026-06-09)
-- [ ] **Phase 28: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work
+- [x] **Phase 28: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
 - [ ] **Phase 29: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
 - [ ] **Phase 30: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
 
@@ -797,12 +797,12 @@ Plans:
 
 ### Phase 28: Iceberg Ref/Table Binding
 
-**Status:** Executing. Plans 28-01 and 28-02 have established the adapter crate, binding contract model, local metadata/sidecar fact parser, fixtures, and focused dependency/scope/parser guards.
+**Status:** Complete. Phase 28 established the adapter-local Iceberg binding crate, local metadata/sidecar fact parser, verifier/hash/source/oracle accepted binding path, fail-closed mismatch matrix, focused gate, main verifier wiring, and final evidence report without adding query or public API surfaces.
 **Depends on:** Phase 18, Phase 21, Phase 25, Phase 26, and Phase 27.
 **Goal:** Local Iceberg table/ref metadata can be bound to verifier-backed Loom artifacts through sidecar/reference evidence, preserving schema/snapshot identity, source/oracle evidence, and fail-closed verifier facts without adding query surfaces or a second source-ingress framework.
 **Requirements:** PHASE-28
 **Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 Plans:
 
 **Wave 1**
@@ -823,7 +823,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 28-05-PLAN.md - Focused gate wiring, main verifier order, and closeout evidence (PHASE-28)
+- [x] 28-05-PLAN.md - Focused gate wiring, main verifier order, and closeout evidence (PHASE-28)
 
 ### Phase 29: StarRocks + DuckDB Dual Query Surface
 
@@ -871,6 +871,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Iceberg Ref/Table Binding | 4/5 | In Progress|  |
+| 28. Iceberg Ref/Table Binding | 5/5 | Complete | 2026-06-09 |
 | 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
 | 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
