@@ -46,7 +46,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 16 remains a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence exists.
+- [ ] Phase 16 is planned and ready to execute: optional verifier-gated `melior`/LLVM/JIT backend integration for the bounded Int32 copy slice.
 - [ ] Phase 17 remains a roadmap placeholder only: production decode dialect and native kernel expansion.
 - [ ] Phase 18 remains a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice.
 - [ ] Phase 19 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
@@ -111,7 +111,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
-| Phase 16 should be the full `melior`/LLVM/JIT integration placeholder | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. | Placeholder — Phase 16 |
+| Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Planned — Phase 16 |
 | Phase 17-21 reserve the post-JIT production path | After full backend integration, the remaining final-goal path is production decode-dialect/kernel expansion, complete real-reader evidence, host native runtime policy, DuckDB integration, and native hardening over real artifacts. | Placeholder — Phases 17-21 |
 | Phase 18 should complete the Vortex reader before engine integration | Engine-integrated native execution needs stable real artifact/fact/schema semantics; those should come from a complete reader boundary, not the Phase 15 narrow ingress slice. | Placeholder — Phase 18 |
 | Phase 19 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Placeholder — Phase 19 |
@@ -138,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 16 research — engine-integrated native execution split into Phases 19-21, with Iceberg/dual-query placeholders shifted to Phases 22-23.*
+*Last updated: 2026-06-08 after Phase 16 planning — optional verifier-gated melior/LLVM/JIT backend plans created; Phase 17 remains the next production decode-dialect expansion placeholder.*

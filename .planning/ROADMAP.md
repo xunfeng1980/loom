@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
-- [ ] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Research started for promoting the Phase 14 textual spike into an optional verifier-gated programmatic MLIR -> LLVM -> JIT backend after real ingress evidence exists
+- [ ] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Planned optional verifier-gated programmatic MLIR -> LLVM -> JIT backend over the bounded Int32 copy slice after real ingress evidence exists
 - [ ] **Phase 17: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 18: Complete Vortex Reader** - Placeholder for expanding Phase 15's narrow real-ingress slice into a complete, isolated, fail-closed Vortex file/container reader before engine-integrated native execution (not expanded)
 - [ ] **Phase 19: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
@@ -457,11 +457,40 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 16: Full melior/LLVM/JIT Backend Integration
 
-**Status:** Research started. Do not execute until Phase 16 is discussed and planned.
+**Status:** Planned. Ready for `/gsd-execute-phase 16`.
 **Depends on:** Phase 14 and Phase 15.
 **Ordering decision:** Promote the Phase 14 verifier-gated textual MLIR spike into an optional programmatic backend only after real Vortex artifact shapes are visible. Scope should remain verifier-gated and fail-closed, with `melior`/LLVM/JIT kept behind optional tooling until the backend is stable.
 
 **Research:** `.planning/phases/16-full-melior-llvm-jit-backend-integration/16-RESEARCH.md`
+
+**Plans:** 5 plans across 5 waves
+
+**Wave 1**
+
+- [ ] 16-01-PLAN.md - Toolchain contract and optional backend crate boundary
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16-02-PLAN.md - Programmatic melior module construction for bounded Int32 copy
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16-03-PLAN.md - MLIR validation pipeline and skip-aware backend gate
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16-04-PLAN.md - MLIR ExecutionEngine/JIT execution and Rust reference equivalence
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16-05-PLAN.md - Final docs, release-gate wiring, and roadmap/state closeout
+
+**Cross-cutting constraints:**
+
+- The backend remains verifier-gated and accepts only the Phase 14 bounded Int32 copy slice.
+- `loom-core` and `loom-ffi` remain free of mandatory MLIR/LLVM/JIT dependencies.
+- Missing or incompatible MLIR/LLVM is skip-aware in normal gates and fail-closed in strict mode.
+- Phase 16 must not claim custom Loom dialect, vectorization, DuckDB native execution, or complete Vortex reader support.
 
 ### Phase 17: Production Decode Dialect and Native Kernel Expansion
 
@@ -529,7 +558,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
-| 16. Full melior/LLVM/JIT Backend Integration | 0/? | Research | - |
+| 16. Full melior/LLVM/JIT Backend Integration | 0/5 | Planned | - |
 | 17. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 18. Complete Vortex Reader | 0/? | Placeholder | - |
 | 19. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
