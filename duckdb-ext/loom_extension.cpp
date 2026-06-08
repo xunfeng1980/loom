@@ -292,6 +292,7 @@ struct LoomBindData : TableFunctionData {
     vector<LogicalType> column_types;
     vector<LoomValueKind> column_kinds;
     vector<vector<uint8_t>> column_payloads;
+    bool allow_interpreter_fallback = true;
     std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
     string route_decision;
     string route_cache_key;
@@ -305,6 +306,7 @@ struct LoomBindData : TableFunctionData {
         copy->column_types = column_types;
         copy->column_kinds = column_kinds;
         copy->column_payloads = column_payloads;
+        copy->allow_interpreter_fallback = allow_interpreter_fallback;
         copy->runtime_plan = runtime_plan;
         copy->route_decision = route_decision;
         copy->route_cache_key = route_cache_key;
@@ -316,7 +318,9 @@ struct LoomBindData : TableFunctionData {
         auto &other = other_p.Cast<LoomBindData>();
         return payload_path == other.payload_path && column_names == other.column_names &&
                column_types == other.column_types && column_kinds == other.column_kinds &&
-               column_payloads == other.column_payloads && route_decision == other.route_decision &&
+               column_payloads == other.column_payloads &&
+               allow_interpreter_fallback == other.allow_interpreter_fallback &&
+               route_decision == other.route_decision &&
                route_cache_key == other.route_cache_key;
     }
 };
@@ -394,7 +398,7 @@ static LoomRuntimePlanSelection BuildProjectedRuntimePlan(const LoomBindData &bi
         };
     }
 
-    auto projected_plan = CreateRuntimePlan(bind_data.payload, true);
+    auto projected_plan = CreateRuntimePlan(bind_data.payload, bind_data.allow_interpreter_fallback);
     auto route_decision = ReadPlanDecision(*projected_plan);
     auto route_cache_key = ReadPlanCacheKey(*projected_plan);
     auto route_diagnostics = CollectPlanDiagnostics(*projected_plan);
@@ -732,9 +736,10 @@ static unique_ptr<FunctionData> LoomBind(
         throw IOException("loom_scan: payload file '%s' is empty", bind_data->payload_path.c_str());
     }
     PopulateColumnSpecs(*bind_data);
-    const bool allow_interpreter_fallback =
+    bind_data->allow_interpreter_fallback =
         !TestEnvDisabled("LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK", false);
-    bind_data->runtime_plan = CreateRuntimePlan(bind_data->payload, allow_interpreter_fallback);
+    bind_data->runtime_plan =
+        CreateRuntimePlan(bind_data->payload, bind_data->allow_interpreter_fallback);
     bind_data->route_decision = ReadPlanDecision(*bind_data->runtime_plan);
     bind_data->route_cache_key = ReadPlanCacheKey(*bind_data->runtime_plan);
     bind_data->route_diagnostics = CollectPlanDiagnostics(*bind_data->runtime_plan);

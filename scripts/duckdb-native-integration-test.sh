@@ -164,6 +164,11 @@ sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${fallback_payload}');" "${s
 rg -q 'diagnostic code=.*path=' "${strict_err}" || fail "strict failure missing stable diagnostic code/path"
 cat "${strict_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 require_report 'fail-closed'
+strict_projection_err="${TMP_DIR}/strict-projection.err"
+sql_expect_failure "SELECT value FROM loom_scan('${fallback_payload}');" "${strict_projection_err}"
+rg -q 'diagnostic code=.*path=' "${strict_projection_err}" || \
+    fail "strict projected failure missing stable diagnostic code/path"
+cat "${strict_projection_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
 ok "strict fail-closed error includes code/path diagnostics"
 
