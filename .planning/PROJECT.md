@@ -44,14 +44,14 @@ If only one thing works, it is this end-to-end chain.
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
 - [ ] Phase 12 Formal Verifier / Safety Proof MVP is planned: safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, dedicated safety proof gate, and final written proof for the current implemented boundary only.
-- [ ] Phase 13/14 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
+- [ ] Phase 13/14/15 remain roadmap placeholders only: full Loom verifier, MLIR/native lowering spike, and real Vortex file/container ingress.
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
 - MLIR `decode` dialect / lowering to LLVM / native-speed codegen — MVP0 interprets directly; speed layer is the design's later act (`design.md` §8)
-- Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress — Phase 12 targets only the current implemented byte-to-Arrow safety boundary (`design.md` §5, §7, §13)
+- Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress — Phase 12 targets only the current implemented byte-to-Arrow safety boundary; the complete Loom verifier is reserved for Phase 13 (`design.md` §5, §7, §13)
 - Full `.vortex` file layout (footer / layout tree / multi-chunk) — MVP0 decodes a single column, not a file container
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — MVP0 implements only schema() + decode of the column
 - Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
@@ -99,6 +99,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 10 should return to L2 numeric compression coverage | COV-01 was the remaining explicit v2 decode coverage item; ALP Float32/Float64 exercised the L2 path without jumping to MLIR or formal verification scope | Complete — Phase 10 |
 | Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Planned — Phase 12 |
+| Phase 13 should reserve the complete Loom verifier | The full verifier must cover the future distribution IR, L2 total-function language, module contracts, resource bounds, and lowering preconditions; that is larger than Phase 12's current-boundary safety proof MVP | Placeholder — Phase 13 |
 
 ## Evolution
 
@@ -118,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 12 planning — Formal Verifier / Safety Proof MVP is planned for the current implemented boundary; Phase 13/14 remain roadmap placeholders.*
+*Last updated: 2026-06-08 after Phase 13 roadmap insertion — Phase 12 targets the current implemented boundary; full Loom verifier is reserved for Phase 13.*

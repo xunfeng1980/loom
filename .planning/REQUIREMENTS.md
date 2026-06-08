@@ -121,7 +121,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
-| Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress | Phase 12 targets only the current implemented byte-to-Arrow safety boundary; future compiler/file-ingress proofs remain later work (design.md §5, §7, §13) |
+| Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress | Phase 12 targets only the current implemented byte-to-Arrow safety boundary; the complete Loom verifier is reserved for Phase 13 and future compiler/file-ingress proofs remain later work (design.md §5, §7, §13) |
 | Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
@@ -207,4 +207,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 12 Formal Verifier / Safety Proof MVP planned; Phase 13-14 placeholders remain recorded*
+*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier placeholder inserted; Phase 12 safety proof MVP remains planned*

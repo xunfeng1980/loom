@@ -7,7 +7,7 @@ stopped_at: Phase 12 planned
 last_updated: "2026-06-08T04:10:00.000Z"
 last_activity: 2026-06-08 -- Phase 12 planned; formal verifier / safety proof MVP split into 4 executable plans
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 11
   total_plans: 39
   completed_plans: 35
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 12 planned; Phase 13/14 remain roadmap placeholders
+**Current focus:** Phase 12 planned; Phase 13/14/15 remain roadmap placeholders
 
 ## Current Position
 
@@ -144,7 +144,8 @@ None yet.
 - Phase 11 executing: 11-03 complete with CLI inspect/decode support, generated `LMC1` smoke fixtures, DuckDB bind support, and container-aware negative verifier scripting.
 - Phase 11 complete: `LMC1` Distribution Container v0 now has docs, generated fixture coverage, DuckDB SQL smoke coverage, malformed-container release-gate coverage, and DIST-01 through DIST-05 closed.
 - Phase 12 planned: formal verifier / safety proof MVP will add a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a dedicated safety proof gate, and final proof docs for the current implemented boundary only.
-- Phase 13 and Phase 14 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
+- Phase 13 inserted as a roadmap placeholder for the full Loom verifier over future distribution IR, L2 total-function language, module contracts, and lowering preconditions.
+- Phase 14 and Phase 15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
 
@@ -179,8 +180,9 @@ None yet.
 | v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
 | v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Complete | Phase 11 |
 | v3 safety | Formal verifier / safety proof MVP | Planned | Phase 12 |
-| v3 native | MLIR/native lowering spike | Placeholder | Phase 13 |
-| v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 14 |
+| v3 safety | Full Loom verifier | Placeholder | Phase 13 |
+| v3 native | MLIR/native lowering spike | Placeholder | Phase 14 |
+| v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 15 |
 
 ## Session Continuity
 
