@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 17 — production-decode-dialect-and-native-kernel-expansion (placeholder)
+**Current focus:** Phase 17 — unified-artifact-verification-pipeline (placeholder)
 
 ## Current Position
 
-Phase: 17 (production-decode-dialect-and-native-kernel-expansion) — PLACEHOLDER
+Phase: 17 (unified-artifact-verification-pipeline) — PLACEHOLDER
 Plan: 0 of ?
-Status: Phase 16 complete; Phase 17 ready for research/planning when requested
+Status: Phase 16 complete; Phase 17 unified verifier pipeline ready for research/planning when requested
 Last activity: 2026-06-08 -- Phase 16 complete
 
 Progress: 70%
@@ -37,7 +37,7 @@ Progress: 70%
 - Completed phases: 16 / 23
 - Completed executable plans: 57 / 57
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 16 complete; Phase 17 remains a placeholder for production decode dialect and native kernel expansion
+- Current position: Phase 16 complete; Phase 17 remains a placeholder for unifying payload and L2Core verification into one artifact pipeline
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 16 JIT boundary work
 
 **Completed phase plan counts:**
@@ -117,7 +117,7 @@ None yet.
 - Phase 16 research started: recommended an optional `loom-native-melior` backend crate, explicit LLVM/MLIR toolchain probing, verifier-gated programmatic MLIR construction, optional MLIR ExecutionEngine/JIT evidence, and fail-closed rejection before native artifact creation.
 - Phase 16 planned: 5 sequential plans across optional backend crate/toolchain contract, programmatic `melior` module construction, MLIR validation gate, ExecutionEngine/JIT equivalence, and docs/release-gate closeout.
 - Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR major 21 is recorded as normal-mode skip and strict-mode failure against expected major 22.
-- Phase 17 reserved as a roadmap placeholder only: production decode dialect and native kernel expansion.
+- Phase 17 reserved as a roadmap placeholder only: unified artifact verification pipeline from `LMC1` artifact/schema/features through L1 structural verification, L2Core verification, constraints/facts, `VerifiedArtifactFacts`, and lowering-ready report.
 - Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
 - Phase 19-21 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 19 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
@@ -163,7 +163,7 @@ None yet.
 | v3 native | MLIR/native lowering spike | Complete | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Complete | Phase 15 |
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
-| v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 17 |
+| v3 verifier | Unified artifact verification pipeline | Placeholder | Phase 17 |
 | v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 19 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 20 |
