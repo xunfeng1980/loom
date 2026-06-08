@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container cases that fail closed before DuckDB execution.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary: a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a final proof narrative, and a dedicated safety proof gate wired into the release gate. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety cases that fail closed before successful output.
 
 Run the full MVP0 release gate:
 
@@ -37,12 +37,11 @@ The gate runs the same underlying checks manually available as:
 cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
-bash scripts/verifier-negative-test.sh
-bash scripts/container-negative-test.sh
+bash scripts/safety-proof-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-The current `.loom` file format is a local MVP0/v3 fixture container, not a full Vortex file reader. `LMC1` is the Phase 11 distribution boundary around the existing payload codecs: `LMP1` for a single layout payload and `LMT1` for a table payload. Phase 9/11 verification is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, unknown required container features, unsupported container versions, duplicate payload sections, truncated sections, offset overflows, and related table-shape errors for the implemented MVP0 surface. It is not the formal Loom verifier and does not claim totality or termination proofs; MLIR/native lowering, Arrow stream ABI, content-hash URI/signature support, native fast paths, and full `.vortex` file support remain future milestones.
+The current `.loom` file format is a local MVP0/v3 fixture container, not a full Vortex file reader. `LMC1` is the Phase 11 distribution boundary around the existing payload codecs: `LMP1` for a single layout payload and `LMT1` for a table payload. Phase 9/11 verification is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, unknown required container features, unsupported container versions, duplicate payload sections, truncated sections, offset overflows, and related table-shape errors for the implemented MVP0 surface. Phase 12's formal verifier / Safety Proof MVP makes that current boundary reviewable and mechanically guarded; it argues no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded current parser/interpreter/kernel loops. It is not the full Loom verifier and does not claim future L2 language totality, MLIR/native lowering safety, real Vortex ingress safety, signatures/attestation, or correctness proofs.
 
 Phase 7 adds reviewer-facing descriptor and CLI tooling:
 
@@ -89,7 +88,15 @@ bash scripts/container-negative-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-`loom inspect` shows `container: LMC1`, container version, required and optional feature sets, section summaries, verifier status, and the wrapped payload kind. DuckDB `loom_scan(...)` accepts container-wrapped single-column fixtures and the container-wrapped `mixed-table.loom` SQL smoke fixture. This phase is only the local distribution artifact boundary; it does not add formal proof, native lowering, remote artifact lookup, signatures, or real Vortex file ingestion.
+`loom inspect` shows `container: LMC1`, container version, required and optional feature sets, section summaries, verifier status, and the wrapped payload kind. DuckDB `loom_scan(...)` accepts container-wrapped single-column fixtures and the container-wrapped `mixed-table.loom` SQL smoke fixture. This phase is only the local distribution artifact boundary; it does not add native lowering, remote artifact lookup, signatures, or real Vortex file ingestion.
+
+Phase 12 adds the current-boundary Safety Proof MVP:
+
+```bash
+bash scripts/safety-proof-test.sh
+```
+
+The proof artifacts live in `.planning/phases/12-formal-verifier-safety-proof-mvp/`: `12-SAFETY-CONTRACT.md`, `12-PROOF-OBLIGATIONS.md`, and `12-SAFETY-PROOF.md`. This is a practical proof package for the implemented byte-to-Arrow path, not the complete future Loom verifier.
 
 ---
 

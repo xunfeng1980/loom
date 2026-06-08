@@ -25,13 +25,14 @@ fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 PHASE_DIR=".planning/phases/12-formal-verifier-safety-proof-mvp"
 CONTRACT="${PHASE_DIR}/12-SAFETY-CONTRACT.md"
 OBLIGATIONS="${PHASE_DIR}/12-PROOF-OBLIGATIONS.md"
+PROOF="${PHASE_DIR}/12-SAFETY-PROOF.md"
 
 echo "=== Loom Phase 12 safety proof gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking proof documents..."
-for file in "${CONTRACT}" "${OBLIGATIONS}"; do
+for file in "${CONTRACT}" "${OBLIGATIONS}" "${PROOF}"; do
     if [ ! -f "${file}" ]; then
         fail "required proof document missing: ${file}"
     fi
@@ -41,6 +42,7 @@ ok "required proof documents exist"
 info "Checking proof obligation IDs..."
 for id in OBL-12-01 OBL-12-02 OBL-12-03 OBL-12-04 OBL-12-05 OBL-12-06 OBL-12-07 OBL-12-08 OBL-12-09; do
     rg -q "${id}" "${OBLIGATIONS}" || fail "missing ${id} in ${OBLIGATIONS}"
+    rg -q "${id}" "${PROOF}" || fail "missing ${id} in ${PROOF}"
 done
 ok "all OBL-12-01..OBL-12-09 IDs are present"
 

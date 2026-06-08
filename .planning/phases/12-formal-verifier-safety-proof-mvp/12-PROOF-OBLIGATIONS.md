@@ -20,7 +20,7 @@
 | `OBL-12-03` | Raw `LMP1`/`LMT1` payloads remain compatible but fail closed on parse errors. | Raw payload parse helpers | `crates/loom-core/src/layout_codec.rs`, `crates/loom-core/src/table_codec.rs`, `crates/loom-core/src/container_codec.rs` | `crates/loom-core/tests/safety_contract.rs::obl_12_03_raw_payload_parse_failures_do_not_panic`; existing codec tests | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` | Complete | None. |
 | `OBL-12-04` | Verifier diagnostics are typed, path-addressed, and exposed before successful decode output. | Verifier reports and CLI inspect | `crates/loom-core/src/verifier.rs`, `crates/loom-cli/src/main.rs` | `crates/loom-core/tests/safety_contract.rs::obl_12_04_05_06_verifier_failure_blocks_arrow_output`, `obl_12_04_05_table_verifier_failure_blocks_arrow_output`; existing verifier unit tests; existing `scripts/verifier-negative-test.sh` | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` | Complete | None. |
 | `OBL-12-05` | Decode helpers call verifier before Arrow output and return typed errors on verifier failure. | Decode helpers -> Arrow `ArrayData` | `crates/loom-core/src/l1_model.rs`, `crates/loom-core/src/table_codec.rs`, `crates/loom-ffi/src/ffi.rs` | `crates/loom-core/tests/safety_contract.rs::obl_12_04_05_06_verifier_failure_blocks_arrow_output`, `obl_12_04_05_table_verifier_failure_blocks_arrow_output`; `crates/loom-ffi/tests/ffi_contract.rs` | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` | Complete | None. |
-| `OBL-12-06` | Current parser/interpreter/kernel loops terminate because they are bounded by finite payload-derived counts or decoded array lengths. | Parser, verifier, interpreter, kernel loops | `container_codec.rs`, `layout_codec.rs`, `table_codec.rs`, `verifier.rs`, `l1_model.rs`, `l1_model/bitpack.rs`, `fsst_params.rs`, `alp_params.rs`, `l2_kernel_registry.rs` | `crates/loom-core/tests/safety_contract.rs` malformed count/shape tests; existing unit tests | `scripts/safety-proof-test.sh`; planned final proof | Complete | Final `12-SAFETY-PROOF.md` must restate loop-bound table. |
+| `OBL-12-06` | Current parser/interpreter/kernel loops terminate because they are bounded by finite payload-derived counts or decoded array lengths. | Parser, verifier, interpreter, kernel loops | `container_codec.rs`, `layout_codec.rs`, `table_codec.rs`, `verifier.rs`, `l1_model.rs`, `l1_model/bitpack.rs`, `fsst_params.rs`, `alp_params.rs`, `l2_kernel_registry.rs` | `crates/loom-core/tests/safety_contract.rs` malformed count/shape tests; existing unit tests | `scripts/safety-proof-test.sh`; `12-SAFETY-PROOF.md` | Complete | None. |
 | `OBL-12-07` | L2 kernel params fail closed and kernel panics do not cross the public boundary. | `KernelEscape` -> FSST/ALP kernels | `crates/loom-core/src/l2_kernel_registry.rs`, `crates/loom-core/src/fsst_params.rs`, `crates/loom-core/src/alp_params.rs`, `crates/loom-ffi/src/ffi.rs` | Existing FSST/ALP param tests; `crates/loom-ffi/tests/ffi_contract.rs::ffi_contract_panic_sentinel_returns_panicked` | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` | Complete | None. |
 | `OBL-12-08` | CLI and DuckDB ingress do not convert verifier/container failures into successful scans. | CLI inspect/decode and DuckDB `loom_scan` | `crates/loom-cli/src/main.rs`, `duckdb-ext/loom_extension.cpp`, negative scripts | Existing `verifier-negative-test.sh`, `container-negative-test.sh`, `duckdb-smoke-test.sh` | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` | Complete | DuckDB remains success smoke for valid fixtures; malformed table-container SQL rejection is deferred until a table FFI ABI exists. |
 | `OBL-12-09` | Release verification continuously checks docs, obligation IDs, tests, static invariants, and negative gates together. | Release gate | `scripts/mvp0-verify.sh` | `scripts/safety-proof-test.sh` | `scripts/safety-proof-test.sh`; `scripts/mvp0-verify.sh` invocation | Complete | None. |
@@ -50,11 +50,11 @@
 | `loom-ffi` | Unsafe allowed only for C ABI and Arrow FFI writes | `crates/loom-ffi/src/lib.rs`, `crates/loom-ffi/src/ffi.rs` | `OBL-12-01` |
 | DuckDB extension | C++ host boundary, no verifier authority | `duckdb-ext/loom_extension.cpp`; Rust decoder remains authoritative for single-column decode | `OBL-12-08` |
 
-## Planned Evidence Updates
+## Evidence Updates
 
-- `12-02` adds `crates/loom-core/tests/safety_contract.rs` and `crates/loom-ffi/tests/ffi_contract.rs`.
-- `12-03` adds `scripts/safety-proof-test.sh` and wires it into `scripts/mvp0-verify.sh`.
-- `12-04` writes `12-SAFETY-PROOF.md`, updates public docs, and closes `PROOF-01` through `PROOF-05`.
+- `12-02` added `crates/loom-core/tests/safety_contract.rs` and `crates/loom-ffi/tests/ffi_contract.rs`.
+- `12-03` added `scripts/safety-proof-test.sh` and wired it into `scripts/mvp0-verify.sh`.
+- `12-04` added `12-SAFETY-PROOF.md`, updated public docs, and closed `PROOF-01` through `PROOF-05`.
 
 ## Deferred To Phase 13+
 

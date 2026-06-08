@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
-- [ ] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP
+- [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
 - [ ] **Phase 13: Full Loom Verifier** - Placeholder for the complete verifier over the future Loom distribution IR, L2 total-function language, module contracts, and lowering preconditions (not expanded)
 - [ ] **Phase 14: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the verifier boundary exists (not expanded)
 - [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
@@ -338,11 +338,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 12-04-PLAN.md - Write final safety proof, update public/planning docs, run final gates, and close PROOF requirements (PROOF-01, PROOF-02, PROOF-03, PROOF-04, PROOF-05)
+- [x] 12-04-PLAN.md - Write final safety proof, update public/planning docs, run final gates, and close PROOF requirements (PROOF-01, PROOF-02, PROOF-03, PROOF-04, PROOF-05)
 
 ### Phase 13: Full Loom Verifier
 
-**Status:** Placeholder only. Do not expand during Phase 12 execution.
+**Status:** Placeholder only. Do not expand until an explicit phase-planning decision.
 **Depends on:** Phase 12 or an explicit revised dependency decision.
 **Intended future scope:** Verify the complete Loom distribution IR and L2 total-function language, including module/kernel contracts, resource bounds, version/feature semantics, and proof obligations needed before native lowering or remote distribution claims.
 
@@ -353,7 +353,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 15: Real Vortex File/Container Ingress
 
-**Status:** Placeholder only. Do not expand until Phase 11 is planned or complete.
+**Status:** Placeholder only. Do not expand until an explicit phase-planning decision.
 **Depends on:** Phase 11; may move after Phase 13 or Phase 14 depending on milestone goals.
 
 ## Progress
@@ -374,7 +374,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
-| 12. Formal Verifier / Safety Proof MVP | 3/4 | In Progress | - |
+| 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
 | 13. Full Loom Verifier | 0/? | Placeholder | - |
 | 14. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |

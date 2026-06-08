@@ -108,11 +108,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Formal Safety Proof
 
-- [ ] **PROOF-01**: A reviewer-readable safety contract and proof-obligation matrix define the implemented boundary, stable diagnostic/error categories, source evidence, executable evidence, and explicit exclusions
-- [ ] **PROOF-02**: Focused executable tests prove curated malformed `LMC1`/`LMP1`/`LMT1`/descriptor inputs fail closed through typed errors or verifier diagnostics rather than panicking
-- [ ] **PROOF-03**: A written safety proof explains no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded parser/interpreter/kernel loops for the current implementation
-- [ ] **PROOF-04**: A dedicated `scripts/safety-proof-test.sh` gate checks proof docs, obligation IDs, static safety invariants, focused tests, and existing negative gates, and is invoked by `scripts/mvp0-verify.sh`
-- [ ] **PROOF-05**: Public and planning docs state the narrow Phase 12 proof scope and do not claim future Loom IR, future L2 language, MLIR/native lowering, real Vortex ingress, signature, attestation, or correctness proofs
+- [x] **PROOF-01**: A reviewer-readable safety contract and proof-obligation matrix define the implemented boundary, stable diagnostic/error categories, source evidence, executable evidence, and explicit exclusions
+- [x] **PROOF-02**: Focused executable tests prove curated malformed `LMC1`/`LMP1`/`LMT1`/descriptor inputs fail closed through typed errors or verifier diagnostics rather than panicking
+- [x] **PROOF-03**: A written safety proof explains no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded parser/interpreter/kernel loops for the current implementation
+- [x] **PROOF-04**: A dedicated `scripts/safety-proof-test.sh` gate checks proof docs, obligation IDs, static safety invariants, focused tests, and existing negative gates, and is invoked by `scripts/mvp0-verify.sh`
+- [x] **PROOF-05**: Public and planning docs state the narrow Phase 12 proof scope and do not claim future Loom IR, future L2 language, MLIR/native lowering, real Vortex ingress, signature, attestation, or correctness proofs
 
 ## Out of Scope
 
@@ -125,7 +125,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
-| Versioned distribution container, feature flags, content-hash URI, native fast-path | Distribution concerns follow the decode chain (design.md §10–11) |
+| Content-hash URI, signatures, attestation, encryption, remote fetch, and native fast-path | Phase 11 completed only the local `LMC1` container boundary; remote trust/distribution features remain later work (design.md §10–11) |
 | Correctness guarantees beyond matching the reference decoder | Loom guarantees safety + well-formedness, never correctness (design.md §7) |
 
 ## Traceability
@@ -186,11 +186,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DIST-03 | Phase 11 | Complete |
 | DIST-04 | Phase 11 | Complete |
 | DIST-05 | Phase 11 | Complete |
-| PROOF-01 | Phase 12 | Planned |
-| PROOF-02 | Phase 12 | Planned |
-| PROOF-03 | Phase 12 | Planned |
-| PROOF-04 | Phase 12 | Planned |
-| PROOF-05 | Phase 12 | Planned |
+| PROOF-01 | Phase 12 | Complete |
+| PROOF-02 | Phase 12 | Complete |
+| PROOF-03 | Phase 12 | Complete |
+| PROOF-04 | Phase 12 | Complete |
+| PROOF-05 | Phase 12 | Complete |
 
 **Coverage:**
 
@@ -207,4 +207,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier placeholder inserted; Phase 12 safety proof MVP remains planned*
+*Last updated: 2026-06-08 — Phase 12 Safety Proof MVP complete; Phase 13 Full Loom Verifier remains a placeholder*
