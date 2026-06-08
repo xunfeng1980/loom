@@ -2,13 +2,23 @@ use std::fs;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use loom_core::arrow_buffer_lowering::{
+    lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
+};
+
+use crate::backend::{
+    validate_backend_request, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
+    NativeBackendReport, NativeBackendRequest, NativeBackendRequestInput, NativeBackendStatus,
+};
 use crate::builder::MeliorModuleArtifact;
 use crate::report::{
     MeliorBackendDiagnosticCode, MeliorBackendReport, MlirToolKind, MlirToolStatus,
 };
 use crate::toolchain::{probe_toolchain, require_compatible_toolchain};
 
-const LLVM_LOWERING_PIPELINE: &str = "builtin.module(convert-scf-to-cf,convert-cf-to-llvm,expand-strided-metadata,finalize-memref-to-llvm,convert-func-to-llvm,convert-arith-to-llvm,reconcile-unrealized-casts)";
+pub const PRODUCTION_MLIR_VALIDATION_PIPELINE_ID: &str = "phase23-production-mlir-validation-v0";
+pub const PRODUCTION_LLVM_LOWERING_PIPELINE_ID: &str = "phase23-llvm-lowering-v0";
+pub const LLVM_LOWERING_PIPELINE: &str = "builtin.module(convert-scf-to-cf,convert-cf-to-llvm,expand-strided-metadata,finalize-memref-to-llvm,convert-func-to-llvm,convert-arith-to-llvm,reconcile-unrealized-casts)";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MlirValidationOptions {
@@ -22,6 +32,169 @@ pub struct ProductionMlirArtifact {
     pub row_count: u64,
     pub column_count: usize,
     pub artifact_summary: String,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ProductionBackendPipelineOptions {
+    pub require_compatible_toolchain: bool,
+    pub validate_llvm_translation: bool,
+}
+
+pub fn validate_and_prepare_production_backend(
+    input: NativeBackendRequestInput,
+    options: ProductionBackendPipelineOptions,
+) -> NativeBackendReport {
+    match validate_backend_request(input) {
+        Ok(request) => prepare_production_backend_pipeline(&request, options),
+        Err(report) => report,
+    }
+}
+
+pub fn prepare_production_backend_pipeline(
+    request: &NativeBackendRequest,
+    options: ProductionBackendPipelineOptions,
+) -> NativeBackendReport {
+    if request.cancellation.cancelled {
+        return NativeBackendReport::failed_from_request(
+            NativeBackendStatus::Cancelled,
+            request,
+            request.backend_identity.clone(),
+            vec![NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::Cancelled,
+                "$.cancellation",
+                request
+                    .cancellation
+                    .reason
+                    .clone()
+                    .unwrap_or_else(|| "native backend request was cancelled".to_string()),
+            )],
+        );
+    }
+
+    let pipeline_id = if options.validate_llvm_translation {
+        PRODUCTION_LLVM_LOWERING_PIPELINE_ID
+    } else {
+        PRODUCTION_MLIR_VALIDATION_PIPELINE_ID
+    };
+    let mut identity = request
+        .backend_identity
+        .clone()
+        .with_pipeline(pipeline_id, Some(LLVM_LOWERING_PIPELINE));
+    identity.capabilities.ods_manifest = true;
+    identity.capabilities.llvm_lowering = options.validate_llvm_translation;
+
+    let artifact = match production_mlir_artifact_from_request(request) {
+        Ok(artifact) => artifact,
+        Err(diagnostics) => {
+            return NativeBackendReport::failed_from_request(
+                NativeBackendStatus::FailClosed,
+                request,
+                identity,
+                diagnostics,
+            )
+        }
+    };
+
+    let melior_report = if options.validate_llvm_translation {
+        validate_production_translation_to_llvm_ir(
+            &artifact,
+            MlirValidationOptions {
+                require_compatible_toolchain: options.require_compatible_toolchain,
+            },
+        )
+    } else {
+        validate_production_standard_mlir(
+            &artifact,
+            MlirValidationOptions {
+                require_compatible_toolchain: options.require_compatible_toolchain,
+            },
+        )
+    };
+
+    if let Some(toolchain) = melior_report.toolchain.as_ref() {
+        identity = identity.with_toolchain(toolchain);
+    }
+
+    if melior_report.is_ok() && melior_report.supported {
+        return NativeBackendReport::accepted_pipeline(
+            request,
+            identity,
+            artifact.entry_symbol,
+            artifact.row_count,
+            artifact.column_count,
+            artifact.artifact_summary,
+        );
+    }
+
+    let status = if melior_report.is_ok() && !melior_report.supported {
+        NativeBackendStatus::SkippedToolchain
+    } else {
+        NativeBackendStatus::FailClosed
+    };
+    let diagnostics = if melior_report.is_ok() && !melior_report.supported {
+        vec![NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::ToolchainSkipped,
+            "$.toolchain",
+            "compatible MLIR/LLVM toolchain was not available and strict validation was not required",
+        )]
+    } else {
+        melior_report
+            .diagnostics
+            .iter()
+            .map(|diagnostic| {
+                NativeBackendDiagnostic::new(
+                    map_melior_diagnostic_code(diagnostic.code),
+                    diagnostic.path.clone(),
+                    diagnostic.message.clone(),
+                )
+            })
+            .collect()
+    };
+    NativeBackendReport::failed_from_request(status, request, identity, diagnostics)
+}
+
+fn production_mlir_artifact_from_request(
+    request: &NativeBackendRequest,
+) -> Result<ProductionMlirArtifact, Vec<NativeBackendDiagnostic>> {
+    let buffers = plan_arrow_buffers_from_decode_dialect(&request.lowering_facts);
+    let Some(table) = buffers.table() else {
+        let diagnostics = buffers
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::BackendFailed,
+                    diagnostic.path.clone(),
+                    diagnostic.message.clone(),
+                )
+            })
+            .collect();
+        return Err(diagnostics);
+    };
+    let mlir_text = lower_arrow_buffers_to_standard_mlir(table).map_err(|report| {
+        report
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::BackendFailed,
+                    diagnostic.path.clone(),
+                    diagnostic.message.clone(),
+                )
+            })
+            .collect::<Vec<_>>()
+    })?;
+    Ok(ProductionMlirArtifact {
+        entry_symbol: "loom_decode_build_buffers".to_string(),
+        mlir_text,
+        row_count: table.row_count,
+        column_count: table.columns.len(),
+        artifact_summary: format!(
+            "phase=23;backend=production-pipeline;columns={};cache={}",
+            table.columns.len(),
+            request.runtime_cache_key.stable_id
+        ),
+    })
 }
 
 pub fn validate_with_mlir_opt(
@@ -299,6 +472,125 @@ pub fn validate_production_standard_mlir(
             );
             report
         }
+    }
+}
+
+pub fn validate_production_translation_to_llvm_ir(
+    artifact: &ProductionMlirArtifact,
+    options: MlirValidationOptions,
+) -> MeliorBackendReport {
+    let mut report = validate_production_standard_mlir(artifact, options);
+    if !report.is_ok() || !report.supported {
+        return report;
+    }
+
+    let Some(toolchain) = report.toolchain.clone() else {
+        report.push(
+            MeliorBackendDiagnosticCode::ToolchainMissing,
+            "$.toolchain",
+            "compatible toolchain facts are required before production LLVM translation",
+        );
+        return report;
+    };
+    let Some(mlir_translate) = tool_path(&toolchain, MlirToolKind::MlirTranslate) else {
+        report.push(
+            MeliorBackendDiagnosticCode::ToolchainMissing,
+            "$.toolchain.mlir-translate",
+            "mlir-translate is required for production LLVM IR validation",
+        );
+        return report;
+    };
+    let Some(mlir_opt) = tool_path(&toolchain, MlirToolKind::MlirOpt) else {
+        report.push(
+            MeliorBackendDiagnosticCode::ToolchainMissing,
+            "$.toolchain.mlir-opt",
+            "mlir-opt is required before production LLVM IR translation",
+        );
+        return report;
+    };
+
+    let path = temp_mlir_path("loom-production-translate");
+    if let Err(err) = fs::write(&path, &artifact.mlir_text) {
+        report.push(
+            MeliorBackendDiagnosticCode::PassPipelineFailed,
+            "$.tempfile",
+            format!("failed to write temporary MLIR file: {err}"),
+        );
+        return report;
+    }
+
+    let lowered_path = temp_mlir_path("loom-production-lowered");
+    let lowering_output = Command::new(&mlir_opt)
+        .arg(&path)
+        .arg(format!("--pass-pipeline={LLVM_LOWERING_PIPELINE}"))
+        .output();
+    if let Ok(output) = &lowering_output {
+        if output.status.success() {
+            let _ = fs::write(&lowered_path, &output.stdout);
+        }
+    }
+    let _ = fs::remove_file(&path);
+
+    match lowering_output {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => {
+            let _ = fs::remove_file(&lowered_path);
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.production-llvm-lowering",
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            );
+            return report;
+        }
+        Err(err) => {
+            let _ = fs::remove_file(&lowered_path);
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.production-llvm-lowering",
+                format!("failed to run production LLVM lowering pipeline: {err}"),
+            );
+            return report;
+        }
+    }
+
+    let output = Command::new(&mlir_translate)
+        .arg("--mlir-to-llvmir")
+        .arg(&lowered_path)
+        .output();
+    let _ = fs::remove_file(&lowered_path);
+
+    match output {
+        Ok(output) if output.status.success() => report,
+        Ok(output) => {
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-translate.production",
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            );
+            report
+        }
+        Err(err) => {
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-translate.production",
+                format!("failed to run production mlir-translate: {err}"),
+            );
+            report
+        }
+    }
+}
+
+fn map_melior_diagnostic_code(code: MeliorBackendDiagnosticCode) -> NativeBackendDiagnosticCode {
+    match code {
+        MeliorBackendDiagnosticCode::ToolchainMissing
+        | MeliorBackendDiagnosticCode::ToolchainVersionMismatch => {
+            NativeBackendDiagnosticCode::ToolchainFailed
+        }
+        _ => NativeBackendDiagnosticCode::BackendFailed,
     }
 }
 

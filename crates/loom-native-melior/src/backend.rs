@@ -71,6 +71,7 @@ pub struct NativeBackendIdentity {
     pub target_triple: Option<String>,
     pub data_layout: Option<String>,
     pub pipeline_id: String,
+    pub llvm_lowering_pipeline: Option<String>,
     pub capabilities: NativeBackendCapabilities,
 }
 
@@ -87,6 +88,7 @@ impl NativeBackendIdentity {
             target_triple: None,
             data_layout: None,
             pipeline_id: PRODUCTION_BACKEND_PIPELINE_ID.to_string(),
+            llvm_lowering_pipeline: None,
             capabilities: NativeBackendCapabilities::phase23_preflight(),
         }
     }
@@ -98,9 +100,19 @@ impl NativeBackendIdentity {
         self
     }
 
+    pub fn with_pipeline(
+        mut self,
+        pipeline_id: impl Into<String>,
+        llvm_lowering_pipeline: Option<impl Into<String>>,
+    ) -> Self {
+        self.pipeline_id = pipeline_id.into();
+        self.llvm_lowering_pipeline = llvm_lowering_pipeline.map(Into::into);
+        self
+    }
+
     pub fn as_key(&self) -> String {
         format!(
-            "abi={};backend={}:{};mlir_expected={};mlir_detected={};llvm_config={};toolchain={};target={};layout={};pipeline={};caps={}",
+            "abi={};backend={}:{};mlir_expected={};mlir_detected={};llvm_config={};toolchain={};target={};layout={};pipeline={};llvm_lowering={};caps={}",
             self.runtime_abi_version.as_key(),
             self.backend,
             self.backend_version,
@@ -119,6 +131,7 @@ impl NativeBackendIdentity {
             self.target_triple.as_deref().unwrap_or("unknown"),
             self.data_layout.as_deref().unwrap_or("unknown"),
             self.pipeline_id,
+            self.llvm_lowering_pipeline.as_deref().unwrap_or("none"),
             self.capabilities.as_key()
         )
     }
@@ -246,6 +259,10 @@ pub struct NativeBackendArtifact {
     pub runtime_cache_key: RuntimeCacheKey,
     pub backend_identity: NativeBackendIdentity,
     pub lowering_facts: ProductionLoweringFacts,
+    pub entry_symbol: Option<String>,
+    pub row_count: Option<u64>,
+    pub column_count: Option<usize>,
+    pub artifact_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -274,7 +291,57 @@ impl NativeBackendReport {
                 runtime_cache_key: request.runtime_cache_key.clone(),
                 backend_identity: request.backend_identity.clone(),
                 lowering_facts: request.lowering_facts.clone(),
+                entry_symbol: None,
+                row_count: Some(request.lowering_facts.shape.row_count()),
+                column_count: Some(request.lowering_facts.shape.columns().len()),
+                artifact_summary: None,
             }),
+        }
+    }
+
+    pub fn accepted_pipeline(
+        request: &NativeBackendRequest,
+        backend_identity: NativeBackendIdentity,
+        entry_symbol: impl Into<String>,
+        row_count: u64,
+        column_count: usize,
+        artifact_summary: impl Into<String>,
+    ) -> Self {
+        Self {
+            status: NativeBackendStatus::Accepted,
+            diagnostics: Vec::new(),
+            runtime_plan: request.runtime_plan.clone(),
+            runtime_cache_key: Some(request.runtime_cache_key.clone()),
+            backend_identity: backend_identity.clone(),
+            artifact: Some(NativeBackendArtifact {
+                artifact_id: format!(
+                    "{}:{}",
+                    backend_identity.pipeline_id, request.runtime_cache_key.stable_id
+                ),
+                runtime_cache_key: request.runtime_cache_key.clone(),
+                backend_identity,
+                lowering_facts: request.lowering_facts.clone(),
+                entry_symbol: Some(entry_symbol.into()),
+                row_count: Some(row_count),
+                column_count: Some(column_count),
+                artifact_summary: Some(artifact_summary.into()),
+            }),
+        }
+    }
+
+    pub fn failed_from_request(
+        status: NativeBackendStatus,
+        request: &NativeBackendRequest,
+        backend_identity: NativeBackendIdentity,
+        diagnostics: Vec<NativeBackendDiagnostic>,
+    ) -> Self {
+        Self {
+            status,
+            diagnostics,
+            runtime_plan: request.runtime_plan.clone(),
+            runtime_cache_key: Some(request.runtime_cache_key.clone()),
+            backend_identity,
+            artifact: None,
         }
     }
 
