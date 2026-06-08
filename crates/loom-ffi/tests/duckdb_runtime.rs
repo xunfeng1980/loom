@@ -3,8 +3,8 @@ use loom_core::container_codec::wrap_layout_payload;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::duckdb_runtime::{
-    plan_duckdb_runtime, DuckDbProjection, DuckDbRouteDecision, DuckDbRuntimePlanInput,
-    DuckDbRuntimePolicy, DuckDbTestNativeFacts,
+    plan_duckdb_runtime, prepare_duckdb_runtime, DuckDbProjection, DuckDbRouteDecision,
+    DuckDbRuntimePlanInput, DuckDbRuntimePolicy, DuckDbTestNativeFacts,
 };
 
 fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
@@ -33,6 +33,7 @@ fn native_input() -> DuckDbRuntimePlanInput {
             test_native_facts: Some(DuckDbTestNativeFacts {
                 row_count: 4,
                 columns: vec![DataType::Int32],
+                test_jit_value_buffers: None,
             }),
         },
     }
@@ -138,5 +139,89 @@ mod runtime_planning {
 
         assert_eq!(report.runtime_plan.predicate, PredicateEnvelope::None);
         assert!(report.cache_key.canonical_input.contains("predicate=none"));
+    }
+}
+
+mod prepare_routes {
+    use super::*;
+    use loom_native_melior::backend::NativeBackendCancellation;
+
+    fn native_plan_with_test_jit(
+        test_jit_value_buffers: Option<Vec<Vec<u8>>>,
+    ) -> loom_ffi::duckdb_runtime::DuckDbRuntimePlanReport {
+        let mut input = native_input();
+        input
+            .policy
+            .test_native_facts
+            .as_mut()
+            .expect("test facts")
+            .test_jit_value_buffers = test_jit_value_buffers;
+        plan_duckdb_runtime(input).expect("native runtime plan")
+    }
+
+    #[test]
+    fn backend_prepare_runs_only_for_native_candidate_without_runtime_diagnostics() {
+        let native = native_plan_with_test_jit(None);
+        assert!(native.runtime_plan.diagnostics.is_empty());
+        let prepared = prepare_duckdb_runtime(&native, NativeBackendCancellation::default());
+        assert!(prepared.backend_report.is_some());
+
+        let fallback = plan_duckdb_runtime(DuckDbRuntimePlanInput {
+            artifact_bytes: raw_i32_lmc1(4),
+            projection: DuckDbProjection::All,
+            policy: DuckDbRuntimePolicy {
+                allow_interpreter_fallback: true,
+                test_native_facts: None,
+            },
+        })
+        .expect("fallback runtime plan");
+        assert_eq!(fallback.decision, DuckDbRouteDecision::InterpreterFallback);
+        let prepared = prepare_duckdb_runtime(&fallback, NativeBackendCancellation::default());
+        assert_eq!(prepared.decision, DuckDbRouteDecision::InterpreterFallback);
+        assert!(prepared.backend_report.is_none());
+        assert!(prepared.native_buffers.is_empty());
+    }
+
+    #[test]
+    fn cancelled_prepare_returns_cancelled_diagnostic_and_no_native_buffers() {
+        let native = native_plan_with_test_jit(None);
+        let prepared = prepare_duckdb_runtime(
+            &native,
+            NativeBackendCancellation::cancelled("duckdb interrupt"),
+        );
+
+        assert_eq!(prepared.decision, DuckDbRouteDecision::Cancelled);
+        assert!(prepared.native_buffers.is_empty());
+        assert!(prepared
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "cancelled"));
+    }
+
+    #[test]
+    fn native_output_mismatch_fails_closed_without_interpreter_fallback() {
+        let native = native_plan_with_test_jit(Some(vec![vec![0xff; 16]]));
+        let prepared = prepare_duckdb_runtime(&native, NativeBackendCancellation::default());
+
+        assert_eq!(prepared.decision, DuckDbRouteDecision::FailClosed);
+        assert!(prepared.native_buffers.is_empty());
+        assert!(prepared
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "native-output-mismatch"));
+        assert_ne!(prepared.decision, DuckDbRouteDecision::InterpreterFallback);
+    }
+
+    #[test]
+    fn skipped_or_failed_toolchain_is_diagnostic_only_without_native_buffers() {
+        let native = native_plan_with_test_jit(None);
+        let prepared = prepare_duckdb_runtime(&native, NativeBackendCancellation::default());
+
+        assert!(prepared.native_buffers.is_empty());
+        assert!(
+            prepared.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == "toolchain-skipped" || diagnostic.code == "toolchain-failed"
+            }) || !prepared.native_buffers.is_empty()
+        );
     }
 }
