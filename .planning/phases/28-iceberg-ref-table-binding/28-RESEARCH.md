@@ -417,22 +417,27 @@ fn iceberg_sdk_dependency_is_adapter_only_if_present() {
 |---|-------|---------|---------------|
 | - | No `[ASSUMED]` factual claims are used; recommended names such as `loom-iceberg-binding` are planning recommendations, not factual claims. | All | Planner can proceed without a user-confirmation gate for factual uncertainty. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact sidecar key names**
    - What we know: Sidecar/reference binding is locked, and useful fields are table UUID/name, snapshot ID, schema ID, metadata/manifest locations, artifact path/hash, source-ingress summary, verifier summary, and oracle evidence. [VERIFIED: 28-CONTEXT.md]
    - What's unclear: Final key namespace, for example `loom.artifact.sha256` versus a standalone `loom-binding.json`.
-   - Recommendation: Use standalone sidecar JSON for Phase 28 and mirror only non-authoritative reference keys in Iceberg `properties` if needed. [VERIFIED: 28-CONTEXT.md]
+   - RESOLVED default: Use standalone sidecar JSON for Phase 28 and mirror only non-authoritative reference keys in Iceberg `properties` if needed. [VERIFIED: 28-CONTEXT.md]
 
 2. **Whether to include an optional SDK cross-check**
    - What we know: `iceberg` 0.9.1 is official and current but pulls Arrow/Parquet 57.1. [CITED: https://docs.rs/crate/iceberg/latest]
    - What's unclear: Whether a separate quarantined test-only crate is worth the compile/dependency overhead.
-   - Recommendation: Do not include it in the first implementation plan; add a human checkpoint if a later plan wants SDK comparison. [VERIFIED: Cargo.toml]
+   - RESOLVED default: Do not include it in the first implementation plan; add a human checkpoint if a later plan wants SDK comparison. [VERIFIED: Cargo.toml]
 
 3. **Hash source for final sidecar**
    - What we know: Phase 27 uses `shasum -a 256` for fixture hashes and existing runtime cache uses FNV-style internal digests for cache keys. [VERIFIED: crates/loom-parquet-ingress/tests/legacy_readability.rs] [VERIFIED: crates/loom-core/src/runtime_abi.rs]
    - What's unclear: Whether Phase 28 should use only SHA-256 fixture hashes or also record Loom runtime artifact digests.
-   - Recommendation: Use SHA-256 for sidecar integrity evidence and keep runtime cache digests out of the binding trust model. [VERIFIED: 27-ARCHIVAL-READABILITY-REPORT.md]
+   - RESOLVED default: Use SHA-256 for sidecar integrity evidence and keep runtime cache digests out of the binding trust model. [VERIFIED: 27-ARCHIVAL-READABILITY-REPORT.md]
+
+4. **Source/oracle evidence artifact for accepted bindings**
+   - What we know: Phase 28 requires accepted bindings to carry source/oracle evidence, and Phase 26/27 establish that accepted evidence cannot be a self-asserted trust token. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md] [VERIFIED: 27-ARCHIVAL-READABILITY-REPORT.md]
+   - What's unclear: Whether accepted binding should validate a Phase 27 source-ingress report, a decoded-row fixture, or both.
+   - RESOLVED default: Require a concrete adapter-local decoded-row fixture or source-evidence JSON referenced by the sidecar, read it during binding, and independently verify row count, table UUID, schema ID, snapshot ID, artifact SHA-256, and decoded-row/oracle status before constructing accepted oracle evidence. A sidecar `oracle.accepted = true` flag is necessary only as descriptive input and is never sufficient by itself. [VERIFIED: 28-CONTEXT.md]
 
 ## Environment Availability
 
