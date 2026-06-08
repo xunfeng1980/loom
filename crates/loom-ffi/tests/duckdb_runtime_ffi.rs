@@ -7,10 +7,10 @@ use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::duckdb_runtime::{
     loom_duckdb_plan_cache_key, loom_duckdb_plan_create, loom_duckdb_plan_decision,
-    loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic,
-    loom_duckdb_plan_diagnostic_count, loom_duckdb_prepare_create,
-    loom_duckdb_prepare_destroy, loom_duckdb_prepare_native_buffer_count,
-    loom_duckdb_prepare_route, LoomDuckDbDiagnostic, LoomDuckDbPlan, LoomDuckDbPrepared,
+    loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic, loom_duckdb_plan_diagnostic_count,
+    loom_duckdb_prepare_create, loom_duckdb_prepare_destroy,
+    loom_duckdb_prepare_native_buffer_count, loom_duckdb_prepare_route, LoomDuckDbDiagnostic,
+    LoomDuckDbPlan, LoomDuckDbPrepared,
 };
 
 fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
@@ -145,10 +145,7 @@ fn prepare_create_returns_handle_and_route_without_unwinding() {
     let mut native_buffer_count = usize::MAX;
     assert_eq!(
         unsafe {
-            loom_duckdb_prepare_native_buffer_count(
-                prepared,
-                &mut native_buffer_count as *mut _,
-            )
+            loom_duckdb_prepare_native_buffer_count(prepared, &mut native_buffer_count as *mut _)
         },
         0
     );
@@ -164,8 +161,9 @@ fn prepare_create_returns_handle_and_route_without_unwinding() {
 
 #[test]
 fn public_header_excludes_internal_duckdb_symbols() {
-    let public_header = std::fs::read_to_string("crates/loom-ffi/include/loom.h")
-        .expect("read generated public header");
+    let public_header =
+        std::fs::read_to_string(format!("{}/include/loom.h", env!("CARGO_MANIFEST_DIR")))
+            .expect("read generated public header");
     assert!(public_header.contains("loom_decode"));
     assert!(!public_header.contains("loom_duckdb_"));
     assert!(!public_header.contains("LoomDuckDb"));

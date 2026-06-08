@@ -5,6 +5,9 @@
 //! translate these owned reports into DuckDB-facing handles without duplicating
 //! runtime policy in C++.
 
+use std::ffi::{c_char, CString};
+use std::panic::{self, AssertUnwindSafe};
+
 use arrow::datatypes::DataType;
 use loom_core::arrow_buffer_lowering::{
     plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes,
@@ -13,6 +16,7 @@ use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationFacts, ArtifactVerificationOptions,
     ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
 };
+use loom_core::container_codec::decode_layout_payload_maybe_container;
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::production_native_lowering::{
@@ -137,6 +141,506 @@ pub struct DuckDbNativeBuffer {
     pub builder_id: String,
     pub arrow_type: DataType,
     pub value_buffer: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(i32)]
+enum LoomDuckDbStatus {
+    NullPointer = 1,
+    Panicked = 2,
+    OutOfRange = 3,
+}
+
+impl LoomDuckDbStatus {
+    fn code(self) -> i32 {
+        self as i32
+    }
+}
+
+#[repr(C)]
+pub struct LoomDuckDbPlan {
+    report: DuckDbRuntimePlanReport,
+    decision: CString,
+    cache_key: CString,
+    diagnostics: Vec<OwnedDuckDbDiagnostic>,
+}
+
+#[repr(C)]
+pub struct LoomDuckDbPrepared {
+    route: DuckDbPreparedRoute,
+    status: CString,
+    decision: CString,
+    diagnostics: Vec<OwnedDuckDbDiagnostic>,
+    native_buffers: Vec<OwnedDuckDbNativeBuffer>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LoomDuckDbDiagnostic {
+    pub code: *const c_char,
+    pub path: *const c_char,
+    pub message: *const c_char,
+}
+
+impl Default for LoomDuckDbDiagnostic {
+    fn default() -> Self {
+        Self {
+            code: std::ptr::null(),
+            path: std::ptr::null(),
+            message: std::ptr::null(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LoomDuckDbNativeBuffer {
+    pub builder_id: *const c_char,
+    pub arrow_type: *const c_char,
+    pub value_ptr: *const u8,
+    pub value_len: usize,
+}
+
+impl Default for LoomDuckDbNativeBuffer {
+    fn default() -> Self {
+        Self {
+            builder_id: std::ptr::null(),
+            arrow_type: std::ptr::null(),
+            value_ptr: std::ptr::null(),
+            value_len: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct OwnedDuckDbDiagnostic {
+    code: CString,
+    path: CString,
+    message: CString,
+}
+
+impl OwnedDuckDbDiagnostic {
+    fn from_diagnostic(diagnostic: &DuckDbRuntimeDiagnostic) -> Self {
+        Self {
+            code: cstring_lossy(&diagnostic.code),
+            path: cstring_lossy(&diagnostic.path),
+            message: cstring_lossy(&diagnostic.message),
+        }
+    }
+
+    fn as_ffi(&self) -> LoomDuckDbDiagnostic {
+        LoomDuckDbDiagnostic {
+            code: self.code.as_ptr(),
+            path: self.path.as_ptr(),
+            message: self.message.as_ptr(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct OwnedDuckDbNativeBuffer {
+    builder_id: CString,
+    arrow_type: CString,
+    value_buffer: Vec<u8>,
+}
+
+impl OwnedDuckDbNativeBuffer {
+    fn from_buffer(buffer: &DuckDbNativeBuffer) -> Self {
+        Self {
+            builder_id: cstring_lossy(&buffer.builder_id),
+            arrow_type: cstring_lossy(&format!("{:?}", buffer.arrow_type)),
+            value_buffer: buffer.value_buffer.clone(),
+        }
+    }
+
+    fn as_ffi(&self) -> LoomDuckDbNativeBuffer {
+        LoomDuckDbNativeBuffer {
+            builder_id: self.builder_id.as_ptr(),
+            arrow_type: self.arrow_type.as_ptr(),
+            value_ptr: self.value_buffer.as_ptr(),
+            value_len: self.value_buffer.len(),
+        }
+    }
+}
+
+/// Create an internal DuckDB runtime plan handle.
+///
+/// This is intentionally DuckDB-adapter internal and is excluded from the
+/// generated public `loom.h`.
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_create(
+    artifact_ptr: *const u8,
+    artifact_len: usize,
+    allow_interpreter_fallback: bool,
+    use_test_native_facts: bool,
+    out_plan: *mut *mut LoomDuckDbPlan,
+) -> i32 {
+    if out_plan.is_null() || (artifact_len > 0 && artifact_ptr.is_null()) {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let artifact = if artifact_len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(artifact_ptr, artifact_len)
+        };
+        let report = plan_duckdb_runtime(DuckDbRuntimePlanInput {
+            artifact_bytes: artifact.to_vec(),
+            projection: DuckDbProjection::All,
+            policy: DuckDbRuntimePolicy {
+                allow_interpreter_fallback,
+                test_native_facts: if use_test_native_facts {
+                    Some(test_native_facts_for_artifact(artifact))
+                } else {
+                    None
+                },
+            },
+        })
+        .unwrap_or_else(|report| report);
+        let handle = Box::new(LoomDuckDbPlan::from_report(report));
+        std::ptr::write(out_plan, Box::into_raw(handle));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_destroy(plan: *mut LoomDuckDbPlan) -> i32 {
+    if plan.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        drop(Box::from_raw(plan));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_decision(
+    plan: *const LoomDuckDbPlan,
+    out_decision: *mut *const c_char,
+) -> i32 {
+    if plan.is_null() || out_decision.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_decision, (*plan).decision.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_cache_key(
+    plan: *const LoomDuckDbPlan,
+    out_cache_key: *mut *const c_char,
+) -> i32 {
+    if plan.is_null() || out_cache_key.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_cache_key, (*plan).cache_key.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_diagnostic_count(
+    plan: *const LoomDuckDbPlan,
+    out_count: *mut usize,
+) -> i32 {
+    if plan.is_null() || out_count.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_count, (*plan).diagnostics.len());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_diagnostic(
+    plan: *const LoomDuckDbPlan,
+    index: usize,
+    out_diagnostic: *mut LoomDuckDbDiagnostic,
+) -> i32 {
+    if plan.is_null() || out_diagnostic.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(diagnostic) = (&(*plan).diagnostics).get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        std::ptr::write(out_diagnostic, diagnostic.as_ffi());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_create(
+    plan: *const LoomDuckDbPlan,
+    cancelled: bool,
+    out_prepared: *mut *mut LoomDuckDbPrepared,
+) -> i32 {
+    if plan.is_null() || out_prepared.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let cancellation = if cancelled {
+            NativeBackendCancellation::cancelled("duckdb adapter cancellation")
+        } else {
+            NativeBackendCancellation::default()
+        };
+        let route = prepare_duckdb_runtime(&(*plan).report, cancellation);
+        let handle = Box::new(LoomDuckDbPrepared::from_route(route));
+        std::ptr::write(out_prepared, Box::into_raw(handle));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_destroy(prepared: *mut LoomDuckDbPrepared) -> i32 {
+    if prepared.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        drop(Box::from_raw(prepared));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_status(
+    prepared: *const LoomDuckDbPrepared,
+    out_status: *mut *const c_char,
+) -> i32 {
+    if prepared.is_null() || out_status.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_status, (*prepared).status.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_route(
+    prepared: *const LoomDuckDbPrepared,
+    out_route: *mut *const c_char,
+) -> i32 {
+    if prepared.is_null() || out_route.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_route, (*prepared).decision.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_diagnostic_count(
+    prepared: *const LoomDuckDbPrepared,
+    out_count: *mut usize,
+) -> i32 {
+    if prepared.is_null() || out_count.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_count, (*prepared).diagnostics.len());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_diagnostic(
+    prepared: *const LoomDuckDbPrepared,
+    index: usize,
+    out_diagnostic: *mut LoomDuckDbDiagnostic,
+) -> i32 {
+    if prepared.is_null() || out_diagnostic.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(diagnostic) = (&(*prepared).diagnostics).get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        std::ptr::write(out_diagnostic, diagnostic.as_ffi());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_native_buffer_count(
+    prepared: *const LoomDuckDbPrepared,
+    out_count: *mut usize,
+) -> i32 {
+    if prepared.is_null() || out_count.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_count, (*prepared).native_buffers.len());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_prepare_native_buffer(
+    prepared: *const LoomDuckDbPrepared,
+    index: usize,
+    out_buffer: *mut LoomDuckDbNativeBuffer,
+) -> i32 {
+    if prepared.is_null() || out_buffer.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(buffer) = (&(*prepared).native_buffers).get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        std::ptr::write(out_buffer, buffer.as_ffi());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+impl LoomDuckDbPlan {
+    fn from_report(report: DuckDbRuntimePlanReport) -> Self {
+        let decision = cstring_lossy(report.decision.as_str());
+        let cache_key = cstring_lossy(&report.cache_key.stable_id);
+        let diagnostics = report
+            .diagnostics
+            .iter()
+            .map(OwnedDuckDbDiagnostic::from_diagnostic)
+            .collect();
+        Self {
+            report,
+            decision,
+            cache_key,
+            diagnostics,
+        }
+    }
+}
+
+impl LoomDuckDbPrepared {
+    fn from_route(route: DuckDbPreparedRoute) -> Self {
+        let status = route
+            .backend_report
+            .as_ref()
+            .map(|report| report.status.as_str())
+            .unwrap_or(route.decision.as_str());
+        let diagnostics = route
+            .diagnostics
+            .iter()
+            .map(OwnedDuckDbDiagnostic::from_diagnostic)
+            .collect();
+        let native_buffers = route
+            .native_buffers
+            .iter()
+            .map(OwnedDuckDbNativeBuffer::from_buffer)
+            .collect();
+        Self {
+            status: cstring_lossy(status),
+            decision: cstring_lossy(route.decision.as_str()),
+            diagnostics,
+            native_buffers,
+            route,
+        }
+    }
+}
+
+fn test_native_facts_for_artifact(artifact: &[u8]) -> DuckDbTestNativeFacts {
+    let (row_count, data_type) = decode_layout_payload_maybe_container(artifact)
+        .map(|desc| (desc.row_count as u64, desc.data_type))
+        .unwrap_or((0, DataType::Int32));
+    DuckDbTestNativeFacts {
+        row_count,
+        columns: vec![data_type],
+        test_jit_value_buffers: None,
+    }
+}
+
+fn cstring_lossy(value: &str) -> CString {
+    CString::new(value.replace('\0', "\\0")).expect("interior NULs replaced")
 }
 
 pub fn plan_duckdb_runtime(

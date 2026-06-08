@@ -43,7 +43,29 @@ after_includes = "\n/* Self-contained forward declarations for the Arrow C Data 
 # the Arrow C Data Interface headers.  The loom_decode declaration still uses
 # them as pointer types, which is valid C (incomplete types work as pointers).
 [export]
-exclude = ["FFI_ArrowArray", "FFI_ArrowSchema", "LoomError"]
+exclude = [
+    "FFI_ArrowArray",
+    "FFI_ArrowSchema",
+    "LoomError",
+    "LoomDuckDbDiagnostic",
+    "LoomDuckDbNativeBuffer",
+    "LoomDuckDbPlan",
+    "LoomDuckDbPrepared",
+    "loom_duckdb_plan_create",
+    "loom_duckdb_plan_destroy",
+    "loom_duckdb_plan_decision",
+    "loom_duckdb_plan_cache_key",
+    "loom_duckdb_plan_diagnostic_count",
+    "loom_duckdb_plan_diagnostic",
+    "loom_duckdb_prepare_create",
+    "loom_duckdb_prepare_destroy",
+    "loom_duckdb_prepare_status",
+    "loom_duckdb_prepare_route",
+    "loom_duckdb_prepare_diagnostic_count",
+    "loom_duckdb_prepare_diagnostic",
+    "loom_duckdb_prepare_native_buffer_count",
+    "loom_duckdb_prepare_native_buffer",
+]
 
 # Do not emit the System allocator static (it has no C-visible symbol).
 [parse]

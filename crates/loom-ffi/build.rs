@@ -19,6 +19,7 @@
 fn main() {
     // Re-run this build script only when the FFI source changes.
     println!("cargo:rerun-if-changed=src/ffi.rs");
+    println!("cargo:rerun-if-changed=src/duckdb_runtime.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=cbindgen.toml");
 
