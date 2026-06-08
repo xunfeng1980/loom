@@ -22,11 +22,22 @@ info() { echo "${YLW}[iceberg-binding]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
+PHASE_DIR=".planning/phases/28-iceberg-ref-table-binding"
+REPORT="${PHASE_DIR}/28-ICEBERG-BINDING-REPORT.md"
+
 check_file() {
     local file="$1"
     if [ ! -f "${file}" ]; then
         fail "required artifact missing: ${file}"
     fi
+}
+
+check_marker() {
+    local pattern="$1"
+    local file="$2"
+    local label="$3"
+    rg -q --fixed-strings "${pattern}" "${file}" \
+        || fail "missing ${label}: ${pattern} in ${file}"
 }
 
 non_comment_lines() {
@@ -178,33 +189,108 @@ check_serde_json_placement() {
     fi
 }
 
+check_binding_report_language() {
+    python3 - "${REPORT}" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text()
+claim_terms = (
+    "manifest-only",
+    "sidecar-only",
+    "metadata-only",
+    "verifier-status-only",
+    "source-evidence-only",
+    "oracle-accepted-flag-only",
+)
+success_terms = re.compile(r"\b(success|successful|passing|accepted|proof|evidence)\b", re.I)
+negating_terms = re.compile(
+    r"\b(no|not|never|cannot|must not|without|fail-closed|failing|rejected|unsupported|descriptive only|not proof)\b",
+    re.I,
+)
+
+bad = []
+for lineno, line in enumerate(text.splitlines(), 1):
+    lowered = line.lower()
+    if not any(term in lowered for term in claim_terms):
+        continue
+    if not success_terms.search(line):
+        continue
+    if negating_terms.search(line):
+        continue
+    bad.append((lineno, line))
+
+if bad:
+    for lineno, line in bad:
+        print(f"{lineno}: {line}", file=sys.stderr)
+    raise SystemExit(
+        "report treats metadata-only, manifest-only, sidecar-only, verifier-status-only, "
+        "source-evidence-only, or oracle-accepted-flag-only claims as successful proof"
+    )
+PY
+}
+
 echo "=== Loom Phase 28 Iceberg binding dependency/scope guard ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking adapter crate scaffold..."
-check_file ".planning/phases/28-iceberg-ref-table-binding/28-CONTEXT.md"
-check_file ".planning/phases/28-iceberg-ref-table-binding/28-RESEARCH.md"
-check_file ".planning/phases/28-iceberg-ref-table-binding/28-PATTERNS.md"
+check_file "${PHASE_DIR}/28-CONTEXT.md"
+check_file "${PHASE_DIR}/28-RESEARCH.md"
+check_file "${PHASE_DIR}/28-PATTERNS.md"
+check_file "${REPORT}"
 check_file "crates/loom-iceberg-binding/Cargo.toml"
 check_file "crates/loom-iceberg-binding/src/lib.rs"
 check_file "crates/loom-iceberg-binding/src/binding_contract.rs"
 check_file "crates/loom-iceberg-binding/tests/dependency_boundary.rs"
 check_file "crates/loom-iceberg-binding/tests/binding_contract.rs"
 check_file "crates/loom-iceberg-binding/tests/binding_handoff.rs"
+check_file "crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-metadata.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/mismatch-schema-sidecar.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/mismatch-snapshot-sidecar.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/manifest-only-sidecar.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json"
+check_file "crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/unsupported-remote-metadata.json"
 check_file "crates/loom-iceberg-binding/tests/fixtures/local/rejected-missing-identity.json"
 rg -q --fixed-strings '"crates/loom-iceberg-binding"' Cargo.toml \
     || fail "workspace member missing: crates/loom-iceberg-binding"
 ok "adapter crate scaffold and local parser fixtures"
 
+info "Checking Phase 28 binding report evidence markers..."
+for marker in \
+    "Executive Summary" \
+    "Implemented Artifacts" \
+    "Binding Schema" \
+    "Accepted Unsupported Rejected Matrix" \
+    "Mismatch Fail-Closed Matrix" \
+    "Source Evidence" \
+    "Verifier Evidence" \
+    "Oracle Evidence" \
+    "Dependency and API Boundary" \
+    "Current-Phase Tradeoffs" \
+    "Non-Goals" \
+    "Release Gate Evidence" \
+    "Phase 29 Handoff"; do
+    check_marker "${marker}" "${REPORT}" "report section marker"
+done
+check_marker "accepted-table-source-evidence.json" "${REPORT}" "accepted evidence fixture"
+check_marker "stale-source-evidence.json" "${REPORT}" "stale source evidence fixture"
+check_marker "forged-oracle-evidence.json" "${REPORT}" "forged oracle evidence fixture"
+check_marker "does not add the official \`iceberg\` crate by default" "${REPORT}" "no-default-iceberg decision"
+check_marker "Current-Phase Tradeoffs" "${REPORT}" "current tradeoffs section"
+check_binding_report_language
+ok "Phase 28 binding report evidence is present"
+
 info "Running focused adapter dependency and contract tests..."
 cargo test -p loom-iceberg-binding --test dependency_boundary
 cargo test -p loom-iceberg-binding --test binding_contract
 cargo test -p loom-iceberg-binding --test binding_handoff
+cargo test -p loom-iceberg-binding --test mismatch_fail_closed
 cargo test -p loom-core --test artifact_verifier
 cargo check -p loom-iceberg-binding
 ok "focused adapter tests"
@@ -265,15 +351,33 @@ check_required_code_patterns "accepted binding source/test evidence" \
     "snapshot_id" \
     "artifact_sha256"
 
+check_required_code_patterns "mismatch fail-closed matrix" \
+    crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs \
+    crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json \
+    -- \
+    "schema_snapshot_table_and_artifact_mismatches_return_no_bytes" \
+    "verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes" \
+    "stale_source_and_forged_oracle_evidence_flags_return_no_bytes" \
+    "manifest_only_remote_credentials_and_public_route_scope_fail_closed" \
+    "assert_no_accepted_bytes" \
+    "stale-source-evidence" \
+    "forged-oracle-evidence" \
+    "manifest-only"
+
 check_required_code_patterns "manifest-only negative coverage" \
     crates/loom-iceberg-binding/tests/binding_handoff.rs \
+    crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs \
     -- \
     "sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance" \
-    "manifest_list_location"
+    "manifest_list_location" \
+    "manifest-only"
 
 check_required_code_patterns "concrete source/oracle evidence fixture" \
     crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json \
     crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json \
     -- \
     "accepted-table-source-evidence" \
     "row_count" \

@@ -14,7 +14,7 @@ The default implementation intentionally does not add the official `iceberg` cra
 | `crates/loom-iceberg-binding/src/binding_contract.rs` | Typed local metadata/sidecar parser, accepted/unsupported/rejected report model, verifier-backed binding handoff, SHA-256 check, and source/oracle evidence validation. |
 | `crates/loom-iceberg-binding/tests/binding_contract.rs` | Report invariants and parser classification coverage. |
 | `crates/loom-iceberg-binding/tests/binding_handoff.rs` | Accepted binding handoff and existing fail-closed hash/evidence coverage. |
-| `crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs` | D-08/D-15 mismatch matrix for schema, snapshot, table identity, hash, verifier status, malformed bytes, missing evidence, stale evidence, forged oracle flags, manifest-only claims, and public-scope creep. |
+| `crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs` | D-08/D-15 mismatch matrix for schema, snapshot, table identity, hash, verifier status, malformed bytes, missing evidence, stale evidence, forged oracle flags, public-scope creep, and manifest-only claims that must not be accepted as evidence. |
 | `crates/loom-iceberg-binding/tests/fixtures/local/*.json` | Local metadata, sidecar, accepted evidence, unsupported/rejected metadata, and mismatch/static stale evidence fixtures. |
 | `scripts/iceberg-binding-test.sh` | Focused Phase 28 gate; Plan 28-04 expands it to cover mismatch tests and report markers. |
 
