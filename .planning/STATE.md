@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-06-08T20:26:16.174Z"
-last_activity: 2026-06-08 -- Phase 27 execution started
+status: completed
+stopped_at: Completed 27-02-PLAN.md
+last_updated: "2026-06-08T20:33:41.661Z"
+last_activity: 2026-06-08 -- Phase 27 Plan 01 complete
 progress:
   total_phases: 30
-  completed_phases: 26
+  completed_phases: 21
   total_plans: 112
-  completed_plans: 105
-  percent: 94
+  completed_plans: 90
+  percent: 70
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 27 (lance-parquet-archival-readability-dataset-ingress) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Plan 27-01 complete; ready for Plan 27-02
 Last activity: 2026-06-08 -- Phase 27 Plan 01 complete
 
@@ -111,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P01]: Lance and Parquet SDK dependencies stay isolated to adapter crates with exact workspace pins; generic/core/ffi/public surfaces remain SDK-free.
 - [Phase 27]: [Phase 27 P01]: SourceIngressAcceptedArtifact is a source-neutral bytes-plus-report handoff; existing Vortex adapter-local handoff remains stable for now.
 - [Phase 27]: [Phase 27 P01]: Phase 27 guard script remains unwired from mvp0-verify until Plan 27-05.
+- [Phase 27]: [Phase 27 P02]: Supported Parquet shapes are classified in SourceCoverage only; accepted reports and artifact bytes remain deferred to the emission plan.
+- [Phase 27]: [Phase 27 P02]: Parquet SDK metadata stays adapter-private and maps to source-neutral strings, counts, booleans, layout facts, and split facts.
 
 ### Pending Todos
 
@@ -253,8 +255,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T20:26:16.165Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-06-08T20:33:41.416Z
+Stopped at: Completed 27-02-PLAN.md
 
 Phase 17 handoff:
 
@@ -314,3 +316,4 @@ Resume file: None
 | Phase 25-native-equivalence-cache-and-fallback-hardening P02 | 10m32s | 3 tasks | 4 files |
 | Phase 25-native-equivalence-cache-and-fallback-hardening P05 | ~15min | 3 tasks | 6 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P01 | 13m | 3 tasks | 11 files |
+| Phase 27-lance-parquet-archival-readability-dataset-ingress P02 | 6m | 3 tasks | 6 files |
