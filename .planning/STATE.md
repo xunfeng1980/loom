@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: completed
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-06-08T21:24:56.170Z"
-last_activity: 2026-06-08 -- Phase 27 Plan 01 complete
+stopped_at: Phase 27 complete
+last_updated: "2026-06-09T05:49:28+08:00"
+last_activity: 2026-06-09 -- Phase 27 complete
 progress:
   total_phases: 30
-  completed_phases: 22
+  completed_phases: 27
   total_plans: 112
-  completed_plans: 93
-  percent: 73
+  completed_plans: 112
+  percent: 90
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 27 — lance-parquet-archival-readability-dataset-ingress
+**Current focus:** Phase 28 — iceberg-ref/table-binding
 
 ## Current Position
 
-Phase: 27 (lance-parquet-archival-readability-dataset-ingress) — EXECUTING
-Plan: 5 of 5
-Status: Plan 27-01 complete; ready for Plan 27-02
-Last activity: 2026-06-08 -- Phase 27 Plan 01 complete
+Phase: 28
+Plan: Not started
+Status: Phase 27 complete; ready to discuss Phase 28
+Last activity: 2026-06-09 -- Phase 27 complete
 
-Progress: 94%
+Progress: 90%
 
 ## Progress Snapshot
 
-- Completed phases: 26 / 30
-- Completed executable plans: 105 / 112
+- Completed phases: 27 / 30
+- Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 27 Plan 2 of 5 next; Phase 27 Plan 1 completed
-- Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed for Phase 27 scaffold and dependency/scope guards; it is intentionally not wired into `scripts/mvp0-verify.sh` until Plan 27-05
+- Current position: Phase 28 not started; Phase 27 completed with verifier status `passed`
+- Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed and is wired into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke
 
 **Completed phase plan counts:**
 
@@ -197,8 +197,8 @@ None yet.
 - Phase 24 executing: 24-02 complete with internal `loom_duckdb_*` FFI handles, `loom_duckdb_internal.h`, panic-safe route/diagnostic/native-buffer accessors, and public-header leakage gates.
 - Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
 - Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
-- Phase 27 next: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
-- Phase 28 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract and source-ingress contract are credible.
+- Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
+- Phase 28 next: Iceberg ref/table binding after the hardened native execution contract, source-ingress contract, and Lance/Parquet archival-readability proof are credible.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 

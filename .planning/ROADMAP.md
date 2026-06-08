@@ -62,7 +62,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 24: DuckDB Native Execution Integration MVP** - Ready for research/planning: wire verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (completed 2026-06-08)
 - [x] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Bounded oracle/equivalence gates, in-process native preparation cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (completed 2026-06-09)
 - [x] **Phase 26: External Source Ingress Contract** - Next active focus for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (completed 2026-06-09)
-- [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Placeholder for generating verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and legacy-file-with-Loom compatibility as the value proof (not expanded) (completed 2026-06-08)
+- [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and actual older-version fixture compatibility as the value proof (completed 2026-06-09)
 - [ ] **Phase 28: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path, full reader boundary, and external-source ingress contract are credible (not expanded)
 - [ ] **Phase 29: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
 - [ ] **Phase 30: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
@@ -770,7 +770,7 @@ Plans:
 
 ### Phase 27: Lance + Parquet Archival Readability / Dataset Ingress
 
-**Status:** Planned. Phase 26 established the external source ingress contract; execute the five Phase 27 plans to apply it to Lance and Parquet.
+**Status:** Complete. Phase 26 established the external source ingress contract; Phase 27 applied it to Lance and Parquet with verifier-backed current and actual older-version archival-readability evidence.
 **Depends on:** Phase 26.
 **Goal:** Supported local Lance datasets and Parquet files produce source-neutral facts, verifier-backed Loom artifacts, oracle/equivalence evidence, and current plus legacy archival-readability proof for the narrow non-null primitive/table slice.
 **Requirements:** PHASE-27
@@ -846,7 +846,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 24. DuckDB Native Execution Integration MVP | 5/5 | Complete   | 2026-06-08 |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
-| 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete   | 2026-06-08 |
+| 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
 | 28. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
 | 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
 | 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
