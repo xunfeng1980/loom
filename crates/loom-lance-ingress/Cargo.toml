@@ -12,5 +12,6 @@ loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 
 [dev-dependencies]
+arrow-array = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }

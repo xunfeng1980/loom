@@ -6,3 +6,6 @@
 //! readers, credentials, object-store state, public SQL routes, DuckDB APIs, or
 //! FFI surfaces.
 
+mod source_contract;
+
+pub use source_contract::{lance_source_facts_from_path, source_ingress_report_from_lance_path};
