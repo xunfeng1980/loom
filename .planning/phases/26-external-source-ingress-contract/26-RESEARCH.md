@@ -165,7 +165,7 @@ The gate should also grep for contract/report docs and dependency creep markers 
 ### Documentation Artifacts
 
 - Add a final `26-SOURCE-INGRESS-CONTRACT.md` with the generic model, Vortex mapping table, adapter obligations, non-goals, and Phase 27 handoff assumptions. [VERIFIED: .planning/phases/26-external-source-ingress-contract/26-CONTEXT.md]
-- Add a `26-SUMMARY.md` or final report only if the local phase pattern requires closeout evidence; Phase 18 and Phase 21 both used final docs and release-gate scripts. [VERIFIED: .planning/phases/18-complete-vortex-reader/18-SUMMARY.md; scripts/vortex-encoding-coverage-test.sh]
+- Add a final report plus the standard per-plan `26-05-SUMMARY.md` closeout evidence; Phase 18 and Phase 21 both used final docs and release-gate scripts. [VERIFIED: .planning/phases/18-complete-vortex-reader/18-SUMMARY.md; scripts/vortex-encoding-coverage-test.sh]
 
 ## Risks/Tradeoffs
 
@@ -216,8 +216,8 @@ The gate should also grep for contract/report docs and dependency creep markers 
 - Recommended crate home: MEDIUM, because the codebase supports the dependency-boundary reasoning but the exact workspace-crate decision is still an implementation choice for the planner. [VERIFIED: Cargo.toml; ASSUMED]
 - External best-practice analogies: MEDIUM, because Arrow/DataFusion sources are authoritative but advisory for Loom rather than binding project requirements. [CITED: https://arrow.apache.org/docs/format/CDataInterface.html; https://datafusion.apache.org/library-user-guide/custom-table-providers.html]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. Should `loom-source-ingress` depend on `loom-core` for exact artifact verifier summary types, or should it store verifier summaries as plain source-contract data to stay lower-level? [ASSUMED]
-2. Should generic source identity include a content fingerprint in Phase 26, or only reserve the field until Phase 27 has real Lance/Parquet identity requirements? [ASSUMED]
-3. Should Phase 26 expose conversion traits publicly inside the crate, or keep mapping helpers adapter-local until a second real adapter exists? [ASSUMED]
+1. RESOLVED: `loom-source-ingress` should not depend on `loom-core` in Phase 26. Store verifier handoff as plain source-contract data so the artifact verifier remains source-neutral and `loom-core` does not learn about source-ingress adapters. [ASSUMED]
+2. RESOLVED: `SourceIdentity` should include an optional/reserved fingerprint field in Phase 26, but adapters may leave it absent until Phase 27 has real Lance/Parquet identity requirements. The contract reserves the concept without requiring a persistent hash format. [ASSUMED]
+3. RESOLVED: keep conversion helpers adapter-local in Phase 26. Expose generic data types and constructors from `loom-source-ingress`, but do not introduce a broad public adapter trait or plugin framework until a second real adapter proves the shared abstraction. [ASSUMED]
