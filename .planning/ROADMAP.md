@@ -770,9 +770,30 @@ Plans:
 
 ### Phase 27: Lance + Parquet Archival Readability / Dataset Ingress
 
-**Status:** Placeholder only. Do not expand until Phase 26 establishes the external source ingress contract.
+**Status:** Planned. Phase 26 established the external source ingress contract; execute the five Phase 27 plans to apply it to Lance and Parquet.
 **Depends on:** Phase 26.
+**Goal:** Supported local Lance datasets and Parquet files produce source-neutral facts, verifier-backed Loom artifacts, oracle/equivalence evidence, and current plus legacy archival-readability proof for the narrow non-null primitive/table slice.
+**Requirements:** PHASE-27
 **Ordering decision:** Make Lance and Parquet the first non-Vortex archival-readability targets because both are Arrow-adjacent columnar data sources and are close to Loom's successful output contract, but define the value as long-term readable artifacts rather than broad source-format compatibility. This phase should generate verifier-backed, long-lived Loom artifacts for supported Lance datasets and Parquet files so a platform can still read describable schema, Lance fragment metadata, Parquet row-group/page-adjacent metadata where supported, and column data years later without strongly depending on the original source reader version. The first slice has two required value proofs: current-version Lance and Parquet read/write plus Loom artifact verification, and older Lance/Parquet-version files carrying or paired with Loom artifacts that remain readable and rewritable for the supported schema/fragment-or-row-group/column subset. The isolated Lance and Parquet boundaries should extract source facts and diagnostics through the Phase 26 contract, emit verified `LMC1`/`LMT1` artifacts for supported Arrow-compatible primitive/table shapes, and record oracle/equivalence evidence against current source-reader and Arrow scan output. Deeper binding of Loom artifacts into Lance manifests, Lance indices, Parquet writer internals, object-store semantics, nested/extension types, or arbitrary source encodings should remain deferred until the archival-readability slice is proven. It must not add Iceberg binding, StarRocks/DuckDB dual-query work, MCAP/Zarr/LeRobot support, or arbitrary Lance/Parquet semantic compatibility.
+**Plans:** 5 plans across 4 waves
+Plans:
+
+**Wave 1**
+
+- [ ] 27-01-PLAN.md - Adapter crate scaffolding and dependency/scope guards (PHASE-27)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 27-02-PLAN.md - Parquet fact extraction and source-ingress mapping (PHASE-27)
+- [ ] 27-03-PLAN.md - Lance fact extraction and source-ingress mapping (PHASE-27)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 27-04-PLAN.md - Verifier-routed Loom emission, oracle equivalence, and legacy readability fixtures (PHASE-27)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 27-05-PLAN.md - Release gate wiring, archival readability report, and closeout verification (PHASE-27)
 
 ### Phase 28: Iceberg Ref/Table Binding
 
