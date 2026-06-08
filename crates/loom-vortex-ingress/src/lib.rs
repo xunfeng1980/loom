@@ -14,7 +14,7 @@ use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
 use vortex_array::arrays::PrimitiveArray;
-use vortex_array::dtype::PType;
+use vortex_array::dtype::{DType, Nullability, PType};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
 use vortex_array::session::ArraySession;
@@ -183,6 +183,7 @@ impl VortexReaderEmissionKind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VortexReaderDiagnosticCode {
     OpenFailed,
+    SplitUnavailable,
     TraversalFailed,
     UnsupportedLayout,
     UnsupportedDType,
@@ -194,11 +195,34 @@ impl VortexReaderDiagnosticCode {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::OpenFailed => "READER_OPEN_FAILED",
+            Self::SplitUnavailable => "READER_SPLIT_UNAVAILABLE",
             Self::TraversalFailed => "READER_TRAVERSAL_FAILED",
             Self::UnsupportedLayout => "READER_UNSUPPORTED_LAYOUT",
             Self::UnsupportedDType => "READER_UNSUPPORTED_DTYPE",
             Self::UnsupportedConversion => "READER_UNSUPPORTED_CONVERSION",
             Self::VerificationRequired => "READER_VERIFICATION_REQUIRED",
+        }
+    }
+}
+
+/// Reviewer-visible diagnostic for non-fatal reader fact extraction gaps.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderDiagnostic {
+    pub code: VortexReaderDiagnosticCode,
+    pub path: String,
+    pub message: String,
+}
+
+impl VortexReaderDiagnostic {
+    pub fn new(
+        code: VortexReaderDiagnosticCode,
+        path: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            code,
+            path: path.into(),
+            message: message.into(),
         }
     }
 }
@@ -211,6 +235,8 @@ pub struct VortexReaderDTypeFact {
     pub summary: String,
     pub kind: String,
     pub nullable: Option<bool>,
+    pub field_count: Option<usize>,
+    pub field_names: Vec<String>,
 }
 
 /// Loom-owned layout fact for a node in the Vortex layout tree.
@@ -241,6 +267,15 @@ pub struct VortexReaderSegmentFact {
     pub overlaps_previous: bool,
 }
 
+/// Loom-owned split range fact produced from Vortex layout split discovery.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexReaderSplitFact {
+    pub index: usize,
+    pub start_row: u64,
+    pub end_row: u64,
+    pub row_count: u64,
+}
+
 /// Rich Phase 18 facts extracted from a real Vortex file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VortexReaderFacts {
@@ -252,10 +287,12 @@ pub struct VortexReaderFacts {
     pub layout_facts: Vec<VortexReaderLayoutFact>,
     pub dtype_facts: Vec<VortexReaderDTypeFact>,
     pub segment_facts: Vec<VortexReaderSegmentFact>,
+    pub split_facts: Vec<VortexReaderSplitFact>,
     pub statistics_present: bool,
     pub footer_approx_byte_size: Option<usize>,
     pub support: VortexReaderSupport,
     pub emission_kind: VortexReaderEmissionKind,
+    pub diagnostics: Vec<VortexReaderDiagnostic>,
 }
 
 /// Result of inspecting or converting a real Vortex file.
@@ -381,14 +418,22 @@ fn reader_facts_from_file(
         }
     };
 
+    let mut diagnostics = Vec::new();
     let mut layout_facts = Vec::new();
-    collect_layout_facts(layout.clone(), "$".to_string(), None, &mut layout_facts);
+    collect_layout_facts(
+        layout.clone(),
+        "$".to_string(),
+        None,
+        &mut layout_facts,
+        &mut diagnostics,
+    );
 
     let dtype_facts = layout_facts
         .iter()
         .map(|layout| dtype_fact_from_summary(layout.path.clone(), layout.dtype_summary.clone()))
         .collect::<Vec<_>>();
-    let root_dtype = dtype_fact_from_summary("$", format!("{:?}", file.dtype()));
+    let root_dtype = dtype_fact_from_dtype("$", file.dtype());
+    let split_facts = split_facts_from_file(file, &mut diagnostics);
 
     VortexReaderFacts {
         source_kind,
@@ -399,10 +444,12 @@ fn reader_facts_from_file(
         layout_facts,
         dtype_facts,
         segment_facts: segment_facts_from_file(file),
+        split_facts,
         statistics_present: file.file_stats().is_some(),
         footer_approx_byte_size: footer.approx_byte_size(),
         support,
         emission_kind,
+        diagnostics,
     }
 }
 
@@ -411,6 +458,7 @@ fn collect_layout_facts(
     path: String,
     child_context: Option<(String, String, Option<u64>)>,
     facts: &mut Vec<VortexReaderLayoutFact>,
+    diagnostics: &mut Vec<VortexReaderDiagnostic>,
 ) {
     let segment_ids = layout.segment_ids().into_iter().map(|id| *id).collect();
     let (child_type, child_name, child_row_offset) = child_context
@@ -443,6 +491,11 @@ fn collect_layout_facts(
         .collect::<Vec<_>>();
 
     let Ok(children) = layout.children() else {
+        diagnostics.push(VortexReaderDiagnostic::new(
+            VortexReaderDiagnosticCode::TraversalFailed,
+            path,
+            "failed to traverse Vortex layout children",
+        ));
         return;
     };
 
@@ -458,11 +511,65 @@ fn collect_layout_facts(
         let child_row_offset = child_offsets.get(idx).copied().flatten();
         collect_layout_facts(
             child,
-            format!("{path}/children/{idx}"),
+            format!("{path}.children[{idx}]"),
             Some((child_type, child_name, child_row_offset)),
             facts,
+            diagnostics,
         );
     }
+}
+
+fn dtype_fact_from_dtype(path: impl Into<String>, dtype: &DType) -> VortexReaderDTypeFact {
+    let (kind, nullable, field_count, field_names) = match dtype {
+        DType::Null => ("null", None, None, Vec::new()),
+        DType::Bool(nullability) => ("bool", Some(is_nullable(*nullability)), None, Vec::new()),
+        DType::Primitive(_, nullability) => (
+            "primitive",
+            Some(is_nullable(*nullability)),
+            None,
+            Vec::new(),
+        ),
+        DType::Decimal(_, nullability) => {
+            ("decimal", Some(is_nullable(*nullability)), None, Vec::new())
+        }
+        DType::Utf8(nullability) => ("utf8", Some(is_nullable(*nullability)), None, Vec::new()),
+        DType::Binary(nullability) => ("binary", Some(is_nullable(*nullability)), None, Vec::new()),
+        DType::List(_, nullability) => ("list", Some(is_nullable(*nullability)), None, Vec::new()),
+        DType::FixedSizeList(_, _, nullability) => (
+            "fixed-size-list",
+            Some(is_nullable(*nullability)),
+            None,
+            Vec::new(),
+        ),
+        DType::Struct(fields, nullability) => (
+            "struct",
+            Some(is_nullable(*nullability)),
+            Some(fields.nfields()),
+            fields
+                .names()
+                .iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>(),
+        ),
+        DType::Union(nullability) => ("union", Some(is_nullable(*nullability)), None, Vec::new()),
+        DType::Variant(nullability) => {
+            ("variant", Some(is_nullable(*nullability)), None, Vec::new())
+        }
+        DType::Extension(_) => ("extension", None, None, Vec::new()),
+    };
+
+    VortexReaderDTypeFact {
+        path: path.into(),
+        summary: format!("{dtype:?}"),
+        kind: kind.to_string(),
+        nullable,
+        field_count,
+        field_names,
+    }
+}
+
+fn is_nullable(nullability: Nullability) -> bool {
+    matches!(nullability, Nullability::Nullable)
 }
 
 fn dtype_fact_from_summary(
@@ -474,19 +581,31 @@ fn dtype_fact_from_summary(
         path: path.into(),
         kind: dtype_kind_from_summary(&summary).to_string(),
         nullable: dtype_nullable_from_summary(&summary),
+        field_count: dtype_field_count_from_summary(&summary),
+        field_names: dtype_field_names_from_summary(&summary),
         summary,
     }
 }
 
 fn dtype_kind_from_summary(summary: &str) -> &'static str {
-    if summary.contains("Struct") {
+    if summary.contains("FixedSizeList") {
+        "fixed-size-list"
+    } else if summary.contains("Struct") {
         "struct"
     } else if summary.contains("List") {
         "list"
+    } else if summary.contains("Decimal") {
+        "decimal"
     } else if summary.contains("Utf8") {
         "utf8"
+    } else if summary.contains("Binary") {
+        "binary"
     } else if summary.contains("Bool") {
         "bool"
+    } else if summary.contains("Null") {
+        "null"
+    } else if summary.contains("Extension") {
+        "extension"
     } else if summary.contains("Primitive") || summary.contains("I32") || summary.contains("I64") {
         "primitive"
     } else {
@@ -502,6 +621,26 @@ fn dtype_nullable_from_summary(summary: &str) -> Option<bool> {
     } else {
         None
     }
+}
+
+fn dtype_field_count_from_summary(summary: &str) -> Option<usize> {
+    if !summary.contains("Struct") {
+        return None;
+    }
+
+    Some(summary.matches("FieldDType").count())
+}
+
+fn dtype_field_names_from_summary(summary: &str) -> Vec<String> {
+    if !summary.contains("Struct") {
+        return Vec::new();
+    }
+
+    summary
+        .split("FieldName(\"")
+        .skip(1)
+        .filter_map(|part| part.split_once("\")").map(|(name, _)| name.to_string()))
+        .collect()
 }
 
 fn segment_facts_from_file(file: &VortexFile) -> Vec<VortexReaderSegmentFact> {
@@ -527,6 +666,32 @@ fn segment_facts_from_file(file: &VortexFile) -> Vec<VortexReaderSegmentFact> {
             }
         })
         .collect()
+}
+
+fn split_facts_from_file(
+    file: &VortexFile,
+    diagnostics: &mut Vec<VortexReaderDiagnostic>,
+) -> Vec<VortexReaderSplitFact> {
+    match file.splits() {
+        Ok(splits) => splits
+            .into_iter()
+            .enumerate()
+            .map(|(index, range)| VortexReaderSplitFact {
+                index,
+                start_row: range.start,
+                end_row: range.end,
+                row_count: range.end.saturating_sub(range.start),
+            })
+            .collect(),
+        Err(err) => {
+            diagnostics.push(VortexReaderDiagnostic::new(
+                VortexReaderDiagnosticCode::SplitUnavailable,
+                "$.splits",
+                format!("failed to collect Vortex split facts: {err}"),
+            ));
+            Vec::new()
+        }
+    }
 }
 
 fn opened_buffer_or_report(bytes: &[u8]) -> Result<VortexFile, VortexIngressReport> {
@@ -648,10 +813,30 @@ pub fn scan_i32_values_from_vortex_buffer(bytes: &[u8]) -> Result<Vec<i32>, Vort
 }
 
 fn supported_int32_non_nullable(file: &VortexFile) -> Result<(), String> {
+    if !matches!(
+        file.dtype(),
+        DType::Primitive(PType::I32, Nullability::NonNullable)
+    ) {
+        return Err(format!(
+            "supported slice requires non-null Int32 rows, found {:?}",
+            file.dtype()
+        ));
+    }
+
     scan_supported_i32_values(file).map(|_| ())
 }
 
 fn scan_supported_i32_values(file: &VortexFile) -> Result<Vec<i32>, String> {
+    if !matches!(
+        file.dtype(),
+        DType::Primitive(PType::I32, Nullability::NonNullable)
+    ) {
+        return Err(format!(
+            "supported slice requires non-null Int32 rows, found {:?}",
+            file.dtype()
+        ));
+    }
+
     let array = RUNTIME.block_on(async {
         let stream = file
             .scan()
