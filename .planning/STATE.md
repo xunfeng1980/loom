@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Phase 13 planned
-last_updated: "2026-06-08T06:35:00.000Z"
-last_activity: 2026-06-08 -- 13-01 complete; L2Core spec and proof-obligation matrix created
+last_updated: "2026-06-08T06:55:00.000Z"
+last_activity: 2026-06-08 -- 13-02 complete; Rust L2Core model and constraint IR added
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 44
-  completed_plans: 40
-  percent: 82
+  completed_plans: 41
+  percent: 84
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 ## Current Position
 
 Phase: 13 (full-loom-verifier) — EXECUTING
-Plan: 1 of 5 complete
-Status: 13-01 complete; Wave 2 ready
-Last activity: 2026-06-08 -- 13-01 complete; L2Core spec and proof-obligation matrix created
+Plan: 2 of 5 complete
+Status: 13-02 complete; Wave 3 ready
+Last activity: 2026-06-08 -- 13-02 complete; Rust L2Core model and constraint IR added
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -95,7 +95,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 12 P03 | 15 min | 3 tasks | 3 files |
 | Phase 12 P04 | 20 min | 3 tasks | 8 files |
 | Phase 13 P01 | 10 min | 2 tasks | 2 files |
-| Phase 13 P02 | planned | 3 tasks | 5 files |
+| Phase 13 P02 | 20 min | 3 tasks | 7 files |
 | Phase 13 P03 | planned | 3 tasks | 6 files |
 | Phase 13 P04 | planned | 3 tasks | 5 files |
 | Phase 13 P05 | planned | 3 tasks | 13 files |
@@ -150,7 +150,8 @@ None yet.
 - Phase 11 complete: `LMC1` Distribution Container v0 now has docs, generated fixture coverage, DuckDB SQL smoke coverage, malformed-container release-gate coverage, and DIST-01 through DIST-05 closed.
 - Phase 12 complete: current-boundary Safety Proof MVP has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof docs, and a release-gated safety proof script for the implemented `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary only.
 - Phase 13 entered: selected full-verifier architecture combines Rust abstract interpretation/type-effect checking, SMT local obligations, Lean/Rocq semantics and soundness, and TLA+ lifecycle/pipeline invariants.
-- Phase 13 planned: 5 plans cover `L2Core` spec, Rust model/constraint IR, Rust abstract-interpreting verifier, Lean/TLA formal scaffolding, and final release-gated closeout.
+- Phase 13 executing: 13-01 complete with normative `L2Core` verifier spec and proof-obligation matrix.
+- Phase 13 executing: 13-02 complete with Rust `L2Core` model, SMT-ready constraint IR, `VerifiedArtifactFacts`, and focused model tests.
 - Phase 14 and Phase 15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed

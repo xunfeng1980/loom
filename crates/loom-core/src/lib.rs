@@ -31,6 +31,9 @@ pub mod container_codec;
 /// First-pass structural verifier for MVP0 layouts and table payloads.
 pub mod verifier;
 
+/// Tiny future-language model and proof-obligation IR for the Phase 13 verifier.
+pub mod l2_core;
+
 /// Human-readable MVP0 layout descriptor codec.
 pub mod descriptor;
 

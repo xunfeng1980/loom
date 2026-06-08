@@ -221,4 +221,3 @@ fn obl_12_04_05_table_verifier_failure_blocks_arrow_output() {
     let decoded = assert_no_panic(|| decode_table_to_array_data(&table, &registry));
     assert!(decoded.is_err(), "invalid table must not produce Arrow output");
 }
-

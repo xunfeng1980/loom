@@ -41,4 +41,3 @@ fn ffi_contract_panic_sentinel_returns_panicked() {
         "panic sentinel must be contained by catch_unwind"
     );
 }
-
