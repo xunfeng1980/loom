@@ -50,13 +50,9 @@ else
     fail "fixture hygiene grep failed with rg status ${rg_status}"
 fi
 
-info "Running verifier negative descriptor gate..."
-bash scripts/verifier-negative-test.sh
-ok "scripts/verifier-negative-test.sh"
-
-info "Running container negative gate..."
-bash scripts/container-negative-test.sh
-ok "scripts/container-negative-test.sh"
+info "Running Phase 12 safety proof gate..."
+bash scripts/safety-proof-test.sh
+ok "scripts/safety-proof-test.sh"
 
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
