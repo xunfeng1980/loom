@@ -47,7 +47,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 17 research started and is the next verifier focus: unified artifact verification pipeline.
+- [ ] Phase 17 planned and is the next verifier focus: unified artifact verification pipeline.
 - [ ] Phase 18 remains a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice.
 - [ ] Phase 19 remains a roadmap placeholder only: production MLIR decode dialect and native kernel expansion.
 - [ ] Phase 20 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
@@ -113,7 +113,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Complete — Phase 16 |
-| Phase 17 should unify artifact verification before production native expansion | The current payload structural verifier and future `L2Core` verifier foundation are still parallel lines; lowering and engine work need one fail-closed artifact report from container/schema/features through L1/L2 verification, facts, and lowering readiness. | Research — Phase 17 |
+| Phase 17 should unify artifact verification before production native expansion | The current payload structural verifier and future `L2Core` verifier foundation are still parallel lines; lowering and engine work need one fail-closed artifact report from container/schema/features through L1/L2 verification, facts, and lowering readiness. | Planned — Phase 17 |
 | Phase 19 preserves production decode dialect/native kernel expansion | The unified verifier pipeline should feed a real production MLIR/native surface instead of skipping straight to host integration. | Placeholder — Phase 19 |
 | Phase 18 should complete the Vortex reader before engine integration | Engine-integrated native execution needs stable real artifact/fact/schema semantics; those should come from a complete reader boundary, not the Phase 15 narrow ingress slice. | Placeholder — Phase 18 |
 | Phase 20 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Placeholder — Phase 20 |
@@ -140,4 +140,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 17 research start — optional verifier-gated melior/LLVM/JIT backend evidence is in place for the bounded Int32 slice; Phase 17 is now researching the unified artifact verification pipeline.*
+*Last updated: 2026-06-08 after Phase 17 planning — optional verifier-gated melior/LLVM/JIT backend evidence is in place for the bounded Int32 slice; Phase 17 is planned as the unified artifact verification pipeline.*

@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
 - [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with skip-aware tooling and no production native-compiler claim (complete)
-- [ ] **Phase 17: Unified Artifact Verification Pipeline** - Research started for one fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (not planned/executed)
+- [ ] **Phase 17: Unified Artifact Verification Pipeline** - Planned fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report
 - [ ] **Phase 18: Complete Vortex Reader** - Placeholder for expanding Phase 15's narrow real-ingress slice into a complete, isolated, fail-closed Vortex file/container reader before engine-integrated native execution (not expanded)
 - [ ] **Phase 19: Production Decode Dialect and Native Kernel Expansion** - Placeholder for a custom Loom MLIR decode dialect, Arrow/raw-buffer builder lowering, vectorization, and native lowering beyond the tiny copy slice (not expanded)
 - [ ] **Phase 20: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
@@ -496,7 +496,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 17: Unified Artifact Verification Pipeline
 
-**Status:** Research started. See `.planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md`.
+**Status:** Planned. See `.planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md` and plans `17-01` through `17-05`.
 **Depends on:** Phase 16.
 **Ordering decision:** Before widening native lowering, unify the two current verifier lines into one artifact verifier pipeline. Today `verifier.rs` handles implemented `LMP1`/`LMT1`/`LMC1` structural payload verification, while `full_verifier.rs` handles the future `L2Core` verifier foundation. Phase 17 should make those a single artifact-facing flow:
 
@@ -523,6 +523,13 @@ LMC1 artifact
 - deeper value-dependent semantic checks beyond conservative static verification and runtime guards
 - publishable Lean/Rocq/TLA proof depth beyond current scaffold
 - production MLIR decode dialect, Arrow/raw-buffer native writes, vectorization, and broad native kernel expansion
+
+**Plan Files:**
+- [ ] 17-01-PLAN.md - Artifact verifier contract and report model
+- [ ] 17-02-PLAN.md - Container and L1 structural artifact pipeline
+- [ ] 17-03-PLAN.md - L2Core adapter and verifier facts fusion
+- [ ] 17-04-PLAN.md - Lowering readiness, CLI visibility, and gate script
+- [ ] 17-05-PLAN.md - Final docs, verification report, and planning closeout
 
 ### Phase 18: Complete Vortex Reader
 
@@ -591,7 +598,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
 | 15. Real Vortex File/Container Ingress | 4/4 | Complete | 2026-06-08 |
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
-| 17. Unified Artifact Verification Pipeline | 0/? | Research | - |
+| 17. Unified Artifact Verification Pipeline | 0/5 | Planned | - |
 | 18. Complete Vortex Reader | 0/? | Placeholder | - |
 | 19. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 20. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
