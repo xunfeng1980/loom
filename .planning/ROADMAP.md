@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: DuckDB Extension Scaffold** - Build and load a stub DuckDB extension that links the Rust staticlib and proves the CMake + DuckDB ABI version chain (completed 2026-06-07)
 - [x] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling (completed 2026-06-07)
 - [x] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists (completed 2026-06-07)
-- [ ] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings Ã¢ÂÂ the MVP0 acceptance gate (entered 2026-06-08)
+- [x] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings — the MVP0 acceptance gate (completed 2026-06-08)
 
 ## Phase Details
 
@@ -135,6 +135,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 2** *(blocked on Wave 1 completion)*: `05-02` Vortex FSST fixture/oracle row-match, `05-03` Loom layout payload codec and FFI decode path
 - **Wave 3** *(blocked on Waves 1-2 completion)*: `05-04` DuckDB SQL MVP0 acceptance gate
 
+- [x] 05-01-PLAN.md - Core FSST L2 kernel, validated params, Utf8 builder/materialization, dict-over-FSST integration (L2-02, L2-03)
+- [x] 05-02-PLAN.md - Vortex FSST bridge, Utf8 oracle, FSST and dict-over-FSST fixture row matching (L2-02, L2-03, VERIFY-01, VERIFY-02)
+- [x] 05-03-PLAN.md - MVP0 layout payload codec, non-empty FFI input decode, Utf8 Arrow C buffer coverage (VERIFY-02, VERIFY-03)
+- [x] 05-04-PLAN.md - DuckDB payload emitter, payload-aware loom_scan, and final SQL acceptance gate (VERIFY-01, VERIFY-02, VERIFY-03)
+
 ## Progress
 
 **Execution Order:**
@@ -146,4 +151,4 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 | 2. DuckDB Extension Scaffold | 2/2 | Complete    | 2026-06-07 |
 | 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete    | 2026-06-07 |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 2/2 | Complete   | 2026-06-07 |
-| 5. FSST L2 Kernel and Full Verification | 0/4 | Planned | - |
+| 5. FSST L2 Kernel and Full Verification | 4/4 | Complete | 2026-06-08 |

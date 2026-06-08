@@ -31,8 +31,8 @@ Requirements for MVP0. Each maps to a roadmap phase.
 ### L2 — Total-Function Kernel Layer
 
 - [x] **L2-01**: A `LayoutNode` can escape to an L2 kernel by id (`KernelEscape`), dispatched through a kernel registry
-- [ ] **L2-02**: An FSST L2 kernel decompresses FSST-encoded strings (symbol table + code stream) into string values
-- [ ] **L2-03**: A dictionary whose values are FSST-encoded decodes end-to-end (dict-over-FSST exercises the L1→L2 boundary)
+- [x] **L2-02**: An FSST L2 kernel decompresses FSST-encoded strings (symbol table + code stream) into string values
+- [x] **L2-03**: A dictionary whose values are FSST-encoded decodes end-to-end (dict-over-FSST exercises the L1→L2 boundary)
 
 ### Arrow — Output Contract
 
@@ -49,9 +49,9 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ### Verify — Verification & Acceptance
 
-- [ ] **VERIFY-01**: An independent Vortex reference decoder produces oracle output for each fixture
-- [ ] **VERIFY-02**: Loom-decoded Arrow matches the Vortex reference row-for-row (values + nulls) for every L1 encoding and for FSST
-- [ ] **VERIFY-03**: A SQL `SELECT`/aggregate in DuckDB over a Loom-decoded Vortex column returns results matching the reference — the MVP0 acceptance gate
+- [x] **VERIFY-01**: An independent Vortex reference decoder produces oracle output for each fixture
+- [x] **VERIFY-02**: Loom-decoded Arrow matches the Vortex reference row-for-row (values + nulls) for every L1 encoding and for FSST
+- [x] **VERIFY-03**: A SQL `SELECT`/aggregate in DuckDB over a Loom-decoded Vortex column returns results matching the reference — the MVP0 acceptance gate
 
 ## v2 Requirements
 
@@ -109,11 +109,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | L1-05 | Phase 4 | Complete |
 | L1-06 | Phase 4 | Complete |
 | L2-01 | Phase 4 | Complete |
-| L2-02 | Phase 5 | Pending |
-| L2-03 | Phase 5 | Pending |
-| VERIFY-01 | Phase 5 | Pending |
-| VERIFY-02 | Phase 5 | Pending |
-| VERIFY-03 | Phase 5 | Pending |
+| L2-02 | Phase 5 | Complete |
+| L2-03 | Phase 5 | Complete |
+| VERIFY-01 | Phase 5 | Complete |
+| VERIFY-02 | Phase 5 | Complete |
+| VERIFY-03 | Phase 5 | Complete |
 
 **Coverage:**
 
@@ -123,4 +123,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-07 — traceability finalized by roadmapper*
+*Last updated: 2026-06-08 — Phase 5 MVP0 acceptance gate completed*
