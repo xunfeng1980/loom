@@ -178,11 +178,18 @@ pub fn source_report_from_vortex_reader_facts(facts: &VortexReaderFacts) -> Sour
     let emission_kind = coverage.emission_kind;
     let emission_disposition = coverage.emission_disposition;
     let lowering_disposition = coverage.lowering_disposition;
-    let diagnostics = facts
+    let mut diagnostics = facts
         .diagnostics
         .iter()
         .map(source_diagnostic_from_vortex_reader_diagnostic)
         .collect::<Vec<_>>();
+    if facts.support == VortexReaderSupport::Unsupported && diagnostics.is_empty() {
+        diagnostics.push(SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            "valid source facts were extracted, but this source shape cannot emit a Loom artifact",
+        ));
+    }
 
     SourceIngressReport {
         status: source_status_from_vortex_reader_support(facts.support),
