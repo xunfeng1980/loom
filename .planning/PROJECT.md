@@ -41,12 +41,12 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Formal verifier / Safety Proof MVP: the current `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof narrative, and release-gated `scripts/safety-proof-test.sh` evidence without claiming the future full Loom verifier — Phase 12
 - ✓ Full Loom Verifier foundation: a tiny `L2Core` spec, Rust executable verifier with stable diagnostics/facts, SMT-ready constraint IR, Lean/Rocq scaffold, TLA+ lifecycle invariant, and release-gated `scripts/full-verifier-test.sh` evidence without claiming complete production verification, native lowering safety, or real Vortex ingress — Phase 13
 - ✓ MLIR/native lowering spike: `loom_core::native_lowering` requires accepted `verify_l2_core` reports plus `VerifiedArtifactFacts`, rejects unsupported programs fail-closed, emits deterministic textual MLIR for bounded Int32 copy, and gates typed primitive equivalence evidence through `scripts/native-lowering-test.sh` without mandatory MLIR/LLVM/JIT dependencies — Phase 14
+- ✓ Real Vortex file/container ingress: isolated `loom-vortex-ingress` owns `vortex-file` usage, emits stable Loom-owned `VortexIngressReport` / `VortexFileFacts`, inspects real buffers/paths fail-closed, supports one generated non-null Int32 `.vortex` -> `LMC1` slice, exposes CLI inspection/emission, and gates the evidence through `scripts/vortex-ingress-test.sh` — Phase 15
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 15 is planned: real Vortex file/container ingress before production native backend work, using an isolated ingress boundary, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice.
 - [ ] Phase 16 remains a roadmap placeholder only: full `melior`/LLVM/JIT backend integration after real ingress evidence exists.
 - [ ] Phase 17 remains a roadmap placeholder only: production decode dialect and native kernel expansion.
 - [ ] Phase 18 remains a roadmap placeholder only: engine-integrated native execution MVP over real ingested artifacts.
@@ -106,7 +106,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
-| Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Planned — Phase 15 |
+| Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration placeholder | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. | Placeholder — Phase 16 |
 | Phase 17/18 reserve the post-JIT production path | After full backend integration, the remaining final-goal path is production decode-dialect/kernel expansion followed by engine-integrated native execution over real artifacts. | Placeholder — Phases 17-18 |
 

@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP: safety contract、proof-obligation matrix、focused no-panic/fail-closed tests、final proof narrative,以及接入 release gate 的 safety proof gate。Phase 13 增加 Full Loom Verifier foundation:一个很小的未来 `L2Core` slice、Rust abstract interpretation、SMT-ready obligations、Lean/Rocq soundness scaffold、TLA+ lifecycle invariant、`VerifiedArtifactFacts`,以及 full-verifier gate。Phase 14 增加第一版 verifier-gated textual MLIR/native lowering spike:只支持 bounded Int32 copy,带 fail-closed support diagnostics、typed primitive equivalence evidence,以及本地没有 MLIR tooling 时会显式 skip 的 optional `mlir-opt` probe。它不是对所有未来 Loom artifact、production native lowering 或真实 Vortex ingress 的完整生产级证明。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety/full-verifier/native-lowering case 会在 successful output 前 fail closed。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP。Phase 13 增加 Full Loom Verifier foundation。Phase 14 增加第一版 verifier-gated textual MLIR/native lowering spike。Phase 15 增加窄范围真实 Vortex file/container ingress 边界:隔离 `vortex-file` 使用、Loom 自有 facts/diagnostics、CLI inspection,以及一个 supported non-null Int32 `.vortex` -> `LMC1` slice,并用 Vortex scan 行值做 oracle 对比。它不是对所有未来 Loom artifact、任意 Vortex layout、production native lowering 或 native speed 的完整生产级证明。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety/full-verifier/native-lowering/ingress case 会在 successful output 前 fail closed。
 
 运行完整 MVP0 release gate:
 
@@ -39,10 +39,12 @@ cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
 bash scripts/safety-proof-test.sh
 bash scripts/full-verifier-test.sh
+bash scripts/native-lowering-test.sh
+bash scripts/vortex-ingress-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-当前 `.loom` 文件格式是本地 MVP0/v3 fixture container,不是完整 Vortex file reader。`LMC1` 是 Phase 11 围绕既有 payload codec 建立的分发边界:`LMP1` 表示单列 layout payload,`LMT1` 表示 table payload。Phase 9/11 的 verifier 是结构检查:覆盖已实现 MVP0 surface 的 malformed buffer、count mismatch、不支持的 type/layout 组合、unknown kernel、unknown required container feature、unsupported container version、duplicate payload section、truncated section、offset overflow、table shape error 等。Phase 12 的 formal verifier / Safety Proof MVP 把这个当前边界变成可 review、可 gate 的证明包;它论证 no-unsafe-core、FFI panic containment、decode-before-Arrow 行为,以及当前 parser/interpreter/kernel loop 的有界性。它不是完整 Loom verifier,也不声称未来 L2 language totality、MLIR/native lowering safety、真实 Vortex ingress safety、signature/attestation 或 correctness proof。
+当前 `.loom` 文件格式是本地 MVP0/v3 fixture container,不是完整 Vortex file reader。`LMC1` 是 Phase 11 围绕既有 payload codec 建立的分发边界:`LMP1` 表示单列 layout payload,`LMT1` 表示 table payload。Phase 15 可以 inspect 真实本地 Vortex 文件,但只为一个很窄的 non-null Int32 slice emit `LMC1`;unsupported 或 malformed 真实文件会返回稳定 ingress diagnostics,不会输出 partial `.loom`。Phase 9/11 的 verifier 是结构检查:覆盖已实现 MVP0 surface 的 malformed buffer、count mismatch、不支持的 type/layout 组合、unknown kernel、unknown required container feature、unsupported container version、duplicate payload section、truncated section、offset overflow、table shape error 等。Phase 12 的 formal verifier / Safety Proof MVP 把这个当前边界变成可 review、可 gate 的证明包;它论证 no-unsafe-core、FFI panic containment、decode-before-Arrow 行为,以及当前 parser/interpreter/kernel loop 的有界性。它不是完整 Loom verifier,也不声称未来 L2 language totality、MLIR/native lowering safety、任意 Vortex ingress safety、signature/attestation 或 correctness proof。
 
 Phase 7 增加面向 reviewer 的 descriptor 和 CLI 工具:
 
@@ -117,6 +119,17 @@ Phase 14 增加第一版 MLIR/native lowering spike:
 - `scripts/native-lowering-test.sh` 已接入 release gate;`mlir-opt` validation 是 optional evidence。
 
 这仍然只是 spike,不是 production MLIR dialect、LLVM/JIT integration、vectorization path、native-speed claim 或 compiler-correctness proof。
+
+Phase 15 增加窄范围真实 Vortex ingress:
+
+```bash
+bash scripts/vortex-ingress-test.sh
+cargo run -p loom-vortex-ingress --bin emit_vortex_ingress_fixtures
+cargo run --bin loom -- ingest-vortex --inspect fixtures/vortex/int32-flat.vortex
+cargo run --bin loom -- ingest-vortex --emit-loom fixtures/vortex/int32-flat.vortex /tmp/int32-flat.loom
+```
+
+`loom-vortex-ingress` 是 workspace 中唯一允许直接依赖 `vortex-file` 的 crate。它输出稳定的 `VortexIngressReport` / `VortexFileFacts`,保持 `loom-core` 和 `loom-ffi` 不依赖 Vortex,并且只支持 generated non-null Int32 真实 Vortex fixture 作为 `.vortex` -> `LMC1` 证据。它不支持任意 Vortex layout、object-store ingress、native lowering 或 production-speed claim。
 
 ---
 

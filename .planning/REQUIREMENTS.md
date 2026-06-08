@@ -137,11 +137,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Real Vortex File/Container Ingress
 
-- [ ] **INGEST-01**: Real Vortex file APIs are isolated to a dedicated ingress boundary; `loom-core` and `loom-ffi` remain free of `vortex-*` dependencies, and scoped dependency/API guards enforce the allowlist
-- [ ] **INGEST-02**: A stable Loom-owned `VortexIngressReport` / `VortexFileFacts` model records file facts, supported/unsupported status, and stable diagnostics without exposing Vortex types
-- [ ] **INGEST-03**: Real Vortex buffers and local paths can be inspected, while malformed/truncated/unsupported inputs fail closed with diagnostics rather than panics or partial output
-- [ ] **INGEST-04**: At least one generated real `.vortex` fixture emits an existing `LMC1` payload, passes the existing verifier/decode path, and matches Vortex oracle rows
-- [ ] **INGEST-05**: CLI, documentation, and release gates expose the narrow real-ingress behavior without claiming arbitrary Vortex layout support, remote/object-store ingress, native lowering, or production speed
+- [x] **INGEST-01**: Real Vortex file APIs are isolated to a dedicated ingress boundary; `loom-core` and `loom-ffi` remain free of `vortex-*` dependencies, and scoped dependency/API guards enforce the allowlist
+- [x] **INGEST-02**: A stable Loom-owned `VortexIngressReport` / `VortexFileFacts` model records file facts, supported/unsupported status, and stable diagnostics without exposing Vortex types
+- [x] **INGEST-03**: Real Vortex buffers and local paths can be inspected, while malformed/truncated/unsupported inputs fail closed with diagnostics rather than panics or partial output
+- [x] **INGEST-04**: At least one generated real `.vortex` fixture emits an existing `LMC1` payload, passes the existing verifier/decode path, and matches Vortex oracle rows
+- [x] **INGEST-05**: CLI, documentation, and release gates expose the narrow real-ingress behavior without claiming arbitrary Vortex layout support, remote/object-store ingress, native lowering, or production speed
 
 ## Out of Scope
 
@@ -235,11 +235,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | LOWER-03 | Phase 14 | Complete |
 | LOWER-04 | Phase 14 | Complete |
 | LOWER-05 | Phase 14 | Complete |
-| INGEST-01 | Phase 15 | Planned |
-| INGEST-02 | Phase 15 | Planned |
-| INGEST-03 | Phase 15 | Planned |
-| INGEST-04 | Phase 15 | Planned |
-| INGEST-05 | Phase 15 | Planned |
+| INGEST-01 | Phase 15 | Complete |
+| INGEST-02 | Phase 15 | Complete |
+| INGEST-03 | Phase 15 | Complete |
+| INGEST-04 | Phase 15 | Complete |
+| INGEST-05 | Phase 15 | Complete |
 
 **Coverage:**
 
@@ -259,4 +259,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 15 Real Vortex File/Container Ingress planned*
+*Last updated: 2026-06-08 — Phase 15 Real Vortex File/Container Ingress complete*

@@ -25,6 +25,9 @@ use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
+use loom_vortex_ingress::{
+    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, VortexIngressReport,
+};
 
 fn main() {
     if let Err(err) = run() {
@@ -59,6 +62,10 @@ fn run() -> Result<(), String> {
             }
             verify_l2core(&mode)
         }
+        "ingest-vortex" => {
+            let mode = args.next().ok_or_else(usage)?;
+            ingest_vortex(&mode, args.collect())
+        }
         "-h" | "--help" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -68,8 +75,55 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-l2core --sample"
+    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
         .to_string()
+}
+
+fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
+    match mode {
+        "--inspect" => {
+            if args.len() != 1 {
+                return Err(usage());
+            }
+            let path = Path::new(&args[0]);
+            let report = inspect_vortex_path(path);
+            println!("input: {}", path.display());
+            print_vortex_ingress_report(&report);
+            if report.status.as_str() == "rejected" {
+                return Err("Vortex ingress rejected input".to_string());
+            }
+            Ok(())
+        }
+        "--emit-loom" => {
+            if args.len() != 2 {
+                return Err(usage());
+            }
+            let input = Path::new(&args[0]);
+            let output = Path::new(&args[1]);
+            let bytes =
+                fs::read(input).map_err(|err| format!("read {}: {err}", input.display()))?;
+            match emit_supported_lmc1_from_vortex_buffer(&bytes) {
+                Ok(loom_bytes) => {
+                    fs::write(output, loom_bytes)
+                        .map_err(|err| format!("write {}: {err}", output.display()))?;
+                    println!("input: {}", input.display());
+                    println!("output: {}", output.display());
+                    println!("status: emitted");
+                    Ok(())
+                }
+                Err(report) => {
+                    println!("input: {}", input.display());
+                    print_vortex_ingress_report(&report);
+                    Err("Vortex file is not in the supported Loom ingress slice".to_string())
+                }
+            }
+        }
+        "--help" | "-h" => {
+            println!("{}", usage());
+            Ok(())
+        }
+        _ => Err(usage()),
+    }
 }
 
 fn verify_l2core(mode: &str) -> Result<(), String> {
@@ -430,6 +484,44 @@ fn inspect_container(path: &Path, bytes: &[u8]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn print_vortex_ingress_report(report: &VortexIngressReport) {
+    println!("ingress: vortex");
+    println!("status: {}", report.status.as_str());
+    if let Some(facts) = &report.facts {
+        println!("source: {}", facts.source_kind.as_str());
+        println!("vortex_file_version: {}", facts.vortex_file_version);
+        println!("row_count: {}", facts.row_count);
+        println!("dtype: {}", facts.dtype_summary);
+        println!("layout: {}", facts.layout_summary);
+        println!("segments: {}", facts.segment_count);
+        println!("segment_ranges:");
+        for (start, end) in &facts.segment_ranges {
+            println!("  {start}..{end}");
+        }
+        println!("statistics_present: {}", facts.statistics_present);
+        println!(
+            "footer_approx_byte_size: {}",
+            facts
+                .footer_approx_byte_size
+                .map_or_else(|| "unknown".to_string(), |size| size.to_string())
+        );
+        println!("supported_loom_payload: {}", facts.supported_loom_payload);
+    } else {
+        println!("facts: none");
+    }
+    if report.diagnostics.is_empty() {
+        println!("diagnostics: none");
+    } else {
+        println!("diagnostics:");
+        for diagnostic in &report.diagnostics {
+            println!(
+                "  code={} path={} message={}",
+                diagnostic.code, diagnostic.path, diagnostic.message
+            );
+        }
+    }
 }
 
 fn print_container_summary(container: &ContainerDescription) {

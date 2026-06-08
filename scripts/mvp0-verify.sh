@@ -37,6 +37,21 @@ if [ "${dep_count}" != "0" ]; then
 fi
 ok "loom-core dependency guard printed 0"
 
+info "Checking loom-ffi has no Vortex/FastLanes dependencies..."
+ffi_dep_count="$(cargo tree -p loom-ffi | awk '/vortex|fastlanes/{c++} END{print c+0}')"
+if [ "${ffi_dep_count}" != "0" ]; then
+    fail "loom-ffi dependency guard failed: found ${ffi_dep_count} vortex/fastlanes entries"
+fi
+ok "loom-ffi dependency guard printed 0"
+
+info "Checking vortex-file direct dependency is isolated to ingress crate..."
+vortex_file_refs="$(rg -n 'vortex-file' Cargo.toml crates/*/Cargo.toml || true)"
+unexpected_vortex_file_refs="$(printf '%s\n' "${vortex_file_refs}" | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)"
+if [ -n "${unexpected_vortex_file_refs}" ]; then
+    fail "vortex-file direct dependency found outside crates/loom-vortex-ingress: ${unexpected_vortex_file_refs}"
+fi
+ok "vortex-file direct dependency allowlist"
+
 info "Checking loom-fixtures does not use file-backed Vortex APIs..."
 set +e
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
@@ -45,7 +60,7 @@ set -e
 if [ "${rg_status}" -eq 0 ]; then
     fail "forbidden file-backed Vortex API references found in crates/loom-fixtures"
 elif [ "${rg_status}" -eq 1 ]; then
-ok "fixture hygiene grep found no forbidden file-backed Vortex APIs"
+    ok "fixture hygiene grep found no forbidden file-backed Vortex APIs"
 else
     fail "fixture hygiene grep failed with rg status ${rg_status}"
 fi
@@ -61,6 +76,10 @@ ok "scripts/full-verifier-test.sh"
 info "Running Phase 14 native-lowering gate..."
 bash scripts/native-lowering-test.sh
 ok "scripts/native-lowering-test.sh"
+
+info "Running Phase 15 real Vortex ingress gate..."
+bash scripts/vortex-ingress-test.sh
+ok "scripts/vortex-ingress-test.sh"
 
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh

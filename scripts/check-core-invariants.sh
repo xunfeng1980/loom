@@ -12,7 +12,7 @@
 #
 # Requirements verified: CORE-01, CORE-02, CORE-03, ARROW-03, DUCK-04
 # Pitfall guards: P1 release callback, P2 schema lifetime, P3 panic across FFI,
-#                 P5 allocator mismatch, P8 vortex-file scope creep, P9 arrow skew
+#                 P5 allocator mismatch, P8 vortex-file scope guard, P9 arrow skew
 #
 # Grep gate hygiene: all pattern searches strip comment lines before counting,
 # so a comment containing the search token cannot self-satisfy a check.
@@ -99,15 +99,17 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# CORE-01 (scope): vortex-file must not appear in Cargo.lock (PITFALLS P8).
+# CORE-01 (scope): vortex-file is allowed only in the isolated ingress crate.
 # ---------------------------------------------------------------------------
-echo "--- CORE-01 (scope): vortex-file absent from Cargo.lock ---"
-vortex_file=$(grep -v '^#' Cargo.lock | grep 'vortex-file' || true)
-if [ -z "$vortex_file" ]; then
-    pass "grep vortex-file Cargo.lock → absent (scope boundary intact)"
+echo "--- CORE-01 (scope): vortex-file direct dependency allowlist ---"
+vortex_file_cargo=$(rg -n 'vortex-file' Cargo.toml crates/*/Cargo.toml || true)
+unexpected_vortex_file=$(printf '%s\n' "$vortex_file_cargo" \
+    | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)
+if [ -z "$unexpected_vortex_file" ]; then
+    pass "vortex-file direct dependency is isolated to crates/loom-vortex-ingress"
 else
-    fail "vortex-file appeared in Cargo.lock — out-of-scope dependency (PITFALLS P8):"
-    echo "$vortex_file" >&2
+    fail "vortex-file direct dependency appeared outside crates/loom-vortex-ingress:"
+    echo "$unexpected_vortex_file" >&2
 fi
 echo ""
 
@@ -129,6 +131,26 @@ else
     else
         fail "loom-core has a vortex dependency — breaks D-02 isolation:"
         echo "$loom_core_vortex" >&2
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# CORE-01 (D-02): loom-ffi must also have zero vortex-* dependencies.
+# ---------------------------------------------------------------------------
+echo "--- CORE-01 (D-02): loom-ffi has no vortex dependency ---"
+loom_ffi_tree_exit=0
+loom_ffi_out=$(cargo tree -p loom-ffi 2>&1) || loom_ffi_tree_exit=$?
+if [ "$loom_ffi_tree_exit" -ne 0 ]; then
+    fail "cargo tree -p loom-ffi failed (exit $loom_ffi_tree_exit) — cannot verify D-02 isolation:"
+    echo "$loom_ffi_out" | head -5 >&2
+else
+    loom_ffi_vortex=$(printf '%s\n' "$loom_ffi_out" | grep -v '^#' | grep -E 'vortex|fastlanes' || true)
+    if [ -z "$loom_ffi_vortex" ]; then
+        pass "cargo tree -p loom-ffi | grep vortex/fastlanes → clean"
+    else
+        fail "loom-ffi has a vortex dependency — breaks D-02 isolation:"
+        echo "$loom_ffi_vortex" >&2
     fi
 fi
 echo ""

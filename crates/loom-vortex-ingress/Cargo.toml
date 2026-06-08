@@ -1,0 +1,18 @@
+[package]
+name = "loom-vortex-ingress"
+version = "0.1.0"
+edition = "2021"
+description = "Isolated real Vortex file ingress bridge for Loom"
+
+[dependencies]
+arrow-schema = { workspace = true }
+loom-core = { path = "../loom-core" }
+vortex-array = { workspace = true }
+vortex-buffer = "=0.74.0"
+vortex-file = "=0.74.0"
+vortex-io = "=0.74.0"
+vortex-layout = "=0.74.0"
+vortex-session = "=0.74.0"
+
+[dev-dependencies]
+arrow = { workspace = true }
