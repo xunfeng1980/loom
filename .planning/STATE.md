@@ -161,6 +161,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260608-vfc | Extend Phase 22 deep research with C API, Node-API/N-API, and natural API design lessons | 2026-06-08 | 58f9cd4 | [260608-vfc-extend-phase-22-deep-research-with-c-api](./quick/260608-vfc-extend-phase-22-deep-research-with-c-api/) |
 | 260608-va8 | Deepen Phase 22 research with papers, related projects, and ABI best practices | 2026-06-08 | 7b832ef | [260608-va8-deepen-phase-22-research-with-papers-rel](./quick/260608-va8-deepen-phase-22-research-with-papers-rel/) |
 | 260607-taf | Translate design.md (Chinese) into English README.md and create README-zh.md as the consistent Chinese version | 2026-06-07 | 5f8b8e7 | [260607-taf-translate-design-md-chinese-into-english](./quick/260607-taf-translate-design-md-chinese-into-english/) |
 
