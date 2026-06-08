@@ -245,6 +245,27 @@ fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
     );
     assert!(report.oracle_evidence.is_none());
 
+    let extension_field = Field::new("ext_i32", DataType::Int32, false).with_metadata(
+        [(
+            "ARROW:extension:name".to_string(),
+            "loom.test.extension".to_string(),
+        )]
+        .into_iter()
+        .collect(),
+    );
+    let extension_schema = Arc::new(Schema::new(vec![extension_field]));
+    let extension = RecordBatch::try_new(
+        extension_schema,
+        vec![Arc::new(Int32Array::from(vec![1, 2, 3]))],
+    )
+    .expect("extension batch");
+    let extension_path = parquet_path_for_batch(&temp, "extension", extension);
+    let report = emit_source_ingress_lmc1_from_parquet_path(&extension_path)
+        .expect_err("extension Parquet is unsupported");
+    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert!(report.facts.is_some());
+    assert!(report.oracle_evidence.is_none());
+
     let nested_field = Arc::new(Field::new("nested_id", DataType::Int32, false));
     let nested_array: ArrayRef = Arc::new(StructArray::from(vec![(
         nested_field.clone(),

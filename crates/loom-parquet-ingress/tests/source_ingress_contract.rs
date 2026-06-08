@@ -42,8 +42,17 @@ fn parquet_path_for_column(
     nullable: bool,
     array: ArrayRef,
 ) -> std::path::PathBuf {
+    parquet_path_for_field(temp, name, Field::new(name, data_type, nullable), array)
+}
+
+fn parquet_path_for_field(
+    temp: &TempDir,
+    name: &str,
+    field: Field,
+    array: ArrayRef,
+) -> std::path::PathBuf {
     let path = temp.path().join(format!("{name}.parquet"));
-    let schema = Arc::new(Schema::new(vec![Field::new(name, data_type, nullable)]));
+    let schema = Arc::new(Schema::new(vec![field]));
     let batch = RecordBatch::try_new(schema, vec![array]).expect("record batch");
     write_record_batch(&path, batch);
     path
@@ -223,6 +232,14 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
         nested_field.clone(),
         Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef,
     )]));
+    let extension_field = Field::new("ext_i32", DataType::Int32, false).with_metadata(
+        [(
+            "ARROW:extension:name".to_string(),
+            "loom.test.extension".to_string(),
+        )]
+        .into_iter()
+        .collect(),
+    );
     let unsupported_cases = [
         (
             parquet_path_for_column(
@@ -263,6 +280,15 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
                 Arc::new(Date32Array::from(vec![0, 1, 2])),
             ),
             SourceDiagnosticCode::UnsupportedConversion,
+        ),
+        (
+            parquet_path_for_field(
+                &temp,
+                "ext_i32",
+                extension_field,
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+            ),
+            SourceDiagnosticCode::UnsupportedSchema,
         ),
     ];
 
