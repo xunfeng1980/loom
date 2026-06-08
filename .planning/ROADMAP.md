@@ -232,11 +232,20 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. A negative fixture/test suite proves malformed payloads fail closed without crossing into DuckDB execution
   6. `scripts/mvp0-verify.sh` remains green and includes the verifier regression suite
 
-**Plans**: 0 plans
+**Plans**: 4 plans across 3 waves
 
-Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-discuss-phase 9, then /gsd-plan-phase 9)
+- [ ] 09-01-PLAN.md - Add `loom_core::verifier` report/diagnostic model and structural layout/table verification (SAFE-01, SAFE-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-02-PLAN.md - Route verifier through Rust decode helpers and FFI ingress while preserving decode-time authoritative checks (SAFE-03)
+- [ ] 09-03-PLAN.md - Expose verifier status in `loom inspect` and add curated negative verifier gate (SAFE-04, VERIFY-06)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 09-04-PLAN.md - Document verifier MVP behavior, audit stale FOR todo, run final gates, and close requirements (SAFE-01, SAFE-02, SAFE-03, SAFE-04, VERIFY-06)
 
 ## Progress
 
@@ -253,4 +262,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
-| 9. Verifier and Safety Boundary MVP | 0/0 | Not planned | - |
+| 9. Verifier and Safety Boundary MVP | 0/4 | Planned | - |
