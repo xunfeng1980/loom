@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: planning
-stopped_at: Phase 10 context gathered
-last_updated: "2026-06-08T02:20:31.203Z"
-last_activity: 2026-06-08 -- Phase 10 additional L2 kernels and numeric compression coverage added
+stopped_at: Phase 10 planned
+last_updated: "2026-06-08T02:24:31Z"
+last_activity: 2026-06-08 -- Phase 10 planned as 4 ALP float L2 coverage plans
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 27
+  total_plans: 31
   completed_plans: 27
   percent: 90
 ---
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 ## Current Position
 
-Phase: 10 — NOT PLANNED
-Plan: 0 of 0
-Status: Phase 10 added; ready for discussion/planning
-Last activity: 2026-06-08 -- Phase 10 additional L2 kernels and numeric compression coverage added
+Phase: 10 — PLANNED
+Plan: 0 of 4
+Status: Phase 10 planned; ready for execution
+Last activity: 2026-06-08 -- Phase 10 planned as 4 ALP float L2 coverage plans
 
 Progress: [█████████ ] 90%
 
@@ -82,6 +82,10 @@ Progress: [█████████ ] 90%
 | Phase 09 P02 | 15 min | 3 tasks | 4 files |
 | Phase 09 P03 | 15 min | 3 tasks | 3 files |
 | Phase 09 P04 | 15 min | 3 tasks | 8 files |
+| Phase 10 P01 | planned | 3 tasks | 9 files |
+| Phase 10 P02 | planned | 3 tasks | 6 files |
+| Phase 10 P03 | planned | 3 tasks | 5 files |
+| Phase 10 P04 | planned | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -124,7 +128,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
-- Phase 10 added: Additional L2 Kernels and Numeric Compression Coverage.
+- Phase 10 planned: Additional L2 Kernels and Numeric Compression Coverage, split into 4 ALP Float32/Float64 coverage plans across 3 waves.
 
 ### Quick Tasks Completed
 
@@ -161,5 +165,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T02:20:31.197Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-CONTEXT.md
+Stopped at: Phase 10 planned
+Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-01-PLAN.md

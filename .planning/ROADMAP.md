@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
-- [ ] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with numeric compression coverage, starting from COV-01 (not planned yet)
+- [ ] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (planned)
 
 ## Phase Details
 
@@ -250,14 +250,32 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 10: Additional L2 Kernels and Numeric Compression Coverage
 
-**Goal:** [To be planned]
+**Goal:** Extend Loom's L2 kernel path beyond FSST with ALP-style Float32/Float64 numeric compression coverage, proving the registry/params/verifier/fixture/CLI/DuckDB surfaces generalize to a second real kernel while keeping `loom-core` Vortex-free.
 **Requirements**: COV-01
 **Depends on:** Phase 9
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
 
-Plans:
+  1. Float32 and Float64 are supported by the core descriptor/payload/materialization surfaces needed for L2 kernel output
+  2. `AlpParams` has a stable checked binary format carrying decoded output type, row count, decimal exponent, mantissas, and validity
+  3. ALP is registered as append-only kernel id `1`, FSST remains id `0`, and verifier rejects malformed ALP params or output-type mismatches
+  4. ALP Float32 and Float64 fixtures decode correctly against synthetic known values and Vortex primitive float oracle rows
+  5. `loom inspect` and `loom decode` expose concise ALP/float output for reviewers
+  6. DuckDB SQL smoke tests include ALP Float32 and Float64 row and aggregate checks, and `scripts/mvp0-verify.sh` remains green
 
-- [ ] TBD (run /gsd-plan-phase 10 to break down)
+**Plans:** 4 plans across 3 waves
+
+**Wave 1**
+
+- [ ] 10-01-PLAN.md - Add Float32/Float64 core support, `AlpParams`, ALP kernel id 1, and verifier checks (COV-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10-02-PLAN.md - Add ALP synthetic fixtures, Vortex primitive float oracle comparisons, and FFI float roundtrips (COV-01)
+- [ ] 10-03-PLAN.md - Add CLI ALP/float output plus DuckDB Float32/Float64 SQL smoke coverage (COV-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 10-04-PLAN.md - Document ALP coverage, run final gates, close COV-01, and write Phase 10 summaries (COV-01)
 
 ## Progress
 
@@ -275,4 +293,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
-| 10. Additional L2 Kernels and Numeric Compression Coverage | 0/0 | Not planned | - |
+| 10. Additional L2 Kernels and Numeric Compression Coverage | 0/4 | Planned | - |
