@@ -8,8 +8,8 @@ Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried 
 complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
 introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
 reviewable as a formal safety-proof MVP. Phase 13 completes the full Loom verifier foundation
-over a tiny future `L2Core` slice. Phases 14-15 remain roadmap
-placeholders for native lowering and real Vortex file ingress.
+over a tiny future `L2Core` slice. Phase 14 begins the MLIR/native lowering spike research after the
+verifier handoff exists. Phase 15 remains a roadmap placeholder for real Vortex file ingress.
 
 ## Phases
 
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
-- [ ] **Phase 14: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the verifier boundary exists (not expanded)
+- [ ] **Phase 14: MLIR/Native Lowering Spike** - Research started for verifier-gated textual MLIR/native lowering over a tiny `L2Core` slice
 - [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
 ## Phase Details
