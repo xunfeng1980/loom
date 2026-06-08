@@ -34,6 +34,9 @@ pub mod verifier;
 /// Tiny future-language model and proof-obligation IR for the Phase 13 verifier.
 pub mod l2_core;
 
+/// Executable verifier MVP for the Phase 13 `L2Core` slice.
+pub mod full_verifier;
+
 /// Human-readable MVP0 layout descriptor codec.
 pub mod descriptor;
 

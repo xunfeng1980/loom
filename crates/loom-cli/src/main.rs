@@ -15,7 +15,12 @@ use loom_core::container_codec::{
 use loom_core::descriptor::{from_descriptor_text, payload_to_descriptor_text};
 use loom_core::error::LoomDecodeError;
 use loom_core::fsst_params::FsstParams;
+use loom_core::full_verifier::verify_l2_core;
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
+use loom_core::l2_core::{
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
+    ResourceBudget, ScalarExpr,
+};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
@@ -31,14 +36,29 @@ fn main() {
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let command = args.next().ok_or_else(usage)?;
-    let input = args.next().ok_or_else(usage)?;
-    if args.next().is_some() {
-        return Err(usage());
-    }
 
     match command.as_str() {
-        "inspect" => inspect(Path::new(&input)),
-        "decode" => decode(Path::new(&input)),
+        "inspect" => {
+            let input = args.next().ok_or_else(usage)?;
+            if args.next().is_some() {
+                return Err(usage());
+            }
+            inspect(Path::new(&input))
+        }
+        "decode" => {
+            let input = args.next().ok_or_else(usage)?;
+            if args.next().is_some() {
+                return Err(usage());
+            }
+            decode(Path::new(&input))
+        }
+        "verify-l2core" => {
+            let mode = args.next().ok_or_else(usage)?;
+            if args.next().is_some() {
+                return Err(usage());
+            }
+            verify_l2core(&mode)
+        }
         "-h" | "--help" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -48,7 +68,91 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: loom <inspect|decode> <payload-or-descriptor>".to_string()
+    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-l2core --sample"
+        .to_string()
+}
+
+fn verify_l2core(mode: &str) -> Result<(), String> {
+    if mode != "--sample" {
+        return Err(usage());
+    }
+
+    let program = sample_l2core_program();
+    let report = verify_l2_core(&program);
+    if report.is_ok() {
+        println!("full_verification: pass");
+    } else {
+        println!("full_verification: fail");
+        for diagnostic in report.diagnostics() {
+            println!(
+                "diagnostic: code={} path={} message={}",
+                diagnostic.code, diagnostic.path, diagnostic.message
+            );
+        }
+        return Err("L2Core verification failed".to_string());
+    }
+
+    println!("proof_obligations:");
+    for obligation in report.proof_obligations() {
+        println!(
+            "  {} layer={} constraints={}",
+            obligation.id,
+            obligation.layer,
+            obligation.constraint_ids.len()
+        );
+    }
+
+    if let Some(facts) = report.facts() {
+        println!("facts: present");
+        println!("row_count_bound: {}", facts.row_count_bound.unwrap_or(0));
+        println!("input_ranges: {}", facts.input_ranges.len());
+        println!("output_schema: {}", facts.output_schema.len());
+        println!("constraint_ids: {}", facts.constraint_ids.len());
+    }
+    print!("{}", report.constraint_comments());
+    Ok(())
+}
+
+fn sample_l2core_program() -> L2CoreProgram {
+    L2CoreProgram {
+        artifact_version: 1,
+        required_features: vec!["l2core.copy.v0".to_string()],
+        optional_features: vec![],
+        capabilities: vec![
+            Capability::InputSlice(InputSliceCapability {
+                id: "input0".to_string(),
+                offset: 0,
+                length: 16,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out0".to_string(),
+                arrow_type: DataType::Int32,
+                nullable: true,
+                max_events: 4,
+            }),
+        ],
+        resource_budget: ResourceBudget::bounded_rows(4),
+        body: vec![L2CoreStmt::ForRange {
+            index: "i".to_string(),
+            start: ScalarExpr::u64(0),
+            end: ScalarExpr::u64(4),
+            body: vec![
+                L2CoreStmt::ReadInput {
+                    capability: "input0".to_string(),
+                    offset: ScalarExpr::Add(
+                        Box::new(ScalarExpr::var("i")),
+                        Box::new(ScalarExpr::u64(0)),
+                    ),
+                    width: ScalarExpr::u64(4),
+                    bind: "value".to_string(),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out0".to_string(),
+                    value: ScalarExpr::var("value"),
+                },
+            ],
+        }],
+    }
 }
 
 fn inspect(path: &Path) -> Result<(), String> {

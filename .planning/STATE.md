@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Phase 13 planned
-last_updated: "2026-06-08T06:55:00.000Z"
-last_activity: 2026-06-08 -- 13-02 complete; Rust L2Core model and constraint IR added
+last_updated: "2026-06-08T07:20:00.000Z"
+last_activity: 2026-06-08 -- 13-03 complete; executable Rust L2Core verifier added
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 44
-  completed_plans: 41
-  percent: 84
+  completed_plans: 42
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 ## Current Position
 
 Phase: 13 (full-loom-verifier) — EXECUTING
-Plan: 2 of 5 complete
-Status: 13-02 complete; Wave 3 ready
-Last activity: 2026-06-08 -- 13-02 complete; Rust L2Core model and constraint IR added
+Plan: 3 of 5 complete
+Status: 13-03 complete; Wave 3 continuing with 13-04
+Last activity: 2026-06-08 -- 13-03 complete; executable Rust L2Core verifier added
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -96,7 +96,7 @@ Progress: [████░░░░░░] 40%
 | Phase 12 P04 | 20 min | 3 tasks | 8 files |
 | Phase 13 P01 | 10 min | 2 tasks | 2 files |
 | Phase 13 P02 | 20 min | 3 tasks | 7 files |
-| Phase 13 P03 | planned | 3 tasks | 6 files |
+| Phase 13 P03 | 25 min | 3 tasks | 7 files |
 | Phase 13 P04 | planned | 3 tasks | 5 files |
 | Phase 13 P05 | planned | 3 tasks | 13 files |
 
@@ -152,6 +152,7 @@ None yet.
 - Phase 13 entered: selected full-verifier architecture combines Rust abstract interpretation/type-effect checking, SMT local obligations, Lean/Rocq semantics and soundness, and TLA+ lifecycle/pipeline invariants.
 - Phase 13 executing: 13-01 complete with normative `L2Core` verifier spec and proof-obligation matrix.
 - Phase 13 executing: 13-02 complete with Rust `L2Core` model, SMT-ready constraint IR, `VerifiedArtifactFacts`, and focused model tests.
+- Phase 13 executing: 13-03 complete with executable Rust `verify_l2_core`, stable diagnostics, proof-obligation traces, facts emission, tests, and `loom verify-l2core --sample`.
 - Phase 14 and Phase 15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
