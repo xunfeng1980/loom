@@ -4,6 +4,7 @@ members = [
     "crates/loom-core",
     "crates/loom-ffi",
     "crates/loom-fixtures",
+    "crates/loom-cli",
 ]
 
 # Shared dependency versions — all downstream crates reference these via `.workspace = true`.
@@ -20,6 +21,8 @@ arrow-schema = { version = "=58.3.0" }
 arrow-data   = { version = "=58.3.0" }
 
 fsst = { package = "fsst-rs", version = "=0.5.11" }
+ron = { version = "=0.10.1" }
+serde = { version = "=1.0.228", features = ["derive"] }
 
 # Vortex family — 0.74.0 pinned; only loom-fixtures may use these (D-02).
 # Note: vortex-dict was merged into vortex-array in the 0.7x series;

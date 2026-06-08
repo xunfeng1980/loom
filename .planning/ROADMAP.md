@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists (completed 2026-06-07)
 - [x] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings — the MVP0 acceptance gate (completed 2026-06-08)
 - [x] **Phase 6: MVP0 Hardening and Release Baseline** - Convert the completed MVP0 into a reproducible, documented baseline with one-command verification, stale planning cleanup, and explicit next-milestone boundaries (completed 2026-06-08)
-- [ ] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support
+- [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 
 ## Phase Details
 
@@ -185,10 +185,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 2** *(blocked on Wave 1 completion)*: `07-02` Payload inspection bridge and descriptor roundtrip fixtures, `07-03` CLI inspect/decode surface
 - **Wave 3** *(blocked on Wave 2 completion)*: `07-04` Expanded fixture matrix, timing output, docs, and final gate
 
-- [ ] 07-01-PLAN.md - Define tree-friendly descriptor format and implement deterministic parse/print roundtrip for all MVP0 layout nodes (DX-01)
-- [ ] 07-02-PLAN.md - Bridge binary payloads to descriptor inspection and add descriptor roundtrip tests against generated fixtures (DX-01, DX-02)
-- [ ] 07-03-PLAN.md - Add CLI commands `loom inspect` and `loom decode` for payload/descriptor inputs (DX-03)
-- [ ] 07-04-PLAN.md - Expand fixture matrix, add optional timing output, update docs, and run the full release gate (DX-02, DX-04)
+- [x] 07-01-PLAN.md - Define tree-friendly descriptor format and implement deterministic parse/print roundtrip for all MVP0 layout nodes (DX-01)
+- [x] 07-02-PLAN.md - Bridge binary payloads to descriptor inspection and add descriptor roundtrip tests against generated fixtures (DX-01, DX-02)
+- [x] 07-03-PLAN.md - Add CLI commands `loom inspect` and `loom decode` for payload/descriptor inputs (DX-03)
+- [x] 07-04-PLAN.md - Expand fixture matrix, add optional timing output, update docs, and run the full release gate (DX-02, DX-04)
 
 ## Progress
 
@@ -203,4 +203,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 2/2 | Complete   | 2026-06-07 |
 | 5. FSST L2 Kernel and Full Verification | 4/4 | Complete | 2026-06-08 |
 | 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |
-| 7. Human-Readable Layout Descriptor and CLI | 0/4 | Planned | - |
+| 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |

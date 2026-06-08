@@ -26,6 +26,10 @@ arrow-schema     = { workspace = true }
 name = "emit_duckdb_payloads"
 path = "src/bin/emit_duckdb_payloads.rs"
 
+[[bin]]
+name = "loom_fixture_timing"
+path = "src/bin/loom_fixture_timing.rs"
+
 [dev-dependencies]
 # fastlanes is added for the Wave-0 fl_transpose_matches_fastlanes check ONLY.
 # It must NEVER be added to [dependencies] — D-02 forbids the vortex ecosystem

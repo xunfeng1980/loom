@@ -19,6 +19,9 @@ pub mod fsst_params;
 /// Minimal MVP0 layout payload codec used by the FFI boundary.
 pub mod layout_codec;
 
+/// Human-readable MVP0 layout descriptor codec.
+pub mod descriptor;
+
 /// Arrow builder output stage.
 ///
 /// Owns the typed Arrow builder operations (append_value / append_null) and

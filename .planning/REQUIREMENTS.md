@@ -67,10 +67,10 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 
 ### Developer Experience
 
-- [ ] **DX-01**: A human-readable L1 layout descriptor format for reviewer exposition, with deterministic parse/print roundtrips for all MVP0 layout nodes
-- [ ] **DX-02**: Multiple sample columns per supported encoding in the verification harness, including descriptor roundtrip coverage
-- [ ] **DX-03**: A CLI driver (`loom inspect`, `loom decode`) for non-Rust reviewers
-- [ ] **DX-04**: Wall-clock timing comparison (Loom interpreter vs Vortex native decode) reported as illustrative output, not a benchmark claim
+- [x] **DX-01**: A human-readable L1 layout descriptor format for reviewer exposition, with deterministic parse/print roundtrips for all MVP0 layout nodes
+- [x] **DX-02**: Multiple sample columns per supported encoding in the verification harness, including descriptor roundtrip coverage
+- [x] **DX-03**: A CLI driver (`loom inspect`, `loom decode`) for non-Rust reviewers
+- [x] **DX-04**: Wall-clock timing comparison (Loom interpreter vs Vortex native decode) reported as illustrative output, not a benchmark claim
 
 ### Decode Coverage
 
@@ -127,10 +127,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DOC-02 | Phase 6 | Complete |
 | VERIFY-04 | Phase 6 | Complete |
 | BUILD-01 | Phase 6 | Complete |
-| DX-01 | Phase 7 | Planned |
-| DX-02 | Phase 7 | Planned |
-| DX-03 | Phase 7 | Planned |
-| DX-04 | Phase 7 | Planned |
+| DX-01 | Phase 7 | Complete |
+| DX-02 | Phase 7 | Complete |
+| DX-03 | Phase 7 | Complete |
+| DX-04 | Phase 7 | Complete |
 
 **Coverage:**
 

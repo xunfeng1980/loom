@@ -31,14 +31,12 @@ If only one thing works, it is this end-to-end chain.
 - ✓ FSST L2 kernel and dict-over-FSST path: Loom-owned FSST params decode UTF-8 strings through typed Arrow builders, with row-for-row Vortex oracle coverage — Phase 5
 - ✓ MVP0 DuckDB acceptance gate: generated `.loom` payloads for bitpack, FOR, dict, RLE, FSST, and dict-over-FSST all pass exact SQL row and aggregate checks through `loom_scan` — Phase 5
 - ✓ MVP0 release baseline: README and planning state reflect the completed MVP0 surface, `scripts/mvp0-verify.sh` runs the full release gate, and Phase 7 descriptor/CLI handoff notes are recorded — Phase 6
+- ✓ Human-readable descriptor and CLI: RON descriptor text roundtrips through `LayoutDescription`, binary payloads can be inspected, `loom inspect`/`loom decode` expose reviewer workflows, fixture samples expanded, and illustrative Loom-vs-Vortex timing output is available — Phase 7
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 7: human-readable layout descriptor plus CLI inspect/decode surface
-- [ ] Phase 7: descriptor roundtrip tests and expanded fixture samples per supported encoding
-- [ ] Phase 7: illustrative Loom vs Vortex wall-clock timing output
 - [ ] Recommended Phase 8: multi-column table output and possible ArrowArrayStream revisit
 
 ### Out of Scope
@@ -87,7 +85,8 @@ If only one thing works, it is this end-to-end chain.
 | Acceptance = DuckDB SQL results match Vortex's decoder row-for-row | Concrete, end-to-end, falsifiable success bar | Complete — Phase 5 |
 | Defer the verifier / safety-boundary demo | MVP0 proves the decode chain, not the sandbox; safety is a later milestone | Still deferred |
 | Phase 6 before descriptor/CLI | A clean baseline prevents v2 work from inheriting stale docs or fragile verification steps | Complete — Phase 6 |
-| Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Active |
+| Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Complete — Phase 7 |
+| Descriptor format = RON for MVP0 | Recursive enum trees are clearer in RON than TOML; descriptor remains MVP0-scoped and unstable | Complete — Phase 7 |
 
 ## Evolution
 
@@ -107,4 +106,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 starting Phase 7 (Human-Readable Layout Descriptor and CLI) — MVP0 has a one-command release gate via `scripts/mvp0-verify.sh`; Phase 7 focuses on making the Loom layout contract independent, inspectable, and decodable without reading Rust tests or Vortex bridge code.*
+*Last updated: 2026-06-08 after Phase 7 (Human-Readable Layout Descriptor and CLI) — Loom payloads now have RON descriptor text, CLI inspect/decode workflows, expanded descriptor fixture coverage, and illustrative timing output. Phase 8 is ready to focus on multi-column table output and possible ArrowArrayStream revisit.*

@@ -128,6 +128,9 @@ pub enum LoomDecodeError {
 
     /// MVP0 layout payload bytes are malformed or truncated.
     MalformedLayoutPayload(&'static str),
+
+    /// Human-readable MVP0 descriptor text is malformed or unsupported.
+    MalformedDescriptor(String),
 }
 
 impl fmt::Display for LoomDecodeError {
@@ -228,6 +231,9 @@ impl fmt::Display for LoomDecodeError {
             }
             LoomDecodeError::MalformedLayoutPayload(reason) => {
                 write!(f, "malformed layout payload: {reason}")
+            }
+            LoomDecodeError::MalformedDescriptor(reason) => {
+                write!(f, "malformed descriptor: {reason}")
             }
         }
     }

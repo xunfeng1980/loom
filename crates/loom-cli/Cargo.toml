@@ -1,0 +1,14 @@
+[package]
+name = "loom-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Reviewer CLI for inspecting and decoding Loom MVP0 payloads"
+
+[[bin]]
+name = "loom"
+path = "src/main.rs"
+
+[dependencies]
+arrow = { workspace = true }
+arrow-schema = { workspace = true }
+loom-core = { path = "../loom-core" }

@@ -42,6 +42,17 @@ bash scripts/duckdb-smoke-test.sh
 
 The current `.loom` payload format is an MVP0 internal fixture format. Human-readable descriptors, CLI tooling, multi-column output, the verifier, MLIR/native lowering, and full `.vortex` file support are future milestones.
 
+Phase 7 adds reviewer-facing descriptor and CLI tooling:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/fsst-utf8.loom
+cargo run -p loom-fixtures --bin loom_fixture_timing
+```
+
+The timing command reports illustrative wall-clock numbers for Loom interpreter decode vs Vortex oracle decode. It is not a benchmark and has no pass/fail speed threshold.
+
 ---
 
 ## 1. Goals and Non-Goals

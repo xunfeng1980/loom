@@ -42,6 +42,17 @@ bash scripts/duckdb-smoke-test.sh
 
 当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。人类可读 descriptor、CLI、多列输出、verifier、MLIR/native lowering、完整 `.vortex` 文件支持都属于后续 milestone。
 
+Phase 7 增加面向 reviewer 的 descriptor 和 CLI 工具:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/fsst-utf8.loom
+cargo run -p loom-fixtures --bin loom_fixture_timing
+```
+
+timing 命令只输出 Loom interpreter decode 与 Vortex oracle decode 的示意性 wall-clock 数字。它不是 benchmark,也没有速度阈值。
+
 ---
 
 ## 1. 目标与非目标

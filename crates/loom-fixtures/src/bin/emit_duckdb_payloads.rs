@@ -20,14 +20,31 @@ fn main() {
 
     let mut manifest = String::from("name\ttype\trows\tcount\tnon_null_count\tsum\tmin\tmax\n");
     emit_bitpack(out_dir, &mut manifest);
+    emit_nullable_bitpack(out_dir, &mut manifest);
     emit_for(out_dir, &mut manifest);
     emit_dict(out_dir, &mut manifest);
     emit_rle(out_dir, &mut manifest);
     emit_fsst(out_dir, &mut manifest);
+    emit_fsst_edge(out_dir, &mut manifest);
     emit_dict_fsst(out_dir, &mut manifest);
 
     fs::write(out_dir.join("manifest.tsv"), manifest).expect("write manifest");
     println!("wrote {}", out_dir.display());
+}
+
+fn emit_nullable_bitpack(out_dir: &Path, manifest: &mut String) {
+    let values = [Some(1i32), None, Some(7), Some(3), None];
+    let input = PrimitiveArray::from_option_iter(values);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let packed = BitPackedData::encode(&input.into_array(), 3, &mut ctx)
+        .expect("BitPackedData::encode failed");
+    let desc = LayoutDescription {
+        data_type: DataType::Int32,
+        root: vortex_reader::from_bitpacked_array(&packed),
+        row_count: values.len(),
+    };
+    write_payload(out_dir, "bitpack-nullable-i32", &desc);
+    manifest.push_str("bitpack-nullable-i32\ti32\t1|NULL|7|3|NULL\t5\t3\t11\t1\t7\n");
 }
 
 fn emit_bitpack(out_dir: &Path, manifest: &mut String) {
@@ -98,6 +115,18 @@ fn emit_fsst(out_dir: &Path, manifest: &mut String) {
     };
     write_payload(out_dir, "fsst-utf8", &desc);
     manifest.push_str("fsst-utf8\tutf8\talpha|NULL|beta\t3\t2\t\talpha\tbeta\n");
+}
+
+fn emit_fsst_edge(out_dir: &Path, manifest: &mut String) {
+    let rows = [Some(""), Some("abcdefgh"), Some("escape-heavy-zzzz")];
+    let fsst = make_fsst(&rows);
+    let desc = LayoutDescription {
+        data_type: DataType::Utf8,
+        root: vortex_reader::from_fsst_array(&fsst),
+        row_count: rows.len(),
+    };
+    write_payload(out_dir, "fsst-edge-utf8", &desc);
+    manifest.push_str("fsst-edge-utf8\tutf8\t|abcdefgh|escape-heavy-zzzz\t3\t3\t\t\t\n");
 }
 
 fn emit_dict_fsst(out_dir: &Path, manifest: &mut String) {
