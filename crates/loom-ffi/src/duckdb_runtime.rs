@@ -5,8 +5,10 @@
 //! translate these owned reports into DuckDB-facing handles without duplicating
 //! runtime policy in C++.
 
+use std::collections::HashMap;
 use std::ffi::{c_char, CString};
 use std::panic::{self, AssertUnwindSafe};
+use std::sync::{Mutex, OnceLock};
 
 use arrow::datatypes::DataType;
 use loom_core::arrow_buffer_lowering::{
@@ -26,10 +28,11 @@ use loom_core::production_native_lowering::{
 };
 use loom_core::runtime_abi::{
     decide_runtime_execution, plan_projection, ConcurrencyPolicy, PredicateEnvelope,
-    ProjectionColumn, ProjectionSet, RuntimeAbiVersion, RuntimeBackendIdentity, RuntimeCacheKey,
-    RuntimeCacheKeyInput, RuntimeEmissionDisposition, RuntimeExecutionDecision,
-    RuntimeFallbackPolicy, RuntimeLoweringDisposition, RuntimePlan, RuntimeReaderSupport,
-    RuntimeSafetyPolicy, SplitDescriptor, UnsupportedPredicatePolicy,
+    ProjectionColumn, ProjectionSet, RuntimeAbiVersion, RuntimeBackendIdentity,
+    RuntimeCacheCompatibilityStatus, RuntimeCacheKey, RuntimeCacheKeyInput,
+    RuntimeEmissionDisposition, RuntimeExecutionDecision, RuntimeFallbackPolicy,
+    RuntimeLoweringDisposition, RuntimePlan, RuntimeReaderSupport, RuntimeSafetyPolicy,
+    SplitDescriptor, UnsupportedPredicatePolicy,
 };
 use loom_native_melior::backend::{
     validate_backend_request, NativeBackendCancellation, NativeBackendIdentity,
@@ -144,6 +147,15 @@ pub struct DuckDbNativeBuffer {
     pub arrow_type: DataType,
     pub value_buffer: Vec<u8>,
 }
+
+#[derive(Debug, Clone)]
+struct NativePreparationCacheEntry {
+    cache_key: RuntimeCacheKey,
+    backend_report: NativeBackendReport,
+}
+
+static NATIVE_PREPARATION_CACHE: OnceLock<Mutex<HashMap<String, NativePreparationCacheEntry>>> =
+    OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
@@ -862,6 +874,9 @@ pub fn prepare_duckdb_runtime(
     if plan_report.runtime_plan.decision != RuntimeExecutionDecision::NativeCandidate
         || !plan_report.runtime_plan.diagnostics.is_empty()
     {
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "runtime route is not an eligible native candidate",
+        ));
         return DuckDbPreparedRoute {
             decision: plan_report.decision,
             backend_report: None,
@@ -877,13 +892,25 @@ pub fn prepare_duckdb_runtime(
         backend_identity: NativeBackendIdentity::preflight_only(),
         cancellation: cancellation.clone(),
     };
-    let mut backend_report = validate_and_prepare_production_backend(
-        request_input.clone(),
-        ProductionBackendPipelineOptions::default(),
-    );
-    diagnostics.extend(backend_diagnostics(&backend_report));
+    let mut cache_hit = false;
+    let mut backend_report = if cancellation.cancelled {
+        validate_and_prepare_production_backend(
+            request_input.clone(),
+            ProductionBackendPipelineOptions::default(),
+        )
+    } else if let Some(cached) =
+        lookup_native_preparation_cache(&plan_report.cache_key, &mut diagnostics)
+    {
+        cache_hit = true;
+        cached
+    } else {
+        validate_and_prepare_production_backend(
+            request_input.clone(),
+            ProductionBackendPipelineOptions::default(),
+        )
+    };
 
-    if !cancellation.cancelled {
+    if !cancellation.cancelled && !cache_hit {
         if let Some(test_buffers) = plan_report.test_jit_value_buffers.as_ref() {
             if let Ok(request) = validate_backend_request(request_input) {
                 backend_report = NativeBackendReport::accepted_pipeline(
@@ -913,8 +940,12 @@ pub fn prepare_duckdb_runtime(
             }
         }
     }
+    diagnostics.extend(backend_diagnostics(&backend_report));
 
     if backend_report.status == NativeBackendStatus::Cancelled {
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "cancelled native preparation is not cacheable",
+        ));
         return DuckDbPreparedRoute {
             decision: DuckDbRouteDecision::Cancelled,
             backend_report: Some(backend_report),
@@ -926,6 +957,9 @@ pub fn prepare_duckdb_runtime(
     if backend_report.status != NativeBackendStatus::Accepted
         || !backend_report.diagnostics.is_empty()
     {
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "native backend did not produce an accepted diagnostic-free preparation",
+        ));
         return DuckDbPreparedRoute {
             decision: decision_for_backend_status(backend_report.status, plan_report.policy),
             backend_report: Some(backend_report),
@@ -940,6 +974,9 @@ pub fn prepare_duckdb_runtime(
             path: "$.lowering_facts".to_string(),
             message: "native prepare requires production lowering facts".to_string(),
         });
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "missing production lowering facts prevent cache insertion",
+        ));
         return DuckDbPreparedRoute {
             decision: DuckDbRouteDecision::FailClosed,
             backend_report: Some(backend_report),
@@ -952,6 +989,9 @@ pub fn prepare_duckdb_runtime(
         Ok(buffers) => buffers,
         Err(mut failed) => {
             diagnostics.append(&mut failed);
+            diagnostics.push(cache_non_cacheable_diagnostic(
+                "reference buffer planning failed before native comparison",
+            ));
             return DuckDbPreparedRoute {
                 decision: DuckDbRouteDecision::FailClosed,
                 backend_report: Some(backend_report),
@@ -977,6 +1017,9 @@ pub fn prepare_duckdb_runtime(
             Ok(output) => output,
             Err(report) => {
                 diagnostics.extend(backend_diagnostics(&report));
+                diagnostics.push(cache_non_cacheable_diagnostic(
+                    "native JIT execution failed before comparison",
+                ));
                 return DuckDbPreparedRoute {
                     decision: decision_for_backend_status(report.status, plan_report.policy),
                     backend_report: Some(report),
@@ -991,6 +1034,9 @@ pub fn prepare_duckdb_runtime(
         compare_production_jit_output(&backend_report, &expected_buffers, &jit_output)
     {
         diagnostics.extend(backend_diagnostics(&report));
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "native output mismatch prevents cache insertion",
+        ));
         return DuckDbPreparedRoute {
             decision: DuckDbRouteDecision::FailClosed,
             backend_report: Some(report),
@@ -999,10 +1045,20 @@ pub fn prepare_duckdb_runtime(
         };
     }
 
+    let native_buffers = native_buffers_from_output(lowering_facts, jit_output);
+    if !cache_hit {
+        insert_native_preparation_cache(
+            &plan_report.cache_key,
+            &backend_report,
+            &native_buffers,
+            &mut diagnostics,
+        );
+    }
+
     DuckDbPreparedRoute {
         decision: DuckDbRouteDecision::NativeCandidate,
         backend_report: Some(backend_report),
-        native_buffers: native_buffers_from_output(lowering_facts, jit_output),
+        native_buffers,
         diagnostics,
     }
 }
@@ -1194,6 +1250,104 @@ fn backend_diagnostics(report: &NativeBackendReport) -> Vec<DuckDbRuntimeDiagnos
         .collect()
 }
 
+fn native_preparation_cache() -> &'static Mutex<HashMap<String, NativePreparationCacheEntry>> {
+    NATIVE_PREPARATION_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn lookup_native_preparation_cache(
+    cache_key: &RuntimeCacheKey,
+    diagnostics: &mut Vec<DuckDbRuntimeDiagnostic>,
+) -> Option<NativeBackendReport> {
+    let mut cache = native_preparation_cache()
+        .lock()
+        .expect("native preparation cache mutex poisoned");
+    let Some(entry) = cache.get(&cache_key.stable_id) else {
+        diagnostics.push(cache_diagnostic(
+            "cache-miss",
+            "no accepted in-process native preparation entry matched the runtime cache key",
+        ));
+        return None;
+    };
+
+    let compatibility = entry.cache_key.compatibility_with(cache_key);
+    match compatibility.status {
+        RuntimeCacheCompatibilityStatus::Hit => {
+            diagnostics.push(cache_diagnostic(
+                "cache-hit",
+                "reused accepted in-process native preparation evidence",
+            ));
+            Some(entry.backend_report.clone())
+        }
+        RuntimeCacheCompatibilityStatus::Miss => {
+            diagnostics.push(cache_diagnostic(
+                "cache-miss",
+                "cached stable id did not match the candidate runtime cache key",
+            ));
+            None
+        }
+        RuntimeCacheCompatibilityStatus::KeyMismatch => {
+            diagnostics.extend(
+                compatibility
+                    .diagnostics
+                    .into_iter()
+                    .map(runtime_diagnostic),
+            );
+            cache.remove(&cache_key.stable_id);
+            None
+        }
+    }
+}
+
+fn insert_native_preparation_cache(
+    cache_key: &RuntimeCacheKey,
+    backend_report: &NativeBackendReport,
+    native_buffers: &[DuckDbNativeBuffer],
+    diagnostics: &mut Vec<DuckDbRuntimeDiagnostic>,
+) {
+    if native_buffers.is_empty() {
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "accepted native preparation produced no buffers for the requested shape",
+        ));
+        return;
+    }
+    if backend_report.status != NativeBackendStatus::Accepted
+        || !backend_report.diagnostics.is_empty()
+        || backend_report.artifact.is_none()
+    {
+        diagnostics.push(cache_non_cacheable_diagnostic(
+            "only accepted diagnostic-free backend artifacts may be cached",
+        ));
+        return;
+    }
+
+    let mut cache = native_preparation_cache()
+        .lock()
+        .expect("native preparation cache mutex poisoned");
+    cache.insert(
+        cache_key.stable_id.clone(),
+        NativePreparationCacheEntry {
+            cache_key: cache_key.clone(),
+            backend_report: backend_report.clone(),
+        },
+    );
+    diagnostics.push(cache_diagnostic(
+        "cache-inserted",
+        "stored accepted in-process native preparation evidence",
+    ));
+}
+
+fn cache_diagnostic(code: &str, message: impl Into<String>) -> DuckDbRuntimeDiagnostic {
+    DuckDbRuntimeDiagnostic {
+        code: code.to_string(),
+        path: "$.cache.native_preparation".to_string(),
+        message: message.into(),
+    }
+}
+
+fn cache_non_cacheable_diagnostic(message: impl Into<String>) -> DuckDbRuntimeDiagnostic {
+    cache_diagnostic("cache-non-cacheable", message)
+}
+
 fn column_count_for(report: &ArtifactVerificationReport, input: &DuckDbRuntimePlanInput) -> u32 {
     if let Some(test_facts) = input.policy.test_native_facts.as_ref() {
         return test_facts.columns.len() as u32;
@@ -1363,11 +1517,23 @@ fn stable_fnv1a64(bytes: &[u8]) -> u64 {
     hash
 }
 
-pub fn duckdb_runtime_clear_native_preparation_cache_for_test() {}
+pub fn duckdb_runtime_clear_native_preparation_cache_for_test() {
+    native_preparation_cache()
+        .lock()
+        .expect("native preparation cache mutex poisoned")
+        .clear();
+}
 
 pub fn duckdb_runtime_corrupt_cached_canonical_input_for_test(
-    _stable_id: &str,
-    _canonical_input: impl Into<String>,
+    stable_id: &str,
+    canonical_input: impl Into<String>,
 ) -> bool {
-    false
+    let mut cache = native_preparation_cache()
+        .lock()
+        .expect("native preparation cache mutex poisoned");
+    let Some(entry) = cache.get_mut(stable_id) else {
+        return false;
+    };
+    entry.cache_key.canonical_input = canonical_input.into();
+    true
 }

@@ -10,6 +10,9 @@ use loom_ffi::duckdb_runtime::{
     DuckDbRuntimePlanInput, DuckDbRuntimePlanReport, DuckDbRuntimePolicy, DuckDbTestNativeFacts,
 };
 use loom_native_melior::backend::NativeBackendCancellation;
+use std::sync::{Mutex, MutexGuard};
+
+static CACHE_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
     let values = (0..row_count as i32)
@@ -119,9 +122,17 @@ fn diagnostic_codes(diagnostics: &[DuckDbRuntimeDiagnostic]) -> Vec<&str> {
         .collect()
 }
 
+fn isolated_cache() -> MutexGuard<'static, ()> {
+    let guard = CACHE_TEST_LOCK
+        .lock()
+        .expect("cache integration test mutex poisoned");
+    duckdb_runtime_clear_native_preparation_cache_for_test();
+    guard
+}
+
 #[test]
 fn identical_native_candidate_prepares_miss_insert_then_hit() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_cache();
     let plan = native_plan();
 
     let first = prepare(&plan);
@@ -138,10 +149,11 @@ fn identical_native_candidate_prepares_miss_insert_then_hit() {
 
 #[test]
 fn projection_and_policy_drift_miss_instead_of_reusing_prior_entry() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_cache();
 
-    let all_columns = plan_duckdb_runtime(table_native_input_with_projection(DuckDbProjection::All))
-        .expect("all columns native plan");
+    let all_columns =
+        plan_duckdb_runtime(table_native_input_with_projection(DuckDbProjection::All))
+            .expect("all columns native plan");
     let all_diagnostics = prepare(&all_columns);
     let all_codes = diagnostic_codes(&all_diagnostics);
     assert!(all_codes.contains(&"cache-miss"));
@@ -167,7 +179,7 @@ fn projection_and_policy_drift_miss_instead_of_reusing_prior_entry() {
 
 #[test]
 fn canonical_input_mismatch_for_same_stable_id_reports_key_mismatch() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_cache();
     let plan = native_plan();
 
     let inserted_diagnostics = prepare(&plan);
@@ -187,7 +199,7 @@ fn canonical_input_mismatch_for_same_stable_id_reports_key_mismatch() {
 
 #[test]
 fn unsafe_routes_are_non_cacheable_and_do_not_seed_hits() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_cache();
     let plan = native_plan();
 
     let cancelled = prepare_duckdb_runtime(
@@ -221,16 +233,13 @@ fn unsafe_routes_are_non_cacheable_and_do_not_seed_hits() {
 
 #[test]
 fn cache_hit_reuses_preparation_evidence_but_still_validates_output() {
-    duckdb_runtime_clear_native_preparation_cache_for_test();
+    let _guard = isolated_cache();
     let plan = native_plan();
     assert!(diagnostic_codes(&prepare(&plan)).contains(&"cache-inserted"));
 
     let mut mismatched_after_hit = plan.clone();
     mismatched_after_hit.test_jit_value_buffers = Some(vec![vec![0xff; 16]]);
-    let route = prepare_duckdb_runtime(
-        &mismatched_after_hit,
-        NativeBackendCancellation::default(),
-    );
+    let route = prepare_duckdb_runtime(&mismatched_after_hit, NativeBackendCancellation::default());
 
     assert_eq!(route.decision, DuckDbRouteDecision::FailClosed);
     assert!(route.native_buffers.is_empty());
