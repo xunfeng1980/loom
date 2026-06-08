@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 19 planned; execute phase next
-last_updated: "2026-06-08T11:40:00.000Z"
-last_activity: 2026-06-08 -- Phase 19 planned
+stopped_at: Phase 19 19-01 complete; 19-02 next
+last_updated: "2026-06-08T11:55:00.000Z"
+last_activity: 2026-06-08 -- Phase 19 19-01 complete
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 72
-  completed_plans: 67
+  completed_plans: 68
   percent: 69
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 19 — solver-backed full artifact verifier (planned)
+**Current focus:** Phase 19 — solver-backed full artifact verifier (executing)
 
 ## Current Position
 
-Phase: 19 (solver-backed-full-artifact-verifier) — PLANNED
-Plan: 19-01 through 19-05 ready
-Status: Phase 19 planned across solver contract, Bitwuzla-primary `QF_BV` SMT-LIB emitter, optional `loom-solver-smt` Bitwuzla backend, artifact verifier discharge integration, and CLI/release-gate closeout.
-Last activity: 2026-06-08 -- Phase 19 planned
+Phase: 19 (solver-backed-full-artifact-verifier) — IN PROGRESS
+Plan: 19-01 complete; 19-02 next
+Status: Phase 19 19-01 added the solver-neutral contract/report model, Bitwuzla-primary backend declarations, `ArtifactVerificationFacts.solver_report`, and focused discharge invariant tests.
+Last activity: 2026-06-08 -- Phase 19 19-01 complete
 
 Progress: 69%
 
 ## Progress Snapshot
 
 - Completed phases: 18 / 26
-- Completed executable plans: 67 / 72
+- Completed executable plans: 68 / 72
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 19 solver-backed full artifact verifier planned; execute phase next
+- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-02 deterministic Bitwuzla-primary SMT-LIB emitter next
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after local LLVM/MLIR 22.1.7 upgrade; Phase 16 feature-enabled `melior` JIT evidence now passes without skip
 
 **Completed phase plan counts:**
@@ -50,7 +50,7 @@ Progress: 69%
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
 | 18 | Complete Vortex reader | 5/5 |
-| 19 | Solver-backed full artifact verifier | 0/5 planned |
+| 19 | Solver-backed full artifact verifier | 1/5 in progress |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -129,6 +129,7 @@ None yet.
 - Phase 18 complete: 18-05 closed with CLI reader facts and artifact-verifier status, `scripts/complete-vortex-reader-test.sh`, release-gate wiring, final report, public/planning docs, and Phase 19 solver-backed verifier handoff.
 - Phase 19 research refreshed: recommended solver-neutral obligation/report types in `loom-core`, deterministic SMT-LIB v2.7 emission, optional `loom-solver-smt` subprocess backend with `z3`/`cvc5`/`bitwuzla` backend declarations from day one, Bitwuzla as the primary implemented backend, a Bitwuzla-supported `QF_BV` required path, Z3/cvc5 as optional adapters or strict cross-check paths, and fail-closed handling for `sat`, `unknown`, timeout, parse error, solver crash, missing strict solver, and cross-check disagreement.
 - Phase 19 planned: 5 plans across solver contract/report model, deterministic Bitwuzla-primary `QF_BV` SMT-LIB emission, optional `loom-solver-smt` Bitwuzla backend, artifact verifier solver-discharge integration, and CLI/release-gate closeout.
+- Phase 19 executing: 19-01 complete with `19-SOLVER-CONTRACT.md`, `loom_core::solver`, `ArtifactVerificationFacts.solver_report`, backend declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla primary metadata, and focused solver contract tests.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
 - Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -189,7 +190,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T11:10:32.000Z
-Stopped at: Phase 19 planned; execute phase next
+Stopped at: Phase 19 19-01 complete; 19-02 next
 
 Phase 17 handoff:
 
@@ -216,4 +217,5 @@ Phase 18 summary: .planning/phases/18-complete-vortex-reader/18-SUMMARY.md
 Phase 19 research: .planning/phases/19-solver-backed-full-artifact-verifier/19-RESEARCH.md
 Phase 19 context: .planning/phases/19-solver-backed-full-artifact-verifier/19-CONTEXT.md
 Phase 19 plans: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-PLAN.md through 19-05-PLAN.md
+Phase 19 19-01 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-SUMMARY.md
 Resume file: .planning/ROADMAP.md

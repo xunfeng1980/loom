@@ -559,7 +559,7 @@ LMC1 artifact
 **Research recommendation:** Keep `loom-core` solver-neutral, emit deterministic SMT-LIB v2.7 scripts from Loom-owned obligation/report types, and add an optional `loom-solver-smt` backend crate whose command-line backend trait declares `z3`, `cvc5`, and `bitwuzla` from day one. Phase 19 implements Bitwuzla as the primary backend with a Bitwuzla-supported `QF_BV` required path; Z3/cvc5 remain optional adapters or strict cross-check paths, including possible `QF_LIA` alternate scripts. Treat `unsat` on negated bad-state queries as discharged evidence; treat `sat`, `unknown`, timeout, parse error, solver crash, missing strict solver, or cross-check disagreement as fail-closed. Phase 20+ must consume discharged facts, not `CollectedOnly` obligations.
 
 **Suggested plan split:**
-- [ ] 19-01-PLAN.md - Solver contract and obligation report model
+- [x] 19-01-PLAN.md - Solver contract and obligation report model
 - [ ] 19-02-PLAN.md - Deterministic Bitwuzla-primary SMT-LIB emitter
 - [ ] 19-03-PLAN.md - Optional `loom-solver-smt` crate with Bitwuzla backend
 - [ ] 19-04-PLAN.md - Artifact verifier solver-discharge integration
@@ -634,7 +634,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
-| 19. Solver-backed Full Artifact Verifier | 0/5 | Planned | - |
+| 19. Solver-backed Full Artifact Verifier | 1/5 | In Progress | - |
 | 20. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 21. Expanded Vortex Encoding Coverage | 0/? | Placeholder | - |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |

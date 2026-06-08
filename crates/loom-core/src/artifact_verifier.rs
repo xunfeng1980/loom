@@ -9,6 +9,7 @@ use crate::l2_core::L2CoreProgram;
 use crate::l2_core::VerifiedArtifactFacts;
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::native_lowering::check_lowering_support;
+use crate::solver::SolverDischargeReport;
 use crate::verifier::verify_container;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,6 +183,7 @@ pub struct ArtifactVerificationFacts {
     pub constraint_ids: Vec<String>,
     pub proof_obligation_ids: Vec<String>,
     pub constraint_status: ConstraintDischargeStatus,
+    pub solver_report: Option<SolverDischargeReport>,
     pub lowering_ready: ArtifactLoweringReadiness,
 }
 
@@ -201,6 +203,7 @@ impl ArtifactVerificationFacts {
             constraint_ids: Vec::new(),
             proof_obligation_ids: Vec::new(),
             constraint_status: ConstraintDischargeStatus::NotRequired,
+            solver_report: None,
             lowering_ready: ArtifactLoweringReadiness::default(),
         }
     }
