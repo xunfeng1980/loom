@@ -1031,9 +1031,6 @@ static idx_t NativeRowCount(const LoomScanState &state) {
 
 static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &state,
                                                           idx_t output_idx) {
-    if (state.native_buffers.size() == state.projected_source_ids.size()) {
-        return state.native_buffers[output_idx];
-    }
     const auto source_idx = state.projected_source_ids[output_idx];
     if (source_idx < state.native_buffers.size()) {
         return state.native_buffers[source_idx];
