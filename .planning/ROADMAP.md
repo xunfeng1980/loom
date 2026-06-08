@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence, without claiming a complete compiled dialect or production JIT backend (complete)
 - [x] **Phase 21: Expanded Vortex Encoding Coverage** - Widen supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (complete)
 - [x] **Phase 22: Host Native Runtime ABI and Execution Policy** - Engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, projection/predicate/split planning, concurrency, and interpreter fallback semantics that host engines will call (complete)
-- [ ] **Phase 23: Production Native Backend Implementation** - Placeholder for the real compiled `loom.decode` ODS dialect, melior pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend that consumes Phase 22 ABI/policy decisions (not expanded)
+- [ ] **Phase 23: Production Native Backend Implementation** - Planned backend implementation over Phase 22 `RuntimePlan`/`RuntimeCacheKey`: compiled `loom.decode` ODS evidence, melior/LLVM pipeline, backend identity, cancellation, and verifier-gated JIT seed (research/planning started 2026-06-08)
 - [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
 - [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
 - [ ] **Phase 26: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path and full reader boundary are credible (not expanded)
@@ -643,9 +643,42 @@ or arbitrary Vortex semantic compatibility.
 
 ### Phase 23: Production Native Backend Implementation
 
-**Status:** Placeholder only. Ready to research/plan now that Phase 22 defines the host native runtime ABI and execution policy.
+**Status:** Researched and planned (2026-06-08). Ready to execute 23-01.
 **Depends on:** Phase 22.
 **Ordering decision:** Implement the real production backend after the ABI/policy is explicit and before any host engine depends on it. This phase should move beyond the Phase 20 textual seed by adding a compiled `loom.decode` ODS dialect, op verifiers, lowering/conversion passes, a `melior` pass pipeline, LLVM lowering, verifier-gated LLVM/JIT execution, strict toolchain/release gates, and equivalence evidence against the interpreter for the supported Phase 21 matrix. It must consume the Phase 22 `RuntimePlan` and `RuntimeCacheKey` as mandatory backend inputs, add ABI version/capability and layout evidence while keeping public `loom_runtime.h` unfrozen, and model cancellation plus backend/toolchain identity before long-running native kernels. It must not let a Rust/C++ natural wrapper define the C ABI, and it must not become DuckDB integration, cache hardening, Iceberg binding, or StarRocks comparison.
+**Research:** `.planning/phases/23-production-native-backend-implementation/23-RESEARCH.md`
+**Context:** `.planning/phases/23-production-native-backend-implementation/23-CONTEXT.md`
+
+**Success Criteria** (what must be TRUE):
+
+  1. `loom-native-melior` exposes a host-neutral backend request/report model that requires Phase 22 `RuntimePlan` and `RuntimeCacheKey`.
+  2. Backend identity records Loom ABI version, backend version, LLVM/MLIR toolchain identity, pass pipeline identity, capabilities, and target/layout evidence where available.
+  3. The Phase 20 textual `loom.decode` surface has matching ODS/TableGen source evidence and drift checks without making LLVM mandatory for default builds.
+  4. Production MLIR validation, LLVM lowering, and optional JIT preparation fail closed with stable backend diagnostics.
+  5. Supported primitive native/JIT output has focused interpreter-equivalence evidence, while deferred encodings remain explicit.
+  6. `scripts/production-backend-test.sh` is wired into the release gate and Phase 24 receives a DuckDB-adapter-shaped handoff.
+
+**Plans:** 5 plans across 5 waves
+
+**Wave 1**
+
+- [ ] 23-01-PLAN.md - Backend contract and runtime-plan bridge
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 23-02-PLAN.md - Compiled `loom.decode` ODS dialect evidence
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 23-03-PLAN.md - Production melior and LLVM lowering pipeline
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 23-04-PLAN.md - Verifier-gated JIT execution seed and interpreter equivalence
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 23-05-PLAN.md - Backend release gate, report, docs, and Phase 24 handoff
 
 ### Phase 24: DuckDB Native Execution Integration MVP
 
