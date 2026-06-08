@@ -35,8 +35,94 @@ extern "C" {
 }
 
 #include <cstdint>
+#include <fstream>
 
 using namespace duckdb;
+
+enum class LoomValueKind : uint8_t {
+    BOOL,
+    I32,
+    I64,
+    UTF8,
+};
+
+struct LoomBindData : TableFunctionData {
+    string payload_path;
+    vector<uint8_t> payload;
+    LogicalType value_type;
+    LoomValueKind value_kind;
+
+    unique_ptr<FunctionData> Copy() const override {
+        auto copy = make_uniq<LoomBindData>();
+        copy->payload_path = payload_path;
+        copy->payload = payload;
+        copy->value_type = value_type;
+        copy->value_kind = value_kind;
+        return std::move(copy);
+    }
+
+    bool Equals(const FunctionData &other_p) const override {
+        auto &other = other_p.Cast<LoomBindData>();
+        return payload_path == other.payload_path && value_kind == other.value_kind;
+    }
+};
+
+static vector<uint8_t> ReadPayloadFile(const string &path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        throw IOException("loom_scan: could not open payload file '%s'", path.c_str());
+    }
+    file.seekg(0, std::ios::end);
+    auto size = file.tellg();
+    if (size < 0) {
+        throw IOException("loom_scan: could not determine payload size for '%s'", path.c_str());
+    }
+    file.seekg(0, std::ios::beg);
+    vector<uint8_t> payload(static_cast<idx_t>(size));
+    if (!payload.empty()) {
+        file.read(reinterpret_cast<char *>(payload.data()), static_cast<std::streamsize>(payload.size()));
+        if (!file) {
+            throw IOException("loom_scan: failed to read payload file '%s'", path.c_str());
+        }
+    }
+    return payload;
+}
+
+static LoomValueKind PayloadKindFromHeader(const vector<uint8_t> &payload) {
+    if (payload.size() < 7 || payload[0] != 'L' || payload[1] != 'M' || payload[2] != 'P' || payload[3] != '1') {
+        throw IOException("loom_scan: payload is not an LMP1 layout payload");
+    }
+    const auto version = static_cast<uint16_t>(payload[4]) | (static_cast<uint16_t>(payload[5]) << 8);
+    if (version != 1) {
+        throw IOException("loom_scan: unsupported LMP1 payload version %d", static_cast<int>(version));
+    }
+    switch (payload[6]) {
+    case 1:
+        return LoomValueKind::BOOL;
+    case 2:
+        return LoomValueKind::I32;
+    case 3:
+        return LoomValueKind::I64;
+    case 4:
+        return LoomValueKind::UTF8;
+    default:
+        throw IOException("loom_scan: unknown LMP1 data type tag %d", static_cast<int>(payload[6]));
+    }
+}
+
+static LogicalType LogicalTypeForKind(LoomValueKind kind) {
+    switch (kind) {
+    case LoomValueKind::BOOL:
+        return LogicalType::BOOLEAN;
+    case LoomValueKind::I32:
+        return LogicalType::INTEGER;
+    case LoomValueKind::I64:
+        return LogicalType::BIGINT;
+    case LoomValueKind::UTF8:
+        return LogicalType::VARCHAR;
+    }
+    throw InternalException("unknown LoomValueKind");
+}
 
 // ===========================================================================
 // LoomScanState — GlobalTableFunctionState holding the decoded Arrow structs
@@ -57,6 +143,7 @@ using namespace duckdb;
 struct LoomScanState : GlobalTableFunctionState {
     ArrowArray  arrow_array  = {};   // zero-init: release == nullptr until populated
     ArrowSchema arrow_schema = {};
+    LoomValueKind value_kind = LoomValueKind::I32;
     bool batch_emitted = false;      // true after the single batch is delivered
 
     ~LoomScanState() {
@@ -74,7 +161,7 @@ struct LoomScanState : GlobalTableFunctionState {
 };
 
 // ===========================================================================
-// LoomBind — declare the output schema; ignore the VARCHAR argument (D-04)
+// LoomBind — read payload path and declare the output schema
 // ===========================================================================
 
 static unique_ptr<FunctionData> LoomBind(
@@ -83,16 +170,23 @@ static unique_ptr<FunctionData> LoomBind(
     vector<LogicalType> &return_types,
     vector<string> &names)
 {
-    // D-04: Accept the path/string argument but ignore it in Phase 2.
-    // The path is not used because loom_decode still returns the hardcoded
-    // [1, 2, 3, null] array. Phase 3+ will pass the path bytes to loom_decode.
-    (void)input;
+    if (input.inputs.empty() || input.inputs[0].IsNull()) {
+        throw BinderException("loom_scan requires a non-null payload file path");
+    }
 
-    // Phase 2 stub output schema: a single nullable INTEGER column "value".
-    return_types.push_back(LogicalType::INTEGER);
+    auto bind_data = make_uniq<LoomBindData>();
+    bind_data->payload_path = input.inputs[0].GetValue<string>();
+    bind_data->payload = ReadPayloadFile(bind_data->payload_path);
+    if (bind_data->payload.empty()) {
+        throw IOException("loom_scan: payload file '%s' is empty", bind_data->payload_path.c_str());
+    }
+    bind_data->value_kind = PayloadKindFromHeader(bind_data->payload);
+    bind_data->value_type = LogicalTypeForKind(bind_data->value_kind);
+
+    return_types.push_back(bind_data->value_type);
     names.push_back("value");
 
-    return make_uniq<TableFunctionData>();
+    return std::move(bind_data);
 }
 
 // ===========================================================================
@@ -101,15 +195,15 @@ static unique_ptr<FunctionData> LoomBind(
 
 static unique_ptr<GlobalTableFunctionState> LoomInit(
     ClientContext & /*ctx*/,
-    TableFunctionInitInput & /*input*/)
+    TableFunctionInitInput &input)
 {
     auto state = make_uniq<LoomScanState>();
+    auto &bind_data = input.bind_data->Cast<LoomBindData>();
+    state->value_kind = bind_data.value_kind;
 
-    // Phase 2: input bytes are ignored; loom_decode returns [1, 2, 3, null].
-    // Future phases will pass the actual encoded bytes here.
     int32_t rc = loom_decode(
-        nullptr,
-        0,
+        bind_data.payload.data(),
+        bind_data.payload.size(),
         reinterpret_cast<FFI_ArrowArray *>(&state->arrow_array),
         reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schema));
 
@@ -134,11 +228,83 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
 // we read the Arrow buffers directly. The arrow_scan/stream path is deferred to
 // Phase 3 (tracked) where the decoder emits a record-batch-shaped output.
 //
-// Arrow C Data Interface layout for a flat Int32Array with nulls:
-//   buffers[0] = validity bitmap (one bit per element; 0 = null)
-//   buffers[1] = int32 values buffer (one int32 per element)
-// (verified by the Phase-1 Wave-0 buffer_layout test: n_buffers==2,
-//  buffers[0]!=NULL with one null element, buffers[1]!=NULL.)
+static bool ArrowValueIsValid(const ArrowArray &arr, idx_t i) {
+    const auto *validity_buf = static_cast<const uint8_t *>(arr.buffers[0]);
+    if (validity_buf == nullptr) {
+        return true;
+    }
+    return ((validity_buf[i / 8] >> (i % 8)) & 1u) != 0u;
+}
+
+static void RequireArrowBuffers(const ArrowArray &arr, int64_t min_buffers, const char *kind) {
+    if (arr.buffers == nullptr || arr.n_buffers < min_buffers) {
+        throw IOException(
+            "loom_scan: decoded Arrow %s array has too few buffers (n_buffers=%lld)",
+            kind,
+            static_cast<long long>(arr.n_buffers));
+    }
+}
+
+template <class T>
+static void FillFixedWidthVector(const ArrowArray &arr, Vector &vec, idx_t count, const char *kind) {
+    RequireArrowBuffers(arr, 2, kind);
+    auto *out_data = FlatVector::GetData<T>(vec);
+    auto &validity = FlatVector::Validity(vec);
+    const auto *values_buf = static_cast<const T *>(arr.buffers[1]);
+    if (values_buf == nullptr) {
+        throw IOException("loom_scan: decoded Arrow %s values buffer is null", kind);
+    }
+
+    for (idx_t i = 0; i < count; i++) {
+        if (!ArrowValueIsValid(arr, i)) {
+            validity.SetInvalid(i);
+            continue;
+        }
+        out_data[i] = values_buf[i];
+    }
+}
+
+static void FillBooleanVector(const ArrowArray &arr, Vector &vec, idx_t count) {
+    RequireArrowBuffers(arr, 2, "Boolean");
+    auto *out_data = FlatVector::GetData<bool>(vec);
+    auto &validity = FlatVector::Validity(vec);
+    const auto *values_buf = static_cast<const uint8_t *>(arr.buffers[1]);
+    if (values_buf == nullptr) {
+        throw IOException("loom_scan: decoded Arrow Boolean values buffer is null");
+    }
+
+    for (idx_t i = 0; i < count; i++) {
+        if (!ArrowValueIsValid(arr, i)) {
+            validity.SetInvalid(i);
+            continue;
+        }
+        out_data[i] = ((values_buf[i / 8] >> (i % 8)) & 1u) != 0u;
+    }
+}
+
+static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
+    RequireArrowBuffers(arr, 3, "Utf8");
+    auto *out_data = FlatVector::GetData<string_t>(vec);
+    auto &validity = FlatVector::Validity(vec);
+    const auto *offsets = static_cast<const int32_t *>(arr.buffers[1]);
+    const auto *bytes = static_cast<const char *>(arr.buffers[2]);
+    if (offsets == nullptr || bytes == nullptr) {
+        throw IOException("loom_scan: decoded Arrow Utf8 offsets/data buffer is null");
+    }
+
+    for (idx_t i = 0; i < count; i++) {
+        if (!ArrowValueIsValid(arr, i)) {
+            validity.SetInvalid(i);
+            continue;
+        }
+        const auto start = offsets[i];
+        const auto end = offsets[i + 1];
+        if (start < 0 || end < start) {
+            throw IOException("loom_scan: decoded Arrow Utf8 offsets are invalid");
+        }
+        out_data[i] = StringVector::AddString(vec, bytes + start, static_cast<idx_t>(end - start));
+    }
+}
 
 static void LoomScan(
     ClientContext & /*ctx*/,
@@ -164,40 +330,22 @@ static void LoomScan(
         return;
     }
 
-    // Defensive guards (CR-01/WR-03): the Arrow C Data Interface permits a null
-    // `buffers` pointer in degenerate cases, and a primitive array must expose at
-    // least [validity, values]. The Phase-2 hardcoded array always satisfies this
-    // (pinned by the Wave-0 buffer_layout test), but guard so the pattern is safe
-    // when Phase 3 feeds real decoded buffers here.
-    if (arr.buffers == nullptr || arr.n_buffers < 2) {
-        throw IOException(
-            "loom_scan: decoded Arrow array has no value buffer (n_buffers=%lld)",
-            static_cast<long long>(arr.n_buffers));
-    }
-
     output.SetCardinality(count);
-    auto &vec      = output.data[0];
-    auto *out_data = FlatVector::GetData<int32_t>(vec);
-    auto &validity = FlatVector::Validity(vec);
+    auto &vec = output.data[0];
 
-    const auto *validity_buf = static_cast<const uint8_t *>(arr.buffers[0]);
-    const auto *values_buf   = static_cast<const int32_t *>(arr.buffers[1]);
-
-    // The values buffer is required for a non-empty Int32 array.
-    if (values_buf == nullptr) {
-        throw IOException("loom_scan: decoded Arrow array values buffer is null");
-    }
-
-    for (idx_t i = 0; i < count; i++) {
-        if (validity_buf != nullptr) {
-            // Arrow validity bitmap: bit i set (1) = valid, clear (0) = null.
-            const bool valid = ((validity_buf[i / 8] >> (i % 8)) & 1u) != 0u;
-            if (!valid) {
-                validity.SetInvalid(i);
-                continue;  // leave the value slot untouched for the null
-            }
-        }
-        out_data[i] = values_buf[i];
+    switch (state.value_kind) {
+    case LoomValueKind::BOOL:
+        FillBooleanVector(arr, vec, count);
+        break;
+    case LoomValueKind::I32:
+        FillFixedWidthVector<int32_t>(arr, vec, count, "Int32");
+        break;
+    case LoomValueKind::I64:
+        FillFixedWidthVector<int64_t>(arr, vec, count, "Int64");
+        break;
+    case LoomValueKind::UTF8:
+        FillUtf8Vector(arr, vec, count);
+        break;
     }
 
     // The array stays owned by LoomScanState and is released in ~LoomScanState()
@@ -211,7 +359,6 @@ static void LoomScan(
 
 static void LoadInternal(ExtensionLoader &loader) {
     // Register loom_scan(VARCHAR) with callbacks (LoomScan, LoomBind, LoomInit).
-    // D-04: single VARCHAR argument accepted but ignored in Phase 2.
     TableFunction fn(
         "loom_scan",
         {LogicalType::VARCHAR},
