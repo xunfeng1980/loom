@@ -61,8 +61,8 @@ toward source ingress and table bindings.
 - [ ] Phase 26 is the next active focus: define an external source ingress contract after native hardening, without implementing Lance/Parquet/Iceberg bindings inside the contract phase.
 - [ ] Phase 27 remains a roadmap placeholder only: Lance + Parquet archival readability / dataset ingress.
 - [ ] Phase 28 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- [ ] Phase 29 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after table binding exists.
-- [ ] Phase 30 remains a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table/query-surface evidence exists.
+- [x] Phase 29 is skipped/deferred by user request: StarRocks + DuckDB dual query surface is not implemented and must not be cited as evidence.
+- [ ] Phase 30 starts by user override: full arbitrary Vortex semantic compatibility proceeds after ABI/backend/hardening/table binding but without Phase 29 dual-query-surface evidence.
 
 ### Out of Scope
 
@@ -134,8 +134,8 @@ toward source ingress and table bindings.
 | Phase 26 should define external source ingress before archival/table formats | Source identity and ingestion trust boundaries need one stable contract before Lance, Parquet, and Iceberg bindings build on them. | Next active focus — Phase 26 |
 | Phase 27 should prove Lance + Parquet archival readability before Iceberg refs | Dataset/archive readability should be validated before introducing table metadata and ref semantics. | Placeholder — Phase 27 |
 | Phase 28 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 28 |
-| Phase 29 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 29 |
-| Phase 30 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. | Placeholder — Phase 30 |
+| Phase 29 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Skipped/deferred by user request — Phase 29 |
+| Phase 30 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. Because Phase 29 was skipped, Phase 30 must not rely on dual-query evidence. | Starting by user override — Phase 30 |
 
 ## Evolution
 

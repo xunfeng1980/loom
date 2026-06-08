@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 29 — StarRocks + DuckDB dual query surface (placeholder)
+**Current focus:** Phase 30 — Full Vortex Semantic Compatibility (started by user override after skipping Phase 29)
 
 ## Current Position
 
 Phase: 28 (iceberg-ref-table-binding) — COMPLETE
 Plan: 5 of 5
-Status: Complete; Phase 29 remains a placeholder until expanded by planning
-Last activity: 2026-06-09 -- Phase 28 plan 28-05 complete
+Status: Phase 28 complete; Phase 29 skipped/deferred by user request; Phase 30 starting with missing dual-query evidence recorded as a tradeoff
+Last activity: 2026-06-09 -- Phase 29 skipped/deferred; Phase 30 requested
 
 Progress: 90%
 
 ## Progress Snapshot
 
-- Completed phases: 28 / 30
+- Completed or skipped phases: 29 / 30
 - Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 complete; Phase 29 is a roadmap placeholder
+- Current position: Phase 30 starting by explicit user override; Phase 29 StarRocks/DuckDB dual-query evidence is deferred
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 28 Iceberg binding wired after Phase 27 Lance/Parquet and before DuckDB smoke
 
 **Completed phase plan counts:**
@@ -210,8 +210,8 @@ None yet.
 - Phase 28 executing: 28-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
 - Phase 28 executing: 28-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
 - Phase 28 complete: 28-05 finalized and wired `scripts/iceberg-binding-test.sh` into the main release verifier after Phase 27 and before DuckDB smoke, recorded closeout evidence, and kept Iceberg binding out of public query/API/catalog/credential surfaces.
-- Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
-- Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
+- Phase 29 skipped/deferred by user request on 2026-06-09: StarRocks + DuckDB dual query surface is not implemented and must not be cited as evidence.
+- Phase 30 started by user override: full arbitrary Vortex semantic compatibility proceeds without Phase 29 dual-query-surface evidence; this dependency gap must be recorded in Phase 30 context and tradeoffs.
 
 ### Quick Tasks Completed
 
@@ -269,8 +269,8 @@ None yet.
 | v3 ingress | External source ingress contract | Complete | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Complete | Phase 27 |
 | v3 table | Iceberg ref/table binding | Complete | Phase 28 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
-| v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 30 |
+| v3 engine | StarRocks + DuckDB dual query surface | Skipped/deferred by user request | Phase 29 |
+| v3 compatibility | Full Vortex semantic compatibility | Starting by user override | Phase 30 |
 
 ## Session Continuity
 
