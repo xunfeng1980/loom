@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: completed
-stopped_at: Completed 27-02-PLAN.md
-last_updated: "2026-06-08T20:33:41.661Z"
+stopped_at: Completed 27-03-PLAN.md
+last_updated: "2026-06-08T20:42:10.168Z"
 last_activity: 2026-06-08 -- Phase 27 Plan 01 complete
 progress:
   total_phases: 30
   completed_phases: 21
   total_plans: 112
-  completed_plans: 90
+  completed_plans: 91
   percent: 70
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 27 (lance-parquet-archival-readability-dataset-ingress) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Plan 27-01 complete; ready for Plan 27-02
 Last activity: 2026-06-08 -- Phase 27 Plan 01 complete
 
@@ -113,6 +113,9 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P01]: Phase 27 guard script remains unwired from mvp0-verify until Plan 27-05.
 - [Phase 27]: [Phase 27 P02]: Supported Parquet shapes are classified in SourceCoverage only; accepted reports and artifact bytes remain deferred to the emission plan.
 - [Phase 27]: [Phase 27 P02]: Parquet SDK metadata stays adapter-private and maps to source-neutral strings, counts, booleans, layout facts, and split facts.
+- [Phase 27]: [Phase 27 P03]: Lance facts classify supported shapes in SourceCoverage only; accepted reports and artifact bytes remain deferred to Plan 27-04.
+- [Phase 27]: [Phase 27 P03]: Lance SDK objects and object-store state remain private to loom-lance-ingress; generic/core/ffi crates receive only source-neutral facts and diagnostics.
+- [Phase 27]: [Phase 27 P03]: Arrow extension metadata is treated as unsupported schema even when the physical storage type is a supported primitive.
 
 ### Pending Todos
 
@@ -255,8 +258,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T20:33:41.416Z
-Stopped at: Completed 27-02-PLAN.md
+Last session: 2026-06-08T20:42:10.161Z
+Stopped at: Completed 27-03-PLAN.md
 
 Phase 17 handoff:
 
@@ -317,3 +320,4 @@ Resume file: None
 | Phase 25-native-equivalence-cache-and-fallback-hardening P05 | ~15min | 3 tasks | 6 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P01 | 13m | 3 tasks | 11 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P02 | 6m | 3 tasks | 6 files |
+| Phase 27-lance-parquet-archival-readability-dataset-ingress P03 | 5m23s | 3 tasks | 5 files |
