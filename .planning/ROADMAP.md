@@ -7,9 +7,9 @@ pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing
 Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL. Phases 1-10
 complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
 introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
-reviewable as a formal safety-proof MVP. Phase 13 is reserved for the full Loom verifier over the
-future distribution IR and total-function language. Phases 14-15 remain roadmap placeholders for
-native lowering and real Vortex file ingress.
+reviewable as a formal safety-proof MVP. Phase 13 is active for the full Loom verifier foundation
+over the future distribution IR and total-function language. Phases 14-15 remain roadmap
+placeholders for native lowering and real Vortex file ingress.
 
 ## Phases
 
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
-- [ ] **Phase 13: Full Loom Verifier** - Placeholder for the complete verifier over the future Loom distribution IR, L2 total-function language, module contracts, and lowering preconditions (not expanded)
+- [ ] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants
 - [ ] **Phase 14: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the verifier boundary exists (not expanded)
 - [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
@@ -342,9 +342,39 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 13: Full Loom Verifier
 
-**Status:** Placeholder only. Do not expand until an explicit phase-planning decision.
-**Depends on:** Phase 12 or an explicit revised dependency decision.
-**Intended future scope:** Verify the complete Loom distribution IR and L2 total-function language, including module/kernel contracts, resource bounds, version/feature semantics, and proof obligations needed before native lowering or remote distribution claims.
+**Status:** Active context/research. Plan not yet generated.
+**Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, mechanized Lean/Rocq soundness scaffolding, and TLA+ lifecycle/pipeline invariants.
+**Depends on:** Phase 12
+**Requirements:** VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10
+**Research:** `.planning/phases/13-full-loom-verifier/13-RESEARCH.md`
+**Context:** `.planning/phases/13-full-loom-verifier/13-CONTEXT.md`
+**Success Criteria** (what must be TRUE):
+
+  1. A normative verifier/spec document defines the Phase 13 `L2Core` subset, capability model, resource model, and Arrow builder event semantics.
+  2. A Rust verifier prototype or architecture in `loom-core` uses type/effect checking plus abstract interpretation to reject unsafe `L2Core` artifacts.
+  3. Local arithmetic/range/loop/resource obligations are represented as explicit verifier constraints, with an SMT-ready path.
+  4. A Lean or Rocq proof scaffold defines core syntax/static semantics/dynamic semantics and states or proves an accepted-program safety theorem.
+  5. A TLA+ lifecycle model captures parse/verify/lower/cache transitions and the invariant that lowering cannot occur before verifier acceptance.
+  6. Phase 13 emits verifier facts/proof obligations that Phase 14 can consume as native-lowering preconditions.
+
+**Plans:** 5 plans across 4 waves
+
+**Wave 1**
+
+- [ ] 13-01-PLAN.md - Define the normative `L2Core` verifier spec and Phase 13 proof-obligation matrix (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-10)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 13-02-PLAN.md - Add the Rust `L2Core` syntax/fact model and SMT-ready constraint IR (VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-07, VERIFIER-10)
+
+**Wave 3** *(blocked on required prior artifacts)*
+
+- [ ] 13-03-PLAN.md - Implement the Rust abstract-interpreting `L2Core` verifier with diagnostics, facts, tests, and optional CLI visibility (VERIFIER-04, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-10)
+- [ ] 13-04-PLAN.md - Add Lean soundness scaffold, TLA+ lifecycle model, and full-verifier gate script (VERIFIER-01, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-09, VERIFIER-10)
+
+**Wave 4** *(blocked on Waves 1-3 completion)*
+
+- [ ] 13-05-PLAN.md - Write final verifier report, update public/planning docs, wire release gate, run final verification, and close VERIFIER requirements (VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10)
 
 ### Phase 14: MLIR/Native Lowering Spike
 
@@ -375,6 +405,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
 | 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
-| 13. Full Loom Verifier | 0/? | Placeholder | - |
+| 13. Full Loom Verifier | 0/5 | Planned | - |
 | 14. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |

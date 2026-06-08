@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: phase_complete
-stopped_at: Phase 12 complete
+status: planned
+stopped_at: Phase 13 planned
 last_updated: "2026-06-08T05:40:00.000Z"
-last_activity: 2026-06-08 -- Phase 12 complete; Safety Proof MVP finalized and release-gated
+last_activity: 2026-06-08 -- Phase 13 planned with 5 verifier foundation plans across 4 waves
 progress:
   total_phases: 15
   completed_phases: 12
-  total_plans: 39
+  total_plans: 44
   completed_plans: 39
   percent: 80
 ---
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 12 complete — Phase 13 remains a placeholder until explicitly planned
+**Current focus:** Phase 13 — full-loom-verifier
 
 ## Current Position
 
-Phase: 12 (formal-verifier-safety-proof-mvp) — COMPLETE
-Plan: 4 of 4
-Status: Phase 12 complete; Phase 13/14/15 remain placeholders
-Last activity: 2026-06-08 -- 12-04 complete; final safety proof, docs, requirements, and gates updated
+Phase: 13 (full-loom-verifier) — PLANNED
+Plan: 0 of 5
+Status: Plans ready; Wave 1 can execute
+Last activity: 2026-06-08 -- 13-01 through 13-05 plans created
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -94,6 +94,11 @@ Progress: [██████████] 100%
 | Phase 12 P02 | 10 min | 4 tasks | 3 files |
 | Phase 12 P03 | 15 min | 3 tasks | 3 files |
 | Phase 12 P04 | 20 min | 3 tasks | 8 files |
+| Phase 13 P01 | planned | 2 tasks | 2 files |
+| Phase 13 P02 | planned | 3 tasks | 5 files |
+| Phase 13 P03 | planned | 3 tasks | 6 files |
+| Phase 13 P04 | planned | 3 tasks | 5 files |
+| Phase 13 P05 | planned | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -144,7 +149,8 @@ None yet.
 - Phase 11 executing: 11-03 complete with CLI inspect/decode support, generated `LMC1` smoke fixtures, DuckDB bind support, and container-aware negative verifier scripting.
 - Phase 11 complete: `LMC1` Distribution Container v0 now has docs, generated fixture coverage, DuckDB SQL smoke coverage, malformed-container release-gate coverage, and DIST-01 through DIST-05 closed.
 - Phase 12 complete: current-boundary Safety Proof MVP has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof docs, and a release-gated safety proof script for the implemented `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary only.
-- Phase 13 inserted as a roadmap placeholder for the full Loom verifier over future distribution IR, L2 total-function language, module contracts, and lowering preconditions.
+- Phase 13 entered: selected full-verifier architecture combines Rust abstract interpretation/type-effect checking, SMT local obligations, Lean/Rocq semantics and soundness, and TLA+ lifecycle/pipeline invariants.
+- Phase 13 planned: 5 plans cover `L2Core` spec, Rust model/constraint IR, Rust abstract-interpreting verifier, Lean/TLA formal scaffolding, and final release-gated closeout.
 - Phase 14 and Phase 15 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
@@ -180,12 +186,13 @@ None yet.
 | v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
 | v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Complete | Phase 11 |
 | v3 safety | Formal verifier / safety proof MVP | Complete | Phase 12 |
-| v3 safety | Full Loom verifier | Placeholder | Phase 13 |
+| v3 safety | Full Loom verifier | Planned | Phase 13 |
 | v3 native | MLIR/native lowering spike | Placeholder | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 15 |
 
 ## Session Continuity
 
 Last session: 2026-06-08T04:10:00.000Z
-Stopped at: Phase 12 complete
+Stopped at: Phase 13 planned
+Phase 13 context: .planning/phases/13-full-loom-verifier/13-CONTEXT.md
 Resume file: .planning/ROADMAP.md

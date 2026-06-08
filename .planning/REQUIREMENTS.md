@@ -114,6 +114,19 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **PROOF-04**: A dedicated `scripts/safety-proof-test.sh` gate checks proof docs, obligation IDs, static safety invariants, focused tests, and existing negative gates, and is invoked by `scripts/mvp0-verify.sh`
 - [x] **PROOF-05**: Public and planning docs state the narrow Phase 12 proof scope and do not claim future Loom IR, future L2 language, MLIR/native lowering, real Vortex ingress, signature, attestation, or correctness proofs
 
+### Full Loom Verifier
+
+- [ ] **VERIFIER-01**: A normative Phase 13 verifier/spec document defines the tiny `L2Core` subset, artifact assumptions, and safety theorem target
+- [ ] **VERIFIER-02**: L1 declarative layout semantics are specified as finite, pure data descriptions that compose with `L2Core`
+- [ ] **VERIFIER-03**: `L2Core` syntax, static semantics, dynamic semantics, and allowed loop forms are defined
+- [ ] **VERIFIER-04**: The capability/resource model covers input ranges, scratch bounds, output builders, no ambient authority, and fail-closed errors
+- [ ] **VERIFIER-05**: Arrow builder event semantics are specified so output well-formedness can be checked or proved by construction
+- [ ] **VERIFIER-06**: A Rust verifier prototype or architecture uses type/effect checking plus abstract interpretation for `L2Core`
+- [ ] **VERIFIER-07**: Local arithmetic, range, overflow, loop-variant, and resource-bound obligations are represented as SMT-ready constraints
+- [ ] **VERIFIER-08**: Verifier diagnostics and proof-obligation traces are stable enough for reviewer-facing rejection reports
+- [ ] **VERIFIER-09**: A Lean or Rocq proof scaffold defines core semantics and states or proves an accepted-program safety theorem
+- [ ] **VERIFIER-10**: Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -121,7 +134,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
-| Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress | Phase 12 targets only the current implemented byte-to-Arrow safety boundary; the complete Loom verifier is reserved for Phase 13 and future compiler/file-ingress proofs remain later work (design.md §5, §7, §13) |
+| MLIR/native lowering correctness proof and real Vortex file ingress proof | Phase 13 targets the Loom verifier foundation and lowering preconditions only; compiler lowering and real file-ingress proofs remain later phases (design.md §5, §7, §13) |
 | Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
@@ -191,6 +204,16 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PROOF-03 | Phase 12 | Complete |
 | PROOF-04 | Phase 12 | Complete |
 | PROOF-05 | Phase 12 | Complete |
+| VERIFIER-01 | Phase 13 | Planned |
+| VERIFIER-02 | Phase 13 | Planned |
+| VERIFIER-03 | Phase 13 | Planned |
+| VERIFIER-04 | Phase 13 | Planned |
+| VERIFIER-05 | Phase 13 | Planned |
+| VERIFIER-06 | Phase 13 | Planned |
+| VERIFIER-07 | Phase 13 | Planned |
+| VERIFIER-08 | Phase 13 | Planned |
+| VERIFIER-09 | Phase 13 | Planned |
+| VERIFIER-10 | Phase 13 | Planned |
 
 **Coverage:**
 
@@ -202,9 +225,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v2 safety-boundary requirements: 5 total
 - v3 distribution-container requirements: 5 total
 - v3 formal-safety-proof requirements: 5 total
-- Mapped to phases: 57
+- v3 full-loom-verifier requirements: 10 total
+- Mapped to phases: 67
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 12 Safety Proof MVP complete; Phase 13 Full Loom Verifier remains a placeholder*
+*Last updated: 2026-06-08 — Phase 13 Full Loom Verifier active context started*
