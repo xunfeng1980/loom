@@ -111,6 +111,9 @@ pub enum LoomDecodeError {
     /// FSST kernel parameters are malformed or truncated.
     MalformedFsstParams(&'static str),
 
+    /// ALP kernel parameters are malformed or truncated.
+    MalformedAlpParams(&'static str),
+
     /// FSST symbol table metadata is invalid.
     InvalidFsstSymbolTable(&'static str),
 
@@ -125,6 +128,9 @@ pub enum LoomDecodeError {
 
     /// The FSST decoder failed or panicked.
     FsstKernelFailed(&'static str),
+
+    /// The ALP decoder failed or panicked.
+    AlpKernelFailed(&'static str),
 
     /// MVP0 layout payload bytes are malformed or truncated.
     MalformedLayoutPayload(&'static str),
@@ -227,6 +233,9 @@ impl fmt::Display for LoomDecodeError {
             LoomDecodeError::MalformedFsstParams(reason) => {
                 write!(f, "malformed FSST params: {reason}")
             }
+            LoomDecodeError::MalformedAlpParams(reason) => {
+                write!(f, "malformed ALP params: {reason}")
+            }
             LoomDecodeError::InvalidFsstSymbolTable(reason) => {
                 write!(f, "invalid FSST symbol table: {reason}")
             }
@@ -238,6 +247,9 @@ impl fmt::Display for LoomDecodeError {
             }
             LoomDecodeError::FsstKernelFailed(reason) => {
                 write!(f, "FSST kernel failed: {reason}")
+            }
+            LoomDecodeError::AlpKernelFailed(reason) => {
+                write!(f, "ALP kernel failed: {reason}")
             }
             LoomDecodeError::MalformedLayoutPayload(reason) => {
                 write!(f, "malformed layout payload: {reason}")

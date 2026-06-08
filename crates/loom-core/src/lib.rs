@@ -16,6 +16,9 @@ pub mod error;
 /// Stable binary parameter format for the FSST L2 kernel.
 pub mod fsst_params;
 
+/// Stable binary parameter format for the ALP-style float L2 kernel.
+pub mod alp_params;
+
 /// Minimal MVP0 layout payload codec used by the FFI boundary.
 pub mod layout_codec;
 

@@ -19,7 +19,9 @@
 
 pub mod bitpack;
 
-use arrow::array::{Array, BooleanArray, Int32Array, Int64Array, StringArray};
+use arrow::array::{
+    Array, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, StringArray,
+};
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
@@ -341,6 +343,18 @@ fn decode_raw(
                 };
                 builder.append_i64(v);
             }
+            DataType::Float32 => {
+                if elem_size != 4 {
+                    return Err(LoomDecodeError::UnsupportedWidth(elem_size));
+                }
+                builder.append_f32(f32::from_le_bytes(bytes.try_into().unwrap()));
+            }
+            DataType::Float64 => {
+                if elem_size != 8 {
+                    return Err(LoomDecodeError::UnsupportedWidth(elem_size));
+                }
+                builder.append_f64(f64::from_le_bytes(bytes.try_into().unwrap()));
+            }
             other => {
                 return Err(LoomDecodeError::UnsupportedBuilderType {
                     operation: "decode_raw",
@@ -641,6 +655,8 @@ enum DecodedArray {
     Boolean(BooleanArray),
     Int32(Int32Array),
     Int64(Int64Array),
+    Float32(Float32Array),
+    Float64(Float64Array),
     Utf8(StringArray),
 }
 
@@ -650,6 +666,8 @@ impl DecodedArray {
             DataType::Boolean => Ok(DecodedArray::Boolean(BooleanArray::from(data))),
             DataType::Int32 => Ok(DecodedArray::Int32(Int32Array::from(data))),
             DataType::Int64 => Ok(DecodedArray::Int64(Int64Array::from(data))),
+            DataType::Float32 => Ok(DecodedArray::Float32(Float32Array::from(data))),
+            DataType::Float64 => Ok(DecodedArray::Float64(Float64Array::from(data))),
             DataType::Utf8 => Ok(DecodedArray::Utf8(StringArray::from(data))),
             other => Err(LoomDecodeError::UnsupportedBuilderType {
                 operation: "materialize decoded child",
@@ -663,6 +681,8 @@ impl DecodedArray {
             DecodedArray::Boolean(a) => a.len(),
             DecodedArray::Int32(a) => a.len(),
             DecodedArray::Int64(a) => a.len(),
+            DecodedArray::Float32(a) => a.len(),
+            DecodedArray::Float64(a) => a.len(),
             DecodedArray::Utf8(a) => a.len(),
         }
     }
@@ -672,6 +692,8 @@ impl DecodedArray {
             DecodedArray::Boolean(a) => a.is_null(index),
             DecodedArray::Int32(a) => a.is_null(index),
             DecodedArray::Int64(a) => a.is_null(index),
+            DecodedArray::Float32(a) => a.is_null(index),
+            DecodedArray::Float64(a) => a.is_null(index),
             DecodedArray::Utf8(a) => a.is_null(index),
         }
     }
@@ -683,12 +705,13 @@ impl DecodedArray {
         match self {
             DecodedArray::Int32(a) => Ok(Some(a.value(index) as i64)),
             DecodedArray::Int64(a) => Ok(Some(a.value(index))),
-            DecodedArray::Boolean(_) | DecodedArray::Utf8(_) => {
-                Err(LoomDecodeError::UnsupportedBuilderType {
-                    operation: "read integer code",
-                    data_type: data_type_name(&self.data_type()),
-                })
-            }
+            DecodedArray::Boolean(_)
+            | DecodedArray::Float32(_)
+            | DecodedArray::Float64(_)
+            | DecodedArray::Utf8(_) => Err(LoomDecodeError::UnsupportedBuilderType {
+                operation: "read integer code",
+                data_type: data_type_name(&self.data_type()),
+            }),
         }
     }
 
@@ -705,9 +728,17 @@ impl DecodedArray {
             (DecodedArray::Boolean(a), DataType::Boolean) => builder.append_bool(a.value(index)),
             (DecodedArray::Int32(a), DataType::Int32) => builder.append_i32(a.value(index)),
             (DecodedArray::Int64(a), DataType::Int64) => builder.append_i64(a.value(index)),
+            (DecodedArray::Float32(a), DataType::Float32) => builder.append_f32(a.value(index)),
+            (DecodedArray::Float64(a), DataType::Float64) => builder.append_f64(a.value(index)),
             (DecodedArray::Utf8(a), DataType::Utf8) => builder.append_string(a.value(index)),
             (DecodedArray::Int32(a), DataType::Int64) => builder.append_i64(a.value(index) as i64),
             (DecodedArray::Int64(a), DataType::Int32) => builder.append_i32(a.value(index) as i32),
+            (DecodedArray::Float32(a), DataType::Float64) => {
+                builder.append_f64(a.value(index) as f64)
+            }
+            (DecodedArray::Float64(a), DataType::Float32) => {
+                builder.append_f32(a.value(index) as f32)
+            }
             (_, other) => {
                 return Err(LoomDecodeError::UnsupportedBuilderType {
                     operation: "append decoded child",
@@ -723,6 +754,8 @@ impl DecodedArray {
             DecodedArray::Boolean(_) => DataType::Boolean,
             DecodedArray::Int32(_) => DataType::Int32,
             DecodedArray::Int64(_) => DataType::Int64,
+            DecodedArray::Float32(_) => DataType::Float32,
+            DecodedArray::Float64(_) => DataType::Float64,
             DecodedArray::Utf8(_) => DataType::Utf8,
         }
     }
@@ -766,6 +799,8 @@ fn data_type_name(data_type: &DataType) -> &'static str {
         DataType::Boolean => "Boolean",
         DataType::Int32 => "Int32",
         DataType::Int64 => "Int64",
+        DataType::Float32 => "Float32",
+        DataType::Float64 => "Float64",
         DataType::Utf8 => "Utf8",
         _ => "unsupported",
     }

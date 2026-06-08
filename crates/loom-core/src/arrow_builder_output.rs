@@ -1,7 +1,7 @@
 //! Arrow typed builder output stage.
 //!
 //! [`OutputBuilder`] wraps `arrow-rs` typed builders (`BooleanBuilder`,
-//! `Int32Builder`, `Int64Builder`) and exposes a narrow append API:
+//! `Int32Builder`, `Int64Builder`, `Float32Builder`, `Float64Builder`) and exposes a narrow append API:
 //! [`append_bool`](OutputBuilder::append_bool),
 //! [`append_i32`](OutputBuilder::append_i32),
 //! [`append_i64`](OutputBuilder::append_i64),
@@ -26,7 +26,10 @@
 //! [`finish`](OutputBuilder::finish) method is intentionally identical to the
 //! `into_data()` call in `ffi.rs:138` so the two code paths stay in sync.
 
-use arrow::array::{Array, BooleanBuilder, Int32Builder, Int64Builder, StringBuilder};
+use arrow::array::{
+    Array, BooleanBuilder, Float32Builder, Float64Builder, Int32Builder, Int64Builder,
+    StringBuilder,
+};
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
@@ -39,7 +42,7 @@ use arrow_schema::DataType;
 /// # Variant selection
 ///
 /// Construct via [`OutputBuilder::new`], passing the target Arrow
-/// [`DataType`]. Supported types: `Boolean`, `Int32`, `Int64`.
+/// [`DataType`]. Supported types: `Boolean`, `Int32`, `Int64`, `Float32`, `Float64`, and `Utf8`.
 ///
 /// # Thread safety
 ///
@@ -52,6 +55,10 @@ pub enum OutputBuilder {
     Int32(Int32Builder),
     /// Wraps `arrow::array::Int64Builder`.
     Int64(Int64Builder),
+    /// Wraps `arrow::array::Float32Builder`.
+    Float32(Float32Builder),
+    /// Wraps `arrow::array::Float64Builder`.
+    Float64(Float64Builder),
     /// Wraps `arrow::array::StringBuilder`.
     Utf8(StringBuilder),
 }
@@ -70,6 +77,8 @@ impl OutputBuilder {
             DataType::Boolean => OutputBuilder::Boolean(BooleanBuilder::new()),
             DataType::Int32 => OutputBuilder::Int32(Int32Builder::new()),
             DataType::Int64 => OutputBuilder::Int64(Int64Builder::new()),
+            DataType::Float32 => OutputBuilder::Float32(Float32Builder::new()),
+            DataType::Float64 => OutputBuilder::Float64(Float64Builder::new()),
             DataType::Utf8 => OutputBuilder::Utf8(StringBuilder::new()),
             other => panic!("OutputBuilder: unsupported DataType {other:?}"),
         }
@@ -81,6 +90,8 @@ impl OutputBuilder {
             OutputBuilder::Boolean(_) => DataType::Boolean,
             OutputBuilder::Int32(_) => DataType::Int32,
             OutputBuilder::Int64(_) => DataType::Int64,
+            OutputBuilder::Float32(_) => DataType::Float32,
+            OutputBuilder::Float64(_) => DataType::Float64,
             OutputBuilder::Utf8(_) => DataType::Utf8,
         }
     }
@@ -93,8 +104,12 @@ impl OutputBuilder {
     pub fn append_bool(&mut self, v: bool) {
         match self {
             OutputBuilder::Boolean(b) => b.append_value(v),
-            OutputBuilder::Int32(_) | OutputBuilder::Int64(_) | OutputBuilder::Utf8(_) => {
-                panic!("append_bool called on integer builder")
+            OutputBuilder::Int32(_)
+            | OutputBuilder::Int64(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Float64(_)
+            | OutputBuilder::Utf8(_) => {
+                panic!("append_bool called on non-Boolean builder")
             }
         }
     }
@@ -108,7 +123,11 @@ impl OutputBuilder {
     pub fn append_i32(&mut self, v: i32) {
         match self {
             OutputBuilder::Int32(b) => b.append_value(v),
-            OutputBuilder::Boolean(_) | OutputBuilder::Int64(_) | OutputBuilder::Utf8(_) => {
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Int64(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Float64(_)
+            | OutputBuilder::Utf8(_) => {
                 panic!("append_i32 called on non-Int32 builder")
             }
         }
@@ -123,8 +142,48 @@ impl OutputBuilder {
     pub fn append_i64(&mut self, v: i64) {
         match self {
             OutputBuilder::Int64(b) => b.append_value(v),
-            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) | OutputBuilder::Utf8(_) => {
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Int32(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Float64(_)
+            | OutputBuilder::Utf8(_) => {
                 panic!("append_i64 called on non-Int64 builder")
+            }
+        }
+    }
+
+    /// Append a non-null `f32` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder is not `Float32`.
+    pub fn append_f32(&mut self, v: f32) {
+        match self {
+            OutputBuilder::Float32(b) => b.append_value(v),
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Int32(_)
+            | OutputBuilder::Int64(_)
+            | OutputBuilder::Float64(_)
+            | OutputBuilder::Utf8(_) => {
+                panic!("append_f32 called on non-Float32 builder")
+            }
+        }
+    }
+
+    /// Append a non-null `f64` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder is not `Float64`.
+    pub fn append_f64(&mut self, v: f64) {
+        match self {
+            OutputBuilder::Float64(b) => b.append_value(v),
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Int32(_)
+            | OutputBuilder::Int64(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Utf8(_) => {
+                panic!("append_f64 called on non-Float64 builder")
             }
         }
     }
@@ -137,7 +196,11 @@ impl OutputBuilder {
     pub fn append_string(&mut self, v: &str) {
         match self {
             OutputBuilder::Utf8(b) => b.append_value(v),
-            OutputBuilder::Boolean(_) | OutputBuilder::Int32(_) | OutputBuilder::Int64(_) => {
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Int32(_)
+            | OutputBuilder::Int64(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Float64(_) => {
                 panic!("append_string called on non-Utf8 builder")
             }
         }
@@ -153,6 +216,8 @@ impl OutputBuilder {
             OutputBuilder::Boolean(b) => b.append_null(),
             OutputBuilder::Int32(b) => b.append_null(),
             OutputBuilder::Int64(b) => b.append_null(),
+            OutputBuilder::Float32(b) => b.append_null(),
+            OutputBuilder::Float64(b) => b.append_null(),
             OutputBuilder::Utf8(b) => b.append_null(),
         }
     }
@@ -168,7 +233,10 @@ impl OutputBuilder {
     /// encodings in MVP0; boolean RunEnd expansion must not call this method.
     pub fn t_bits(&self) -> usize {
         match self {
-            OutputBuilder::Boolean(_) | OutputBuilder::Utf8(_) => {
+            OutputBuilder::Boolean(_)
+            | OutputBuilder::Float32(_)
+            | OutputBuilder::Float64(_)
+            | OutputBuilder::Utf8(_) => {
                 panic!("t_bits called on non-integer builder; only integer builders have t_bits")
             }
             OutputBuilder::Int32(_) => 32,
@@ -191,6 +259,8 @@ impl OutputBuilder {
             OutputBuilder::Boolean(mut b) => b.finish().into_data(),
             OutputBuilder::Int32(mut b) => b.finish().into_data(),
             OutputBuilder::Int64(mut b) => b.finish().into_data(),
+            OutputBuilder::Float32(mut b) => b.finish().into_data(),
+            OutputBuilder::Float64(mut b) => b.finish().into_data(),
             OutputBuilder::Utf8(mut b) => b.finish().into_data(),
         }
     }
@@ -316,6 +386,38 @@ mod tests {
         assert_eq!(array.value(2), "beta");
     }
 
+    #[test]
+    fn float32_builder_values_and_null() {
+        use arrow::array::{Array, Float32Array};
+        let mut b = OutputBuilder::new(&DataType::Float32);
+        b.append_f32(1.25);
+        b.append_null();
+        b.append_f32(-2.5);
+        let array = Float32Array::from(b.finish());
+
+        assert_eq!(array.len(), 3);
+        assert_eq!(array.null_count(), 1);
+        assert_eq!(array.value(0), 1.25);
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), -2.5);
+    }
+
+    #[test]
+    fn float64_builder_values_and_null() {
+        use arrow::array::{Array, Float64Array};
+        let mut b = OutputBuilder::new(&DataType::Float64);
+        b.append_f64(1.25);
+        b.append_null();
+        b.append_f64(-2.5);
+        let array = Float64Array::from(b.finish());
+
+        assert_eq!(array.len(), 3);
+        assert_eq!(array.null_count(), 1);
+        assert_eq!(array.value(0), 1.25);
+        assert!(array.is_null(1));
+        assert_eq!(array.value(2), -2.5);
+    }
+
     /// t_bits returns 32 for Int32 and 64 for Int64.
     #[test]
     fn t_bits_correct() {
@@ -338,6 +440,14 @@ mod tests {
         assert_eq!(
             OutputBuilder::new(&DataType::Int64).data_type(),
             DataType::Int64
+        );
+        assert_eq!(
+            OutputBuilder::new(&DataType::Float32).data_type(),
+            DataType::Float32
+        );
+        assert_eq!(
+            OutputBuilder::new(&DataType::Float64).data_type(),
+            DataType::Float64
         );
     }
 }

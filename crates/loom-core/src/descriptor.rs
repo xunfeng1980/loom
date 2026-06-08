@@ -85,6 +85,8 @@ enum DescriptorDataType {
     Boolean,
     Int32,
     Int64,
+    Float32,
+    Float64,
     Utf8,
 }
 
@@ -94,6 +96,8 @@ impl DescriptorDataType {
             DataType::Boolean => Ok(Self::Boolean),
             DataType::Int32 => Ok(Self::Int32),
             DataType::Int64 => Ok(Self::Int64),
+            DataType::Float32 => Ok(Self::Float32),
+            DataType::Float64 => Ok(Self::Float64),
             DataType::Utf8 => Ok(Self::Utf8),
             other => Err(LoomDecodeError::MalformedDescriptor(format!(
                 "unsupported descriptor data type {other:?}"
@@ -106,6 +110,8 @@ impl DescriptorDataType {
             Self::Boolean => DataType::Boolean,
             Self::Int32 => DataType::Int32,
             Self::Int64 => DataType::Int64,
+            Self::Float32 => DataType::Float32,
+            Self::Float64 => DataType::Float64,
             Self::Utf8 => DataType::Utf8,
         }
     }
@@ -383,6 +389,21 @@ mod tests {
             },
             row_count: 1,
         });
+    }
+
+    #[test]
+    fn float_kernel_escape_roundtrip() {
+        for data_type in [DataType::Float32, DataType::Float64] {
+            roundtrip(LayoutDescription {
+                data_type,
+                root: LayoutNode::KernelEscape {
+                    kernel_id: 1,
+                    params: vec![1, 2, 3, 4],
+                    count: 0,
+                },
+                row_count: 0,
+            });
+        }
     }
 
     #[test]

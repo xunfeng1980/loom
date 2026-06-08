@@ -10,6 +10,7 @@ use std::fmt;
 
 use arrow_schema::DataType;
 
+use crate::alp_params::AlpParams;
 use crate::error::LoomDecodeError;
 use crate::fsst_params::FsstParams;
 use crate::l1_model::bitpack;
@@ -276,30 +277,75 @@ fn verify_node(
             params,
             count,
         } => {
-            if !matches!(data_type, DataType::Utf8) {
-                report.push(
-                    VerificationCode::UnsupportedLayoutType,
-                    path,
-                    format!("KernelEscape currently produces Utf8, not {:?}", data_type),
-                );
-            }
             if registry.get(*kernel_id).is_none() {
                 report.push(
                     VerificationCode::UnknownKernel,
                     format!("{path}.kernel_id"),
                     format!("unknown L2 kernel id {kernel_id}"),
                 );
-            } else if *kernel_id == 0 {
-                if let Err(err) = FsstParams::decode(params, *count) {
-                    report.push(
-                        VerificationCode::MalformedKernelParams,
-                        format!("{path}.params"),
-                        err.to_string(),
-                    );
-                }
+            } else {
+                verify_kernel_params(*kernel_id, params, *count, data_type, path, report);
             }
             Some(*count)
         }
+    }
+}
+
+fn verify_kernel_params(
+    kernel_id: u32,
+    params: &[u8],
+    count: usize,
+    data_type: &DataType,
+    path: &str,
+    report: &mut VerificationReport,
+) {
+    match kernel_id {
+        0 => {
+            if !matches!(data_type, DataType::Utf8) {
+                report.push(
+                    VerificationCode::UnsupportedLayoutType,
+                    path,
+                    format!("FSST kernel produces Utf8, not {:?}", data_type),
+                );
+            }
+            if let Err(err) = FsstParams::decode(params, count) {
+                report.push(
+                    VerificationCode::MalformedKernelParams,
+                    format!("{path}.params"),
+                    err.to_string(),
+                );
+            }
+        }
+        1 => {
+            if !matches!(data_type, DataType::Float32 | DataType::Float64) {
+                report.push(
+                    VerificationCode::UnsupportedLayoutType,
+                    path,
+                    format!("ALP kernel produces Float32/Float64, not {:?}", data_type),
+                );
+            }
+            match AlpParams::decode(params, count) {
+                Ok(alp_params) => {
+                    if &alp_params.output_type.to_data_type() != data_type {
+                        report.push(
+                            VerificationCode::UnsupportedLayoutType,
+                            format!("{path}.params.output_type"),
+                            format!(
+                                "ALP params output type {} does not match layout type {:?}",
+                                alp_params.output_type.as_str(),
+                                data_type
+                            ),
+                        );
+                    }
+                }
+                Err(err) => report.push(
+                    VerificationCode::MalformedKernelParams,
+                    format!("{path}.params"),
+                    err.to_string(),
+                ),
+            }
+        }
+        _ => {}
     }
 }
 
@@ -512,14 +558,23 @@ fn raw_integer_values(node: &LayoutNode) -> Option<Vec<i64>> {
 fn is_supported_data_type(data_type: &DataType) -> bool {
     matches!(
         data_type,
-        DataType::Boolean | DataType::Int32 | DataType::Int64 | DataType::Utf8
+        DataType::Boolean
+            | DataType::Int32
+            | DataType::Int64
+            | DataType::Float32
+            | DataType::Float64
+            | DataType::Utf8
     )
 }
 
 fn raw_elem_size_supported(data_type: &DataType, elem_size: u8) -> bool {
     matches!(
         (data_type, elem_size),
-        (DataType::Boolean, 1) | (DataType::Int32, 1 | 2 | 4) | (DataType::Int64, 1 | 2 | 4 | 8)
+        (DataType::Boolean, 1)
+            | (DataType::Int32, 1 | 2 | 4)
+            | (DataType::Int64, 1 | 2 | 4 | 8)
+            | (DataType::Float32, 4)
+            | (DataType::Float64, 8)
     )
 }
 
@@ -541,6 +596,7 @@ fn dictionary_code_data_type(codes: &LayoutNode) -> DataType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::alp_params::{AlpOutputType, AlpParams};
 
     fn registry() -> L2KernelRegistry {
         L2KernelRegistry::default_for_mvp0()
@@ -737,6 +793,80 @@ mod tests {
             0,
         );
         assert_code(&report, VerificationCode::MalformedKernelParams);
+    }
+
+    #[test]
+    fn valid_alp_float32_passes() {
+        let params = AlpParams {
+            output_type: AlpOutputType::Float32,
+            decimal_exponent: -2,
+            mantissas: vec![125, -25],
+            validity: Some(vec![true, false]),
+        }
+        .encode();
+        let report = report_for(
+            LayoutNode::KernelEscape {
+                kernel_id: 1,
+                params,
+                count: 2,
+            },
+            DataType::Float32,
+            2,
+        );
+
+        assert!(report.is_ok(), "{:?}", report.diagnostics());
+    }
+
+    #[test]
+    fn malformed_alp_params_fails() {
+        let report = report_for(
+            LayoutNode::KernelEscape {
+                kernel_id: 1,
+                params: vec![],
+                count: 0,
+            },
+            DataType::Float32,
+            0,
+        );
+
+        assert_code(&report, VerificationCode::MalformedKernelParams);
+    }
+
+    #[test]
+    fn alp_output_type_mismatch_fails() {
+        let params = AlpParams {
+            output_type: AlpOutputType::Float64,
+            decimal_exponent: -2,
+            mantissas: vec![125],
+            validity: None,
+        }
+        .encode();
+        let report = report_for(
+            LayoutNode::KernelEscape {
+                kernel_id: 1,
+                params,
+                count: 1,
+            },
+            DataType::Float32,
+            1,
+        );
+
+        assert_code(&report, VerificationCode::UnsupportedLayoutType);
+    }
+
+    #[test]
+    fn fsst_under_float_fails() {
+        let report = report_for(
+            LayoutNode::KernelEscape {
+                kernel_id: 0,
+                params: vec![],
+                count: 0,
+            },
+            DataType::Float32,
+            0,
+        );
+
+        assert_code(&report, VerificationCode::UnsupportedLayoutType);
     }
 
     #[test]

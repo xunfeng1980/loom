@@ -16,6 +16,8 @@ const DTYPE_BOOL: u8 = 1;
 const DTYPE_I32: u8 = 2;
 const DTYPE_I64: u8 = 3;
 const DTYPE_UTF8: u8 = 4;
+const DTYPE_F32: u8 = 5;
+const DTYPE_F64: u8 = 6;
 
 const NODE_RAW: u8 = 0;
 const NODE_BITPACK: u8 = 1;
@@ -70,6 +72,8 @@ fn encode_data_type(data_type: &DataType) -> u8 {
         DataType::Int32 => DTYPE_I32,
         DataType::Int64 => DTYPE_I64,
         DataType::Utf8 => DTYPE_UTF8,
+        DataType::Float32 => DTYPE_F32,
+        DataType::Float64 => DTYPE_F64,
         other => panic!("layout codec unsupported DataType {other:?}"),
     }
 }
@@ -80,6 +84,8 @@ fn decode_data_type(tag: u8) -> Result<DataType, LoomDecodeError> {
         DTYPE_I32 => Ok(DataType::Int32),
         DTYPE_I64 => Ok(DataType::Int64),
         DTYPE_UTF8 => Ok(DataType::Utf8),
+        DTYPE_F32 => Ok(DataType::Float32),
+        DTYPE_F64 => Ok(DataType::Float64),
         _ => Err(LoomDecodeError::MalformedLayoutPayload(
             "unknown data type tag",
         )),
@@ -409,6 +415,37 @@ mod tests {
         assert_eq!(kernel_id, 0);
         assert_eq!(count, 0);
         assert_eq!(decoded_params, params);
+    }
+
+    #[test]
+    fn roundtrip_kernel_escape_float_payloads() {
+        for data_type in [DataType::Float32, DataType::Float64] {
+            let desc = LayoutDescription {
+                data_type: data_type.clone(),
+                root: LayoutNode::KernelEscape {
+                    kernel_id: 1,
+                    params: vec![1, 2, 3, 4],
+                    count: 0,
+                },
+                row_count: 0,
+            };
+
+            let decoded = decode_layout_payload(&encode_layout_payload(&desc))
+                .expect("payload should decode");
+
+            assert_eq!(decoded.data_type, data_type);
+            let LayoutNode::KernelEscape {
+                kernel_id,
+                params,
+                count,
+            } = decoded.root
+            else {
+                panic!("expected KernelEscape node");
+            };
+            assert_eq!(kernel_id, 1);
+            assert_eq!(params, vec![1, 2, 3, 4]);
+            assert_eq!(count, 0);
+        }
     }
 
     #[test]
