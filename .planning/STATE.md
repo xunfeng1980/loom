@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-06-08T18:04:04.204Z"
-last_activity: 2026-06-08 -- Phase 25 25-02 complete; ready for 25-03
+stopped_at: Completed 25-05-PLAN.md
+last_updated: "2026-06-09T02:35:00+08:00"
+last_activity: 2026-06-09 -- Phase 25 complete; Phase 26 external source ingress contract next
 progress:
   total_phases: 30
-  completed_phases: 24
+  completed_phases: 25
   total_plans: 102
-  completed_plans: 96
-  percent: 80
+  completed_plans: 99
+  percent: 83
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 25 — native-equivalence-cache-and-fallback-hardening
+**Current focus:** Phase 26 — external-source-ingress-contract
 
 ## Current Position
 
-Phase: 25
-Plan: 25-03 next
-Status: Phase 25 in progress — 25-02 complete, 25-03 next
-Last activity: 2026-06-08 -- Phase 25 25-02 complete; ready for 25-03
+Phase: 26
+Plan: research/planning next
+Status: Phase 25 complete and validated; Phase 26 external source ingress contract next
+Last activity: 2026-06-09 -- Phase 25 complete; Phase 26 external source ingress contract next
 
-Progress: 80%
+Progress: 83%
 
 ## Progress Snapshot
 
-- Completed phases: 24 / 30
-- Completed executable plans: 96 / 102
+- Completed phases: 25 / 30
+- Completed executable plans: 99 / 102
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 25 in progress; 2/5 plans complete
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 24 DuckDB native integration wired before DuckDB SQL smoke
+- Current position: Phase 26 next; Phase 25 completed 5/5 plans
+- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 25 native hardening wired after Phase 24 and before DuckDB SQL smoke
 
 **Completed phase plan counts:**
 
@@ -56,6 +56,7 @@ Progress: 80%
 | 22 | Host native runtime ABI and execution policy | 5/5 complete |
 | 23 | Production native backend implementation | 5/5 complete |
 | 24 | DuckDB native execution integration MVP | 5/5 complete |
+| 25 | Native equivalence, cache, and fallback hardening | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Cache evidence remains on existing internal DuckDB diagnostics and public loom.h rejects cache/API creep markers.
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Cache hits reuse only accepted NativeBackendReport preparation evidence; native buffers are regenerated and compared before every native return.
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Kept DuckDB native preparation cache in-process and Rust-owned with no persistent format, public C API, SQL flags, path/mtime semantics, eviction policy, or package additions.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-03: Interpreter/reference bytes remain the oracle for supported non-null primitive native helper routes; unsupported strings, nullability, compression, predicates, splits, malformed artifacts, mismatch, and cancellation are negative/fallback evidence.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-04: DuckDB SQL hardening uses public `loom_scan(path)` plus internal route reports for cache smoke, projection drift, fallback, strict fail-closed, cancellation, and public API creep gates.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-05: Main release gate runs Phase 25 native hardening after Phase 24 and before DuckDB smoke; final report records bounded equivalence/cache/fallback evidence and Phase 26 handoff assumptions.
 
 ### Pending Todos
 
@@ -177,8 +181,8 @@ None yet.
 - Phase 24 ready for research/planning: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime/backend contract, mapping bind/init/local-init/function to plan/scan/worker/next-batch and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 24 executing: 24-01 complete with `loom_ffi::duckdb_runtime`, verifier-backed runtime planning, projection/no-predicate/full-scan/single-worker route evidence, backend prepare/JIT comparison routing, and fail-closed mismatch/cancellation diagnostics.
 - Phase 24 executing: 24-02 complete with internal `loom_duckdb_*` FFI handles, `loom_duckdb_internal.h`, panic-safe route/diagnostic/native-buffer accessors, and public-header leakage gates.
-- Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
+- Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
+- Phase 26 next: external source ingress contract after the hardened native execution contract, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
 - Phase 27 reserved as a roadmap placeholder only: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
 - Phase 28 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract and source-ingress contract are credible.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
@@ -236,8 +240,8 @@ None yet.
 | v3 engine | Host native runtime ABI and execution policy | Complete | Phase 22 |
 | v3 native | Production native backend implementation | Complete | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Complete | Phase 24 |
-| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
-| v3 ingress | External source ingress contract | Placeholder | Phase 26 |
+| v3 engine | Native equivalence, cache, and fallback hardening | Complete | Phase 25 |
+| v3 ingress | External source ingress contract | Next | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Placeholder | Phase 27 |
 | v3 table | Iceberg ref/table binding | Placeholder | Phase 28 |
 | v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
@@ -245,8 +249,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T18:03:32.606Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-06-09T02:35:00+08:00
+Stopped at: Completed 25-05-PLAN.md
 
 Phase 17 handoff:
 
@@ -304,3 +308,4 @@ Resume file: None
 | Phase 24-duckdb-native-execution-integration-mvp P04 | 8min | 2 tasks | 1 files |
 | Phase 24-duckdb-native-execution-integration-mvp P05 | 8min | 3 tasks | 7 files |
 | Phase 25-native-equivalence-cache-and-fallback-hardening P02 | 10m32s | 3 tasks | 4 files |
+| Phase 25-native-equivalence-cache-and-fallback-hardening P05 | ~15min | 3 tasks | 6 files |

@@ -6,16 +6,18 @@ Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
 (full design in `design.md`). The original MVP0 DuckDB demo is complete. The
 project is now in MVP1 / v3, focused on distribution containers, verifier-backed
-safety, native-lowering preparation, complete-reader Vortex ingress, and the
-post-native table/query-surface path.
+safety, native-lowering preparation, complete-reader Vortex ingress, bounded
+native execution hardening, and the post-native source/table/query-surface path.
 
 ## Core Value
 
 A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads,
 including mixed-column table payloads, and get row/aggregate results that match
 the expected decoded values. Real Vortex files can enter Loom through the Phase
-18 complete-reader boundary, and later phases should preserve the verifier-gated,
-fail-closed boundary as Loom grows toward native execution and table bindings.
+18 complete-reader boundary, and the DuckDB native path is now hardened with
+bounded equivalence, in-process cache, fallback, and fail-closed evidence. Later
+phases should preserve the verifier-gated, fail-closed boundary as Loom grows
+toward source ingress and table bindings.
 
 ## Requirements
 
@@ -50,13 +52,13 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 - ✓ Host native runtime ABI and execution policy: host-neutral runtime model, native/interpreter/fail-closed decision policy, projection/predicate/split/concurrency planning, cache identity, diagnostics, and C ABI sketch are complete and gated through `scripts/runtime-abi-test.sh` — Phase 22
 - ✓ Production native backend implementation: `loom-native-melior` consumes Phase 22 runtime plans/cache identity, validates `loom.decode` dialect artifacts, runs production MLIR/LLVM preparation, seeds verifier-gated JIT execution for supported primitive kernels, and gates evidence through `scripts/production-backend-test.sh` — Phase 23
 - ✓ DuckDB native execution integration MVP: public `loom_scan(path)` routes eligible complete-reader artifacts through Phase 22 runtime policy and Phase 23 backend, preserves interpreter fallback/fail-closed diagnostics/direct DataChunk output, passes projected column ids into runtime projection/cache input, and gates evidence through `scripts/duckdb-native-integration-test.sh` plus `scripts/mvp0-verify.sh` — Phase 24
+- ✓ Native equivalence, cache, and fallback hardening: public `loom_scan(path)` now has release-gated evidence for supported non-null primitive native equivalence, same-process in-process cache miss/insert/hit smoke behavior, key-driven invalidation, unsupported-route fallback/strict fail-closed diagnostics, malformed/cancel/mismatch recovery, and a final bounded report at `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md` — Phase 25
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 25 remains a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- [ ] Phase 26 remains a roadmap placeholder only: external source ingress contract after native hardening.
+- [ ] Phase 26 is the next active focus: define an external source ingress contract after native hardening, without implementing Lance/Parquet/Iceberg bindings inside the contract phase.
 - [ ] Phase 27 remains a roadmap placeholder only: Lance + Parquet archival readability / dataset ingress.
 - [ ] Phase 28 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
 - [ ] Phase 29 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after table binding exists.
@@ -126,10 +128,10 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 20 is a production lowering seed, not the full production backend | The unified and solver-backed verifier pipeline needs a first verifier-gated `loom.decode`/standard-MLIR/native-lowering surface, but compiled ODS dialect registration, production `melior` pass pipeline, LLVM lowering, and LLVM/JIT execution should remain out of Phase 20. | Complete — Phase 20 |
 | Phase 21 should expand Vortex encoding coverage with paired lowering disposition | Broader real Vortex support should consume solver-backed verifier evidence and the Phase 20 lowering seed; every new encoding/layout must be classified as interpreter-only, lowering-supported with a dialect/native delta, or fail-closed/deferred. | Complete — Phase 21 |
 | Phase 22 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Complete — Phase 22 |
-| Phase 23 should implement the production native backend before DuckDB integration | After ABI/policy is explicit, the real compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend should exist before a host engine depends on native execution. | Placeholder — Phase 23 |
-| Phase 24 should prove DuckDB native execution before broader table binding | DuckDB is the existing host seam and SQL gate, so it is the lowest-risk first native host integration over complete-reader artifacts and the Phase 23 production backend. | Placeholder — Phase 24 |
-| Phase 25 should harden equivalence, cache, and fallback before source/table binding | Downstream metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Placeholder — Phase 25 |
-| Phase 26 should define external source ingress before archival/table formats | Source identity and ingestion trust boundaries need one stable contract before Lance, Parquet, and Iceberg bindings build on them. | Placeholder — Phase 26 |
+| Phase 23 should implement the production native backend before DuckDB integration | After ABI/policy is explicit, the real compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend should exist before a host engine depends on native execution. | Complete — Phase 23 |
+| Phase 24 should prove DuckDB native execution before broader table binding | DuckDB is the existing host seam and SQL gate, so it is the lowest-risk first native host integration over complete-reader artifacts and the Phase 23 production backend. | Complete — Phase 24 |
+| Phase 25 should harden equivalence, cache, and fallback before source/table binding | Downstream metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Complete — Phase 25 |
+| Phase 26 should define external source ingress before archival/table formats | Source identity and ingestion trust boundaries need one stable contract before Lance, Parquet, and Iceberg bindings build on them. | Next active focus — Phase 26 |
 | Phase 27 should prove Lance + Parquet archival readability before Iceberg refs | Dataset/archive readability should be validated before introducing table metadata and ref semantics. | Placeholder — Phase 27 |
 | Phase 28 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 28 |
 | Phase 29 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 29 |
@@ -153,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 24 closeout — DuckDB native execution integration is verified through the Phase 22 runtime policy and Phase 23 backend, while Phase 25+ hardening/table/query-surface work remains future scope.*
+*Last updated: 2026-06-09 after Phase 25 closeout — DuckDB native execution hardening is release-gated through bounded equivalence, in-process cache, fallback, and strict fail-closed evidence; Phase 26 external source ingress is the next active focus.*
