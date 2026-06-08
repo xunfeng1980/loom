@@ -192,12 +192,24 @@ fn public_host_and_cli_surfaces_have_no_iceberg_or_credential_routes() {
 }
 
 #[test]
-fn focused_gate_exists_but_is_not_wired_into_main_release_gate_yet() {
+fn focused_gate_is_wired_after_lance_parquet_and_before_duckdb_smoke() {
     let root = workspace_root();
     assert!(root.join("scripts/iceberg-binding-test.sh").is_file());
     let main_gate = read_text(root.join("scripts/mvp0-verify.sh"));
+    let source_pos = main_gate
+        .find("scripts/source-ingress-contract-test.sh")
+        .expect("source ingress gate");
+    let lance_parquet_pos = main_gate
+        .find("scripts/lance-parquet-ingress-test.sh")
+        .expect("Lance/Parquet gate");
+    let iceberg_pos = main_gate
+        .find("scripts/iceberg-binding-test.sh")
+        .expect("Iceberg binding gate");
+    let duckdb_pos = main_gate
+        .find("scripts/duckdb-smoke-test.sh")
+        .expect("DuckDB smoke gate");
     assert!(
-        !main_gate.contains("iceberg-binding-test.sh"),
-        "Plan 28-01 must leave the focused Iceberg gate unwired"
+        source_pos < lance_parquet_pos && lance_parquet_pos < iceberg_pos && iceberg_pos < duckdb_pos,
+        "Phase 28 gate must run after Phase 27 and before DuckDB smoke"
     );
 }
