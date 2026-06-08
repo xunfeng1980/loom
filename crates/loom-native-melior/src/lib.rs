@@ -5,6 +5,7 @@
 //! installation. Feature-enabled backend evidence must stay fail-closed.
 
 pub mod backend;
+pub mod decode_dialect_manifest;
 pub mod report;
 pub mod toolchain;
 
