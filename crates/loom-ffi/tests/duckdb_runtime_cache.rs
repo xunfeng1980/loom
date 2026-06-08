@@ -6,8 +6,9 @@ use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription
 use loom_ffi::duckdb_runtime::{
     duckdb_runtime_clear_native_preparation_cache_for_test,
     duckdb_runtime_corrupt_cached_canonical_input_for_test, plan_duckdb_runtime,
-    prepare_duckdb_runtime, DuckDbProjection, DuckDbRouteDecision, DuckDbRuntimeDiagnostic,
-    DuckDbRuntimePlanInput, DuckDbRuntimePlanReport, DuckDbRuntimePolicy, DuckDbTestNativeFacts,
+    prepare_duckdb_runtime, DuckDbNativeBuffer, DuckDbPreparedRoute, DuckDbProjection,
+    DuckDbRouteDecision, DuckDbRuntimeDiagnostic, DuckDbRuntimePlanInput, DuckDbRuntimePlanReport,
+    DuckDbRuntimePolicy, DuckDbTestNativeFacts,
 };
 use loom_native_melior::backend::NativeBackendCancellation;
 use std::sync::{Mutex, MutexGuard};
@@ -106,13 +107,17 @@ fn native_plan() -> DuckDbRuntimePlanReport {
 }
 
 fn prepare(plan: &DuckDbRuntimePlanReport) -> Vec<DuckDbRuntimeDiagnostic> {
+    prepare_route(plan).diagnostics
+}
+
+fn prepare_route(plan: &DuckDbRuntimePlanReport) -> DuckDbPreparedRoute {
     let route = prepare_duckdb_runtime(plan, NativeBackendCancellation::default());
     assert_eq!(route.decision, DuckDbRouteDecision::NativeCandidate);
     assert!(
         !route.native_buffers.is_empty(),
         "eligible native route should expose buffers"
     );
-    route.diagnostics
+    route
 }
 
 fn diagnostic_codes(diagnostics: &[DuckDbRuntimeDiagnostic]) -> Vec<&str> {
@@ -130,21 +135,39 @@ fn isolated_cache() -> MutexGuard<'static, ()> {
     guard
 }
 
+fn buffer_fingerprints(buffers: &[DuckDbNativeBuffer]) -> Vec<(String, DataType, Vec<u8>)> {
+    buffers
+        .iter()
+        .map(|buffer| {
+            (
+                buffer.builder_id.clone(),
+                buffer.arrow_type.clone(),
+                buffer.value_buffer.clone(),
+            )
+        })
+        .collect()
+}
+
 #[test]
 fn identical_native_candidate_prepares_miss_insert_then_hit() {
     let _guard = isolated_cache();
     let plan = native_plan();
 
-    let first = prepare(&plan);
-    let first_codes = diagnostic_codes(&first);
+    let first = prepare_route(&plan);
+    let first_codes = diagnostic_codes(&first.diagnostics);
     assert!(first_codes.contains(&"cache-miss"));
     assert!(first_codes.contains(&"cache-inserted"));
     assert!(!first_codes.contains(&"cache-hit"));
 
-    let second = prepare(&plan);
-    let second_codes = diagnostic_codes(&second);
+    let second = prepare_route(&plan);
+    let second_codes = diagnostic_codes(&second.diagnostics);
     assert!(second_codes.contains(&"cache-hit"));
     assert!(!second_codes.contains(&"cache-inserted"));
+    assert_eq!(
+        buffer_fingerprints(&second.native_buffers),
+        buffer_fingerprints(&first.native_buffers),
+        "cache hits must replay the same validated native buffer metadata and bytes"
+    );
 }
 
 #[test]
@@ -247,4 +270,80 @@ fn cache_hit_reuses_preparation_evidence_but_still_validates_output() {
     assert!(codes.contains(&"cache-hit"));
     assert!(codes.contains(&"native-output-mismatch"));
     assert!(codes.contains(&"cache-non-cacheable"));
+}
+
+#[test]
+fn native_output_mismatch_never_poisons_later_valid_cache_replay() {
+    let _guard = isolated_cache();
+
+    let mismatch = plan_duckdb_runtime(native_input_with_buffers(vec![vec![0xff; 16]]))
+        .expect("mismatch plan");
+    let mismatch = prepare_duckdb_runtime(&mismatch, NativeBackendCancellation::default());
+    assert_eq!(mismatch.decision, DuckDbRouteDecision::FailClosed);
+    assert!(mismatch.native_buffers.is_empty());
+    let mismatch_codes = diagnostic_codes(&mismatch.diagnostics);
+    assert!(mismatch_codes.contains(&"native-output-mismatch"));
+    assert!(mismatch_codes.contains(&"cache-non-cacheable"));
+    assert!(!mismatch_codes.contains(&"cache-inserted"));
+
+    let plan = native_plan();
+    let first_valid = prepare_route(&plan);
+    let first_codes = diagnostic_codes(&first_valid.diagnostics);
+    assert!(first_codes.contains(&"cache-miss"));
+    assert!(first_codes.contains(&"cache-inserted"));
+    assert!(!first_codes.contains(&"cache-hit"));
+
+    let replay = prepare_route(&plan);
+    let replay_codes = diagnostic_codes(&replay.diagnostics);
+    assert!(replay_codes.contains(&"cache-hit"));
+    assert_eq!(
+        buffer_fingerprints(&replay.native_buffers),
+        buffer_fingerprints(&first_valid.native_buffers)
+    );
+}
+
+#[test]
+fn repeated_post_error_scans_are_deterministic_and_emit_no_partial_output() {
+    let _guard = isolated_cache();
+    let plan = native_plan();
+
+    for _ in 0..2 {
+        let cancelled = prepare_duckdb_runtime(
+            &plan,
+            NativeBackendCancellation::cancelled("duckdb interrupt"),
+        );
+        assert_eq!(cancelled.decision, DuckDbRouteDecision::Cancelled);
+        assert!(cancelled.native_buffers.is_empty());
+        let codes = diagnostic_codes(&cancelled.diagnostics);
+        assert!(codes.contains(&"cache-non-cacheable"));
+        assert!(codes.contains(&"cancelled"));
+        assert!(!codes.contains(&"cache-hit"));
+        assert!(!codes.contains(&"cache-inserted"));
+    }
+
+    let valid_after_cancel = prepare_route(&plan);
+    let valid_codes = diagnostic_codes(&valid_after_cancel.diagnostics);
+    assert!(valid_codes.contains(&"cache-miss"));
+    assert!(valid_codes.contains(&"cache-inserted"));
+
+    let mismatch_plan = plan_duckdb_runtime(native_input_with_buffers(vec![vec![0xff; 16]]))
+        .expect("mismatch plan");
+    for _ in 0..2 {
+        let mismatch = prepare_duckdb_runtime(&mismatch_plan, NativeBackendCancellation::default());
+        assert_eq!(mismatch.decision, DuckDbRouteDecision::FailClosed);
+        assert!(mismatch.native_buffers.is_empty());
+        let codes = diagnostic_codes(&mismatch.diagnostics);
+        assert!(codes.contains(&"cache-hit"));
+        assert!(codes.contains(&"native-output-mismatch"));
+        assert!(codes.contains(&"cache-non-cacheable"));
+        assert!(!codes.contains(&"cache-inserted"));
+    }
+
+    let replay = prepare_route(&plan);
+    let replay_codes = diagnostic_codes(&replay.diagnostics);
+    assert!(replay_codes.contains(&"cache-hit"));
+    assert_eq!(
+        buffer_fingerprints(&replay.native_buffers),
+        buffer_fingerprints(&valid_after_cancel.native_buffers)
+    );
 }

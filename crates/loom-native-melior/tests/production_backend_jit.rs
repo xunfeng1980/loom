@@ -74,6 +74,23 @@ fn lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
     }
 }
 
+fn nullable_lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
+    ProductionLoweringFacts {
+        backend: ProductionLoweringBackend::LoomDecodeDialect,
+        artifact_kind: "LMC1".to_string(),
+        payload_kind: "LMT1 table".to_string(),
+        constraint_status: ConstraintDischargeStatus::Discharged,
+        shape: ProductionLoweringShape::PrimitiveTable {
+            row_count: 4,
+            columns: vec![ProductionColumnShape {
+                builder_id: "nullable".to_string(),
+                arrow_type: data_type,
+                nullable: true,
+            }],
+        },
+    }
+}
+
 fn request_input() -> NativeBackendRequestInput {
     NativeBackendRequestInput {
         runtime_plan: runtime_plan(),
@@ -194,6 +211,96 @@ fn unsupported_primitive_shape_does_not_jit() {
         err.diagnostics[0].code,
         NativeBackendDiagnosticCode::InvalidBackendArtifact
     );
+}
+
+#[test]
+fn nullable_primitive_shape_does_not_jit() {
+    let mut input = request_input();
+    input.lowering_facts = Some(nullable_lowering_facts(DataType::Int32));
+    let request = validate_backend_request(input).expect("preflight only checks runtime facts");
+    let report = NativeBackendReport::accepted_pipeline(
+        &request,
+        request.backend_identity.clone(),
+        PRODUCTION_JIT_ENTRY_SYMBOL,
+        4,
+        1,
+        "nullable primitive artifact",
+    );
+
+    let err = execute_prepared_production_jit(
+        &report,
+        &NativeBackendCancellation::default(),
+        ProductionJitOptions::default(),
+    )
+    .expect_err("nullable primitive shape should reject");
+    assert_eq!(err.status, NativeBackendStatus::FailClosed);
+    assert_eq!(
+        err.diagnostics[0].code,
+        NativeBackendDiagnosticCode::InvalidBackendArtifact
+    );
+    assert_eq!(
+        err.diagnostics[0].path,
+        "$.backend_report.artifact.lowering_facts"
+    );
+    assert!(err.artifact.is_none());
+}
+
+#[test]
+fn invalid_and_malformed_backend_artifacts_do_not_execute() {
+    let request = validate_backend_request(request_input()).expect("request should validate");
+    let missing_artifact = NativeBackendReport {
+        status: NativeBackendStatus::Accepted,
+        diagnostics: Vec::new(),
+        runtime_plan: request.runtime_plan.clone(),
+        runtime_cache_key: Some(request.runtime_cache_key.clone()),
+        backend_identity: request.backend_identity.clone(),
+        artifact: None,
+    };
+    let err = execute_prepared_production_jit(
+        &missing_artifact,
+        &NativeBackendCancellation::default(),
+        ProductionJitOptions::default(),
+    )
+    .expect_err("accepted report without artifact should reject");
+    assert_eq!(err.status, NativeBackendStatus::FailClosed);
+    assert_eq!(
+        err.diagnostics[0].code,
+        NativeBackendDiagnosticCode::InvalidBackendArtifact
+    );
+    assert!(err.artifact.is_none());
+
+    let mut malformed = NativeBackendReport::accepted_pipeline(
+        &request,
+        request.backend_identity.clone(),
+        PRODUCTION_JIT_ENTRY_SYMBOL,
+        4,
+        0,
+        "malformed empty-column artifact",
+    );
+    malformed
+        .artifact
+        .as_mut()
+        .expect("artifact")
+        .lowering_facts
+        .shape = ProductionLoweringShape::PrimitiveTable {
+        row_count: 4,
+        columns: Vec::new(),
+    };
+    let err = execute_prepared_production_jit(
+        &malformed,
+        &NativeBackendCancellation::default(),
+        ProductionJitOptions::default(),
+    )
+    .expect_err("empty-column artifact should reject");
+    assert_eq!(err.status, NativeBackendStatus::FailClosed);
+    assert_eq!(
+        err.diagnostics[0].code,
+        NativeBackendDiagnosticCode::InvalidBackendArtifact
+    );
+    assert!(err.diagnostics[0]
+        .message
+        .contains("at least one supported primitive column"));
+    assert!(err.artifact.is_none());
 }
 
 #[test]
