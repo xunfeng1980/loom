@@ -25,6 +25,9 @@ pub mod layout_codec;
 /// MVP0 table-shaped payload codec composed from one-column layout payloads.
 pub mod table_codec;
 
+/// Versioned Loom distribution container codec.
+pub mod container_codec;
+
 /// First-pass structural verifier for MVP0 layouts and table payloads.
 pub mod verifier;
 
