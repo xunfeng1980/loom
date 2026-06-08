@@ -7,8 +7,7 @@ include "LoomDecode/LoomDecodeDialect.td"
 class LoomDecode_Op<string mnemonic, list<Trait> traits = []> :
     Op<LoomDecode_Dialect, mnemonic, traits>;
 
-def LoomDecode_ModuleOp : LoomDecode_Op<"module", [
-    IsolatedFromAbove, SymbolTable]> {
+def LoomDecode_ModuleOp : LoomDecode_Op<"module", [IsolatedFromAbove]> {
   let summary = "verified Loom artifact decode module";
   let description = [{
     `loom.decode.module` records the verified artifact kind, payload kind, finite
