@@ -3,8 +3,7 @@ use std::sync::LazyLock;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
-    SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus,
-    SourceLoweringDisposition,
+    SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
 };
 use loom_vortex_ingress::emit_source_ingress_lmc1_from_vortex_buffer;
 use vortex_array::arrays::StructArray;
@@ -94,20 +93,16 @@ fn accepted_single_column_handoff_is_verifier_routed_lmp1() {
         accepted.report.artifact_verification.artifact_byte_len,
         Some(accepted.bytes.len())
     );
-    assert!(
-        accepted
-            .report
-            .artifact_verification
-            .summary
-            .contains("LMC1")
-    );
-    assert!(
-        accepted
-            .report
-            .artifact_verification
-            .summary
-            .contains("LMP1 layout")
-    );
+    assert!(accepted
+        .report
+        .artifact_verification
+        .summary
+        .contains("LMC1"));
+    assert!(accepted
+        .report
+        .artifact_verification
+        .summary
+        .contains("LMP1 layout"));
 }
 
 #[test]
@@ -134,18 +129,14 @@ fn accepted_table_handoff_is_verifier_routed_lmt1() {
         accepted.report.artifact_verification.artifact_byte_len,
         Some(accepted.bytes.len())
     );
-    assert!(
-        accepted
-            .report
-            .artifact_verification
-            .summary
-            .contains("LMC1")
-    );
-    assert!(
-        accepted
-            .report
-            .artifact_verification
-            .summary
-            .contains("LMT1 table")
-    );
+    assert!(accepted
+        .report
+        .artifact_verification
+        .summary
+        .contains("LMC1"));
+    assert!(accepted
+        .report
+        .artifact_verification
+        .summary
+        .contains("LMT1 table"));
 }
