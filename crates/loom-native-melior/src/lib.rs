@@ -6,3 +6,5 @@
 
 pub mod report;
 pub mod toolchain;
+
+pub mod builder;

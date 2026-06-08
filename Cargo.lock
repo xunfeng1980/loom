@@ -1611,6 +1611,7 @@ dependencies = [
 name = "loom-native-melior"
 version = "0.1.0"
 dependencies = [
+ "arrow-schema",
  "loom-core",
  "melior",
 ]
