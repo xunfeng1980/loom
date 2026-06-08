@@ -7,11 +7,11 @@ stopped_at: Phase 16 complete; Phase 17 placeholder next
 last_updated: "2026-06-08T09:30:00.000Z"
 last_activity: 2026-06-08 -- Phase 16 complete
 progress:
-  total_phases: 23
+  total_phases: 24
   completed_phases: 16
   total_plans: 57
   completed_plans: 57
-  percent: 70
+  percent: 67
 ---
 
 # Project State
@@ -30,11 +30,11 @@ Plan: 0 of ?
 Status: Phase 16 complete; Phase 17 unified verifier pipeline ready for research/planning when requested
 Last activity: 2026-06-08 -- Phase 16 complete
 
-Progress: 70%
+Progress: 67%
 
 ## Progress Snapshot
 
-- Completed phases: 16 / 23
+- Completed phases: 16 / 24
 - Completed executable plans: 57 / 57
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 16 complete; Phase 17 remains a placeholder for unifying payload and L2Core verification into one artifact pipeline
@@ -119,12 +119,13 @@ None yet.
 - Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR major 21 is recorded as normal-mode skip and strict-mode failure against expected major 22.
 - Phase 17 reserved as a roadmap placeholder only: unified artifact verification pipeline from `LMC1` artifact/schema/features through L1 structural verification, L2Core verification, constraints/facts, `VerifiedArtifactFacts`, and lowering-ready report.
 - Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
-- Phase 19-21 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
-- Phase 19 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
-- Phase 20 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 19 runtime contract.
-- Phase 21 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- Phase 22 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- Phase 23 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 19 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after unified verifier and complete-reader constraints are available.
+- Phase 20-22 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
+- Phase 20 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
+- Phase 21 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 20 runtime contract.
+- Phase 22 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
+- Phase 23 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- Phase 24 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Quick Tasks Completed
 
@@ -165,11 +166,12 @@ None yet.
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
 | v3 verifier | Unified artifact verification pipeline | Placeholder | Phase 17 |
 | v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
-| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 19 |
-| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 20 |
-| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 21 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 22 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 23 |
+| v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 19 |
+| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 20 |
+| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 21 |
+| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 22 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 23 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 24 |
 
 ## Session Continuity
 

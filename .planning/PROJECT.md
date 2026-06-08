@@ -49,11 +49,12 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 
 - [ ] Phase 17 remains a roadmap placeholder only and is the next verifier focus: unified artifact verification pipeline.
 - [ ] Phase 18 remains a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice.
-- [ ] Phase 19 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
-- [ ] Phase 20 remains a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 19 runtime contract.
-- [ ] Phase 21 remains a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- [ ] Phase 22 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- [ ] Phase 23 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- [ ] Phase 19 remains a roadmap placeholder only: production MLIR decode dialect and native kernel expansion.
+- [ ] Phase 20 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
+- [ ] Phase 21 remains a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 20 runtime contract.
+- [ ] Phase 22 remains a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
+- [ ] Phase 23 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- [ ] Phase 24 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Out of Scope
 
@@ -113,13 +114,13 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Complete — Phase 16 |
 | Phase 17 should unify artifact verification before production native expansion | The current payload structural verifier and future `L2Core` verifier foundation are still parallel lines; lowering and engine work need one fail-closed artifact report from container/schema/features through L1/L2 verification, facts, and lowering readiness. | Placeholder — Phase 17 |
-| Later phases reserve the post-verifier production path | After unified artifact verification, the remaining final-goal path is production decode-dialect/kernel expansion, complete real-reader evidence, host native runtime policy, DuckDB integration, and native hardening over real artifacts. | Placeholder — later phases |
+| Phase 19 preserves production decode dialect/native kernel expansion | The unified verifier pipeline should feed a real production MLIR/native surface instead of skipping straight to host integration. | Placeholder — Phase 19 |
 | Phase 18 should complete the Vortex reader before engine integration | Engine-integrated native execution needs stable real artifact/fact/schema semantics; those should come from a complete reader boundary, not the Phase 15 narrow ingress slice. | Placeholder — Phase 18 |
-| Phase 19 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Placeholder — Phase 19 |
-| Phase 20 should prove DuckDB native execution before broader table binding | DuckDB is the existing host seam and SQL gate, so it is the lowest-risk first native host integration over complete-reader artifacts. | Placeholder — Phase 20 |
-| Phase 21 should harden equivalence, cache, and fallback before Iceberg | Iceberg metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Placeholder — Phase 21 |
-| Phase 22 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 22 |
-| Phase 23 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 23 |
+| Phase 20 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Placeholder — Phase 20 |
+| Phase 21 should prove DuckDB native execution before broader table binding | DuckDB is the existing host seam and SQL gate, so it is the lowest-risk first native host integration over complete-reader artifacts. | Placeholder — Phase 21 |
+| Phase 22 should harden equivalence, cache, and fallback before Iceberg | Iceberg metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Placeholder — Phase 22 |
+| Phase 23 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 23 |
+| Phase 24 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 24 |
 
 ## Evolution
 
