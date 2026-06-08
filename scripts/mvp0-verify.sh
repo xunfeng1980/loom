@@ -121,6 +121,13 @@ info "Running Phase 25 native hardening gate..."
 bash scripts/native-hardening-test.sh
 ok "scripts/native-hardening-test.sh"
 
+# Keep late release gates ordered by contract dependency:
+# Phase 24 DuckDB native integration -> Phase 25 native hardening ->
+# Phase 26 source ingress contract -> DuckDB SQL smoke.
+info "Running Phase 26 source ingress contract gate..."
+bash scripts/source-ingress-contract-test.sh
+ok "scripts/source-ingress-contract-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"
