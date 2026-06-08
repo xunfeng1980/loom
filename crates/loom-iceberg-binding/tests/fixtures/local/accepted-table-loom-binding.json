@@ -7,15 +7,19 @@
   "ref_type": "branch",
   "loom_artifact_path": "tests/fixtures/local/artifacts/demo-events.lmc1.loom",
   "loom_artifact_sha256": "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7",
+  "source_oracle_evidence_path": "tests/fixtures/local/accepted-table-source-evidence.json",
   "source_evidence": {
+    "accepted": true,
     "status": "accepted",
     "path": "tests/fixtures/local/source/demo-events.parquet"
   },
   "verifier_evidence": {
+    "accepted": true,
     "status": "accepted",
     "summary": "sidecar claim only; verifier validation deferred to Plan 28-03"
   },
   "oracle_evidence": {
+    "accepted": true,
     "status": "accepted",
     "strategy": "decoded-row-fixture"
   }

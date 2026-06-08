@@ -9,3 +9,7 @@ loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+arrow-array = { workspace = true }
+arrow-schema = { workspace = true }

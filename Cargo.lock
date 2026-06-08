@@ -3535,6 +3535,8 @@ dependencies = [
 name = "loom-iceberg-binding"
 version = "0.1.0"
 dependencies = [
+ "arrow-array",
+ "arrow-schema",
  "loom-core",
  "loom-source-ingress",
  "serde",
