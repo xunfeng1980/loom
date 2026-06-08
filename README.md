@@ -49,9 +49,9 @@ tool absence.
 
 - **No general computation.** You cannot write a web server, you cannot write a query engine. This is the source of its power, not a defect.
 - **No catering to browser / edge / IoT.** The target set is only "server-side data engines," so we can assume 64-bit, SIMD, mmap, and a long-resident host.
-- **No correctness guarantee.** Only safety + well-formedness is guaranteed (see §7).
-- **No responsibility for parallelism.** The decode core is single-threaded; parallelism belongs to the host (see §5).
-- **No prescribed execution backend.** The distribution spec only defines "the layer that travels"; how it is compiled into native code is each engine's own business (see §8).
+- **No standalone semantic-correctness guarantee from the verifier.** Loom guarantees safety + well-formedness; whether bytes were decoded according to the intended format semantics needs orthogonal evidence such as oracle/equivalence tests, signatures, checksums, or proof obligations (see [§7](#section-7)).
+- **No responsibility for scheduling parallelism.** The decode core is modeled with single-threaded semantics; split scheduling and thread ownership belong to the host (see [§5](#section-5)).
+- **No prescribed execution backend.** The distribution spec only defines "the layer that travels"; how it is compiled into native code is each engine's own business (see [§8](#section-8)).
 
 ---
 
@@ -104,6 +104,8 @@ L1 is pure data, so it is free to the verifier; it also drifts over time less th
 
 ---
 
+<a id="section-5"></a>
+
 ## 5. L2: The Total-Function Kernel Layer
 
 Used only when L1 cannot express it. This is a **deliberately non-general** language.
@@ -127,13 +129,15 @@ Used only when L1 cannot express it. This is a **deliberately non-general** lang
 
 - `input`: a read-only mmap view (capability handle), the entire encoded file, native 64-bit addressing—no 4 GB ceiling, no Memory64 checking tax.
 - `scratch`: a bounded working arena whose upper bound the verifier can compute.
-- **No raw output writes**: output can only go through the builder primitives of §6.
+- **No raw output writes**: output can only go through the builder primitives of [§6](#section-6).
 
 **5.4 The host-call surface area = the entire trust interface**
 
 The host capabilities a decoder can call are only two kinds: **fetch an input range**, and **request an output buffer / emit a batch**. No files, no network, no syscalls. This minimal set of callbacks is the entire attack surface, small enough to audit line by line.
 
 ---
+
+<a id="section-6"></a>
 
 ## 6. The Output Contract: Emit Typed Arrow Events
 
@@ -147,7 +151,9 @@ The output is ultimately materialized as the Arrow C Data Interface's `ArrowArra
 
 ---
 
-## 7. The Safety Boundary: Guarantee Safety and Well-Formedness, **Not** Correctness
+<a id="section-7"></a>
+
+## 7. The Safety Boundary: Safety and Well-Formedness, with Semantic Correctness Handled Separately
 
 **What the verifier is obligated to prove**
 
@@ -156,13 +162,15 @@ The output is ultimately materialized as the Arrow C Data Interface's `ArrowArra
 - Total-function-ness: the decreasing measure guarantees termination (compile time).
 - Output well-formedness: by builder construction + schema type checking.
 
-**What the verifier does not prove**: **correctness**. A malicious / buggy decoder can perfectly well, safely and well-formedly, produce Arrow whose **data is entirely wrong**. This is on par with today's native readers (native readers mis-decode too), so it is ruled out of scope. But be clear-eyed:
+**What the verifier does not prove by itself**: **semantic correctness**. A malicious or buggy decoder can safely and well-formedly produce Arrow whose **data is wrong**. This is on par with today's native readers, which can also mis-decode, so Loom verifier evidence alone cannot settle it. But be clear-eyed:
 
 > Self-decoding frees you from "will the decoder blow through the process," it does **not** free you from "is the decoder's author trustworthy."
 
-Correctness can only be patched by orthogonal means (computing checksums over the output, etc.), and you usually have no independent second decode to compare against—this one is basically unsolvable and can only be accepted.
+Semantic correctness needs orthogonal evidence: oracle/equivalence tests, signatures, checksums, format-level proof obligations, or an independent implementation to compare against. Many real deployments will not have a second decoder available, so semantic correctness is not a standalone promise of the Loom verifier.
 
 ---
+
+<a id="section-8"></a>
 
 ## 8. Execution: Lowered to Native via MLIR
 
@@ -170,7 +178,7 @@ Distribution form (Loom) → a `decode` MLIR dialect inside the engine:
 
 - Express the read loop synthesized from L1, and L2's decode primitives (bit-unpack, FOR, delta, dict, FSST, ALP…), as MLIR ops.
 - Lower to LLVM IR → native code; **only at this step is the physical SIMD width chosen**, reusing MLIR's ready-made CSE, constant-folding, and auto-vectorization passes (LingoDB has already proven this works).
-- The builder events of §6 are fused into vectorized raw writes here.
+- The builder events of [§6](#section-6) are fused into vectorized raw writes here.
 
 No detail of the distribution form **leaks** to the target machine; target-dependence exists only after lowering. **The trust boundary = the seam between Loom and MLIR**: before the boundary nothing may be MLIR, only at and after the boundary does MLIR take over.
 
@@ -229,7 +237,7 @@ There is only one root reason Loom can max out every column at once: **it dares 
 ## 13. The Hard Bones Honestly Left on the Table
 
 1. **The verifier and the JIT themselves enter the TCB.** The IR being small and structured makes a "formally verified verifier" achievable (the eBPF verifier shipping CVEs is the counterexample), but that is real work, not free.
-2. **The correctness crack cannot be patched** (§7), and can only be accepted.
+2. **Semantic correctness is not proven by the verifier alone** ([§7](#section-7)), and must be handled by orthogonal evidence.
 3. **Who freezes v1, and freezes it well enough?** A format that claims to "never break" must leave almost no regrets in its very first version—the most anti-human engineering requirement, and also the place most likely to die at the starting line.
 4. **The adoption dilemma.** LingoDB proves that ambitious, IR-based data infrastructure **can be built and extended**, but it is an **in-engine** game (you only have to convince yourself); Loom is a **cross-system exchange** game (you have to convince every engine to adopt a shared format + accept the untrusted threat model), an order of magnitude harder.
 
