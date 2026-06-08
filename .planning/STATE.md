@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: completed
 stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-06-08T21:04:18.578Z"
+last_updated: "2026-06-08T21:24:56.170Z"
 last_activity: 2026-06-08 -- Phase 27 Plan 01 complete
 progress:
   total_phases: 30
-  completed_phases: 21
+  completed_phases: 22
   total_plans: 112
-  completed_plans: 92
-  percent: 70
+  completed_plans: 93
+  percent: 73
 ---
 
 # Project State
@@ -119,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P04]: Accepted Lance and Parquet source reports are constructed only after verify_artifact accepts emitted LMC1 bytes and source oracle evidence is accepted.
 - [Phase 27]: [Phase 27 P04]: Parquet uses ArrowScan evidence and Lance uses SourceNativeScan evidence; both remain evidence paths rather than Loom decode bypasses.
 - [Phase 27]: [Phase 27 P04]: Legacy readability uses actual older writer outputs from parquet 57.0.0 and lance 6.0.0 paired with sibling verifier-accepted Loom artifacts.
+- [Phase 27]: Phase 27 legacy proof remains hard-gated on actual older-version Lance and Parquet fixture paths plus paired verifier-accepted Loom artifacts.
+- [Phase 27]: The main release verifier runs Phase 27 after Phase 26 source ingress and before DuckDB SQL smoke.
 
 ### Pending Todos
 
@@ -261,7 +263,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T21:03:59.281Z
+Last session: 2026-06-08T21:24:42.057Z
 Stopped at: Completed 27-03-PLAN.md
 
 Phase 17 handoff:
@@ -325,3 +327,4 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P02 | 6m | 3 tasks | 6 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P03 | 5m23s | 3 tasks | 5 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P04 | 62m | 3 tasks | 20 files |
+| Phase 27-lance-parquet-archival-readability-dataset-ingress P05 | 57m | 3 tasks | 3 files |
