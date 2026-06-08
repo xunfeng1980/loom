@@ -416,7 +416,7 @@ fn source_native_oracle_evidence_from_vortex_buffer(
         SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
     evidence.nulls_checked = true;
     evidence.notes.push(
-        "source-native scan checked row count; Loom artifact verification/decode remains the acceptance path"
+        "source-native scan is metadata only; Loom artifact verification/decode remains the acceptance path"
             .to_string(),
     );
     Ok(evidence)
