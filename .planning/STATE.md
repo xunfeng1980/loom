@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 10 executing
+status: complete
+stopped_at: Phase 10 complete
 last_updated: "2026-06-08T02:30:27.270Z"
-last_activity: 2026-06-08 -- Phase 10 P02/P03 complete; ALP fixtures, FFI, CLI, and DuckDB smoke coverage committed
+last_activity: 2026-06-08 -- Phase 10 complete; COV-01 closed after full MVP0 release gate
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 10 — additional-l2-kernels-and-numeric-compression-coverage
+**Current focus:** Phase 10 complete — additional-l2-kernels-and-numeric-compression-coverage
 
 ## Current Position
 
-Phase: 10 (additional-l2-kernels-and-numeric-compression-coverage) — EXECUTING
+Phase: 10 (additional-l2-kernels-and-numeric-compression-coverage) — COMPLETE
 Plan: 4 of 4
-Status: Executing Phase 10
-Last activity: 2026-06-08 -- Phase 10 P02/P03 complete; ALP fixtures, FFI, CLI, and DuckDB smoke coverage committed
+Status: Phase 10 complete
+Last activity: 2026-06-08 -- Phase 10 complete; COV-01 closed after full MVP0 release gate
 
-Progress: [█████████▋] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -85,7 +85,7 @@ Progress: [█████████▋] 97%
 | Phase 10 P01 | 15 min | 3 tasks | 9 files |
 | Phase 10 P02 | 15 min | 3 tasks | 6 files |
 | Phase 10 P03 | 15 min | 3 tasks | 5 files |
-| Phase 10 P04 | planned | 3 tasks | 9 files |
+| Phase 10 P04 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -128,7 +128,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
-- Phase 10 executing: 10-01 through 10-03 complete. ALP Float32/Float64 now has core kernel support, fixtures and Vortex primitive oracle comparisons, FFI roundtrips, CLI inspect/decode output, and DuckDB SQL smoke coverage.
+- Phase 10 complete: ALP Float32/Float64 has core kernel support, fixtures and Vortex primitive oracle comparisons, FFI roundtrips, CLI inspect/decode output, DuckDB SQL smoke coverage, documentation, and full release-gate verification.
 
 ### Quick Tasks Completed
 
@@ -140,7 +140,7 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | In Progress | Phase 10 |
+| v2 | COV-01: Additional L2 kernels (ALP Float32/Float64) | Complete | Phase 10 |
 | v2 | COV-02: Multi-column table function | Complete | Phase 8 |
 | v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
 | v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
@@ -165,5 +165,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T02:20:31.197Z
-Stopped at: Phase 10 executing
-Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-04-PLAN.md
+Stopped at: Phase 10 complete
+Resume file: .planning/PROJECT.md
