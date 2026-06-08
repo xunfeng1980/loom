@@ -1,11 +1,16 @@
 use arrow_schema::DataType;
 use loom_core::artifact_verifier::{
-    verify_artifact, ArtifactLoweringDiagnostic, ArtifactLoweringReadiness,
-    ArtifactVerificationDiagnostic, ArtifactVerificationFacts, ArtifactVerificationReport,
-    ArtifactVerificationStage, ArtifactVerificationStatus, ConstraintDischargeStatus,
+    verify_artifact, verify_artifact_with_l2_core, ArtifactLoweringDiagnostic,
+    ArtifactLoweringReadiness, ArtifactVerificationDiagnostic, ArtifactVerificationFacts,
+    ArtifactVerificationReport, ArtifactVerificationStage, ArtifactVerificationStatus,
+    ConstraintDischargeStatus,
 };
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload, Feature};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
+use loom_core::l2_core::{
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
+    ResourceBudget, ScalarExpr, ScalarValue,
+};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::encode_layout_payload;
 use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
@@ -60,6 +65,48 @@ fn find_section_entry(bytes: &[u8], kind: u16) -> usize {
         pos += 28;
     }
     panic!("section kind {kind} not found in test fixture")
+}
+
+fn sample_l2core_program() -> L2CoreProgram {
+    L2CoreProgram {
+        artifact_version: 1,
+        required_features: vec!["l2core.copy.v0".to_string()],
+        optional_features: vec![],
+        capabilities: vec![
+            Capability::InputSlice(InputSliceCapability {
+                id: "input0".to_string(),
+                offset: 0,
+                length: 16,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out0".to_string(),
+                arrow_type: DataType::Int32,
+                nullable: true,
+                max_events: 4,
+            }),
+        ],
+        resource_budget: ResourceBudget::bounded_rows(4),
+        body: vec![L2CoreStmt::ForRange {
+            index: "i".to_string(),
+            start: ScalarExpr::u64(0),
+            end: ScalarExpr::u64(4),
+            body: vec![
+                L2CoreStmt::ReadInput {
+                    capability: "input0".to_string(),
+                    offset: ScalarExpr::Add(
+                        Box::new(ScalarExpr::var("i")),
+                        Box::new(ScalarExpr::u64(0)),
+                    ),
+                    width: ScalarExpr::u64(4),
+                    bind: "value".to_string(),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out0".to_string(),
+                    value: ScalarExpr::var("value"),
+                },
+            ],
+        }],
+    }
 }
 
 #[test]
@@ -273,4 +320,67 @@ fn verify_artifact_maps_structural_rejection_without_facts() {
     let first = report.first_error().expect("diagnostic");
     assert_eq!(first.stage, ArtifactVerificationStage::L1Structural);
     assert_eq!(first.code, "buffer-too-short");
+}
+
+#[test]
+fn verify_artifact_with_l2_core_fuses_verified_facts() {
+    let bytes = wrapped_i32_layout(4);
+    let program = sample_l2core_program();
+
+    let report = verify_artifact_with_l2_core(&bytes, &registry(), &program, &Default::default());
+
+    assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+    let facts = report
+        .facts()
+        .expect("accepted artifact should expose facts");
+    assert_eq!(facts.row_count_bound, Some(4));
+    assert!(facts.l2_core.is_some());
+    assert!(!facts.constraint_ids.is_empty());
+    assert_eq!(
+        facts.constraint_status,
+        ConstraintDischargeStatus::CollectedOnly
+    );
+    assert!(facts
+        .constraint_ids
+        .iter()
+        .any(|id| id.contains("read-in-range")));
+    assert!(facts
+        .proof_obligation_ids
+        .iter()
+        .any(|id| id == "VERIFIER-10"));
+}
+
+#[test]
+fn verify_artifact_with_l2_core_rejects_invalid_program_without_facts() {
+    let bytes = wrapped_i32_layout(4);
+    let mut program = sample_l2core_program();
+    program
+        .capabilities
+        .retain(|capability| !matches!(capability, Capability::InputSlice(_)));
+
+    let report = verify_artifact_with_l2_core(&bytes, &registry(), &program, &Default::default());
+
+    assert_eq!(report.status(), ArtifactVerificationStatus::Rejected);
+    assert!(report.facts().is_none());
+    let first = report.first_error().expect("diagnostic");
+    assert_eq!(first.stage, ArtifactVerificationStage::L2Core);
+    assert_eq!(first.code, "missing-input-capability");
+}
+
+#[test]
+fn verify_artifact_with_l2_core_maps_output_type_mismatch() {
+    let bytes = wrapped_i32_layout(4);
+    let mut program = sample_l2core_program();
+    program.body = vec![L2CoreStmt::AppendValue {
+        builder: "out0".to_string(),
+        value: ScalarExpr::Const(ScalarValue::Bool(true)),
+    }];
+
+    let report = verify_artifact_with_l2_core(&bytes, &registry(), &program, &Default::default());
+
+    assert_eq!(report.status(), ArtifactVerificationStatus::Rejected);
+    assert!(report.facts().is_none());
+    let first = report.first_error().expect("diagnostic");
+    assert_eq!(first.stage, ArtifactVerificationStage::L2Core);
+    assert_eq!(first.code, "output-type-mismatch");
 }

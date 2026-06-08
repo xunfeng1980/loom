@@ -4,6 +4,8 @@
 //! existing structural and `L2Core` verifiers into one pipeline.
 
 use crate::container_codec::{decode_container, feature_names, ContainerDescription, SectionKind};
+use crate::full_verifier::verify_l2_core;
+use crate::l2_core::L2CoreProgram;
 use crate::l2_core::VerifiedArtifactFacts;
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::verifier::verify_container;
@@ -347,6 +349,55 @@ pub fn verify_artifact(
     ArtifactVerificationReport::accepted(facts)
 }
 
+pub fn verify_artifact_with_l2_core(
+    bytes: &[u8],
+    registry: &L2KernelRegistry,
+    program: &L2CoreProgram,
+    options: &ArtifactVerificationOptions,
+) -> ArtifactVerificationReport {
+    let artifact_report = verify_artifact(bytes, registry, options);
+    if artifact_report.status() != ArtifactVerificationStatus::Accepted {
+        return artifact_report;
+    }
+    let mut artifact_facts = artifact_report
+        .into_facts()
+        .expect("accepted artifact report must contain facts");
+
+    let l2_report = verify_l2_core(program);
+    if !l2_report.is_ok() {
+        let diagnostics = l2_report
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                ArtifactVerificationDiagnostic::new(
+                    ArtifactVerificationStage::L2Core,
+                    diagnostic.code.as_str(),
+                    diagnostic.path.clone(),
+                    diagnostic.message.clone(),
+                )
+            })
+            .collect();
+        return ArtifactVerificationReport::rejected(diagnostics);
+    }
+
+    let Some(l2_facts) = l2_report.facts().cloned() else {
+        return ArtifactVerificationReport::rejected(vec![ArtifactVerificationDiagnostic::new(
+            ArtifactVerificationStage::Facts,
+            "missing-l2core-facts",
+            "$.l2_core.facts",
+            "accepted L2Core report did not emit VerifiedArtifactFacts",
+        )]);
+    };
+
+    artifact_facts.row_count_bound = l2_facts.row_count_bound;
+    artifact_facts.constraint_ids = l2_facts.constraint_ids.clone();
+    artifact_facts.proof_obligation_ids = l2_facts.proof_obligation_ids.clone();
+    artifact_facts.constraint_status = constraint_status_for(&artifact_facts.constraint_ids);
+    artifact_facts.l2_core = Some(l2_facts);
+
+    ArtifactVerificationReport::accepted(artifact_facts)
+}
+
 fn payload_kind(container: &ContainerDescription) -> Option<&'static str> {
     if container
         .sections
@@ -370,4 +421,12 @@ fn has_section(container: &ContainerDescription, kind: SectionKind) -> bool {
         .sections
         .iter()
         .any(|section| section.kind == kind)
+}
+
+fn constraint_status_for(constraint_ids: &[String]) -> ConstraintDischargeStatus {
+    if constraint_ids.is_empty() {
+        ConstraintDischargeStatus::NotRequired
+    } else {
+        ConstraintDischargeStatus::CollectedOnly
+    }
 }
