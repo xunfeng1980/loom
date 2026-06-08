@@ -3,7 +3,10 @@
 //! Phase 17 starts by defining the report and facts contract before wiring the
 //! existing structural and `L2Core` verifiers into one pipeline.
 
+use crate::container_codec::{decode_container, feature_names, ContainerDescription, SectionKind};
 use crate::l2_core::VerifiedArtifactFacts;
+use crate::l2_kernel_registry::L2KernelRegistry;
+use crate::verifier::verify_container;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArtifactVerificationStage {
@@ -278,4 +281,93 @@ impl ArtifactVerificationReport {
             ArtifactVerificationStatus::Rejected | ArtifactVerificationStatus::Unsupported => None,
         }
     }
+}
+
+pub fn verify_artifact(
+    bytes: &[u8],
+    registry: &L2KernelRegistry,
+    _options: &ArtifactVerificationOptions,
+) -> ArtifactVerificationReport {
+    let container = match decode_container(bytes) {
+        Ok(container) => container,
+        Err(err) => {
+            return ArtifactVerificationReport::rejected(vec![
+                ArtifactVerificationDiagnostic::new(
+                    ArtifactVerificationStage::Container,
+                    "container-shape",
+                    "$.container",
+                    err.to_string(),
+                ),
+            ]);
+        }
+    };
+
+    let payload_kind = payload_kind(&container);
+    let Some(payload_kind) = payload_kind else {
+        return ArtifactVerificationReport::unsupported(vec![ArtifactVerificationDiagnostic::new(
+            ArtifactVerificationStage::Manifest,
+            "unsupported-payload-kind",
+            "$.sections",
+            "artifact container does not contain a supported LMP1 or LMT1 payload",
+        )]);
+    };
+
+    let structural = verify_container(bytes, registry);
+    if !structural.is_ok() {
+        let diagnostics = structural
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                ArtifactVerificationDiagnostic::new(
+                    ArtifactVerificationStage::L1Structural,
+                    diagnostic.code.as_str(),
+                    diagnostic.path.clone(),
+                    diagnostic.message.clone(),
+                )
+            })
+            .collect();
+        return ArtifactVerificationReport::rejected(diagnostics);
+    }
+
+    let mut facts = ArtifactVerificationFacts::new("LMC1");
+    facts.container_version = Some(container.version);
+    facts.required_features = feature_names(container.required_features)
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    facts.optional_features = feature_names(container.optional_features)
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    facts.payload_kind = Some(payload_kind.to_string());
+    facts.schema_section_present = has_section(&container, SectionKind::Schema);
+    facts.kernel_manifest_section_present = has_section(&container, SectionKind::KernelManifest);
+    facts.stats_section_present = has_section(&container, SectionKind::Stats);
+
+    ArtifactVerificationReport::accepted(facts)
+}
+
+fn payload_kind(container: &ContainerDescription) -> Option<&'static str> {
+    if container
+        .sections
+        .iter()
+        .any(|section| section.kind == SectionKind::LayoutPayload)
+    {
+        Some("LMP1 layout")
+    } else if container
+        .sections
+        .iter()
+        .any(|section| section.kind == SectionKind::TablePayload)
+    {
+        Some("LMT1 table")
+    } else {
+        None
+    }
+}
+
+fn has_section(container: &ContainerDescription, kind: SectionKind) -> bool {
+    container
+        .sections
+        .iter()
+        .any(|section| section.kind == kind)
 }
