@@ -734,9 +734,31 @@ Plans:
 
 ### Phase 25: Native Equivalence, Cache, and Fallback Hardening
 
-**Status:** Placeholder only. Do not expand until Phase 24 proves the DuckDB native execution MVP.
+**Status:** Planned.
 **Depends on:** Phase 24.
+**Requirements:** PHASE-25
 **Ordering decision:** Harden the native execution path before making it table-format-visible. This phase should add oracle/equivalence matrices against interpreter/Vortex rows, native artifact cache reuse and invalidation semantics, unsupported-program negative coverage, deterministic diagnostics, performance smoke evidence, and release-gate wiring. It is the closeout for the engine-integrated native execution story, not a new query surface.
+**Plans:** 5 plans
+
+**Wave 1**
+
+- [ ] 25-01-PLAN.md - Runtime cache compatibility contract and stable policy diagnostics (PHASE-25)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 25-02-PLAN.md - Rust-owned in-process native preparation cache and internal cache diagnostics (PHASE-25)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 25-03-PLAN.md - Rust helper equivalence and unsupported-route negative matrices (PHASE-25)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 25-04-PLAN.md - DuckDB SQL native-hardening gate with cache smoke and fallback evidence (PHASE-25)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 25-05-PLAN.md - Release-gate wiring, final native hardening report, and planning docs closeout (PHASE-25)
 
 ### Phase 26: External Source Ingress Contract
 
@@ -799,7 +821,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
 | 24. DuckDB Native Execution Integration MVP | 5/5 | Complete   | 2026-06-08 |
-| 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
+| 25. Native Equivalence, Cache, and Fallback Hardening | 0/5 | Planned | - |
 | 26. External Source Ingress Contract | 0/? | Placeholder | - |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |
 | 28. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
