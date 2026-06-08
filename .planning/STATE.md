@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: active
 stopped_at: Phase 17 complete; Phase 18 complete Vortex reader placeholder next
-last_updated: "2026-06-08T09:24:01.000Z"
-last_activity: 2026-06-08 -- Phase 17 complete
+last_updated: "2026-06-08T09:35:30.000Z"
+last_activity: 2026-06-08 -- Phase 19 solver-backed verifier slot inserted
 progress:
-  total_phases: 24
+  total_phases: 25
   completed_phases: 17
   total_plans: 62
   completed_plans: 62
-  percent: 71
+  percent: 68
 ---
 
 # Project State
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 Phase: 18 (complete-vortex-reader) — PLACEHOLDER
 Plan: 0 of ?
-Status: Phase 17 complete; Phase 18 is the next roadmap placeholder to expand
-Last activity: 2026-06-08 -- Phase 17 complete
+Status: Phase 17 complete; Phase 18 is the next roadmap placeholder to expand; Phase 19 is reserved for solver-backed full artifact verifier
+Last activity: 2026-06-08 -- Phase 19 solver-backed verifier slot inserted
 
-Progress: 71%
+Progress: 68%
 
 ## Progress Snapshot
 
-- Completed phases: 17 / 24
+- Completed phases: 17 / 25
 - Completed executable plans: 62 / 62
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 17 complete; Phase 18 complete Vortex reader placeholder next
@@ -120,13 +120,14 @@ None yet.
 - Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR major 21 is recorded as normal-mode skip and strict-mode failure against expected major 22.
 - Phase 17 complete: `loom_core::artifact_verifier` now exposes `verify_artifact` and `verify_artifact_with_l2_core`, unifying `LMC1` container/manifest/L1 structural checks, optional accepted `L2Core` `VerifiedArtifactFacts`, constraint status, lowering readiness, `loom verify-artifact`, and `scripts/artifact-verifier-test.sh` release-gate evidence.
 - Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
-- Phase 19 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after unified verifier and complete-reader constraints are available.
-- Phase 20-22 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
-- Phase 20 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader artifacts.
-- Phase 21 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 20 runtime contract.
-- Phase 22 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- Phase 23 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- Phase 24 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 19 reserved as a roadmap placeholder only: solver-backed full artifact verifier after the complete Vortex reader and before production native expansion.
+- Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
+- Phase 21-23 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
+- Phase 21 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader and solver-backed verifier artifacts.
+- Phase 22 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 21 runtime contract.
+- Phase 23 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
+- Phase 24 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- Phase 25 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 
 ### Quick Tasks Completed
 
@@ -167,16 +168,17 @@ None yet.
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
 | v3 verifier | Unified artifact verification pipeline | Complete | Phase 17 |
 | v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
-| v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 19 |
-| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 20 |
-| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 21 |
-| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 22 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 23 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 24 |
+| v3 verifier | Solver-backed full artifact verifier | Placeholder | Phase 19 |
+| v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 20 |
+| v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 21 |
+| v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 22 |
+| v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 23 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 24 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 25 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T09:24:01.000Z
+Last session: 2026-06-08T09:35:30.000Z
 Stopped at: Phase 17 complete; Phase 18 complete Vortex reader placeholder next
 
 Phase 17 handoff:
