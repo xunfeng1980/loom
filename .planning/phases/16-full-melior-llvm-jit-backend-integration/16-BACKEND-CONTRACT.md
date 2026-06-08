@@ -36,6 +36,18 @@ The backend records Loom-owned `MlirToolchainFacts` for:
 Missing or incompatible tools are skip-aware in normal gates and fail-closed
 when strict JIT evidence is required.
 
+Normal release verification runs `bash scripts/melior-jit-test.sh` as optional
+Phase 16 evidence. If compatible LLVM/MLIR 22 tooling is unavailable, the script
+must print `[SKIP]` and exit 0 after default verifier-gated backend tests pass.
+
+Strict native-backend evidence is requested with:
+
+```bash
+LOOM_REQUIRE_MELIOR_JIT=1 bash scripts/melior-jit-test.sh
+```
+
+In strict mode, missing or incompatible MLIR/LLVM tooling is a `[FAIL]`.
+
 ## Non-Goals
 
 Phase 16 does not implement:

@@ -81,6 +81,10 @@ info "Running Phase 15 real Vortex ingress gate..."
 bash scripts/vortex-ingress-test.sh
 ok "scripts/vortex-ingress-test.sh"
 
+info "Running Phase 16 melior/LLVM/JIT backend gate..."
+bash scripts/melior-jit-test.sh
+ok "scripts/melior-jit-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"

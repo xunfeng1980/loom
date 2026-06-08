@@ -8,3 +8,4 @@ pub mod report;
 pub mod toolchain;
 
 pub mod builder;
+pub mod pipeline;
