@@ -10,8 +10,8 @@ progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 39
-  completed_plans: 36
-  percent: 75
+  completed_plans: 37
+  percent: 77
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 ## Current Position
 
 Phase: 12 (formal-verifier-safety-proof-mvp) — EXECUTING
-Plan: 1 of 4
-Status: 12-01 complete; Wave 2 ready
-Last activity: 2026-06-08 -- 12-01 complete; safety contract and proof-obligation matrix committed
+Plan: 2 of 4
+Status: 12-02 complete; 12-03 ready
+Last activity: 2026-06-08 -- 12-02 complete; safety contract tests committed
 
 Progress: [█████████░] 90%
 
@@ -91,7 +91,7 @@ Progress: [█████████░] 90%
 | Phase 11 P03 | 25 min | 3 tasks | 5 files |
 | Phase 11 P04 | 20 min | 3 tasks | 8 files |
 | Phase 12 P01 | 10 min | 3 tasks | 2 files |
-| Phase 12 P02 | planned | 4 tasks | 3 files |
+| Phase 12 P02 | 10 min | 4 tasks | 3 files |
 | Phase 12 P03 | planned | 3 tasks | 3 files |
 | Phase 12 P04 | planned | 3 tasks | 8 files |
 
