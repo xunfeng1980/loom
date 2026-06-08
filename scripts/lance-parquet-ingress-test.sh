@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lance-parquet-ingress-test.sh - Phase 27 Lance/Parquet ingress boundary gate.
+# lance-parquet-ingress-test.sh - Phase 27 Lance/Parquet closeout gate.
 
 set -euo pipefail
 
@@ -22,10 +22,20 @@ info() { echo "${YLW}[lance-parquet-ingress]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
+PHASE_DIR=".planning/phases/27-lance-parquet-archival-readability-dataset-ingress"
+REPORT="${PHASE_DIR}/27-ARCHIVAL-READABILITY-REPORT.md"
+
 check_file() {
     local file="$1"
     if [ ! -f "${file}" ]; then
         fail "required artifact missing: ${file}"
+    fi
+}
+
+check_dir() {
+    local dir="$1"
+    if [ ! -d "${dir}" ]; then
+        fail "required directory artifact missing: ${dir}"
     fi
 }
 
@@ -63,20 +73,6 @@ check_no_fixed_patterns() {
     done
 }
 
-check_cargo_tree_clean() {
-    local package="$1"
-    shift
-    local output
-    output="$(cargo tree -p "${package}")"
-    local pattern
-    for pattern in "$@"; do
-        if grep -E -i "${pattern}" <<<"${output}" >/tmp/lance-parquet-ingress-tree.out; then
-            cat /tmp/lance-parquet-ingress-tree.out >&2
-            fail "${package} dependency tree contains forbidden source marker: ${pattern}"
-        fi
-    done
-}
-
 check_no_manifest_patterns() {
     local label="$1"
     shift
@@ -101,35 +97,121 @@ check_no_manifest_patterns() {
     done
 }
 
-echo "=== Loom Phase 27 Lance/Parquet ingress boundary gate ==="
+check_cargo_tree_clean() {
+    local package="$1"
+    shift
+    local output
+    output="$(cargo tree -p "${package}")"
+    local pattern
+    for pattern in "$@"; do
+        if grep -E -i "${pattern}" <<<"${output}" >/tmp/lance-parquet-ingress-tree.out; then
+            cat /tmp/lance-parquet-ingress-tree.out >&2
+            fail "${package} dependency tree contains forbidden source marker: ${pattern}"
+        fi
+    done
+}
+
+check_direct_source_deps() {
+    local refs unexpected
+    refs="$(rg -n '^[[:space:]]*(lance|parquet)[[:space:]]*=' Cargo.toml crates/*/Cargo.toml || true)"
+    unexpected="$(
+        printf '%s\n' "${refs}" \
+            | grep -v '^$' \
+            | grep -v '^Cargo.toml:' \
+            | grep -v '^crates/loom-lance-ingress/Cargo.toml:' \
+            | grep -v '^crates/loom-parquet-ingress/Cargo.toml:' || true
+    )"
+    if [ -n "${unexpected}" ]; then
+        printf '%s\n' "${unexpected}" >&2
+        fail "direct Lance/Parquet dependencies must stay in workspace pins and adapter manifests"
+    fi
+}
+
+check_legacy_report_language() {
+    python3 - "${REPORT}" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text()
+bad = []
+for lineno, line in enumerate(text.splitlines(), 1):
+    lowered = line.lower()
+    if not re.search(r"(manifest-only|record-only|deterministic record)", lowered):
+        continue
+    if not re.search(r"(success|successful|passing|accepted|proof|evidence)", lowered):
+        continue
+    if re.search(r"\b(no|not|never|cannot|must not|without actual|substitute|failing|fail)\b", lowered):
+        continue
+    bad.append((lineno, line))
+
+if bad:
+    for lineno, line in bad:
+        print(f"{lineno}: {line}", file=sys.stderr)
+    raise SystemExit("report treats manifest-only or record-only legacy evidence as successful")
+PY
+}
+
+echo "=== Loom Phase 27 Lance/Parquet ingress closeout gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
-info "Checking adapter crate scaffolding..."
+info "Checking Phase 27 planning and report artifacts..."
 for file in \
-    crates/loom-lance-ingress/Cargo.toml \
-    crates/loom-lance-ingress/src/lib.rs \
-    crates/loom-lance-ingress/tests/dependency_boundary.rs \
-    crates/loom-parquet-ingress/Cargo.toml \
-    crates/loom-parquet-ingress/src/lib.rs \
-    crates/loom-parquet-ingress/tests/dependency_boundary.rs; do
+    "${PHASE_DIR}/27-CONTEXT.md" \
+    "${PHASE_DIR}/27-RESEARCH.md" \
+    "${PHASE_DIR}/27-PATTERNS.md" \
+    "${PHASE_DIR}/27-01-SUMMARY.md" \
+    "${PHASE_DIR}/27-02-SUMMARY.md" \
+    "${PHASE_DIR}/27-03-SUMMARY.md" \
+    "${PHASE_DIR}/27-04-SUMMARY.md" \
+    "${REPORT}"; do
     check_file "${file}"
 done
 
-check_marker "crates/loom-lance-ingress" Cargo.toml "Lance adapter workspace member"
-check_marker "crates/loom-parquet-ingress" Cargo.toml "Parquet adapter workspace member"
-check_marker "SourceIngressAcceptedArtifact" crates/loom-source-ingress/src/lib.rs "accepted artifact handoff type"
-ok "adapter crates and common handoff type are present"
+for marker in \
+    "Supported Slice" \
+    "Unsupported and Rejected Matrix" \
+    "Current-Version Evidence" \
+    "Actual Older-Version Fixtures" \
+    "Legacy Readability" \
+    "Verifier Evidence" \
+    "Oracle Evidence" \
+    "Dependency and API Boundary" \
+    "Current-Phase Tradeoffs" \
+    "Tradeoffs" \
+    "Non-Goals" \
+    "Phase 28 Handoff"; do
+    check_marker "${marker}" "${REPORT}" "report section marker"
+done
+check_legacy_report_language
+ok "Phase 27 planning/report evidence is present"
 
-info "Running Phase 27 scaffold compile smoke..."
-cargo check -p loom-lance-ingress -p loom-parquet-ingress
-ok "adapter crates compile"
+info "Checking actual older-version fixtures and paired Loom artifacts..."
+check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet"
+check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom"
+check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md"
+check_dir "crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance"
+check_file "crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom"
+check_file "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md"
+check_marker "generator_version: 57.0.0" "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "older Parquet generator version"
+check_marker "generator_version: 6.0.0" "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "older Lance generator version"
+check_marker "not a manifest-only record" "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "Parquet actual fixture statement"
+check_marker "not a manifest-only record" "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "Lance actual fixture statement"
+ok "actual older-version fixtures and paired Loom artifacts"
 
-info "Running dependency boundary tests..."
-cargo test -p loom-source-ingress --test source_ingress_contract
-cargo test -p loom-lance-ingress --test dependency_boundary
+info "Running focused Phase 27 adapter and verifier tests..."
+cargo test -p loom-source-ingress
 cargo test -p loom-parquet-ingress --test dependency_boundary
-ok "dependency boundary tests"
+cargo test -p loom-parquet-ingress --test source_ingress_contract
+cargo test -p loom-parquet-ingress --test source_ingress_handoff
+cargo test -p loom-parquet-ingress --test legacy_readability
+cargo test -p loom-lance-ingress --test dependency_boundary
+cargo test -p loom-lance-ingress --test source_ingress_contract
+cargo test -p loom-lance-ingress --test source_ingress_handoff
+cargo test -p loom-lance-ingress --test legacy_readability
+cargo test -p loom-core --test artifact_verifier
+ok "focused Phase 27 tests"
 
 info "Checking source dependency boundaries..."
 source_dep_patterns=(
@@ -143,6 +225,7 @@ source_dep_patterns=(
     "object-""store"
 )
 
+check_direct_source_deps
 check_cargo_tree_clean loom-core "${source_dep_patterns[@]}"
 check_cargo_tree_clean loom-ffi "${source_dep_patterns[@]}"
 check_cargo_tree_clean loom-source-ingress "${source_dep_patterns[@]}"
@@ -164,7 +247,7 @@ check_no_fixed_patterns "generic source-ingress crate" \
     "ArrowArray""Stream"
 ok "source dependency boundaries"
 
-info "Checking public and host surfaces for Phase 27 scope creep..."
+info "Checking public, host, and CLI surfaces for Phase 27 scope creep..."
 api_surfaces=(
     crates/loom-ffi/include/loom.h
     crates/loom-ffi/include/loom_runtime.h
@@ -179,6 +262,15 @@ source_route_markers=(
     "loom_ingest_""lance"
     "loom_ingest_""parquet"
     "loom_source_""sql"
+)
+
+source_embedding_markers=(
+    "manifest_""embedding"
+    "embed_""manifest"
+    "footer_""embedding"
+    "embed_""footer"
+    "loom_""footer"
+    "loom_""manifest"
 )
 
 credential_markers=(
@@ -206,15 +298,10 @@ execution_creep_markers=(
 )
 
 check_no_fixed_patterns "route-specific source SQL/API" "${api_surfaces[@]}" -- "${source_route_markers[@]}"
+check_no_fixed_patterns "manifest/footer embedding controls" "${api_surfaces[@]}" -- "${source_embedding_markers[@]}"
 check_no_fixed_patterns "object credential controls" "${api_surfaces[@]}" -- "${credential_markers[@]}"
 check_no_fixed_patterns "execution surface creep" "${api_surfaces[@]}" -- "${execution_creep_markers[@]}"
-ok "public and host surfaces"
-
-info "Checking main release gate is not wired in Plan 27-01..."
-if rg -q --fixed-strings "lance-parquet-ingress-test.sh" scripts/mvp0-verify.sh; then
-    fail "scripts/mvp0-verify.sh must not wire Phase 27 until Plan 27-05"
-fi
-ok "main release gate unchanged for Phase 27"
+ok "public, host, and CLI surfaces"
 
 echo ""
-echo "${GRN}=== Phase 27 Lance/Parquet ingress boundary gate PASSED ===${RST}"
+echo "${GRN}=== Phase 27 Lance/Parquet ingress closeout gate PASSED ===${RST}"
