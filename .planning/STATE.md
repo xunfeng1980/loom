@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Completed 24-04-PLAN.md
-last_updated: "2026-06-08T16:39:58.018Z"
-last_activity: 2026-06-08 -- Completed Phase 24 Plan 04
+status: verifying
+stopped_at: Completed 24-05-PLAN.md
+last_updated: "2026-06-08T16:51:36.349Z"
+last_activity: 2026-06-08 -- Completed Phase 24 Plan 05
 progress:
   total_phases: 30
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 97
-  completed_plans: 77
-  percent: 79
+  completed_plans: 78
+  percent: 80
 ---
 
 # Project State
@@ -25,20 +25,20 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: 24 (duckdb-native-execution-integration-mvp) — EXECUTING
+Phase: 24 (duckdb-native-execution-integration-mvp) — VERIFYING
 Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-06-08 -- Completed Phase 24 Plan 04
+Status: Phase complete — ready for verification
+Last activity: 2026-06-08 -- Completed Phase 24 Plan 05
 
-Progress: 79%
+Progress: 80%
 
 ## Progress Snapshot
 
 - Completed phases: 23 / 30
 - Completed executable plans: 94 / 97
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 Plan 04 complete; Plan 05 is next
-- Last verified gate: Phase 23 focused backend gate passed; `scripts/production-backend-test.sh` is wired into `scripts/mvp0-verify.sh`
+- Current position: Phase 24 complete; ready for verification
+- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 24 DuckDB native integration wired before DuckDB SQL smoke
 
 **Completed phase plan counts:**
 
@@ -96,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 24]: [Phase 24 P04]: Native DuckDB output remains an internal direct DataChunk fill path, not a public ArrowArrayStream or record-batch ABI. — Preserves D-05/D-13 while letting DuckDB consume prepared native primitive buffers.
 - [Phase 24]: [Phase 24 P04]: Native primitive buffers must match pointer, exact byte length, Arrow type, projected Loom kind, and DuckDB vector type before row emission. — Enforces T-24-04-01 and D-08 at the adapter boundary.
 - [Phase 24]: [Phase 24 P04]: LoomScan sets positive cardinality only after all selected native or interpreter columns fill successfully. — Keeps mismatch/cancel/fail-closed routes from emitting partial rows.
+- [Phase 24]: [Phase 24 P05]: Phase 24 route evidence is tested through public loom_scan(path) SQL plus internal LOOM_DUCKDB_TEST diagnostics, not public route-specific SQL.
+- [Phase 24]: [Phase 24 P05]: The native primitive DuckDB fixture is all-zero non-null Int32/Int64/Float32/Float64 raw table data to avoid broader native semantics claims.
+- [Phase 24]: [Phase 24 P05]: The main release gate now runs Phase 24 after the Phase 23 backend gate and before the existing DuckDB SQL smoke gate.
 
 ### Pending Todos
 
@@ -238,8 +241,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T16:39:58.010Z
-Stopped at: Completed 24-04-PLAN.md
+Last session: 2026-06-08T16:51:12.658Z
+Stopped at: Completed 24-05-PLAN.md
 
 Phase 17 handoff:
 
@@ -295,3 +298,4 @@ Resume file: None
 | Phase 24 P02 | 5min | 2 tasks | 5 files |
 | Phase 24-duckdb-native-execution-integration-mvp P03 | 5min | 2 tasks | 1 files |
 | Phase 24-duckdb-native-execution-integration-mvp P04 | 8min | 2 tasks | 1 files |
+| Phase 24-duckdb-native-execution-integration-mvp P05 | 8min | 3 tasks | 7 files |

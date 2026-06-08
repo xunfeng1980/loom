@@ -57,7 +57,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 21: Expanded Vortex Encoding Coverage** - Widen supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (complete)
 - [x] **Phase 22: Host Native Runtime ABI and Execution Policy** - Engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, projection/predicate/split planning, concurrency, and interpreter fallback semantics that host engines will call (complete)
 - [x] **Phase 23: Production Native Backend Implementation** - Backend implementation seed over Phase 22 `RuntimePlan`/`RuntimeCacheKey`: compiled `loom.decode` ODS evidence, melior/LLVM pipeline reports, backend identity, cancellation, verifier-gated JIT seed, and release-gate coverage (complete)
-- [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Ready for research/planning: wire verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback
+- [x] **Phase 24: DuckDB Native Execution Integration MVP** - Ready for research/planning: wire verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (completed 2026-06-08)
 - [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
 - [ ] **Phase 26: External Source Ingress Contract** - Placeholder for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (not expanded)
 - [ ] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Placeholder for generating verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and legacy-file-with-Loom compatibility as the value proof (not expanded)
@@ -710,7 +710,7 @@ semantics remain deferred.
 **Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should consume `23-BACKEND-REPORT.md`, `23-BACKEND-CONTRACT.md`, and the Phase 22 runtime ABI report, then wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts. Select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. The DuckDB layer must be a natural adapter over the Phase 22 runtime contract, not a second ABI: map DuckDB bind/init/local-init/function lifecycle to runtime/backend plan/scan/worker/next-batch, derive projection pushdown and max-thread behavior from runtime planning, and test Arrow C Data release plus error/cancel paths. It must not absorb Iceberg binding or StarRocks comparison.
 **Goal:** DuckDB `loom_scan(path)` routes eligible complete-reader artifacts through the Phase 22 runtime policy and Phase 23 production backend while preserving interpreter fallback, fail-closed diagnostics, direct DataChunk output, projection evidence, and the existing public SQL surface.
 **Requirements:** PHASE-24
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 Plans:
 **Wave 1**
 
@@ -730,7 +730,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 24-05-PLAN.md - Route-aware DuckDB integration gate, release wiring, and final report
+- [x] 24-05-PLAN.md - Route-aware DuckDB integration gate, release wiring, and final report
 
 ### Phase 25: Native Equivalence, Cache, and Fallback Hardening
 
@@ -798,7 +798,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 21. Expanded Vortex Encoding Coverage | 5/5 | Complete | 2026-06-08 |
 | 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
-| 24. DuckDB Native Execution Integration MVP | 4/5 | In Progress|  |
+| 24. DuckDB Native Execution Integration MVP | 5/5 | Complete   | 2026-06-08 |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
 | 26. External Source Ingress Contract | 0/? | Placeholder | - |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |
