@@ -740,7 +740,7 @@ Plans:
 **Depends on:** Phase 24.
 **Requirements:** PHASE-25
 **Ordering decision:** Harden the native execution path before making it table-format-visible. This phase should add oracle/equivalence matrices against interpreter/Vortex rows, native artifact cache reuse and invalidation semantics, unsupported-program negative coverage, deterministic diagnostics, performance smoke evidence, and release-gate wiring. It is the closeout for the engine-integrated native execution story, not a new query surface.
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 
 **Wave 1**
 
@@ -823,7 +823,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 22. Host Native Runtime ABI and Execution Policy | 5/5 | Complete | 2026-06-08 |
 | 23. Production Native Backend Implementation | 5/5 | Complete | 2026-06-08 |
 | 24. DuckDB Native Execution Integration MVP | 5/5 | Complete   | 2026-06-08 |
-| 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete | 2026-06-09 |
+| 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 0/? | Next | - |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 0/? | Placeholder | - |
 | 28. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
