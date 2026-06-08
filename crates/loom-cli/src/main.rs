@@ -7,6 +7,11 @@ use arrow::array::{
 };
 use arrow_schema::DataType;
 use loom_core::alp_params::AlpParams;
+use loom_core::container_codec::{
+    decode_container, decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
+    extract_wrapped_payload, feature_names, is_container_payload, unknown_feature_bits,
+    ContainerDescription, SectionKind, WrappedPayload,
+};
 use loom_core::descriptor::{from_descriptor_text, payload_to_descriptor_text};
 use loom_core::error::LoomDecodeError;
 use loom_core::fsst_params::FsstParams;
@@ -14,7 +19,7 @@ use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, Layout
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
-use loom_core::verifier::{verify_layout, verify_table, VerificationReport};
+use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
 
 fn main() {
     if let Err(err) = run() {
@@ -48,6 +53,10 @@ fn usage() -> String {
 
 fn inspect(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    if is_container_payload(&bytes) {
+        return inspect_container(path, &bytes);
+    }
+
     let registry = L2KernelRegistry::default_for_mvp0();
     if is_table_payload(&bytes) {
         let table = decode_table_payload(&bytes).map_err(display_decode_error)?;
@@ -96,7 +105,7 @@ fn inspect(path: &Path) -> Result<(), String> {
 
 fn decode(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    if is_table_payload(&bytes) {
+    if is_table_payload(&bytes) || container_wraps_table(&bytes)? {
         return decode_table(&bytes);
     }
     let desc = load_layout(&bytes)?;
@@ -169,7 +178,7 @@ fn decode(path: &Path) -> Result<(), String> {
 }
 
 fn decode_table(bytes: &[u8]) -> Result<(), String> {
-    let table = decode_table_payload(bytes).map_err(display_decode_error)?;
+    let table = decode_table_payload_maybe_container(bytes).map_err(display_decode_error)?;
     let registry = L2KernelRegistry::default_for_mvp0();
     let arrays = decode_table_to_array_data(&table, &registry).map_err(display_decode_error)?;
 
@@ -254,7 +263,7 @@ fn print_cell(
 
 fn load_layout(bytes: &[u8]) -> Result<LayoutDescription, String> {
     if is_binary_payload(bytes) {
-        return decode_layout_payload(bytes).map_err(display_decode_error);
+        return decode_layout_payload_maybe_container(bytes).map_err(display_decode_error);
     }
     let input = std::str::from_utf8(bytes)
         .map_err(|err| format!("input is neither LMP1 payload nor UTF-8 descriptor: {err}"))?;
@@ -262,7 +271,113 @@ fn load_layout(bytes: &[u8]) -> Result<LayoutDescription, String> {
 }
 
 fn is_binary_payload(bytes: &[u8]) -> bool {
-    bytes.starts_with(b"LMP1")
+    bytes.starts_with(b"LMP1") || is_container_payload(bytes)
+}
+
+fn container_wraps_table(bytes: &[u8]) -> Result<bool, String> {
+    if !is_container_payload(bytes) {
+        return Ok(false);
+    }
+    match extract_wrapped_payload(bytes).map_err(display_decode_error)? {
+        WrappedPayload::Layout(_) => Ok(false),
+        WrappedPayload::Table(_) => Ok(true),
+    }
+}
+
+fn inspect_container(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let container = decode_container(bytes).map_err(display_decode_error)?;
+    println!("input: {}", path.display());
+    print_container_summary(&container);
+
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let report = verify_container(bytes, &registry);
+    print_verification(&report);
+    if !report.is_ok() {
+        return Err("verification failed".to_string());
+    }
+
+    match extract_wrapped_payload(bytes).map_err(display_decode_error)? {
+        WrappedPayload::Layout(payload) => {
+            println!("payload_kind: LMP1 layout");
+            let desc = decode_layout_payload(&payload).map_err(display_decode_error)?;
+            println!("data_type: {}", data_type_name(&desc.data_type));
+            println!("row_count: {}", desc.row_count);
+            println!("layout:");
+            print_node(&desc.root, 1, &desc.data_type);
+            println!("descriptor:");
+            let text =
+                loom_core::descriptor::to_descriptor_text(&desc).map_err(display_decode_error)?;
+            println!("{text}");
+        }
+        WrappedPayload::Table(payload) => {
+            println!("payload_kind: LMT1 table");
+            let table = decode_table_payload(&payload).map_err(display_decode_error)?;
+            println!("table_row_count: {}", table.row_count);
+            println!("columns:");
+            for column in &table.columns {
+                println!(
+                    "  {}: {} rows={}",
+                    column.name,
+                    data_type_name(&column.layout.data_type),
+                    column.layout.row_count
+                );
+                print_node(&column.layout.root, 2, &column.layout.data_type);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn print_container_summary(container: &ContainerDescription) {
+    println!("container: LMC1");
+    println!("container_version: {}", container.version);
+    println!(
+        "required_features: {}",
+        feature_list(container.required_features)
+    );
+    println!(
+        "optional_features: {}",
+        feature_list(container.optional_features)
+    );
+    println!("section_count: {}", container.sections.len());
+    println!("sections:");
+    for (idx, section) in container.sections.iter().enumerate() {
+        println!(
+            "  [{idx}] kind={} tag={} required={} offset={} length={}",
+            section_kind_name(section.kind),
+            section.kind.tag(),
+            section.is_required(),
+            section.offset,
+            section.bytes.len()
+        );
+    }
+    println!(
+        "trailer: {}",
+        if container.has_trailer {
+            "present"
+        } else {
+            "none"
+        }
+    );
+}
+
+fn feature_list(bits: u64) -> String {
+    let mut names = feature_names(bits);
+    let unknown = unknown_feature_bits(bits);
+    if unknown != 0 {
+        names.push("unknown");
+    }
+    if names.is_empty() {
+        "none".to_string()
+    } else if unknown == 0 {
+        names.join(",")
+    } else {
+        format!("{} (unknown_bits=0x{unknown:016x})", names.join(","))
+    }
+}
+
+fn section_kind_name(kind: SectionKind) -> &'static str {
+    kind.as_str()
 }
 
 fn print_node(node: &LayoutNode, depth: usize, data_type: &DataType) {

@@ -44,6 +44,31 @@ test -f "${PAYLOAD_DIR}/alp-f64.loom"
 test -f "${PAYLOAD_DIR}/mixed-table.loom"
 ok "Generated payloads in ${PAYLOAD_DIR}"
 
+assert_lmc1() {
+    local name="$1"
+    local payload="${PAYLOAD_DIR}/${name}.loom"
+    local magic
+    magic="$(dd if="${payload}" bs=4 count=1 2>/dev/null)"
+    if [ "${magic}" != "LMC1" ]; then
+        fail "expected ${name}.loom to be an LMC1 container, got '${magic}'"
+    fi
+}
+
+for payload_name in \
+    bitpack-i32 \
+    for-i32 \
+    dict-i32 \
+    rle-i32 \
+    fsst-utf8 \
+    dict-fsst-utf8 \
+    alp-f32 \
+    alp-f64 \
+    mixed-table
+do
+    assert_lmc1 "${payload_name}"
+done
+ok "Generated smoke fixtures are LMC1 containers"
+
 info "Building loom.duckdb_extension..."
 cargo build -p loom-ffi --release
 rm -f "${EXT_PATH}"

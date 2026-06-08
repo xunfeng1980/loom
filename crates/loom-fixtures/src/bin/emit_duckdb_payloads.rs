@@ -5,6 +5,7 @@ use std::path::Path;
 
 use arrow_schema::DataType;
 use loom_core::alp_params::{AlpOutputType, AlpParams};
+use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::LayoutDescription;
 use loom_core::layout_codec::encode_layout_payload;
 use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
@@ -20,7 +21,9 @@ fn main() {
     let out_dir = Path::new(OUT_DIR);
     fs::create_dir_all(out_dir).expect("create fixture output directory");
 
-    let mut manifest = String::from("name\ttype\trows\tcount\tnon_null_count\tsum\tmin\tmax\n");
+    let mut manifest = String::from(
+        "name\tpayload_kind\tcontainer\ttype\trows\tcount\tnon_null_count\tsum\tmin\tmax\n",
+    );
     emit_bitpack(out_dir, &mut manifest);
     emit_nullable_bitpack(out_dir, &mut manifest);
     emit_for(out_dir, &mut manifest);
@@ -98,6 +101,7 @@ fn emit_mixed_table(out_dir: &Path) {
     };
 
     let payload = encode_table_payload(&table).expect("encode mixed table payload");
+    let payload = wrap_table_payload(&payload).expect("wrap mixed table payload");
     fs::write(out_dir.join("mixed-table.loom"), payload).expect("write table payload");
 }
 
@@ -113,7 +117,7 @@ fn emit_nullable_bitpack(out_dir: &Path, manifest: &mut String) {
         row_count: values.len(),
     };
     write_payload(out_dir, "bitpack-nullable-i32", &desc);
-    manifest.push_str("bitpack-nullable-i32\ti32\t1|NULL|7|3|NULL\t5\t3\t11\t1\t7\n");
+    manifest.push_str("bitpack-nullable-i32\tLMP1\tLMC1\ti32\t1|NULL|7|3|NULL\t5\t3\t11\t1\t7\n");
 }
 
 fn emit_bitpack(out_dir: &Path, manifest: &mut String) {
@@ -128,7 +132,7 @@ fn emit_bitpack(out_dir: &Path, manifest: &mut String) {
         row_count: values.len(),
     };
     write_payload(out_dir, "bitpack-i32", &desc);
-    manifest.push_str("bitpack-i32\ti32\t1|2|3|4\t4\t4\t10\t1\t4\n");
+    manifest.push_str("bitpack-i32\tLMP1\tLMC1\ti32\t1|2|3|4\t4\t4\t10\t1\t4\n");
 }
 
 fn emit_for(out_dir: &Path, manifest: &mut String) {
@@ -145,7 +149,7 @@ fn emit_for(out_dir: &Path, manifest: &mut String) {
         row_count: deltas.len(),
     };
     write_payload(out_dir, "for-i32", &desc);
-    manifest.push_str("for-i32\ti32\t10|11|12\t3\t3\t33\t10\t12\n");
+    manifest.push_str("for-i32\tLMP1\tLMC1\ti32\t10|11|12\t3\t3\t33\t10\t12\n");
 }
 
 fn emit_dict(out_dir: &Path, manifest: &mut String) {
@@ -158,7 +162,7 @@ fn emit_dict(out_dir: &Path, manifest: &mut String) {
         row_count: 4,
     };
     write_payload(out_dir, "dict-i32", &desc);
-    manifest.push_str("dict-i32\ti32\t30|10|20|30\t4\t4\t90\t10\t30\n");
+    manifest.push_str("dict-i32\tLMP1\tLMC1\ti32\t30|10|20|30\t4\t4\t90\t10\t30\n");
 }
 
 fn emit_rle(out_dir: &Path, manifest: &mut String) {
@@ -171,7 +175,7 @@ fn emit_rle(out_dir: &Path, manifest: &mut String) {
         row_count: 6,
     };
     write_payload(out_dir, "rle-i32", &desc);
-    manifest.push_str("rle-i32\ti32\t1|1|2|2|2|3\t6\t6\t11\t1\t3\n");
+    manifest.push_str("rle-i32\tLMP1\tLMC1\ti32\t1|1|2|2|2|3\t6\t6\t11\t1\t3\n");
 }
 
 fn emit_fsst(out_dir: &Path, manifest: &mut String) {
@@ -183,7 +187,7 @@ fn emit_fsst(out_dir: &Path, manifest: &mut String) {
         row_count: rows.len(),
     };
     write_payload(out_dir, "fsst-utf8", &desc);
-    manifest.push_str("fsst-utf8\tutf8\talpha|NULL|beta\t3\t2\t\talpha\tbeta\n");
+    manifest.push_str("fsst-utf8\tLMP1\tLMC1\tutf8\talpha|NULL|beta\t3\t2\t\talpha\tbeta\n");
 }
 
 fn emit_fsst_edge(out_dir: &Path, manifest: &mut String) {
@@ -195,7 +199,8 @@ fn emit_fsst_edge(out_dir: &Path, manifest: &mut String) {
         row_count: rows.len(),
     };
     write_payload(out_dir, "fsst-edge-utf8", &desc);
-    manifest.push_str("fsst-edge-utf8\tutf8\t|abcdefgh|escape-heavy-zzzz\t3\t3\t\t\t\n");
+    manifest
+        .push_str("fsst-edge-utf8\tLMP1\tLMC1\tutf8\t|abcdefgh|escape-heavy-zzzz\t3\t3\t\t\t\n");
 }
 
 fn emit_dict_fsst(out_dir: &Path, manifest: &mut String) {
@@ -215,7 +220,9 @@ fn emit_dict_fsst(out_dir: &Path, manifest: &mut String) {
         row_count: 4,
     };
     write_payload(out_dir, "dict-fsst-utf8", &desc);
-    manifest.push_str("dict-fsst-utf8\tutf8\tbeta|alpha|gamma|beta\t4\t4\t\talpha\tgamma\n");
+    manifest.push_str(
+        "dict-fsst-utf8\tLMP1\tLMC1\tutf8\tbeta|alpha|gamma|beta\t4\t4\t\talpha\tgamma\n",
+    );
 }
 
 fn emit_alp_f32(out_dir: &Path, manifest: &mut String) {
@@ -235,7 +242,7 @@ fn emit_alp_f32(out_dir: &Path, manifest: &mut String) {
         row_count: 5,
     };
     write_payload(out_dir, "alp-f32", &desc);
-    manifest.push_str("alp-f32\tf32\t1.25|-2.5|0|1.25|NULL\t5\t4\t0\t-2.5\t1.25\n");
+    manifest.push_str("alp-f32\tLMP1\tLMC1\tf32\t1.25|-2.5|0|1.25|NULL\t5\t4\t0\t-2.5\t1.25\n");
 }
 
 fn emit_alp_f64(out_dir: &Path, manifest: &mut String) {
@@ -255,7 +262,9 @@ fn emit_alp_f64(out_dir: &Path, manifest: &mut String) {
         row_count: 5,
     };
     write_payload(out_dir, "alp-f64", &desc);
-    manifest.push_str("alp-f64\tf64\t10.125|-3.5|0|NULL|10.125\t5\t4\t16.75\t-3.5\t10.125\n");
+    manifest.push_str(
+        "alp-f64\tLMP1\tLMC1\tf64\t10.125|-3.5|0|NULL|10.125\t5\t4\t16.75\t-3.5\t10.125\n",
+    );
 }
 
 fn make_fsst(rows: &[Option<&str>]) -> vortex_fsst::FSSTArray {
@@ -267,5 +276,6 @@ fn make_fsst(rows: &[Option<&str>]) -> vortex_fsst::FSSTArray {
 
 fn write_payload(out_dir: &Path, name: &str, desc: &LayoutDescription) {
     let payload = encode_layout_payload(desc);
+    let payload = wrap_layout_payload(&payload).expect("wrap layout payload");
     fs::write(out_dir.join(format!("{name}.loom")), payload).expect("write payload");
 }

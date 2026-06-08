@@ -37,6 +37,7 @@ extern "C" {
 #include <cstdint>
 #include <cstddef>
 #include <fstream>
+#include <limits>
 
 using namespace duckdb;
 
@@ -124,12 +125,28 @@ static LoomValueKind PayloadKindFromHeader(const vector<uint8_t> &payload) {
     }
 }
 
-static uint16_t ReadU16LE(const vector<uint8_t> &payload, idx_t &pos) {
+static uint16_t ReadU16LEAt(const vector<uint8_t> &payload, idx_t pos) {
     if (pos + 2 > payload.size()) {
         throw IOException("loom_scan: truncated payload while reading u16");
     }
-    auto value = static_cast<uint16_t>(payload[pos]) | (static_cast<uint16_t>(payload[pos + 1]) << 8);
+    return static_cast<uint16_t>(payload[pos]) | (static_cast<uint16_t>(payload[pos + 1]) << 8);
+}
+
+static uint16_t ReadU16LE(const vector<uint8_t> &payload, idx_t &pos) {
+    auto value = ReadU16LEAt(payload, pos);
     pos += 2;
+    return value;
+}
+
+static uint32_t ReadU32LE(const vector<uint8_t> &payload, idx_t &pos) {
+    if (pos + 4 > payload.size()) {
+        throw IOException("loom_scan: truncated payload while reading u32");
+    }
+    uint32_t value = 0;
+    for (idx_t i = 0; i < 4; i++) {
+        value |= static_cast<uint32_t>(payload[pos + i]) << (8 * i);
+    }
+    pos += 4;
     return value;
 }
 
@@ -168,29 +185,121 @@ static bool IsTablePayload(const vector<uint8_t> &payload) {
     return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'T' && payload[3] == '1';
 }
 
+static bool IsContainerPayload(const vector<uint8_t> &payload) {
+    return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'C' && payload[3] == '1';
+}
+
+static vector<uint8_t> SlicePayload(const vector<uint8_t> &payload, uint64_t offset, uint64_t len) {
+    if (offset > payload.size() || len > payload.size() - offset) {
+        throw IOException("loom_scan: LMC1 section is outside payload bounds");
+    }
+    return vector<uint8_t>(payload.begin() + static_cast<std::ptrdiff_t>(offset),
+                           payload.begin() + static_cast<std::ptrdiff_t>(offset + len));
+}
+
+static vector<uint8_t> ExtractContainerPayload(const vector<uint8_t> &payload) {
+    if (!IsContainerPayload(payload)) {
+        return payload;
+    }
+    constexpr idx_t header_prefix_len = 28;
+    constexpr idx_t section_entry_len = 28;
+    constexpr uint64_t known_required_features = 0x1f;
+    constexpr uint16_t section_required = 1;
+    constexpr uint16_t section_schema = 1;
+    constexpr uint16_t section_layout_payload = 2;
+    constexpr uint16_t section_table_payload = 3;
+
+    if (payload.size() < header_prefix_len) {
+        throw IOException("loom_scan: truncated LMC1 header");
+    }
+
+    idx_t pos = 4;
+    const auto version = ReadU16LE(payload, pos);
+    if (version != 1) {
+        throw IOException("loom_scan: unsupported LMC1 container version %d", static_cast<int>(version));
+    }
+    const auto header_len = ReadU16LE(payload, pos);
+    const auto required_features = ReadU64LE(payload, pos);
+    ReadU64LE(payload, pos); // optional features are advisory for bind.
+    const auto section_count = ReadU32LE(payload, pos);
+
+    if ((required_features & ~known_required_features) != 0) {
+        throw IOException("loom_scan: LMC1 has unknown required features");
+    }
+    if (section_count > (std::numeric_limits<uint16_t>::max)()) {
+        throw IOException("loom_scan: LMC1 has too many sections");
+    }
+    const auto expected_header_len = header_prefix_len + static_cast<idx_t>(section_count) * section_entry_len;
+    if (header_len != expected_header_len || header_len > payload.size()) {
+        throw IOException("loom_scan: malformed LMC1 section directory");
+    }
+
+    uint32_t schema_count = 0;
+    uint32_t layout_count = 0;
+    uint32_t table_count = 0;
+    vector<uint8_t> wrapped;
+
+    for (uint32_t i = 0; i < section_count; i++) {
+        const auto kind = ReadU16LE(payload, pos);
+        const auto flags = ReadU16LE(payload, pos);
+        const auto offset = ReadU64LE(payload, pos);
+        const auto len = ReadU64LE(payload, pos);
+        ReadU32LE(payload, pos); // crc32 placeholder; Phase 11 v0 does not enforce it.
+        ReadU32LE(payload, pos); // reserved.
+
+        if (offset < header_len) {
+            throw IOException("loom_scan: LMC1 section overlaps header");
+        }
+        if (kind > section_table_payload && (flags & section_required) != 0) {
+            throw IOException("loom_scan: LMC1 has an unknown required section");
+        }
+        if (kind == section_schema) {
+            schema_count++;
+            continue;
+        }
+        if (kind == section_layout_payload || kind == section_table_payload) {
+            if (!wrapped.empty()) {
+                throw IOException("loom_scan: LMC1 has duplicate payload sections");
+            }
+            wrapped = SlicePayload(payload, offset, len);
+            if (kind == section_layout_payload) {
+                layout_count++;
+            } else {
+                table_count++;
+            }
+        }
+    }
+
+    if (pos != header_len || schema_count != 1 || layout_count + table_count != 1) {
+        throw IOException("loom_scan: malformed LMC1 container shape");
+    }
+    return wrapped;
+}
+
 static void PopulateColumnSpecs(LoomBindData &bind_data) {
-    if (!IsTablePayload(bind_data.payload)) {
+    auto bind_payload = ExtractContainerPayload(bind_data.payload);
+    if (!IsTablePayload(bind_payload)) {
         bind_data.column_names.push_back("value");
-        bind_data.column_kinds.push_back(PayloadKindFromHeader(bind_data.payload));
+        bind_data.column_kinds.push_back(PayloadKindFromHeader(bind_payload));
         bind_data.column_types.push_back(LogicalTypeForKind(bind_data.column_kinds.back()));
-        bind_data.column_payloads.push_back(bind_data.payload);
+        bind_data.column_payloads.push_back(IsContainerPayload(bind_data.payload) ? bind_data.payload : bind_payload);
         return;
     }
 
     idx_t pos = 4;
-    const auto version = ReadU16LE(bind_data.payload, pos);
+    const auto version = ReadU16LE(bind_payload, pos);
     if (version != 1) {
         throw IOException("loom_scan: unsupported LMT1 table payload version %d", static_cast<int>(version));
     }
-    ReadU64LE(bind_data.payload, pos); // row_count; Rust validation owns semantic checks.
-    const auto column_count = ReadU64LE(bind_data.payload, pos);
+    ReadU64LE(bind_payload, pos); // row_count; Rust validation owns semantic checks.
+    const auto column_count = ReadU64LE(bind_payload, pos);
     if (column_count == 0) {
         throw IOException("loom_scan: table payload has no columns");
     }
 
     for (uint64_t col = 0; col < column_count; col++) {
-        auto name = ReadString(bind_data.payload, pos);
-        auto payload = ReadBytes(bind_data.payload, pos);
+        auto name = ReadString(bind_payload, pos);
+        auto payload = ReadBytes(bind_payload, pos);
         auto kind = PayloadKindFromHeader(payload);
         bind_data.column_names.push_back(std::move(name));
         bind_data.column_types.push_back(LogicalTypeForKind(kind));
@@ -198,7 +307,7 @@ static void PopulateColumnSpecs(LoomBindData &bind_data) {
         bind_data.column_payloads.push_back(std::move(payload));
     }
 
-    if (pos != bind_data.payload.size()) {
+    if (pos != bind_payload.size()) {
         throw IOException("loom_scan: trailing bytes in LMT1 table payload");
     }
 }

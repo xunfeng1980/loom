@@ -110,9 +110,28 @@ import sys
 path = sys.argv[1]
 with open(path, "r+b") as f:
     data = bytearray(f.read())
-    if data[:4] != b"LMT1":
-        raise SystemExit("expected LMT1 table payload")
-    data[6:14] = struct.pack("<Q", 999)
+    if data[:4] == b"LMT1":
+        table_offset = 0
+    elif data[:4] == b"LMC1":
+        version, header_len = struct.unpack_from("<HH", data, 4)
+        if version != 1:
+            raise SystemExit("expected LMC1 version 1")
+        section_count = struct.unpack_from("<I", data, 24)[0]
+        table_offset = None
+        pos = 28
+        for _ in range(section_count):
+            kind, _flags, offset, length, _crc, _reserved = struct.unpack_from("<HHQQII", data, pos)
+            pos += 28
+            if kind == 3:
+                if data[offset:offset + 4] != b"LMT1":
+                    raise SystemExit("expected LMT1 table section")
+                table_offset = offset
+                break
+        if pos > header_len or table_offset is None:
+            raise SystemExit("expected LMC1 table payload section")
+    else:
+        raise SystemExit("expected LMT1 table payload or LMC1 container")
+    data[table_offset + 6:table_offset + 14] = struct.pack("<Q", 999)
     f.seek(0)
     f.write(data)
     f.truncate()
