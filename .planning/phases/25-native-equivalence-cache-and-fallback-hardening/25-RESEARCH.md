@@ -370,22 +370,19 @@ auto prepared_diagnostics = CollectPreparedDiagnostics(prepared);
 |---|-------|---------|---------------|
 | none | All implementation-relevant claims are grounded in repo evidence, user context, or official OWASP/DuckDB sources. | n/a | n/a |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the in-process cache be process-global or tied to internal DuckDB plan/prepared handles?**
    - What we know: User context asks for host-neutral, in-process semantics; the current Rust bridge owns `prepare_duckdb_runtime` and internal handles. [VERIFIED: `25-CONTEXT.md`; VERIFIED: `duckdb_runtime.rs`]
-   - What's unclear: The exact storage lifetime has not been selected. [VERIFIED: repo grep]
-   - Recommendation: Prefer a Rust-owned process-local cache with explicit test reset/report hooks, because it proves repeated scan reuse across DuckDB plan instances without adding public API. [VERIFIED: `25-CONTEXT.md`]
+   - Resolved decision: Use a Rust-owned process-local cache with explicit test reset/report hooks, because it proves repeated scan reuse across DuckDB plan instances without adding public API. [VERIFIED: `25-CONTEXT.md`; VERIFIED: `25-02-PLAN.md`]
 
 2. **Should cache hits replay prepared backend artifacts or replay native output buffers?**
    - What we know: Native buffers are exposed only after successful comparison and then copied into DuckDB vectors. [VERIFIED: `duckdb_runtime.rs`; VERIFIED: `duckdb-ext/loom_extension.cpp`]
-   - What's unclear: Existing backend artifact representation may not yet contain enough material to skip every prepare/JIT step. [VERIFIED: `backend.rs`]
-   - Recommendation: Cache the smallest accepted preparation evidence available first, and make the smoke gate "prepare counter avoided or cache hit report observed" rather than "JIT execution skipped." [VERIFIED: `25-CONTEXT.md`]
+   - Resolved decision: Cache the smallest accepted preparation evidence available first, and make the smoke gate "prepare counter avoided or cache hit report observed" rather than "JIT execution skipped." [VERIFIED: `25-CONTEXT.md`; VERIFIED: `25-02-PLAN.md`; VERIFIED: `25-04-PLAN.md`]
 
 3. **How strict should toolchain drift invalidation be when local LLVM/MLIR is unavailable?**
    - What we know: Toolchain skip/failure is already represented as diagnostics, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1` is allowed in release gates. [VERIFIED: `jit.rs`; VERIFIED: `scripts/mvp0-verify.sh`]
-   - What's unclear: Local toolchain availability varies by machine. [VERIFIED: environment probe]
-   - Recommendation: Treat accepted backend identity drift as invalidation when toolchain facts exist; treat skipped/failed toolchain routes as non-cacheable diagnostic evidence. [VERIFIED: `backend.rs`; VERIFIED: `jit.rs`]
+   - Resolved decision: Treat accepted backend identity drift as invalidation when toolchain facts exist; treat skipped/failed toolchain routes as non-cacheable diagnostic evidence. [VERIFIED: `backend.rs`; VERIFIED: `jit.rs`; VERIFIED: `25-02-PLAN.md`; VERIFIED: `25-03-PLAN.md`]
 
 ## Environment Availability
 
