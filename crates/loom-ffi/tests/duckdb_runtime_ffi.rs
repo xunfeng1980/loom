@@ -6,9 +6,10 @@ use loom_core::container_codec::wrap_layout_payload;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::duckdb_runtime::{
-    loom_duckdb_plan_cache_key, loom_duckdb_plan_create, loom_duckdb_plan_decision,
-    loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic, loom_duckdb_plan_diagnostic_count,
-    loom_duckdb_prepare_create, loom_duckdb_prepare_destroy, loom_duckdb_prepare_diagnostic,
+    loom_duckdb_plan_cache_input, loom_duckdb_plan_cache_key, loom_duckdb_plan_create,
+    loom_duckdb_plan_create_projected, loom_duckdb_plan_decision, loom_duckdb_plan_destroy,
+    loom_duckdb_plan_diagnostic, loom_duckdb_plan_diagnostic_count, loom_duckdb_prepare_create,
+    loom_duckdb_prepare_destroy, loom_duckdb_prepare_diagnostic,
     loom_duckdb_prepare_diagnostic_count, loom_duckdb_prepare_native_buffer,
     loom_duckdb_prepare_native_buffer_count, loom_duckdb_prepare_route, LoomDuckDbDiagnostic,
     LoomDuckDbNativeBuffer, LoomDuckDbPlan, LoomDuckDbPrepared,
@@ -105,6 +106,82 @@ fn created_plan_exposes_decision_cache_key_and_diagnostics() {
             || unsafe { cstr(diagnostic.code) }.contains("lowering")
     );
 
+    assert_eq!(unsafe { loom_duckdb_plan_destroy(plan) }, 0);
+}
+
+#[test]
+fn projected_plan_create_wires_projection_into_runtime_cache_input() {
+    let artifact = raw_i32_lmc1(4);
+    let projection = [0u32];
+    let mut plan: *mut LoomDuckDbPlan = ptr::null_mut();
+    let rc = unsafe {
+        loom_duckdb_plan_create_projected(
+            artifact.as_ptr(),
+            artifact.len(),
+            projection.as_ptr(),
+            projection.len(),
+            false,
+            true,
+            &mut plan as *mut _,
+        )
+    };
+    assert_eq!(rc, 0, "projected plan creation should succeed");
+    assert!(!plan.is_null(), "projected plan handle must be populated");
+
+    let mut cache_input = ptr::null();
+    assert_eq!(
+        unsafe { loom_duckdb_plan_cache_input(plan, &mut cache_input as *mut _) },
+        0
+    );
+    let cache_input = unsafe { cstr(cache_input) };
+    assert!(
+        cache_input.contains("projection=columns:0>0"),
+        "projected plan should enter the runtime cache input, got {cache_input}"
+    );
+
+    assert_eq!(unsafe { loom_duckdb_plan_destroy(plan) }, 0);
+}
+
+#[test]
+fn projected_plan_create_validates_projection_pointer_and_empty_projection() {
+    let artifact = raw_i32_lmc1(4);
+    let mut plan: *mut LoomDuckDbPlan = ptr::null_mut();
+    let null_projection_rc = unsafe {
+        loom_duckdb_plan_create_projected(
+            artifact.as_ptr(),
+            artifact.len(),
+            ptr::null(),
+            1,
+            true,
+            false,
+            &mut plan as *mut _,
+        )
+    };
+    assert_ne!(
+        null_projection_rc, 0,
+        "non-empty projection with a null pointer must fail closed"
+    );
+    assert!(plan.is_null());
+
+    let rc = unsafe {
+        loom_duckdb_plan_create_projected(
+            artifact.as_ptr(),
+            artifact.len(),
+            ptr::null(),
+            0,
+            true,
+            false,
+            &mut plan as *mut _,
+        )
+    };
+    assert_eq!(rc, 0, "empty projection should return a diagnostic plan");
+    assert_eq!(unsafe { plan_decision_string(plan) }, "fail-closed");
+    assert!(
+        unsafe { plan_diagnostic_codes(plan) }
+            .iter()
+            .any(|code| code == "unsupported-projection"),
+        "empty projection must be diagnosed by runtime projection planning"
+    );
     assert_eq!(unsafe { loom_duckdb_plan_destroy(plan) }, 0);
 }
 

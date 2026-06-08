@@ -164,6 +164,7 @@ pub struct LoomDuckDbPlan {
     report: DuckDbRuntimePlanReport,
     decision: CString,
     cache_key: CString,
+    cache_input: CString,
     diagnostics: Vec<OwnedDuckDbDiagnostic>,
 }
 
@@ -287,19 +288,64 @@ pub unsafe extern "C" fn loom_duckdb_plan_create(
         } else {
             std::slice::from_raw_parts(artifact_ptr, artifact_len)
         };
-        let report = plan_duckdb_runtime(DuckDbRuntimePlanInput {
-            artifact_bytes: artifact.to_vec(),
-            projection: DuckDbProjection::All,
-            policy: DuckDbRuntimePolicy {
-                allow_interpreter_fallback,
-                test_native_facts: if use_test_native_facts {
-                    Some(test_native_facts_for_artifact(artifact))
-                } else {
-                    None
-                },
-            },
-        })
-        .unwrap_or_else(|report| report);
+        let report = create_duckdb_plan_report(
+            artifact,
+            DuckDbProjection::All,
+            allow_interpreter_fallback,
+            use_test_native_facts,
+        );
+        let handle = Box::new(LoomDuckDbPlan::from_report(report));
+        std::ptr::write(out_plan, Box::into_raw(handle));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+/// Create an internal DuckDB runtime plan handle for a projected scan.
+///
+/// The projected column ids are source-column indexes in DuckDB output order.
+/// This is intentionally adapter-internal and excluded from generated public
+/// `loom.h`; the public SQL surface remains `loom_scan(path)`.
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_create_projected(
+    artifact_ptr: *const u8,
+    artifact_len: usize,
+    projection_ptr: *const u32,
+    projection_len: usize,
+    allow_interpreter_fallback: bool,
+    use_test_native_facts: bool,
+    out_plan: *mut *mut LoomDuckDbPlan,
+) -> i32 {
+    if out_plan.is_null()
+        || (artifact_len > 0 && artifact_ptr.is_null())
+        || (projection_len > 0 && projection_ptr.is_null())
+    {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let artifact = if artifact_len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(artifact_ptr, artifact_len)
+        };
+        let projection = if projection_len == 0 {
+            DuckDbProjection::Columns(Vec::new())
+        } else {
+            DuckDbProjection::Columns(
+                std::slice::from_raw_parts(projection_ptr, projection_len).to_vec(),
+            )
+        };
+        let report = create_duckdb_plan_report(
+            artifact,
+            projection,
+            allow_interpreter_fallback,
+            use_test_native_facts,
+        );
         let handle = Box::new(LoomDuckDbPlan::from_report(report));
         std::ptr::write(out_plan, Box::into_raw(handle));
         0
@@ -359,6 +405,26 @@ pub unsafe extern "C" fn loom_duckdb_plan_cache_key(
 
     let result = panic::catch_unwind(AssertUnwindSafe(|| {
         std::ptr::write(out_cache_key, (*plan).cache_key.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_plan_cache_input(
+    plan: *const LoomDuckDbPlan,
+    out_cache_input: *mut *const c_char,
+) -> i32 {
+    if plan.is_null() || out_cache_input.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_cache_input, (*plan).cache_input.as_ptr());
         0
     }));
 
@@ -589,6 +655,7 @@ impl LoomDuckDbPlan {
     fn from_report(report: DuckDbRuntimePlanReport) -> Self {
         let decision = cstring_lossy(report.decision.as_str());
         let cache_key = cstring_lossy(&report.cache_key.stable_id);
+        let cache_input = cstring_lossy(&report.cache_key.canonical_input);
         let diagnostics = report
             .diagnostics
             .iter()
@@ -598,6 +665,7 @@ impl LoomDuckDbPlan {
             report,
             decision,
             cache_key,
+            cache_input,
             diagnostics,
         }
     }
@@ -628,6 +696,27 @@ impl LoomDuckDbPrepared {
             route,
         }
     }
+}
+
+fn create_duckdb_plan_report(
+    artifact: &[u8],
+    projection: DuckDbProjection,
+    allow_interpreter_fallback: bool,
+    use_test_native_facts: bool,
+) -> DuckDbRuntimePlanReport {
+    plan_duckdb_runtime(DuckDbRuntimePlanInput {
+        artifact_bytes: artifact.to_vec(),
+        projection,
+        policy: DuckDbRuntimePolicy {
+            allow_interpreter_fallback,
+            test_native_facts: if use_test_native_facts {
+                Some(test_native_facts_for_artifact(artifact))
+            } else {
+                None
+            },
+        },
+    })
+    .unwrap_or_else(|report| report)
 }
 
 fn test_native_facts_for_artifact(artifact: &[u8]) -> DuckDbTestNativeFacts {
@@ -1108,6 +1197,9 @@ fn backend_diagnostics(report: &NativeBackendReport) -> Vec<DuckDbRuntimeDiagnos
 fn column_count_for(report: &ArtifactVerificationReport, input: &DuckDbRuntimePlanInput) -> u32 {
     if let Some(test_facts) = input.policy.test_native_facts.as_ref() {
         return test_facts.columns.len() as u32;
+    }
+    if let Ok(table) = decode_table_payload_maybe_container(&input.artifact_bytes) {
+        return table.columns.len() as u32;
     }
     report
         .facts()

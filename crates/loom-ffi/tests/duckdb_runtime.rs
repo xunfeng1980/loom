@@ -1,7 +1,8 @@
 use arrow::datatypes::DataType;
-use loom_core::container_codec::wrap_layout_payload;
+use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
+use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
 use loom_ffi::duckdb_runtime::{
     plan_duckdb_runtime, prepare_duckdb_runtime, DuckDbProjection, DuckDbRouteDecision,
     DuckDbRuntimePlanInput, DuckDbRuntimePolicy, DuckDbTestNativeFacts,
@@ -22,6 +23,46 @@ fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
     };
     let payload = encode_layout_payload(&desc);
     wrap_layout_payload(&payload).expect("valid LMC1 layout")
+}
+
+fn two_column_table_lmc1(row_count: usize) -> Vec<u8> {
+    let i32_values = (0..row_count as i32)
+        .flat_map(i32::to_le_bytes)
+        .collect::<Vec<_>>();
+    let i64_values = (0..row_count as i64)
+        .flat_map(i64::to_le_bytes)
+        .collect::<Vec<_>>();
+    let table = TableDescription {
+        row_count,
+        columns: vec![
+            TableColumn {
+                name: "a".to_string(),
+                layout: LayoutDescription {
+                    data_type: DataType::Int32,
+                    root: LayoutNode::Raw {
+                        data: i32_values,
+                        elem_size: 4,
+                        count: row_count,
+                    },
+                    row_count,
+                },
+            },
+            TableColumn {
+                name: "b".to_string(),
+                layout: LayoutDescription {
+                    data_type: DataType::Int64,
+                    root: LayoutNode::Raw {
+                        data: i64_values,
+                        elem_size: 8,
+                        count: row_count,
+                    },
+                    row_count,
+                },
+            },
+        ],
+    };
+    let payload = encode_table_payload(&table).expect("valid table payload");
+    wrap_table_payload(&payload).expect("valid LMC1 table")
 }
 
 fn native_input() -> DuckDbRuntimePlanInput {
@@ -139,6 +180,29 @@ mod runtime_planning {
 
         assert_eq!(report.runtime_plan.predicate, PredicateEnvelope::None);
         assert!(report.cache_key.canonical_input.contains("predicate=none"));
+    }
+
+    #[test]
+    fn table_projection_without_test_native_facts_uses_table_column_count() {
+        let input = DuckDbRuntimePlanInput {
+            artifact_bytes: two_column_table_lmc1(4),
+            projection: DuckDbProjection::Columns(vec![1, 0]),
+            policy: DuckDbRuntimePolicy {
+                allow_interpreter_fallback: true,
+                test_native_facts: None,
+            },
+        };
+        let report = plan_duckdb_runtime(input).expect("table projection runtime plan");
+
+        assert_eq!(report.output_to_source, vec![1, 0]);
+        assert!(
+            report
+                .cache_key
+                .canonical_input
+                .contains("projection=columns:1>0,0>1"),
+            "table projection should be in runtime cache input: {}",
+            report.cache_key.canonical_input
+        );
     }
 }
 

@@ -153,6 +153,7 @@ projection_out="${TMP_DIR}/projection.csv"
 sql_to_file "SELECT f64_col, i32_col FROM loom_scan('${native_payload}')" "${projection_out}"
 awk -F, 'NF == 2 && ($1 == "0" || $1 == "0.0") && $2 == "0" { ok++ } END { exit ok == 4 ? 0 : 1 }' \
     "${projection_out}" || fail "projection output column order mismatch"
+require_report 'projection=columns:3>0,0>1'
 ok "projection preserves requested column order"
 
 info "Checking policy-controlled interpreter fallback..."

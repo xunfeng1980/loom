@@ -203,6 +203,13 @@ static string ReadPlanCacheKey(const LoomDuckDbPlanHolder &holder) {
     return CStringOrEmpty(cache_key);
 }
 
+static string ReadPlanCacheInput(const LoomDuckDbPlanHolder &holder) {
+    const char *cache_input = nullptr;
+    RequireDuckDbRuntimeOk(loom_duckdb_plan_cache_input(holder.Get(), &cache_input),
+                           "loom_duckdb_plan_cache_input");
+    return CStringOrEmpty(cache_input);
+}
+
 static string ReadPreparedRoute(const LoomDuckDbPreparedHolder &holder) {
     const char *route = nullptr;
     RequireDuckDbRuntimeOk(loom_duckdb_prepare_route(holder.Get(), &route),
@@ -254,7 +261,8 @@ static bool TestEnvDisabled(const char *name, bool default_value = false) {
 
 static void AppendTestRouteReport(const char *phase,
                                   const string &route,
-                                  const vector<LoomRouteDiagnostic> &diagnostics) {
+                                  const vector<LoomRouteDiagnostic> &diagnostics,
+                                  const string &cache_key = string()) {
     const char *report_path = std::getenv("LOOM_DUCKDB_TEST_ROUTE_REPORT");
     if (report_path == nullptr || report_path[0] == '\0') {
         return;
@@ -264,7 +272,11 @@ static void AppendTestRouteReport(const char *phase,
     if (!out) {
         throw IOException("loom_scan: could not append LOOM_DUCKDB_TEST_ROUTE_REPORT");
     }
-    out << phase << "\troute=" << route << "\t" << FormatRouteDiagnostics(diagnostics) << "\n";
+    out << phase << "\troute=" << route;
+    if (!cache_key.empty()) {
+        out << "\tcache_key=" << cache_key;
+    }
+    out << "\t" << FormatRouteDiagnostics(diagnostics) << "\n";
 }
 
 static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint8_t> &payload,
@@ -275,6 +287,35 @@ static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint
     RequireDuckDbRuntimeOk(
         loom_duckdb_plan_create(payload_ptr, payload.size(), allow_interpreter_fallback, use_test_native_facts, &plan),
         "loom_duckdb_plan_create");
+    return std::make_shared<LoomDuckDbPlanHolder>(plan);
+}
+
+static std::shared_ptr<LoomDuckDbPlanHolder> CreateProjectedRuntimePlan(const vector<uint8_t> &payload,
+                                                                       const vector<idx_t> &projected_source_ids,
+                                                                       bool allow_interpreter_fallback) {
+    vector<uint32_t> projection;
+    projection.reserve(projected_source_ids.size());
+    for (auto source_id : projected_source_ids) {
+        if (source_id > std::numeric_limits<uint32_t>::max()) {
+            throw IOException("loom_scan[D-10/unsupported-projection]: diagnostic code=unsupported-projection path=$.projection.columns message=DuckDB projected column id %llu exceeds internal ABI width",
+                              static_cast<unsigned long long>(source_id));
+        }
+        projection.push_back(static_cast<uint32_t>(source_id));
+    }
+
+    LoomDuckDbPlan *plan = nullptr;
+    const auto *payload_ptr = payload.empty() ? nullptr : payload.data();
+    const auto *projection_ptr = projection.empty() ? nullptr : projection.data();
+    const bool use_test_native_facts = TestEnvEnabled("LOOM_DUCKDB_TEST_USE_NATIVE_FACTS", false);
+    RequireDuckDbRuntimeOk(
+        loom_duckdb_plan_create_projected(payload_ptr,
+                                          payload.size(),
+                                          projection_ptr,
+                                          projection.size(),
+                                          allow_interpreter_fallback,
+                                          use_test_native_facts,
+                                          &plan),
+        "loom_duckdb_plan_create_projected");
     return std::make_shared<LoomDuckDbPlanHolder>(plan);
 }
 
@@ -296,6 +337,7 @@ struct LoomBindData : TableFunctionData {
     std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
     string route_decision;
     string route_cache_key;
+    string route_cache_input;
     vector<LoomRouteDiagnostic> route_diagnostics;
 
     unique_ptr<FunctionData> Copy() const override {
@@ -310,6 +352,7 @@ struct LoomBindData : TableFunctionData {
         copy->runtime_plan = runtime_plan;
         copy->route_decision = route_decision;
         copy->route_cache_key = route_cache_key;
+        copy->route_cache_input = route_cache_input;
         copy->route_diagnostics = route_diagnostics;
         return std::move(copy);
     }
@@ -321,7 +364,8 @@ struct LoomBindData : TableFunctionData {
                column_payloads == other.column_payloads &&
                allow_interpreter_fallback == other.allow_interpreter_fallback &&
                route_decision == other.route_decision &&
-               route_cache_key == other.route_cache_key;
+               route_cache_key == other.route_cache_key &&
+               route_cache_input == other.route_cache_input;
     }
 };
 
@@ -329,6 +373,7 @@ struct LoomRuntimePlanSelection {
     std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
     string route_decision;
     string route_cache_key;
+    string route_cache_input;
     vector<LoomRouteDiagnostic> route_diagnostics;
     vector<idx_t> projected_source_ids;
     bool reused_bind_plan = true;
@@ -392,20 +437,24 @@ static LoomRuntimePlanSelection BuildProjectedRuntimePlan(const LoomBindData &bi
             bind_data.runtime_plan,
             bind_data.route_decision,
             bind_data.route_cache_key,
+            bind_data.route_cache_input,
             bind_data.route_diagnostics,
             std::move(projected_ids),
             true,
         };
     }
 
-    auto projected_plan = CreateRuntimePlan(bind_data.payload, bind_data.allow_interpreter_fallback);
+    auto projected_plan =
+        CreateProjectedRuntimePlan(bind_data.payload, projected_ids, bind_data.allow_interpreter_fallback);
     auto route_decision = ReadPlanDecision(*projected_plan);
     auto route_cache_key = ReadPlanCacheKey(*projected_plan);
+    auto route_cache_input = ReadPlanCacheInput(*projected_plan);
     auto route_diagnostics = CollectPlanDiagnostics(*projected_plan);
     return {
         projected_plan,
         std::move(route_decision),
         std::move(route_cache_key),
+        std::move(route_cache_input),
         std::move(route_diagnostics),
         std::move(projected_ids),
         false,
@@ -689,6 +738,7 @@ struct LoomScanState : GlobalTableFunctionState {
     std::unique_ptr<LoomDuckDbPreparedHolder> prepared_route;
     string route_decision;
     string route_cache_key;
+    string route_cache_input;
     vector<LoomRouteDiagnostic> route_diagnostics;
     vector<LoomDuckDbNativeBuffer> native_buffers;
     bool batch_emitted = false;      // true after the single batch is delivered
@@ -742,8 +792,12 @@ static unique_ptr<FunctionData> LoomBind(
         CreateRuntimePlan(bind_data->payload, bind_data->allow_interpreter_fallback);
     bind_data->route_decision = ReadPlanDecision(*bind_data->runtime_plan);
     bind_data->route_cache_key = ReadPlanCacheKey(*bind_data->runtime_plan);
+    bind_data->route_cache_input = ReadPlanCacheInput(*bind_data->runtime_plan);
     bind_data->route_diagnostics = CollectPlanDiagnostics(*bind_data->runtime_plan);
-    AppendTestRouteReport("bind", bind_data->route_decision, bind_data->route_diagnostics);
+    AppendTestRouteReport("bind",
+                          bind_data->route_decision,
+                          bind_data->route_diagnostics,
+                          bind_data->route_cache_input);
 
     for (idx_t i = 0; i < bind_data->column_names.size(); i++) {
         return_types.push_back(bind_data->column_types[i]);
@@ -769,6 +823,7 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
     state->output_column_count = state->projected_source_ids.size();
     state->route_decision = runtime_plan.route_decision;
     state->route_cache_key = runtime_plan.route_cache_key;
+    state->route_cache_input = runtime_plan.route_cache_input;
     state->route_diagnostics = runtime_plan.route_diagnostics;
     state->column_kinds.reserve(state->projected_source_ids.size());
     for (auto source_idx : state->projected_source_ids) {
@@ -776,7 +831,10 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
     }
 
     if (state->route_decision == "fail-closed" || state->route_decision == "diagnostic-only") {
-        AppendTestRouteReport("init", state->route_decision, state->route_diagnostics);
+        AppendTestRouteReport("init",
+                              state->route_decision,
+                              state->route_diagnostics,
+                              state->route_cache_input);
         throw IOException("%s", FormatRouteError("D-07/fail-closed",
                                                  state->route_decision,
                                                  state->route_diagnostics).c_str());
@@ -802,21 +860,27 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
             state->prepared_route = std::make_unique<LoomDuckDbPreparedHolder>(std::move(prepared));
             state->route_decision = prepared_route;
             state->route_diagnostics = std::move(prepared_diagnostics);
-            AppendTestRouteReport("init", state->route_decision, state->route_diagnostics);
+            AppendTestRouteReport("init",
+                                  state->route_decision,
+                                  state->route_diagnostics,
+                                  state->route_cache_input);
             return state;
         }
 
         if (prepared_route == "interpreter-fallback" || prepared_route == "diagnostic-only") {
             state->route_decision = "interpreter-fallback";
             state->route_diagnostics = std::move(prepared_diagnostics);
-            AppendTestRouteReport("init", state->route_decision, state->route_diagnostics);
+            AppendTestRouteReport("init",
+                                  state->route_decision,
+                                  state->route_diagnostics,
+                                  state->route_cache_input);
         } else if (prepared_route == "cancelled") {
-            AppendTestRouteReport("init", prepared_route, prepared_diagnostics);
+            AppendTestRouteReport("init", prepared_route, prepared_diagnostics, state->route_cache_input);
             throw IOException("%s", FormatRouteError("D-09/cancelled",
                                                      prepared_route,
                                                      prepared_diagnostics).c_str());
         } else {
-            AppendTestRouteReport("init", prepared_route, prepared_diagnostics);
+            AppendTestRouteReport("init", prepared_route, prepared_diagnostics, state->route_cache_input);
             throw IOException("%s", FormatRouteError("D-08/native-output-mismatch",
                                                      prepared_route,
                                                      prepared_diagnostics).c_str());
@@ -1087,7 +1151,10 @@ static void LoomScan(
 
     if (state.route_decision == "fail-closed" || state.route_decision == "diagnostic-only" ||
         state.route_decision == "cancelled") {
-        AppendTestRouteReport("scan", state.route_decision, state.route_diagnostics);
+        AppendTestRouteReport("scan",
+                              state.route_decision,
+                              state.route_diagnostics,
+                              state.route_cache_input);
         throw IOException("%s", FormatRouteError("D-08/no-row-emission",
                                                  state.route_decision,
                                                  state.route_diagnostics).c_str());
@@ -1107,7 +1174,10 @@ static void LoomScan(
         }
         output.SetCardinality(count);
         state.batch_emitted = true;
-        AppendTestRouteReport("scan", state.route_decision, state.route_diagnostics);
+        AppendTestRouteReport("scan",
+                              state.route_decision,
+                              state.route_diagnostics,
+                              state.route_cache_input);
         return;
     }
 
@@ -1159,7 +1229,10 @@ static void LoomScan(
     // The array stays owned by LoomScanState and is released in ~LoomScanState()
     // on every teardown path (DUCK-03). We only mark the batch as delivered.
     state.batch_emitted = true;
-    AppendTestRouteReport("scan", state.route_decision, state.route_diagnostics);
+    AppendTestRouteReport("scan",
+                          state.route_decision,
+                          state.route_diagnostics,
+                          state.route_cache_input);
 }
 
 // ===========================================================================

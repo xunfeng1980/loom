@@ -37,6 +37,14 @@ int32_t loom_duckdb_plan_create(const uint8_t *artifact_ptr,
                                 bool use_test_native_facts,
                                 LoomDuckDbPlan **out_plan);
 
+int32_t loom_duckdb_plan_create_projected(const uint8_t *artifact_ptr,
+                                          uintptr_t artifact_len,
+                                          const uint32_t *projection_ptr,
+                                          uintptr_t projection_len,
+                                          bool allow_interpreter_fallback,
+                                          bool use_test_native_facts,
+                                          LoomDuckDbPlan **out_plan);
+
 int32_t loom_duckdb_plan_destroy(LoomDuckDbPlan *plan);
 
 int32_t loom_duckdb_plan_decision(const LoomDuckDbPlan *plan,
@@ -44,6 +52,9 @@ int32_t loom_duckdb_plan_decision(const LoomDuckDbPlan *plan,
 
 int32_t loom_duckdb_plan_cache_key(const LoomDuckDbPlan *plan,
                                    const char **out_cache_key);
+
+int32_t loom_duckdb_plan_cache_input(const LoomDuckDbPlan *plan,
+                                     const char **out_cache_input);
 
 int32_t loom_duckdb_plan_diagnostic_count(const LoomDuckDbPlan *plan,
                                           uintptr_t *out_count);
