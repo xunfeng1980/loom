@@ -100,6 +100,10 @@ check_no_manifest_patterns() {
 check_cargo_tree_clean() {
     local package="$1"
     shift
+    if ! cargo metadata --no-deps --format-version 1 | grep -F "\"name\":\"${package}\"" >/dev/null; then
+        info "Skipping ${package} dependency tree check; package is not present"
+        return
+    fi
     local output
     output="$(cargo tree -p "${package}")"
     local pattern
@@ -113,7 +117,10 @@ check_cargo_tree_clean() {
 
 check_direct_source_deps() {
     local refs unexpected
-    refs="$(rg -n '^[[:space:]]*(lance|parquet)[[:space:]]*=' Cargo.toml crates/*/Cargo.toml || true)"
+    refs="$(
+        rg -n '^[[:space:]]*([A-Za-z0-9_-]+[[:space:]]*=.*package[[:space:]]*=[[:space:]]*"(lance|parquet)"|(lance|parquet)[[:space:]]*=)' \
+            Cargo.toml crates/*/Cargo.toml || true
+    )"
     unexpected="$(
         printf '%s\n' "${refs}" \
             | grep -v '^$' \
@@ -229,11 +236,13 @@ check_direct_source_deps
 check_cargo_tree_clean loom-core "${source_dep_patterns[@]}"
 check_cargo_tree_clean loom-ffi "${source_dep_patterns[@]}"
 check_cargo_tree_clean loom-source-ingress "${source_dep_patterns[@]}"
+check_cargo_tree_clean loom-cli "${source_dep_patterns[@]}"
 
-check_no_manifest_patterns "core/ffi/source-ingress manifests" \
+check_no_manifest_patterns "core/ffi/source-ingress/cli manifests" \
     crates/loom-core/Cargo.toml \
     crates/loom-ffi/Cargo.toml \
     crates/loom-source-ingress/Cargo.toml \
+    crates/loom-cli/Cargo.toml \
     -- \
     "${source_dep_patterns[@]}"
 
