@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。Phase 9 已加入第一版 structural verifier,会在 decode 前检查 MVP0 layout/table description,并用稳定的 code/path/message 诊断返回 malformed input。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier case 会在进入 DuckDB 前 fail closed。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container case 会在进入 DuckDB 前 fail closed。
 
 运行完整 MVP0 release gate:
 
@@ -38,10 +38,11 @@ cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
 bash scripts/verifier-negative-test.sh
+bash scripts/container-negative-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。Phase 9 的 verifier 是结构检查:覆盖已实现 MVP0 surface 的 malformed buffer、count mismatch、不支持的 type/layout 组合、unknown kernel、table shape error 等。它不是正式 Loom verifier,也不声称已经完成 totality/termination proof;MLIR/native lowering、Arrow stream ABI、完整 formal verifier、完整 `.vortex` 文件支持仍属于后续 milestone。
+当前 `.loom` 文件格式是本地 MVP0/v3 fixture container,不是完整 Vortex file reader。`LMC1` 是 Phase 11 围绕既有 payload codec 建立的分发边界:`LMP1` 表示单列 layout payload,`LMT1` 表示 table payload。Phase 9/11 的 verifier 是结构检查:覆盖已实现 MVP0 surface 的 malformed buffer、count mismatch、不支持的 type/layout 组合、unknown kernel、unknown required container feature、unsupported container version、duplicate payload section、truncated section、offset overflow、table shape error 等。它不是正式 Loom verifier,也不声称已经完成 totality/termination proof;MLIR/native lowering、Arrow stream ABI、content-hash URI/signature、native fast path、完整 `.vortex` 文件支持仍属于后续 milestone。
 
 Phase 7 增加面向 reviewer 的 descriptor 和 CLI 工具:
 
@@ -77,6 +78,18 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 ALP 注册为 kernel id `1`;FSST 保持 kernel id `0`。`loom inspect` 会显示简洁的 ALP params 摘要,包括 output type、row count、exponent、value count、validity presence 和 params byte length。当前仓库使用的 Vortex 0.74.0 没有暴露 ALP array bridge,所以 Vortex 仍作为 primitive Float32/Float64 行值 oracle;稳定 ALP params 格式由 Loom 自己拥有。Phase 10 不增加 ALP timing 或 benchmark 结论。
+
+Phase 11 增加 `LMC1` distribution container v0:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
+bash scripts/container-negative-test.sh
+bash scripts/duckdb-smoke-test.sh
+```
+
+`loom inspect` 会显示 `container: LMC1`、container version、required/optional feature set、section summary、verifier status 和 wrapped payload kind。DuckDB `loom_scan(...)` 可以读取 container-wrapped single-column fixture 和 container-wrapped `mixed-table.loom` SQL smoke fixture。这个阶段只建立本地分发 artifact 边界;不包含 formal proof、native lowering、remote artifact lookup、signature 或真实 Vortex file ingestion。
 
 ---
 

@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. A first-pass structural verifier now checks MVP0 layout/table descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier cases that fail closed before DuckDB execution.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container cases that fail closed before DuckDB execution.
 
 Run the full MVP0 release gate:
 
@@ -38,10 +38,11 @@ cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
 bash scripts/verifier-negative-test.sh
+bash scripts/container-negative-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-The current `.loom` payload format is an MVP0 internal fixture format. Phase 9's verifier is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, and related table-shape errors for the implemented MVP0 surface. It is not the formal Loom verifier and does not claim totality or termination proofs; MLIR/native lowering, Arrow stream ABI, the full formal verifier, and full `.vortex` file support remain future milestones.
+The current `.loom` file format is a local MVP0/v3 fixture container, not a full Vortex file reader. `LMC1` is the Phase 11 distribution boundary around the existing payload codecs: `LMP1` for a single layout payload and `LMT1` for a table payload. Phase 9/11 verification is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, unknown required container features, unsupported container versions, duplicate payload sections, truncated sections, offset overflows, and related table-shape errors for the implemented MVP0 surface. It is not the formal Loom verifier and does not claim totality or termination proofs; MLIR/native lowering, Arrow stream ABI, content-hash URI/signature support, native fast paths, and full `.vortex` file support remain future milestones.
 
 Phase 7 adds reviewer-facing descriptor and CLI tooling:
 
@@ -77,6 +78,18 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 ALP is registered as kernel id `1`; FSST remains kernel id `0`. `loom inspect` shows a concise ALP params summary with output type, row count, exponent, value count, validity presence, and params byte length. Vortex 0.74.0 does not expose an ALP array bridge in this repo, so Vortex remains the primitive Float32/Float64 row oracle while Loom owns the stable ALP params format. Phase 10 makes no ALP timing or benchmark claim.
+
+Phase 11 adds the `LMC1` distribution container v0:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
+bash scripts/container-negative-test.sh
+bash scripts/duckdb-smoke-test.sh
+```
+
+`loom inspect` shows `container: LMC1`, container version, required and optional feature sets, section summaries, verifier status, and the wrapped payload kind. DuckDB `loom_scan(...)` accepts container-wrapped single-column fixtures and the container-wrapped `mixed-table.loom` SQL smoke fixture. This phase is only the local distribution artifact boundary; it does not add formal proof, native lowering, remote artifact lookup, signatures, or real Vortex file ingestion.
 
 ---
 

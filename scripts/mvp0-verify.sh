@@ -54,6 +54,10 @@ info "Running verifier negative descriptor gate..."
 bash scripts/verifier-negative-test.sh
 ok "scripts/verifier-negative-test.sh"
 
+info "Running container negative gate..."
+bash scripts/container-negative-test.sh
+ok "scripts/container-negative-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"
