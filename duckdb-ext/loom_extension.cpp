@@ -1041,6 +1041,13 @@ static void LoomScan(
         return;
     }
 
+    if (state.route_decision == "fail-closed" || state.route_decision == "diagnostic-only" ||
+        state.route_decision == "cancelled") {
+        throw IOException("%s", FormatRouteError("D-08/no-row-emission",
+                                                 state.route_decision,
+                                                 state.route_diagnostics).c_str());
+    }
+
     if (state.route_decision == "native-candidate") {
         if (state.native_buffers.empty()) {
             throw IOException("%s", FormatRouteError("D-12/native-claim-without-buffers",
@@ -1049,11 +1056,11 @@ static void LoomScan(
         }
 
         const auto count = NativeRowCount(state);
-        output.SetCardinality(count);
         for (idx_t col = 0; col < state.output_column_count; col++) {
             const auto &buffer = NativeBufferForOutput(state, col);
             FillNativeBufferIntoVector(buffer, state.column_kinds[col], output.data[col], count);
         }
+        output.SetCardinality(count);
         state.batch_emitted = true;
         return;
     }
@@ -1072,8 +1079,6 @@ static void LoomScan(
         state.batch_emitted = true;
         return;
     }
-
-    output.SetCardinality(count);
 
     for (idx_t col = 0; col < state.output_column_count; col++) {
         const auto &col_arr = state.arrow_arrays[col];
@@ -1102,6 +1107,8 @@ static void LoomScan(
             break;
         }
     }
+
+    output.SetCardinality(count);
 
     // The array stays owned by LoomScanState and is released in ~LoomScanState()
     // on every teardown path (DUCK-03). We only mark the batch as delivered.
