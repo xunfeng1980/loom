@@ -201,7 +201,9 @@ async fn legacy_lance_fixture_has_paired_verifier_accepted_loom_and_current_rewr
     assert!(manifest_text.contains("generator_version: 6.0.0"));
     assert!(manifest_text.contains("schema: id:Int32 non-null, score:Int64 non-null, ratio32:Float32 non-null, ratio64:Float64 non-null"));
     assert!(manifest_text.contains("rows: [(1,10,1.25,1.5), (2,20,-2.5,2.5), (3,30,3.75,3.5)]"));
-    assert!(manifest_text.contains("current_rewrite_proof: cargo test -p loom-lance-ingress --test legacy_readability"));
+    assert!(manifest_text.contains(
+        "current_rewrite_proof: cargo test -p loom-lance-ingress --test legacy_readability"
+    ));
 
     let source_hash = sha256_tree(&source);
     let loom_hash = sha256_file(&loom);
@@ -220,7 +222,10 @@ async fn legacy_lance_fixture_has_paired_verifier_accepted_loom_and_current_rewr
     let accepted = emit_source_ingress_lmc1_from_lance_path(&source)
         .await
         .expect("current Lance adapter emits verifier-accepted Loom from older fixture");
-    assert_eq!(accepted.bytes, std::fs::read(&loom).expect("read paired loom"));
+    assert_eq!(
+        accepted.bytes,
+        std::fs::read(&loom).expect("read paired loom")
+    );
 
     let temp = TempDir::new().expect("tempdir");
     let rewritten = temp.path().join("legacy-current-rewrite.lance");
