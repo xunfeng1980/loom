@@ -1,0 +1,133 @@
+//! Emit deterministic Loom layout payloads for the DuckDB SQL smoke gate.
+
+use std::fs;
+use std::path::Path;
+
+use arrow_schema::DataType;
+use loom_core::l1_model::LayoutDescription;
+use loom_core::layout_codec::encode_layout_payload;
+use loom_fixtures::vortex_reader;
+use vortex_array::arrays::{DictArray, PrimitiveArray, VarBinArray};
+use vortex_array::dtype::{DType, Nullability};
+use vortex_array::{IntoArray, VortexSessionExecute, LEGACY_SESSION};
+use vortex_fastlanes::{BitPackedData, FoR, RLEData};
+
+const OUT_DIR: &str = "target/loom-duckdb-fixtures";
+
+fn main() {
+    let out_dir = Path::new(OUT_DIR);
+    fs::create_dir_all(out_dir).expect("create fixture output directory");
+
+    let mut manifest = String::from("name\ttype\trows\tcount\tnon_null_count\tsum\tmin\tmax\n");
+    emit_bitpack(out_dir, &mut manifest);
+    emit_for(out_dir, &mut manifest);
+    emit_dict(out_dir, &mut manifest);
+    emit_rle(out_dir, &mut manifest);
+    emit_fsst(out_dir, &mut manifest);
+    emit_dict_fsst(out_dir, &mut manifest);
+
+    fs::write(out_dir.join("manifest.tsv"), manifest).expect("write manifest");
+    println!("wrote {}", out_dir.display());
+}
+
+fn emit_bitpack(out_dir: &Path, manifest: &mut String) {
+    let values = [1i32, 2, 3, 4];
+    let input = PrimitiveArray::from_iter(values);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let packed = BitPackedData::encode(&input.into_array(), 3, &mut ctx)
+        .expect("BitPackedData::encode failed");
+    let desc = LayoutDescription {
+        data_type: DataType::Int32,
+        root: vortex_reader::from_bitpacked_array(&packed),
+        row_count: values.len(),
+    };
+    write_payload(out_dir, "bitpack-i32", &desc);
+    manifest.push_str("bitpack-i32\ti32\t1|2|3|4\t4\t4\t10\t1\t4\n");
+}
+
+fn emit_for(out_dir: &Path, manifest: &mut String) {
+    let deltas = [0i32, 1, 2];
+    let reference = 10i32;
+    let input = PrimitiveArray::from_iter(deltas);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let packed = BitPackedData::encode(&input.into_array(), 2, &mut ctx)
+        .expect("BitPackedData::encode failed");
+    let for_array = FoR::try_new(packed.into_array(), reference.into()).expect("FoR::try_new");
+    let desc = LayoutDescription {
+        data_type: DataType::Int32,
+        root: vortex_reader::from_for_array(&for_array),
+        row_count: deltas.len(),
+    };
+    write_payload(out_dir, "for-i32", &desc);
+    manifest.push_str("for-i32\ti32\t10|11|12\t3\t3\t33\t10\t12\n");
+}
+
+fn emit_dict(out_dir: &Path, manifest: &mut String) {
+    let values = PrimitiveArray::from_iter([10i32, 20, 30]);
+    let codes = PrimitiveArray::from_iter([2i32, 0, 1, 2]);
+    let dict = DictArray::try_new(codes.into_array(), values.into_array()).expect("dict");
+    let desc = LayoutDescription {
+        data_type: DataType::Int32,
+        root: vortex_reader::from_dict_array(&dict),
+        row_count: 4,
+    };
+    write_payload(out_dir, "dict-i32", &desc);
+    manifest.push_str("dict-i32\ti32\t30|10|20|30\t4\t4\t90\t10\t30\n");
+}
+
+fn emit_rle(out_dir: &Path, manifest: &mut String) {
+    let input = PrimitiveArray::from_iter([1u32, 1, 2, 2, 2, 3]);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let rle = RLEData::encode(input.as_view(), &mut ctx).expect("RLEData::encode failed");
+    let desc = LayoutDescription {
+        data_type: DataType::Int32,
+        root: vortex_reader::from_rle_array(&rle),
+        row_count: 6,
+    };
+    write_payload(out_dir, "rle-i32", &desc);
+    manifest.push_str("rle-i32\ti32\t1|1|2|2|2|3\t6\t6\t11\t1\t3\n");
+}
+
+fn emit_fsst(out_dir: &Path, manifest: &mut String) {
+    let rows = [Some("alpha"), None, Some("beta")];
+    let fsst = make_fsst(&rows);
+    let desc = LayoutDescription {
+        data_type: DataType::Utf8,
+        root: vortex_reader::from_fsst_array(&fsst),
+        row_count: rows.len(),
+    };
+    write_payload(out_dir, "fsst-utf8", &desc);
+    manifest.push_str("fsst-utf8\tutf8\talpha|NULL|beta\t3\t2\t\talpha\tbeta\n");
+}
+
+fn emit_dict_fsst(out_dir: &Path, manifest: &mut String) {
+    let values = VarBinArray::from_iter(
+        [Some("alpha"), Some("beta"), Some("gamma")],
+        DType::Utf8(Nullability::Nullable),
+    );
+    let compressor = vortex_fsst::fsst_train_compressor(&values);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    let fsst_values =
+        vortex_fsst::fsst_compress(&values, values.len(), values.dtype(), &compressor, &mut ctx);
+    let codes = PrimitiveArray::from_iter([1i32, 0, 2, 1]);
+    let dict = DictArray::try_new(codes.into_array(), fsst_values.into_array()).expect("dict");
+    let desc = LayoutDescription {
+        data_type: DataType::Utf8,
+        root: vortex_reader::from_dict_array(&dict),
+        row_count: 4,
+    };
+    write_payload(out_dir, "dict-fsst-utf8", &desc);
+    manifest.push_str("dict-fsst-utf8\tutf8\tbeta|alpha|gamma|beta\t4\t4\t\talpha\tgamma\n");
+}
+
+fn make_fsst(rows: &[Option<&str>]) -> vortex_fsst::FSSTArray {
+    let values = VarBinArray::from_iter(rows.iter().copied(), DType::Utf8(Nullability::Nullable));
+    let compressor = vortex_fsst::fsst_train_compressor(&values);
+    let mut ctx = LEGACY_SESSION.create_execution_ctx();
+    vortex_fsst::fsst_compress(&values, values.len(), values.dtype(), &compressor, &mut ctx)
+}
+
+fn write_payload(out_dir: &Path, name: &str, desc: &LayoutDescription) {
+    let payload = encode_layout_payload(desc);
+    fs::write(out_dir.join(format!("{name}.loom")), payload).expect("write payload");
+}

@@ -20,6 +20,11 @@ vortex-array     = { workspace = true }
 vortex-fastlanes = { workspace = true }
 vortex-fsst      = { workspace = true }
 loom-core        = { path = "../loom-core" }
+arrow-schema     = { workspace = true }
+
+[[bin]]
+name = "emit_duckdb_payloads"
+path = "src/bin/emit_duckdb_payloads.rs"
 
 [dev-dependencies]
 # fastlanes is added for the Wave-0 fl_transpose_matches_fastlanes check ONLY.
@@ -30,7 +35,6 @@ loom-core        = { path = "../loom-core" }
 fastlanes        = "=0.5.1"
 # arrow crates for test-side output verification (reading decoded ArrayData).
 arrow            = { workspace = true }
-arrow-schema     = { workspace = true }
 # vortex-session is needed to create an ExecutionCtx for encoding in tests.
 vortex-session   = { version = "=0.74.0" }
 # vortex-buffer needed for BitBufferMut in nullable fixture construction.
