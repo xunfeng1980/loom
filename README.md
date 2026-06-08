@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. A first-pass structural verifier now checks MVP0 layout/table descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier cases that fail closed before DuckDB execution.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. A first-pass structural verifier now checks MVP0 layout/table descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier cases that fail closed before DuckDB execution.
 
 Run the full MVP0 release gate:
 
@@ -66,6 +66,17 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 `mixed-table.loom` exposes `id INT32`, `flag BOOLEAN`, and `label VARCHAR` through `loom_scan(...)`. The extension still uses direct DataChunk population; the ArrowArrayStream route remains a future ABI decision rather than Phase 8's implementation path.
+
+Phase 10 adds ALP Float32/Float64 L2 coverage:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/alp-f32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/alp-f64.loom
+bash scripts/duckdb-smoke-test.sh
+```
+
+ALP is registered as kernel id `1`; FSST remains kernel id `0`. `loom inspect` shows a concise ALP params summary with output type, row count, exponent, value count, validity presence, and params byte length. Vortex 0.74.0 does not expose an ALP array bridge in this repo, so Vortex remains the primitive Float32/Float64 row oracle while Loom owns the stable ALP params format. Phase 10 makes no ALP timing or benchmark claim.
 
 ---
 

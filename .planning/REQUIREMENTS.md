@@ -74,7 +74,7 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 
 ### Decode Coverage
 
-- [ ] **COV-01**: Additional L2 kernels (ALP float decode, delta-of-delta)
+- [x] **COV-01**: Additional L2 kernel coverage with ALP-style Float32/Float64 decode, stable params, verifier checks, fixture oracle comparisons, FFI roundtrips, CLI output, and DuckDB SQL acceptance
 - [x] **COV-02**: Multi-column table function and Arrow schema assembly across columns
 
 ### Table Output
@@ -148,7 +148,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DX-02 | Phase 7 | Complete |
 | DX-03 | Phase 7 | Complete |
 | DX-04 | Phase 7 | Complete |
-| COV-01 | Phase 10 | Planned |
+| COV-01 | Phase 10 | Complete |
 | COV-02 | Phase 8 | Complete |
 | TABLE-01 | Phase 8 | Complete |
 | TABLE-02 | Phase 8 | Complete |
@@ -175,4 +175,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 10 additional L2 kernels and numeric compression coverage added*
+*Last updated: 2026-06-08 — Phase 10 ALP Float32/Float64 L2 coverage complete*

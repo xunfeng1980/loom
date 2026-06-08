@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。Phase 9 已加入第一版 structural verifier,会在 decode 前检查 MVP0 layout/table description,并用稳定的 code/path/message 诊断返回 malformed input。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier case 会在进入 DuckDB 前 fail closed。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。Phase 9 已加入第一版 structural verifier,会在 decode 前检查 MVP0 layout/table description,并用稳定的 code/path/message 诊断返回 malformed input。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier case 会在进入 DuckDB 前 fail closed。
 
 运行完整 MVP0 release gate:
 
@@ -66,6 +66,17 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 `mixed-table.loom` 通过 `loom_scan(...)` 暴露 `id INT32`、`flag BOOLEAN`、`label VARCHAR`。扩展当前仍采用直接填充 DataChunk 的路径;ArrowArrayStream 仍是后续 ABI 决策,不是 Phase 8 的实现路径。
+
+Phase 10 增加 ALP Float32/Float64 L2 覆盖:
+
+```bash
+cargo run -p loom-fixtures --bin emit_duckdb_payloads
+cargo run --bin loom -- inspect target/loom-duckdb-fixtures/alp-f32.loom
+cargo run --bin loom -- decode target/loom-duckdb-fixtures/alp-f64.loom
+bash scripts/duckdb-smoke-test.sh
+```
+
+ALP 注册为 kernel id `1`;FSST 保持 kernel id `0`。`loom inspect` 会显示简洁的 ALP params 摘要,包括 output type、row count、exponent、value count、validity presence 和 params byte length。当前仓库使用的 Vortex 0.74.0 没有暴露 ALP array bridge,所以 Vortex 仍作为 primitive Float32/Float64 行值 oracle;稳定 ALP params 格式由 Loom 自己拥有。Phase 10 不增加 ALP timing 或 benchmark 结论。
 
 ---
 

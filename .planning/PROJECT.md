@@ -8,7 +8,7 @@ total-function language whose only possible output is well-formed Apache Arrow
 proves the core chain end-to-end on a real engine: Vortex-style encoded payloads
 are decoded through Loom's declarative **L1 layout layer** plus one total-function
 **L2 kernel (FSST)** into legal Arrow, handed to **DuckDB** via the Arrow C Data
-Interface, and queried with SQL, including a small mixed-column table payload. It is for the author/systems audience evaluating
+Interface, and queried with SQL, including a small mixed-column table payload and ALP-style Float32/Float64 L2 coverage. It is for the author/systems audience evaluating
 whether the L1/L2 + "output-as-typed-Arrow" idea actually works in practice.
 
 ## Core Value
@@ -36,12 +36,13 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Multi-column table output: `LMT1` table payloads wrap named `LMP1` column payloads, Rust and CLI can decode row-wise table output, DuckDB `loom_scan` returns mixed Int32/Boolean/Utf8 columns, and SQL row/projection/filter/aggregate checks are part of the release gate — Phase 8
 - ✓ ArrowArrayStream decision: direct DuckDB DataChunk population remains the Phase 8 path; ArrowArrayStream is deferred until a later table/record-batch FFI ABI is introduced — Phase 8
 - ✓ Verifier and safety boundary MVP: `loom_core::verifier` checks MVP0 layout/table descriptions with typed code/path/message diagnostics, Rust decode helpers and FFI ingress fail closed before Arrow output, `loom inspect` prints `verification: pass|fail`, and `scripts/mvp0-verify.sh` includes curated negative verifier coverage — Phase 9
+- ✓ ALP Float32/Float64 L2 coverage: Loom-owned `AlpParams`, kernel id `1`, verifier checks, synthetic fixtures with Vortex primitive float oracle comparison, FFI roundtrips, CLI inspect/decode output, and DuckDB SQL smoke checks are complete — Phase 10
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 10: Additional L2 kernels and numeric compression coverage (`COV-01`)
+- No active MVP0/v2 execution scope. Phase 10 is ready for final milestone review.
 
 ### Out of Scope
 
@@ -83,6 +84,7 @@ If only one thing works, it is this end-to-end chain.
 | Target format = Vortex, single encoded column | Real-world encodings; bounded scope; closest to the design's worked example | Complete — Phase 5 |
 | Scope = L1 (bitpack/FOR/dict/RLE) + one L2 kernel | Smallest set that demonstrates the declarative layer *and* the L2 escape | Complete — Phase 5 |
 | L2 kernel = FSST string decompression | Canonical "can't be declared, must compute" case in the Vortex world | Complete — Phase 5 |
+| Additional L2 kernel = ALP-style Float32/Float64 decode | Exercises a second real kernel family and numeric compression coverage while keeping `loom-core` Vortex-free | Complete — Phase 10 |
 | Interpret directly; no MLIR in MVP0 | Prove correctness/feasibility now; native speed is a later act | Complete — Phase 5 |
 | Acceptance = DuckDB SQL results match Vortex's decoder row-for-row | Concrete, end-to-end, falsifiable success bar | Complete — Phase 5 |
 | Defer the formal verifier / totality proof | MVP0 proves the decode chain, not the full sandbox proof; Phase 9 starts structural verification only | Formal proof still deferred |
@@ -92,7 +94,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Complete — Phase 8 |
 | Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
 | Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Complete — Phase 9 |
-| Phase 10 should return to L2 numeric compression coverage | COV-01 is the remaining explicit v2 decode coverage item; ALP/delta-style kernels exercise the L2 path without jumping to MLIR or formal verification scope | Active |
+| Phase 10 should return to L2 numeric compression coverage | COV-01 was the remaining explicit v2 decode coverage item; ALP Float32/Float64 exercised the L2 path without jumping to MLIR or formal verification scope | Complete — Phase 10 |
 
 ## Evolution
 
@@ -112,4 +114,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 entering Phase 10 (Additional L2 Kernels and Numeric Compression Coverage) — active scope is COV-01 planning. Formal verifier, MLIR/native lowering, and distribution container work remain future scope.*
+*Last updated: 2026-06-08 after Phase 10 (Additional L2 Kernels and Numeric Compression Coverage) — ALP Float32/Float64 L2 coverage is complete. Formal verifier, MLIR/native lowering, and distribution container work remain future scope.*
