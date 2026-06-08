@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: ready
-stopped_at: Phase 24 complete; Phase 25 not started
-last_updated: "2026-06-08T17:22:10.585Z"
+status: completed
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-06-08T18:03:33.108Z"
 last_activity: 2026-06-08 -- Phase 24 verified complete; ready for Phase 25
 progress:
   total_phases: 30
-  completed_phases: 24
-  total_plans: 97
-  completed_plans: 94
-  percent: 80
+  completed_phases: 19
+  total_plans: 102
+  completed_plans: 80
+  percent: 63
 ---
 
 # Project State
@@ -100,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 24]: [Phase 24 P05]: Phase 24 route evidence is tested through public loom_scan(path) SQL plus internal LOOM_DUCKDB_TEST diagnostics, not public route-specific SQL.
 - [Phase 24]: [Phase 24 P05]: The native primitive DuckDB fixture is all-zero non-null Int32/Int64/Float32/Float64 raw table data to avoid broader native semantics claims.
 - [Phase 24]: [Phase 24 P05]: The main release gate now runs Phase 24 after the Phase 23 backend gate and before the existing DuckDB SQL smoke gate.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Cache evidence remains on existing internal DuckDB diagnostics and public loom.h rejects cache/API creep markers.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Cache hits reuse only accepted NativeBackendReport preparation evidence; native buffers are regenerated and compared before every native return.
+- [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-02: Kept DuckDB native preparation cache in-process and Rust-owned with no persistent format, public C API, SQL flags, path/mtime semantics, eviction policy, or package additions.
 
 ### Pending Todos
 
@@ -242,8 +245,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T16:51:12.658Z
-Stopped at: Completed 24-05-PLAN.md
+Last session: 2026-06-08T18:03:32.606Z
+Stopped at: Completed 25-02-PLAN.md
 
 Phase 17 handoff:
 
@@ -300,3 +303,4 @@ Resume file: None
 | Phase 24-duckdb-native-execution-integration-mvp P03 | 5min | 2 tasks | 1 files |
 | Phase 24-duckdb-native-execution-integration-mvp P04 | 8min | 2 tasks | 1 files |
 | Phase 24-duckdb-native-execution-integration-mvp P05 | 8min | 3 tasks | 7 files |
+| Phase 25-native-equivalence-cache-and-fallback-hardening P02 | 10m32s | 3 tasks | 4 files |
