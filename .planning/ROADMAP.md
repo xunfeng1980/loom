@@ -643,15 +643,15 @@ or arbitrary Vortex semantic compatibility.
 
 ### Phase 23: Production Native Backend Implementation
 
-**Status:** Placeholder only. Do not expand until Phase 22 defines the host native runtime ABI and execution policy.
+**Status:** Placeholder only. Ready to research/plan now that Phase 22 defines the host native runtime ABI and execution policy.
 **Depends on:** Phase 22.
-**Ordering decision:** Implement the real production backend after the ABI/policy is explicit and before any host engine depends on it. This phase should move beyond the Phase 20 textual seed by adding a compiled `loom.decode` ODS dialect, op verifiers, lowering/conversion passes, a `melior` pass pipeline, LLVM lowering, verifier-gated LLVM/JIT execution, strict toolchain/release gates, and equivalence evidence against the interpreter for the supported Phase 21 matrix. It must not become DuckDB integration, cache hardening, Iceberg binding, or StarRocks comparison.
+**Ordering decision:** Implement the real production backend after the ABI/policy is explicit and before any host engine depends on it. This phase should move beyond the Phase 20 textual seed by adding a compiled `loom.decode` ODS dialect, op verifiers, lowering/conversion passes, a `melior` pass pipeline, LLVM lowering, verifier-gated LLVM/JIT execution, strict toolchain/release gates, and equivalence evidence against the interpreter for the supported Phase 21 matrix. It must consume the Phase 22 `RuntimePlan` and `RuntimeCacheKey` as mandatory backend inputs, add ABI version/capability and layout evidence while keeping public `loom_runtime.h` unfrozen, and model cancellation plus backend/toolchain identity before long-running native kernels. It must not let a Rust/C++ natural wrapper define the C ABI, and it must not become DuckDB integration, cache hardening, Iceberg binding, or StarRocks comparison.
 
 ### Phase 24: DuckDB Native Execution Integration MVP
 
 **Status:** Placeholder only. Do not expand until Phase 23 implements the production native backend.
 **Depends on:** Phase 23.
-**Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts, select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. It must not absorb Iceberg binding or StarRocks comparison.
+**Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts, select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. The DuckDB layer must be a natural adapter over the Phase 22 runtime contract, not a second ABI: map DuckDB bind/init/local-init/function lifecycle to plan/scan/worker/next-batch, derive projection pushdown and max-thread behavior from runtime planning, and test Arrow C Data release plus error/cancel paths. It must not absorb Iceberg binding or StarRocks comparison.
 
 ### Phase 25: Native Equivalence, Cache, and Fallback Hardening
 
