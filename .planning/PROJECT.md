@@ -47,18 +47,20 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 - ✓ Solver-backed full artifact verifier: solver-neutral obligation/report types, deterministic Bitwuzla-primary `QF_BV` SMT-LIB emission, optional `loom-solver-smt` backend declarations for `z3`/`cvc5`/`bitwuzla`, managed Bitwuzla subprocess discharge, artifact-verifier solver facts, CLI visibility, and release-gated solver evidence are complete without claiming production native execution — Phase 19
 - ✓ Production decode dialect and native kernel expansion seed: production lowering starts from accepted artifact reports with `Discharged`/`NotRequired` facts, emits deterministic `loom.decode` textual artifacts, plans primitive Arrow/raw-buffer builders, supports raw non-null Int32/Int64/Float32/Float64 single/table slices, validates standard MLIR text, and gates evidence through `scripts/production-native-lowering-test.sh` without claiming host execution or arbitrary encoding coverage — Phase 20
 - ✓ Expanded Vortex encoding coverage: real Vortex reader facts now include coverage/emission/lowering disposition, nullable primitives fail closed with null-preserving oracle evidence, chunked/dictionary/RLE/bitpack/FOR fixtures have row oracle evidence and canonical raw emission where safe, string/compression cases remain explicit deferrals, and `scripts/vortex-encoding-coverage-test.sh` gates the matrix without claiming arbitrary Vortex support — Phase 21
+- ✓ Host native runtime ABI and execution policy: host-neutral runtime model, native/interpreter/fail-closed decision policy, projection/predicate/split/concurrency planning, cache identity, diagnostics, and C ABI sketch are complete and gated through `scripts/runtime-abi-test.sh` — Phase 22
+- ✓ Production native backend implementation: `loom-native-melior` consumes Phase 22 runtime plans/cache identity, validates `loom.decode` dialect artifacts, runs production MLIR/LLVM preparation, seeds verifier-gated JIT execution for supported primitive kernels, and gates evidence through `scripts/production-backend-test.sh` — Phase 23
+- ✓ DuckDB native execution integration MVP: public `loom_scan(path)` routes eligible complete-reader artifacts through Phase 22 runtime policy and Phase 23 backend, preserves interpreter fallback/fail-closed diagnostics/direct DataChunk output, passes projected column ids into runtime projection/cache input, and gates evidence through `scripts/duckdb-native-integration-test.sh` plus `scripts/mvp0-verify.sh` — Phase 24
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- ✓ Host native runtime ABI and execution policy: host-neutral runtime model, native/interpreter/fail-closed decision policy, projection/predicate/split/concurrency planning, cache identity, diagnostics, and C ABI sketch — Phase 22
-- [ ] Phase 23 remains a roadmap placeholder only: production native backend implementation over the Phase 22 runtime contract.
-- [ ] Phase 24 remains a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 backend.
 - [ ] Phase 25 remains a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- [ ] Phase 26 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- [ ] Phase 27 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
-- [ ] Phase 28 remains a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table/query-surface evidence exists.
+- [ ] Phase 26 remains a roadmap placeholder only: external source ingress contract after native hardening.
+- [ ] Phase 27 remains a roadmap placeholder only: Lance + Parquet archival readability / dataset ingress.
+- [ ] Phase 28 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
+- [ ] Phase 29 remains a roadmap placeholder only: StarRocks + DuckDB dual query surface after table binding exists.
+- [ ] Phase 30 remains a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table/query-surface evidence exists.
 
 ### Out of Scope
 
@@ -66,7 +68,7 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 
 - Production MLIR `decode` dialect / arbitrary lowering / native-speed host execution — Phase 14 is only a verifier-gated textual lowering spike, Phase 16 is only optional bounded Int32 backend evidence, Phase 17 only unifies the artifact verifier report/facts pipeline, Phase 18 only establishes complete-reader facts and a finite emission matrix, and Phase 19 only adds solver-backed artifact verification evidence for the current slice (`design.md` §8)
 - MLIR/native lowering correctness proof and arbitrary real Vortex ingress proof — Phase 14 is only a verifier-gated textual lowering spike; Phase 16 is only bounded backend evidence; Phase 17 unified reports/facts; Phase 18 provides a complete reader boundary but not a proof for arbitrary Vortex semantics; Phase 19 adds Bitwuzla-backed local obligation discharge but not checked proof objects or arbitrary semantic proof (`design.md` §5, §7, §13)
-- Full arbitrary `.vortex` decode support for every encoding/layout/storage mode — Phase 18 records complete reader facts and Phase 21 expands representative coverage, but Loom artifacts still emit only for explicit verified/canonicalized shapes and defer arbitrary semantics to Phase 28
+- Full arbitrary `.vortex` decode support for every encoding/layout/storage mode — Phase 18 records complete reader facts and Phase 21 expands representative coverage, but Loom artifacts still emit only for explicit verified/canonicalized shapes and defer arbitrary semantics to Phase 30
 - `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — current implementation focuses on schema/decode and SQL smoke paths
 - Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
 - Correctness guarantees beyond matching the reference decoder — Loom guarantees safety + well-formedness, never correctness (`design.md` §7)
@@ -126,10 +128,12 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 | Phase 22 should define host native runtime ABI before DuckDB integration | DuckDB should call a stable verifier-gated runtime contract instead of becoming the place where artifact identity, cache keys, fallback policy, and output ownership are first invented. | Complete — Phase 22 |
 | Phase 23 should implement the production native backend before DuckDB integration | After ABI/policy is explicit, the real compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend should exist before a host engine depends on native execution. | Placeholder — Phase 23 |
 | Phase 24 should prove DuckDB native execution before broader table binding | DuckDB is the existing host seam and SQL gate, so it is the lowest-risk first native host integration over complete-reader artifacts and the Phase 23 production backend. | Placeholder — Phase 24 |
-| Phase 25 should harden equivalence, cache, and fallback before Iceberg | Iceberg metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Placeholder — Phase 25 |
-| Phase 26 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 26 |
-| Phase 27 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 27 |
-| Phase 28 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. | Placeholder — Phase 28 |
+| Phase 25 should harden equivalence, cache, and fallback before source/table binding | Downstream metadata should point at a credible execution/artifact contract, not an experimental native path without oracle and negative evidence. | Placeholder — Phase 25 |
+| Phase 26 should define external source ingress before archival/table formats | Source identity and ingestion trust boundaries need one stable contract before Lance, Parquet, and Iceberg bindings build on them. | Placeholder — Phase 26 |
+| Phase 27 should prove Lance + Parquet archival readability before Iceberg refs | Dataset/archive readability should be validated before introducing table metadata and ref semantics. | Placeholder — Phase 27 |
+| Phase 28 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 28 |
+| Phase 29 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Placeholder — Phase 29 |
+| Phase 30 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. | Placeholder — Phase 30 |
 
 ## Evolution
 
@@ -149,4 +153,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 21 closeout — Phase 21 records expanded real Vortex coverage with explicit emission/lowering disposition, while arbitrary Vortex semantics are reserved for Phase 28 and structured native backend deltas remain future work.*
+*Last updated: 2026-06-08 after Phase 24 closeout — DuckDB native execution integration is verified through the Phase 22 runtime policy and Phase 23 backend, while Phase 25+ hardening/table/query-surface work remains future scope.*

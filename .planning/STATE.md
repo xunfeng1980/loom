@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 24-05-PLAN.md
-last_updated: "2026-06-08T16:51:36.349Z"
-last_activity: 2026-06-08 -- Completed Phase 24 Plan 05
+status: ready
+stopped_at: Phase 24 complete; Phase 25 not started
+last_updated: "2026-06-08T17:22:10.585Z"
+last_activity: 2026-06-08 -- Phase 24 verified complete; ready for Phase 25
 progress:
   total_phases: 30
-  completed_phases: 19
+  completed_phases: 24
   total_plans: 97
-  completed_plans: 78
+  completed_plans: 94
   percent: 80
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 24 — duckdb-native-execution-integration-mvp
+**Current focus:** Phase 25 — native-equivalence-cache-and-fallback-hardening
 
 ## Current Position
 
-Phase: 24 (duckdb-native-execution-integration-mvp) — VERIFYING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-06-08 -- Completed Phase 24 Plan 05
+Phase: 25
+Plan: Not started
+Status: Phase 24 complete — Phase 25 not started
+Last activity: 2026-06-08 -- Phase 24 verified complete; ready for Phase 25
 
 Progress: 80%
 
 ## Progress Snapshot
 
-- Completed phases: 23 / 30
+- Completed phases: 24 / 30
 - Completed executable plans: 94 / 97
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 24 complete; ready for verification
+- Current position: Phase 24 complete; Phase 25 not started
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 24 DuckDB native integration wired before DuckDB SQL smoke
 
 **Completed phase plan counts:**
@@ -55,6 +55,7 @@ Progress: 80%
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
 | 22 | Host native runtime ABI and execution policy | 5/5 complete |
 | 23 | Production native backend implementation | 5/5 complete |
+| 24 | DuckDB native execution integration MVP | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -231,7 +232,7 @@ None yet.
 | v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Complete | Phase 22 |
 | v3 native | Production native backend implementation | Complete | Phase 23 |
-| v3 engine | DuckDB native execution integration MVP | In progress | Phase 24 |
+| v3 engine | DuckDB native execution integration MVP | Complete | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
 | v3 ingress | External source ingress contract | Placeholder | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Placeholder | Phase 27 |
