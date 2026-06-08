@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use arrow_schema::DataType;
+use loom_core::alp_params::{AlpOutputType, AlpParams};
 use loom_core::l1_model::LayoutDescription;
 use loom_core::layout_codec::encode_layout_payload;
 use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
@@ -28,6 +29,8 @@ fn main() {
     emit_fsst(out_dir, &mut manifest);
     emit_fsst_edge(out_dir, &mut manifest);
     emit_dict_fsst(out_dir, &mut manifest);
+    emit_alp_f32(out_dir, &mut manifest);
+    emit_alp_f64(out_dir, &mut manifest);
     emit_mixed_table(out_dir);
 
     fs::write(out_dir.join("manifest.tsv"), manifest).expect("write manifest");
@@ -213,6 +216,46 @@ fn emit_dict_fsst(out_dir: &Path, manifest: &mut String) {
     };
     write_payload(out_dir, "dict-fsst-utf8", &desc);
     manifest.push_str("dict-fsst-utf8\tutf8\tbeta|alpha|gamma|beta\t4\t4\t\talpha\tgamma\n");
+}
+
+fn emit_alp_f32(out_dir: &Path, manifest: &mut String) {
+    let params = AlpParams {
+        output_type: AlpOutputType::Float32,
+        decimal_exponent: -2,
+        mantissas: vec![125, -250, 0, 125, -250],
+        validity: Some(vec![true, true, true, true, false]),
+    };
+    let desc = LayoutDescription {
+        data_type: DataType::Float32,
+        root: loom_core::l1_model::LayoutNode::KernelEscape {
+            kernel_id: 1,
+            params: params.encode(),
+            count: 5,
+        },
+        row_count: 5,
+    };
+    write_payload(out_dir, "alp-f32", &desc);
+    manifest.push_str("alp-f32\tf32\t1.25|-2.5|0|1.25|NULL\t5\t4\t0\t-2.5\t1.25\n");
+}
+
+fn emit_alp_f64(out_dir: &Path, manifest: &mut String) {
+    let params = AlpParams {
+        output_type: AlpOutputType::Float64,
+        decimal_exponent: -3,
+        mantissas: vec![10125, -3500, 0, -3500, 10125],
+        validity: Some(vec![true, true, true, false, true]),
+    };
+    let desc = LayoutDescription {
+        data_type: DataType::Float64,
+        root: loom_core::l1_model::LayoutNode::KernelEscape {
+            kernel_id: 1,
+            params: params.encode(),
+            count: 5,
+        },
+        row_count: 5,
+    };
+    write_payload(out_dir, "alp-f64", &desc);
+    manifest.push_str("alp-f64\tf64\t10.125|-3.5|0|NULL|10.125\t5\t4\t16.75\t-3.5\t10.125\n");
 }
 
 fn make_fsst(rows: &[Option<&str>]) -> vortex_fsst::FSSTArray {

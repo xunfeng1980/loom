@@ -2,10 +2,14 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-use arrow::array::{Array, BooleanArray, Int32Array, Int64Array, StringArray};
+use arrow::array::{
+    Array, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, StringArray,
+};
 use arrow_schema::DataType;
+use loom_core::alp_params::AlpParams;
 use loom_core::descriptor::{from_descriptor_text, payload_to_descriptor_text};
 use loom_core::error::LoomDecodeError;
+use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
@@ -62,7 +66,7 @@ fn inspect(path: &Path) -> Result<(), String> {
                 data_type_name(&column.layout.data_type),
                 column.layout.row_count
             );
-            print_node(&column.layout.root, 2);
+            print_node(&column.layout.root, 2, &column.layout.data_type);
         }
         return Ok(());
     }
@@ -76,7 +80,7 @@ fn inspect(path: &Path) -> Result<(), String> {
     println!("data_type: {}", data_type_name(&desc.data_type));
     println!("row_count: {}", desc.row_count);
     println!("layout:");
-    print_node(&desc.root, 1);
+    print_node(&desc.root, 1, &desc.data_type);
     println!("descriptor:");
     let text = if is_binary_payload(&bytes) {
         payload_to_descriptor_text(&bytes).map_err(display_decode_error)?
@@ -131,6 +135,26 @@ fn decode(path: &Path) -> Result<(), String> {
         }
         DataType::Utf8 => {
             let array = StringArray::from(data);
+            for row in 0..array.len() {
+                if array.is_null(row) {
+                    println!("NULL");
+                } else {
+                    println!("{}", array.value(row));
+                }
+            }
+        }
+        DataType::Float32 => {
+            let array = Float32Array::from(data);
+            for row in 0..array.len() {
+                if array.is_null(row) {
+                    println!("NULL");
+                } else {
+                    println!("{}", array.value(row));
+                }
+            }
+        }
+        DataType::Float64 => {
+            let array = Float64Array::from(data);
             for row in 0..array.len() {
                 if array.is_null(row) {
                     println!("NULL");
@@ -207,6 +231,22 @@ fn print_cell(
                 print!("{}", array.value(row));
             }
         }
+        DataType::Float32 => {
+            let array = Float32Array::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
+        DataType::Float64 => {
+            let array = Float64Array::from(data.clone());
+            if array.is_null(row) {
+                print!("NULL");
+            } else {
+                print!("{}", array.value(row));
+            }
+        }
         other => return Err(format!("unsupported table output type {other:?}")),
     }
     Ok(())
@@ -225,7 +265,7 @@ fn is_binary_payload(bytes: &[u8]) -> bool {
     bytes.starts_with(b"LMP1")
 }
 
-fn print_node(node: &LayoutNode, depth: usize) {
+fn print_node(node: &LayoutNode, depth: usize, data_type: &DataType) {
     let indent = "  ".repeat(depth);
     match node {
         LayoutNode::Raw {
@@ -254,14 +294,14 @@ fn print_node(node: &LayoutNode, depth: usize) {
         }
         LayoutNode::FrameOfReference { reference, inner } => {
             println!("{indent}FrameOfReference(reference={reference})");
-            print_node(inner, depth + 1);
+            print_node(inner, depth + 1, data_type);
         }
         LayoutNode::Dictionary { codes, values } => {
             println!("{indent}Dictionary");
             println!("{indent}  codes:");
-            print_node(codes, depth + 2);
+            print_node(codes, depth + 2, data_type);
             println!("{indent}  values:");
-            print_node(values, depth + 2);
+            print_node(values, depth + 2, data_type);
         }
         LayoutNode::RunEnd {
             run_ends,
@@ -270,9 +310,9 @@ fn print_node(node: &LayoutNode, depth: usize) {
         } => {
             println!("{indent}RunEnd(count={count})");
             println!("{indent}  run_ends:");
-            print_node(run_ends, depth + 2);
+            print_node(run_ends, depth + 2, data_type);
             println!("{indent}  values:");
-            print_node(values, depth + 2);
+            print_node(values, depth + 2, data_type);
         }
         LayoutNode::KernelEscape {
             kernel_id,
@@ -280,8 +320,8 @@ fn print_node(node: &LayoutNode, depth: usize) {
             count,
         } => {
             println!(
-                "{indent}KernelEscape(kernel_id={kernel_id}, count={count}, params_bytes={})",
-                params.len()
+                "{}",
+                kernel_escape_summary(&indent, *kernel_id, params, *count, data_type)
             );
         }
     }
@@ -293,7 +333,57 @@ fn data_type_name(data_type: &DataType) -> &'static str {
         DataType::Int32 => "Int32",
         DataType::Int64 => "Int64",
         DataType::Utf8 => "Utf8",
+        DataType::Float32 => "Float32",
+        DataType::Float64 => "Float64",
         _ => "Unsupported",
+    }
+}
+
+fn kernel_escape_summary(
+    indent: &str,
+    kernel_id: u32,
+    params: &[u8],
+    count: usize,
+    data_type: &DataType,
+) -> String {
+    match kernel_id {
+        0 => match FsstParams::decode(params, count) {
+            Ok(decoded) => format!(
+                "{indent}KernelEscape(kernel=fsst, kernel_id=0, output_type={}, count={count}, params=symbols={}, codes_bytes={}, validity={}, params_bytes={})",
+                data_type_name(data_type),
+                decoded.symbol_lengths.len(),
+                decoded.codes_bytes.len(),
+                decoded.validity.as_ref().map_or("none", |_| "present"),
+                params.len()
+            ),
+            Err(err) => format!(
+                "{indent}KernelEscape(kernel=fsst, kernel_id=0, output_type={}, count={count}, params=malformed:{err}, params_bytes={})",
+                data_type_name(data_type),
+                params.len()
+            ),
+        },
+        1 => match AlpParams::decode(params, count) {
+            Ok(decoded) => format!(
+                "{indent}KernelEscape(kernel=alp, kernel_id=1, output_type={}, count={count}, params=output_type={}, row_count={}, exponent={}, value_count={}, validity={}, params_bytes={})",
+                data_type_name(data_type),
+                decoded.output_type.as_str(),
+                decoded.mantissas.len(),
+                decoded.decimal_exponent,
+                decoded.mantissas.len(),
+                decoded.validity.as_ref().map_or("none", |_| "present"),
+                params.len()
+            ),
+            Err(err) => format!(
+                "{indent}KernelEscape(kernel=alp, kernel_id=1, output_type={}, count={count}, params=malformed:{err}, params_bytes={})",
+                data_type_name(data_type),
+                params.len()
+            ),
+        },
+        _ => format!(
+            "{indent}KernelEscape(kernel=unknown, kernel_id={kernel_id}, output_type={}, count={count}, params_bytes={})",
+            data_type_name(data_type),
+            params.len()
+        ),
     }
 }
 

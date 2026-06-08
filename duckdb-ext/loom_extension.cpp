@@ -45,6 +45,8 @@ enum class LoomValueKind : uint8_t {
     I32,
     I64,
     UTF8,
+    F32,
+    F64,
 };
 
 static LogicalType LogicalTypeForKind(LoomValueKind kind);
@@ -113,6 +115,10 @@ static LoomValueKind PayloadKindFromHeader(const vector<uint8_t> &payload) {
         return LoomValueKind::I64;
     case 4:
         return LoomValueKind::UTF8;
+    case 5:
+        return LoomValueKind::F32;
+    case 6:
+        return LoomValueKind::F64;
     default:
         throw IOException("loom_scan: unknown LMP1 data type tag %d", static_cast<int>(payload[6]));
     }
@@ -207,6 +213,10 @@ static LogicalType LogicalTypeForKind(LoomValueKind kind) {
         return LogicalType::BIGINT;
     case LoomValueKind::UTF8:
         return LogicalType::VARCHAR;
+    case LoomValueKind::F32:
+        return LogicalType::FLOAT;
+    case LoomValueKind::F64:
+        return LogicalType::DOUBLE;
     }
     throw InternalException("unknown LoomValueKind");
 }
@@ -454,6 +464,12 @@ static void LoomScan(
             break;
         case LoomValueKind::UTF8:
             FillUtf8Vector(col_arr, vec, count);
+            break;
+        case LoomValueKind::F32:
+            FillFixedWidthVector<float>(col_arr, vec, count, "Float32");
+            break;
+        case LoomValueKind::F64:
+            FillFixedWidthVector<double>(col_arr, vec, count, "Float64");
             break;
         }
     }

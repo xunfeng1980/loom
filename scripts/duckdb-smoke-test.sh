@@ -39,6 +39,8 @@ test -f "${PAYLOAD_DIR}/dict-i32.loom"
 test -f "${PAYLOAD_DIR}/rle-i32.loom"
 test -f "${PAYLOAD_DIR}/fsst-utf8.loom"
 test -f "${PAYLOAD_DIR}/dict-fsst-utf8.loom"
+test -f "${PAYLOAD_DIR}/alp-f32.loom"
+test -f "${PAYLOAD_DIR}/alp-f64.loom"
 test -f "${PAYLOAD_DIR}/mixed-table.loom"
 ok "Generated payloads in ${PAYLOAD_DIR}"
 
@@ -160,6 +162,22 @@ check_string_aggregate() {
     ok "SELECT COUNT/MIN/MAX for ${name} matched"
 }
 
+check_float_aggregate() {
+    local name="$1"
+    local expected="$2"
+    local payload="${PAYLOAD_DIR}/${name}.loom"
+    local out="${TMP_DIR}/${name}-agg.csv"
+
+    info "SELECT COUNT/SUM/MIN/MAX for ${name}..."
+    sql_to_file "SELECT COUNT(*), COUNT(value), SUM(value), MIN(value), MAX(value) FROM loom_scan('${payload}')" "${out}"
+    local actual
+    actual="$(cat "${out}")"
+    if [ "${actual}" != "${expected}" ]; then
+        fail "aggregate mismatch for ${name}: expected '${expected}', got '${actual}'"
+    fi
+    ok "SELECT COUNT/SUM/MIN/MAX for ${name} matched"
+}
+
 check_mixed_table() {
     local payload="${PAYLOAD_DIR}/mixed-table.loom"
     local rows_out="${TMP_DIR}/mixed-table-rows.csv"
@@ -208,11 +226,17 @@ check_string_aggregate "fsst-utf8" "3,2,alpha,beta"
 check_rows "dict-fsst-utf8" $'beta\nalpha\ngamma\nbeta'
 check_string_aggregate "dict-fsst-utf8" "4,4,alpha,gamma"
 
+check_rows "alp-f32" $'1.25\n-2.5\n0.0\n1.25\nNULL'
+check_float_aggregate "alp-f32" "5,4,0.0,-2.5,1.25"
+
+check_rows "alp-f64" $'10.125\n-3.5\n0.0\nNULL\n10.125'
+check_float_aggregate "alp-f64" "5,4,16.75,-3.5,10.125"
+
 check_mixed_table
 
 echo ""
 echo "${GRN}=== Smoke-test PASSED ===${RST}"
 echo "  Extension: ${EXT_PATH}"
 echo "  DuckDB CLI: ${DUCKDB_BIN} (${DUCKDB_VERSION})"
-echo "  Covered: bitpack-i32, for-i32, dict-i32, rle-i32, fsst-utf8, dict-fsst-utf8, mixed-table"
+echo "  Covered: bitpack-i32, for-i32, dict-i32, rle-i32, fsst-utf8, dict-fsst-utf8, alp-f32, alp-f64, mixed-table"
 echo ""
