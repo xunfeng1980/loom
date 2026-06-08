@@ -169,6 +169,25 @@ static vector<LoomRouteDiagnostic> CollectPlanDiagnostics(const LoomDuckDbPlanHo
     return diagnostics;
 }
 
+static vector<LoomRouteDiagnostic> CollectPreparedDiagnostics(const LoomDuckDbPreparedHolder &holder) {
+    uintptr_t count = 0;
+    RequireDuckDbRuntimeOk(loom_duckdb_prepare_diagnostic_count(holder.Get(), &count),
+                           "loom_duckdb_prepare_diagnostic_count");
+    vector<LoomRouteDiagnostic> diagnostics;
+    diagnostics.reserve(static_cast<idx_t>(count));
+    for (uintptr_t i = 0; i < count; i++) {
+        LoomDuckDbDiagnostic diagnostic {};
+        RequireDuckDbRuntimeOk(loom_duckdb_prepare_diagnostic(holder.Get(), i, &diagnostic),
+                               "loom_duckdb_prepare_diagnostic");
+        diagnostics.push_back({
+            CStringOrEmpty(diagnostic.code),
+            CStringOrEmpty(diagnostic.path),
+            CStringOrEmpty(diagnostic.message),
+        });
+    }
+    return diagnostics;
+}
+
 static string ReadPlanDecision(const LoomDuckDbPlanHolder &holder) {
     const char *decision = nullptr;
     RequireDuckDbRuntimeOk(loom_duckdb_plan_decision(holder.Get(), &decision),
@@ -183,6 +202,39 @@ static string ReadPlanCacheKey(const LoomDuckDbPlanHolder &holder) {
     return CStringOrEmpty(cache_key);
 }
 
+static string ReadPreparedRoute(const LoomDuckDbPreparedHolder &holder) {
+    const char *route = nullptr;
+    RequireDuckDbRuntimeOk(loom_duckdb_prepare_route(holder.Get(), &route),
+                           "loom_duckdb_prepare_route");
+    return CStringOrEmpty(route);
+}
+
+static string FormatRouteDiagnostics(const vector<LoomRouteDiagnostic> &diagnostics) {
+    if (diagnostics.empty()) {
+        return "diagnostic code=none path=$ message=no route diagnostics";
+    }
+
+    std::ostringstream out;
+    for (idx_t i = 0; i < diagnostics.size(); i++) {
+        if (i > 0) {
+            out << "; ";
+        }
+        out << "diagnostic code=" << diagnostics[i].code
+            << " path=" << diagnostics[i].path
+            << " message=" << diagnostics[i].message;
+    }
+    return out.str();
+}
+
+static string FormatRouteError(const char *reason,
+                               const string &route,
+                               const vector<LoomRouteDiagnostic> &diagnostics) {
+    std::ostringstream out;
+    out << "loom_scan[" << reason << "]: route=" << route << " "
+        << FormatRouteDiagnostics(diagnostics);
+    return out.str();
+}
+
 static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint8_t> &payload,
                                                               bool allow_interpreter_fallback) {
     LoomDuckDbPlan *plan = nullptr;
@@ -191,6 +243,13 @@ static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint
         loom_duckdb_plan_create(payload_ptr, payload.size(), allow_interpreter_fallback, false, &plan),
         "loom_duckdb_plan_create");
     return std::make_shared<LoomDuckDbPlanHolder>(plan);
+}
+
+static LoomDuckDbPreparedHolder CreatePreparedRoute(const LoomDuckDbPlanHolder &plan, bool cancelled) {
+    LoomDuckDbPrepared *prepared = nullptr;
+    RequireDuckDbRuntimeOk(loom_duckdb_prepare_create(plan.Get(), cancelled, &prepared),
+                           "loom_duckdb_prepare_create");
+    return LoomDuckDbPreparedHolder(prepared);
 }
 
 struct LoomBindData : TableFunctionData {
@@ -228,6 +287,93 @@ struct LoomBindData : TableFunctionData {
                route_cache_key == other.route_cache_key;
     }
 };
+
+struct LoomRuntimePlanSelection {
+    std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
+    string route_decision;
+    string route_cache_key;
+    vector<LoomRouteDiagnostic> route_diagnostics;
+    vector<idx_t> projected_source_ids;
+    bool reused_bind_plan = true;
+};
+
+static vector<idx_t> AllSourceColumnIds(idx_t column_count) {
+    vector<idx_t> ids;
+    ids.reserve(column_count);
+    for (idx_t i = 0; i < column_count; i++) {
+        ids.push_back(i);
+    }
+    return ids;
+}
+
+static vector<idx_t> ProjectedSourceColumnIds(const TableFunctionInitInput &input, idx_t column_count) {
+    // D-10: DuckDB exposes concrete projection ids to global init through
+    // TableFunctionInitInput::column_ids once projection_pushdown is enabled.
+    if (input.column_ids.size() == column_count) {
+        bool all_columns = true;
+        for (idx_t i = 0; i < column_count; i++) {
+            if (input.column_ids[i] != static_cast<column_t>(i)) {
+                all_columns = false;
+                break;
+            }
+        }
+        if (all_columns) {
+            return AllSourceColumnIds(column_count);
+        }
+    }
+
+    vector<idx_t> ids;
+    ids.reserve(input.column_ids.size());
+    for (auto column_id : input.column_ids) {
+        if (column_id >= static_cast<column_t>(column_count)) {
+            throw IOException("loom_scan[D-10/unsupported-projection]: diagnostic code=unsupported-projection path=$.projection.columns message=DuckDB projected column id %llu is outside %llu source columns",
+                              static_cast<unsigned long long>(column_id),
+                              static_cast<unsigned long long>(column_count));
+        }
+        ids.push_back(static_cast<idx_t>(column_id));
+    }
+    return ids;
+}
+
+static bool IsAllColumnProjection(const vector<idx_t> &ids, idx_t column_count) {
+    if (ids.size() != column_count) {
+        return false;
+    }
+    for (idx_t i = 0; i < column_count; i++) {
+        if (ids[i] != i) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static LoomRuntimePlanSelection BuildProjectedRuntimePlan(const LoomBindData &bind_data,
+                                                          const TableFunctionInitInput &input) {
+    auto projected_ids = ProjectedSourceColumnIds(input, bind_data.column_payloads.size());
+    if (IsAllColumnProjection(projected_ids, bind_data.column_payloads.size())) {
+        return {
+            bind_data.runtime_plan,
+            bind_data.route_decision,
+            bind_data.route_cache_key,
+            bind_data.route_diagnostics,
+            std::move(projected_ids),
+            true,
+        };
+    }
+
+    auto projected_plan = CreateRuntimePlan(bind_data.payload, true);
+    auto route_decision = ReadPlanDecision(*projected_plan);
+    auto route_cache_key = ReadPlanCacheKey(*projected_plan);
+    auto route_diagnostics = CollectPlanDiagnostics(*projected_plan);
+    return {
+        projected_plan,
+        std::move(route_decision),
+        std::move(route_cache_key),
+        std::move(route_diagnostics),
+        std::move(projected_ids),
+        false,
+    };
+}
 
 static vector<uint8_t> ReadPayloadFile(const string &path) {
     std::ifstream file(path, std::ios::binary);
@@ -501,7 +647,18 @@ struct LoomScanState : GlobalTableFunctionState {
     vector<ArrowArray> arrow_arrays;
     vector<ArrowSchema> arrow_schemas;
     vector<LoomValueKind> column_kinds;
+    vector<idx_t> projected_source_ids;
+    idx_t output_column_count = 0;
+    std::unique_ptr<LoomDuckDbPreparedHolder> prepared_route;
+    string route_decision;
+    string route_cache_key;
+    vector<LoomRouteDiagnostic> route_diagnostics;
+    vector<LoomDuckDbNativeBuffer> native_buffers;
     bool batch_emitted = false;      // true after the single batch is delivered
+
+    idx_t MaxThreads() const override {
+        return 1;
+    }
 
     ~LoomScanState() {
         // DUCK-03: release on ALL teardown paths. The array is never transferred
@@ -565,24 +722,81 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
 {
     auto state = make_uniq<LoomScanState>();
     auto &bind_data = input.bind_data->Cast<LoomBindData>();
+    auto runtime_plan = BuildProjectedRuntimePlan(bind_data, input);
 
-    state->column_kinds = bind_data.column_kinds;
-    state->arrow_arrays.resize(bind_data.column_payloads.size());
-    state->arrow_schemas.resize(bind_data.column_payloads.size());
+    state->projected_source_ids = runtime_plan.projected_source_ids;
+    state->output_column_count = state->projected_source_ids.size();
+    state->route_decision = runtime_plan.route_decision;
+    state->route_cache_key = runtime_plan.route_cache_key;
+    state->route_diagnostics = runtime_plan.route_diagnostics;
+    state->column_kinds.reserve(state->projected_source_ids.size());
+    for (auto source_idx : state->projected_source_ids) {
+        state->column_kinds.push_back(bind_data.column_kinds[source_idx]);
+    }
 
-    for (idx_t i = 0; i < bind_data.column_payloads.size(); i++) {
-        auto &payload = bind_data.column_payloads[i];
+    if (state->route_decision == "fail-closed" || state->route_decision == "diagnostic-only") {
+        throw IOException("%s", FormatRouteError("D-07/fail-closed",
+                                                 state->route_decision,
+                                                 state->route_diagnostics).c_str());
+    }
+
+    if (state->route_decision == "native-candidate" && state->output_column_count > 0) {
+        auto prepared = CreatePreparedRoute(*runtime_plan.runtime_plan, false);
+        auto prepared_route = ReadPreparedRoute(prepared);
+        auto prepared_diagnostics = CollectPreparedDiagnostics(prepared);
+
+        if (prepared_route == "native-candidate") {
+            uintptr_t native_buffer_count = 0;
+            RequireDuckDbRuntimeOk(loom_duckdb_prepare_native_buffer_count(prepared.Get(), &native_buffer_count),
+                                   "loom_duckdb_prepare_native_buffer_count");
+            state->native_buffers.reserve(static_cast<idx_t>(native_buffer_count));
+            for (uintptr_t i = 0; i < native_buffer_count; i++) {
+                LoomDuckDbNativeBuffer buffer {};
+                RequireDuckDbRuntimeOk(loom_duckdb_prepare_native_buffer(prepared.Get(), i, &buffer),
+                                       "loom_duckdb_prepare_native_buffer");
+                state->native_buffers.push_back(buffer);
+            }
+            state->prepared_route = std::make_unique<LoomDuckDbPreparedHolder>(std::move(prepared));
+            state->route_decision = prepared_route;
+            state->route_diagnostics = std::move(prepared_diagnostics);
+            return state;
+        }
+
+        if (prepared_route == "interpreter-fallback" || prepared_route == "diagnostic-only") {
+            state->route_decision = "interpreter-fallback";
+            state->route_diagnostics = std::move(prepared_diagnostics);
+        } else if (prepared_route == "cancelled") {
+            throw IOException("%s", FormatRouteError("D-09/cancelled",
+                                                     prepared_route,
+                                                     prepared_diagnostics).c_str());
+        } else {
+            throw IOException("%s", FormatRouteError("D-08/native-output-mismatch",
+                                                     prepared_route,
+                                                     prepared_diagnostics).c_str());
+        }
+    }
+
+    auto decode_ids = state->projected_source_ids;
+    if (decode_ids.empty() && !bind_data.column_payloads.empty()) {
+        decode_ids.push_back(0);
+    }
+    state->arrow_arrays.resize(decode_ids.size());
+    state->arrow_schemas.resize(decode_ids.size());
+
+    for (idx_t output_idx = 0; output_idx < decode_ids.size(); output_idx++) {
+        const auto source_idx = decode_ids[output_idx];
+        auto &payload = bind_data.column_payloads[source_idx];
         int32_t rc = loom_decode(
             payload.data(),
             payload.size(),
-            reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[i]),
-            reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[i]));
+            reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[output_idx]),
+            reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[output_idx]));
 
         // PITFALLS P5 / panic-safety: check the return code BEFORE touching outputs.
         // On nonzero the output pointers contain uninitialized data — never use them.
         if (rc != 0) {
             throw IOException("loom_decode failed for column %llu with code %d",
-                              static_cast<unsigned long long>(i),
+                              static_cast<unsigned long long>(source_idx),
                               static_cast<int>(rc));
         }
     }
@@ -678,6 +892,97 @@ static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
     }
 }
 
+template <class T>
+static void FillNativeFixedWidthVector(const LoomDuckDbNativeBuffer &buffer,
+                                       Vector &vec,
+                                       idx_t count,
+                                       const char *kind) {
+    if (buffer.value_ptr == nullptr) {
+        throw IOException("loom_scan: native %s values buffer is null", kind);
+    }
+    const auto expected_len = count * sizeof(T);
+    if (buffer.value_len < expected_len) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native %s buffer has %llu bytes, expected at least %llu",
+                          kind,
+                          static_cast<unsigned long long>(buffer.value_len),
+                          static_cast<unsigned long long>(expected_len));
+    }
+
+    auto *out_data = FlatVector::GetData<T>(vec);
+    for (idx_t i = 0; i < count; i++) {
+        T value;
+        std::memcpy(&value, buffer.value_ptr + (i * sizeof(T)), sizeof(T));
+        out_data[i] = value;
+    }
+}
+
+static idx_t NativeTypeWidth(LoomValueKind kind) {
+    switch (kind) {
+    case LoomValueKind::I32:
+    case LoomValueKind::F32:
+        return 4;
+    case LoomValueKind::I64:
+    case LoomValueKind::F64:
+        return 8;
+    case LoomValueKind::BOOL:
+    case LoomValueKind::UTF8:
+        throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
+    }
+    throw InternalException("unknown LoomValueKind");
+}
+
+static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &state,
+                                                          idx_t output_idx);
+
+static idx_t NativeRowCount(const LoomScanState &state) {
+    if (state.native_buffers.empty()) {
+        return 0;
+    }
+    if (state.column_kinds.empty()) {
+        return 0;
+    }
+    const auto width = NativeTypeWidth(state.column_kinds[0]);
+    if (width == 0) {
+        return 0;
+    }
+    return static_cast<idx_t>(NativeBufferForOutput(state, 0).value_len / width);
+}
+
+static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &state,
+                                                          idx_t output_idx) {
+    if (state.native_buffers.size() == state.projected_source_ids.size()) {
+        return state.native_buffers[output_idx];
+    }
+    const auto source_idx = state.projected_source_ids[output_idx];
+    if (source_idx < state.native_buffers.size()) {
+        return state.native_buffers[source_idx];
+    }
+    throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native buffer count does not match projected source columns");
+}
+
+static void FillNativeVector(const LoomDuckDbNativeBuffer &buffer,
+                             LoomValueKind kind,
+                             Vector &vec,
+                             idx_t count) {
+    switch (kind) {
+    case LoomValueKind::I32:
+        FillNativeFixedWidthVector<int32_t>(buffer, vec, count, "Int32");
+        break;
+    case LoomValueKind::I64:
+        FillNativeFixedWidthVector<int64_t>(buffer, vec, count, "Int64");
+        break;
+    case LoomValueKind::F32:
+        FillNativeFixedWidthVector<float>(buffer, vec, count, "Float32");
+        break;
+    case LoomValueKind::F64:
+        FillNativeFixedWidthVector<double>(buffer, vec, count, "Float64");
+        break;
+    case LoomValueKind::BOOL:
+    case LoomValueKind::UTF8:
+        throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
+    }
+}
+
 static void LoomScan(
     ClientContext & /*ctx*/,
     TableFunctionInput &data,
@@ -690,6 +995,23 @@ static void LoomScan(
     // released in ~LoomScanState regardless; DUCK-03.)
     if (state.batch_emitted) {
         output.SetCardinality(0);
+        return;
+    }
+
+    if (state.route_decision == "native-candidate") {
+        if (state.native_buffers.empty()) {
+            throw IOException("%s", FormatRouteError("D-12/native-claim-without-buffers",
+                                                     state.route_decision,
+                                                     state.route_diagnostics).c_str());
+        }
+
+        const auto count = NativeRowCount(state);
+        output.SetCardinality(count);
+        for (idx_t col = 0; col < state.output_column_count; col++) {
+            const auto &buffer = NativeBufferForOutput(state, col);
+            FillNativeVector(buffer, state.column_kinds[col], output.data[col], count);
+        }
+        state.batch_emitted = true;
         return;
     }
 
@@ -710,7 +1032,7 @@ static void LoomScan(
 
     output.SetCardinality(count);
 
-    for (idx_t col = 0; col < state.arrow_arrays.size(); col++) {
+    for (idx_t col = 0; col < state.output_column_count; col++) {
         const auto &col_arr = state.arrow_arrays[col];
         if (static_cast<idx_t>(col_arr.length) != count) {
             throw IOException("loom_scan: decoded column length mismatch");
