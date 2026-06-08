@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-06-08T22:31:47Z"
-last_activity: 2026-06-08 -- Phase 28 plan 28-02 complete
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-06-08T22:40:31.517Z"
+last_activity: 2026-06-08 -- Phase 28 plan 28-03 complete
 progress:
   total_phases: 30
   completed_phases: 22
   total_plans: 117
-  completed_plans: 94
+  completed_plans: 96
   percent: 73
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 28 (iceberg-ref-table-binding) — EXECUTING
-Plan: 3 of 5
-Status: Executing Phase 28
-Last activity: 2026-06-08 -- Phase 28 plan 28-02 complete
+Plan: 4 of 5
+Status: Ready to execute
+Last activity: 2026-06-08 -- Phase 28 plan 28-03 complete
 
 Progress: 90%
 
@@ -37,7 +37,7 @@ Progress: 90%
 - Completed phases: 27 / 30
 - Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 plan 28-02 complete; next plan is 28-03 accepted binding validation with verifier/hash/source/oracle evidence
+- Current position: Phase 28 plan 28-03 complete; next plan is 28-04
 - Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed and is wired into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke
 
 **Completed phase plan counts:**
@@ -121,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P04]: Legacy readability uses actual older writer outputs from parquet 57.0.0 and lance 6.0.0 paired with sibling verifier-accepted Loom artifacts.
 - [Phase 27]: Phase 27 legacy proof remains hard-gated on actual older-version Lance and Parquet fixture paths plus paired verifier-accepted Loom artifacts.
 - [Phase 27]: The main release verifier runs Phase 27 after Phase 26 source ingress and before DuckDB SQL smoke.
+- [Phase 28]: 28-03: Accepted Iceberg bindings require local artifact bytes, recomputed SHA-256, live verify_artifact acceptance, and a sidecar-referenced evidence JSON artifact before bytes are returned.
+- [Phase 28]: 28-03: Sidecar verifier/source/oracle accepted flags are required descriptive inputs only; they are never sufficient to construct accepted binding evidence.
 
 ### Pending Todos
 
@@ -264,8 +266,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T22:24:29Z
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-06-08T22:40:24.087Z
+Stopped at: Completed 28-03-PLAN.md
 
 Phase 17 handoff:
 
@@ -330,3 +332,4 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P04 | 62m | 3 tasks | 20 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P05 | 57m | 3 tasks | 3 files |
 | Phase 28-iceberg-ref-table-binding P01 | 4m | 3 tasks | 8 files |
+| Phase 28-iceberg-ref-table-binding P03 | 5m37s | 3 tasks | 8 files |
