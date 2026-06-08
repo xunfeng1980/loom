@@ -244,6 +244,30 @@ fn assert_no_accepted_bytes(result: Result<IcebergBindingAcceptedArtifact, Icebe
     }
 }
 
+fn assert_no_accepted_bytes_with_diagnostic(
+    result: Result<IcebergBindingAcceptedArtifact, IcebergBindingReport>,
+    expected: &str,
+) {
+    match result {
+        Ok(accepted) => panic!(
+            "mismatch unexpectedly returned {} accepted bytes",
+            accepted.bytes.len()
+        ),
+        Err(report) => {
+            assert_ne!(report.status, IcebergBindingStatus::Accepted);
+            assert!(report.evidence.is_none());
+            assert!(
+                report
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.contains(expected)),
+                "expected diagnostic containing {expected:?}, got {:?}",
+                report.diagnostics
+            );
+        }
+    }
+}
+
 #[test]
 fn static_mismatch_sidecars_fail_before_artifact_bytes_are_trusted() {
     for fixture in [
@@ -442,17 +466,32 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
 fn stale_source_and_forged_oracle_evidence_flags_return_no_bytes() {
     let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
 
-    for fixture in ["stale-source-evidence.json", "forged-oracle-evidence.json"] {
+    for (fixture, expected) in [
+        (
+            "stale-source-evidence.json",
+            "source evidence SHA-256 does not match local source bytes",
+        ),
+        (
+            "forged-oracle-evidence.json",
+            "decoded-row fixture values SHA-256 does not match verified Loom artifact values",
+        ),
+    ] {
+        let evidence_text = std::fs::read_to_string(local_fixture(fixture))
+            .expect("read mismatch evidence fixture")
+            .replace(
+                "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7",
+                &artifact_sha256,
+            );
+        write_json(&sidecar.with_file_name(fixture), evidence_text);
         let forged_sidecar = sidecar.with_file_name(format!("{fixture}.sidecar.json"));
         write_json(
             &forged_sidecar,
             sidecar_json(&artifact, &artifact_sha256, Some(fixture), true, true, true),
         );
-        assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
-            &metadata,
-            &forged_sidecar,
-            &artifact,
-        ));
+        assert_no_accepted_bytes_with_diagnostic(
+            bind_iceberg_ref_from_paths(&metadata, &forged_sidecar, &artifact),
+            expected,
+        );
     }
 }
 

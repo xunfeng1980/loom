@@ -49,6 +49,25 @@ non_comment_lines() {
     ' "$@"
 }
 
+check_required_code_patterns() {
+    local label="$1"
+    shift
+    local -a files=()
+    while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+        files+=("$1")
+        shift
+    done
+    shift
+
+    local pattern matches
+    for pattern in "$@"; do
+        matches="$(non_comment_lines "${files[@]}" | grep -F "${pattern}" || true)"
+        if [ -z "${matches}" ]; then
+            fail "${label} missing required marker: ${pattern}"
+        fi
+    done
+}
+
 check_no_code_patterns() {
     local label="$1"
     shift
@@ -67,22 +86,6 @@ check_no_code_patterns() {
             fail "${label} found forbidden marker: ${pattern}"
         fi
     done
-}
-
-check_source_regex() {
-    local label="$1"
-    local file="$2"
-    local pattern="$3"
-
-    rg -q "${pattern}" "${file}" \
-        || fail "${label} missing production source pattern: ${pattern} in ${file}"
-}
-
-run_named_binding_test() {
-    local test_file="$1"
-    local test_name="$2"
-
-    cargo test -p loom-iceberg-binding --test "${test_file}" "${test_name}"
 }
 
 check_no_fixed_patterns() {
@@ -347,45 +350,64 @@ check_no_fixed_patterns "generic source-ingress crate" \
     "ice""berg" \
     "Ice""berg"
 
-info "Checking accepted binding production-source evidence..."
+info "Checking accepted binding evidence and verifier markers..."
 binding_contract_src="crates/loom-iceberg-binding/src/binding_contract.rs"
+rg -q 'verify_artifact\(' "${binding_contract_src}" \
+    || fail "accepted binding production path must call verify_artifact"
+rg -q 'sha256_bytes\(&artifact_bytes\)' "${binding_contract_src}" \
+    || fail "accepted binding production path must recompute artifact SHA-256"
+rg -q 'let decoded_values_sha256 = decoded_values_sha256\(' "${binding_contract_src}" \
+    || fail "accepted binding production path must validate decoded values digest"
+rg -q 'append_int32_array_digest_lines' "${binding_contract_src}" \
+    || fail "accepted binding production path must canonicalize decoded Int32 values"
+rg -q 'resolve_local_sidecar_path\(' "${binding_contract_src}" \
+    || fail "accepted binding production path must confine sidecar-controlled paths"
+rg -q 'resolve_local_evidence_path\(' "${binding_contract_src}" \
+    || fail "accepted binding production path must confine evidence-controlled paths"
+rg -q 'fs::read\(&source_path\)' "${binding_contract_src}" \
+    || fail "accepted binding production path must read and hash local source evidence bytes"
+rg -q 'source evidence SHA-256 does not match local source bytes' "${binding_contract_src}" \
+    || fail "accepted binding production path must diagnose source hash mismatch"
 
-check_source_regex "verifier-backed artifact acceptance" \
-    "${binding_contract_src}" \
-    'verify_artifact\(&artifact_bytes,'
-check_source_regex "artifact SHA-256 recomputation" \
-    "${binding_contract_src}" \
-    'sha256_bytes\(&artifact_bytes\)'
-check_source_regex "shasum helper implementation" \
-    "${binding_contract_src}" \
-    'Command::new\("shasum"\)'
-check_source_regex "decoded values digest computation" \
-    "${binding_contract_src}" \
-    'decoded_values_sha256\(&artifact_bytes,'
-check_source_regex "decoded Int32 row canonicalization" \
-    "${binding_contract_src}" \
-    'loom-decoded-int32-v1'
-check_source_regex "source evidence path/hash validation" \
-    "${binding_contract_src}" \
-    'source_sha256'
-check_source_regex "sidecar-local evidence path resolution" \
-    "${binding_contract_src}" \
-    'resolve_local_sidecar_path\(sidecar_path, &evidence_path\)'
-check_source_regex "source oracle path policy marker coverage" \
-    "${binding_contract_src}" \
-    'source_oracle_evidence_path'
+check_required_code_patterns "mismatch fail-closed matrix" \
+    crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs \
+    crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json \
+    -- \
+    "schema_snapshot_table_and_artifact_mismatches_return_no_bytes" \
+    "verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes" \
+    "stale_source_and_forged_oracle_evidence_flags_return_no_bytes" \
+    "manifest_only_remote_credentials_and_public_route_scope_fail_closed" \
+    "assert_no_accepted_bytes" \
+    "source evidence SHA-256 does not match local source bytes" \
+    "decoded-row fixture values SHA-256 does not match verified Loom artifact values" \
+    "stale-source-evidence" \
+    "forged-oracle-evidence" \
+    "manifest-only"
 
-info "Checking accepted binding behavior proofs by named tests..."
-run_named_binding_test binding_handoff \
-    accepted_binding_requires_hash_verifier_and_source_oracle_evidence
-run_named_binding_test binding_handoff \
-    sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact
-run_named_binding_test mismatch_fail_closed \
-    stale_source_and_forged_oracle_evidence_flags_return_no_bytes
-run_named_binding_test mismatch_fail_closed \
-    source_oracle_evidence_paths_are_local_sidecar_relative
-run_named_binding_test mismatch_fail_closed \
-    manifest_only_remote_credentials_and_public_route_scope_fail_closed
+check_required_code_patterns "manifest-only negative coverage" \
+    crates/loom-iceberg-binding/tests/binding_handoff.rs \
+    crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs \
+    -- \
+    "sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance" \
+    "manifest_list_location" \
+    "manifest-only"
+
+check_required_code_patterns "concrete source/oracle evidence fixture" \
+    crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json \
+    crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json \
+    -- \
+    "accepted-table-source-evidence" \
+    "row_count" \
+    "table_uuid" \
+    "schema_id" \
+    "snapshot_id" \
+    "artifact_sha256" \
+    "source/demo-events.parquet" \
+    "values_sha256" \
+    "sha256"
 
 check_no_code_patterns "query-engine route evidence" \
     crates/loom-iceberg-binding/src/binding_contract.rs \

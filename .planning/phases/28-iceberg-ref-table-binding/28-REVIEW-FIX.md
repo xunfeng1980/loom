@@ -67,3 +67,23 @@ None.
 _Fixed: 2026-06-08T23:17:22Z_
 _Fixer: the agent (gsd-code-fixer)_
 _Iteration: 1_
+
+## Final Review Follow-up
+
+**Source review:** `.planning/phases/28-iceberg-ref-table-binding/28-REVIEW-FINAL.md`
+**Status:** fixed: verified
+
+### CR-01: BLOCKER - Phase 28 release gate fails on stale production-source regexes
+
+**Files modified:** `scripts/iceberg-binding-test.sh`
+**Applied fix:** Replaced stale regex checks for the previous decoded-value marker with checks aligned to the implemented `decoded_values_sha256(...)` validation, `append_int32_array_digest_lines(...)` canonicalization, sidecar/evidence path confinement, local source byte hashing, and explicit source-hash mismatch diagnostics. Removed reliance on stale named-test invocations from the gate.
+
+### WR-01: WARNING - Stale source fixture bypasses the source hash mismatch branch
+
+**Files modified:** `crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json`, `crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs`
+**Applied fix:** Updated the stale-source fixture to the current nested `source.path`/`source.sha256` schema while keeping an intentionally stale source hash. The regression test now copies the bad evidence into the dynamic temp bundle, rewrites only the artifact hash to match the generated artifact, and asserts the exact source-hash or decoded-values diagnostic for stale and forged evidence respectively.
+
+### Follow-up Verification
+
+- `cargo test -p loom-iceberg-binding --test mismatch_fail_closed stale_source_and_forged_oracle_evidence_flags_return_no_bytes` passed
+- `bash scripts/iceberg-binding-test.sh` passed
