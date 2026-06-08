@@ -40,6 +40,9 @@ pub mod full_verifier;
 /// Verifier-gated native-lowering support checks for the Phase 14 spike.
 pub mod native_lowering;
 
+/// Unified artifact-facing verifier report model for Phase 17+.
+pub mod artifact_verifier;
+
 /// Human-readable MVP0 layout descriptor codec.
 pub mod descriptor;
 
