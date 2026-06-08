@@ -16,7 +16,9 @@ use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationFacts, ArtifactVerificationOptions,
     ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
 };
-use loom_core::container_codec::decode_layout_payload_maybe_container;
+use loom_core::container_codec::{
+    decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
+};
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::production_native_lowering::{
@@ -629,6 +631,18 @@ impl LoomDuckDbPrepared {
 }
 
 fn test_native_facts_for_artifact(artifact: &[u8]) -> DuckDbTestNativeFacts {
+    if let Ok(table) = decode_table_payload_maybe_container(artifact) {
+        return DuckDbTestNativeFacts {
+            row_count: table.row_count as u64,
+            columns: table
+                .columns
+                .iter()
+                .map(|column| column.layout.data_type.clone())
+                .collect(),
+            test_jit_value_buffers: None,
+        };
+    }
+
     let (row_count, data_type) = decode_layout_payload_maybe_container(artifact)
         .map(|desc| (desc.row_count as u64, desc.data_type))
         .unwrap_or((0, DataType::Int32));
