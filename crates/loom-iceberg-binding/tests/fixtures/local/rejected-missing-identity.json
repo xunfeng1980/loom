@@ -1,0 +1,22 @@
+{
+  "format-version": 2,
+  "location": "tests/fixtures/local/warehouse/demo/events",
+  "current-schema-id": 7,
+  "current-snapshot-id": 314159,
+  "snapshots": [
+    {
+      "snapshot-id": 314159,
+      "schema-id": 7,
+      "manifest-list": "tests/fixtures/local/metadata/snap-314159.avro"
+    }
+  ],
+  "refs": {
+    "main": {
+      "snapshot-id": 314159,
+      "type": "branch"
+    }
+  },
+  "properties": {
+    "loom.table.name": "demo.events"
+  }
+}
