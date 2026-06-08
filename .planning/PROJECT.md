@@ -27,18 +27,17 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Rust core exports a real Arrow array across FFI via the Arrow C Data Interface (`to_ffi` + `ptr::write`, correct release ownership), verified by an outside-DuckDB roundtrip + release test — Phase 1
 - ✓ Thin C++ DuckDB v1.5.3 extension (`loom_scan` table function) links `libloom_ffi.a`, calls `loom_decode`, and exposes the decoded column as a DuckDB-queryable table — `SELECT * FROM loom_scan('test.bin')` returns the decoded rows via an unsigned, footer-stamped extension — Phase 2 (Arrow→DuckDB import via direct DataChunk population; arrow_scan/stream path deferred to Phase 3 — see 02-CONTEXT.md D-01 REVISED)
 - ✓ L1 decode core: `LayoutNode` model + `synthesized_read_loop` interpreter decoding Raw / BitPack / FrameOfReference with per-row validity routing, a from-scratch FastLanes transposed bit-unpack (zero vortex/fastlanes dependency — D-02), and typed Arrow `OutputBuilder` (Int32/Int64). `loom-fixtures` `vortex_reader`/`oracle` prove loom-core matches Vortex's own decoder row-for-row for bitpack + FOR (incl. nullable); no arm panics on malformed input — Phase 3
+- ✓ Remaining L1 encodings and L2 escape: dictionary lookup, run-end expansion, Boolean builder support, `KernelEscape`, `L2KernelRegistry`, and the FOR-over-Raw reference fix are implemented and verified against Vortex fixtures — Phase 4
+- ✓ FSST L2 kernel and dict-over-FSST path: Loom-owned FSST params decode UTF-8 strings through typed Arrow builders, with row-for-row Vortex oracle coverage — Phase 5
+- ✓ MVP0 DuckDB acceptance gate: generated `.loom` payloads for bitpack, FOR, dict, RLE, FSST, and dict-over-FSST all pass exact SQL row and aggregate checks through `loom_scan` — Phase 5
+- ✓ MVP0 release baseline: README and planning state reflect the completed MVP0 surface, `scripts/mvp0-verify.sh` runs the full release gate, and Phase 7 descriptor/CLI handoff notes are recorded — Phase 6
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Rust decoder core that interprets an L1 declarative layout description (no codegen, no MLIR)
-- [ ] L1 built-in declarative encodings: bit-packing, FOR (frame-of-reference), dictionary, RLE — pure data, decoded by a synthesized read loop
-- [ ] L2 escape mechanism: an L1 segment can reference an L2 kernel by id
-- [ ] One L2 total-function kernel: FSST string decompression
-- [ ] Decoder produces well-formed Arrow via typed builder operations (append_value / append_null / list / struct), materialized as ArrowArray + ArrowSchema
-- [ ] Input: a single serialized Vortex encoded array/column (one of the L1-expressible encodings, or FSST-encoded strings)
-- [ ] Verification harness: DuckDB SELECT/aggregate over the Loom-decoded column matches Vortex's official decoder row-for-row
+- [ ] Recommended Phase 7: human-readable layout descriptor plus CLI inspect/decode surface
+- [ ] Recommended Phase 8: multi-column table output and possible ArrowArrayStream revisit
 
 ### Out of Scope
 
@@ -75,16 +74,18 @@ If only one thing works, it is this end-to-end chain.
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Build MVP0 on DuckDB as the host engine | Real engine to prove the chain end-to-end; "runnable prototype first" | — Pending |
-| Decoder core in Rust | Vortex is Rust-native; path to eventual memory/safety model | — Pending |
-| Integrate via a C++ DuckDB extension (table function) | Most engine-native interface; truest to "code travels with data" | — Pending |
-| Rust↔C++ bridge = Arrow C Data Interface | Zero-copy, language-neutral, matches Loom's Arrow-only output contract | — Pending |
-| Target format = Vortex, single encoded column | Real-world encodings; bounded scope; closest to the design's worked example | — Pending |
-| Scope = L1 (bitpack/FOR/dict/RLE) + one L2 kernel | Smallest set that demonstrates the declarative layer *and* the L2 escape | — Pending |
-| L2 kernel = FSST string decompression | Canonical "can't be declared, must compute" case in the Vortex world | — Pending |
-| Interpret directly; no MLIR in MVP0 | Prove correctness/feasibility now; native speed is a later act | — Pending |
-| Acceptance = DuckDB SQL results match Vortex's decoder row-for-row | Concrete, end-to-end, falsifiable success bar | — Pending |
-| Defer the verifier / safety-boundary demo | MVP0 proves the decode chain, not the sandbox; safety is a later milestone | — Pending |
+| Build MVP0 on DuckDB as the host engine | Real engine to prove the chain end-to-end; "runnable prototype first" | Complete — Phase 5 |
+| Decoder core in Rust | Vortex is Rust-native; path to eventual memory/safety model | Complete — Phase 5 |
+| Integrate via a C++ DuckDB extension (table function) | Most engine-native interface; truest to "code travels with data" | Complete — Phase 5 |
+| Rust↔C++ bridge = Arrow C Data Interface | Zero-copy, language-neutral, matches Loom's Arrow-only output contract | Complete for single-column MVP0 |
+| Target format = Vortex, single encoded column | Real-world encodings; bounded scope; closest to the design's worked example | Complete — Phase 5 |
+| Scope = L1 (bitpack/FOR/dict/RLE) + one L2 kernel | Smallest set that demonstrates the declarative layer *and* the L2 escape | Complete — Phase 5 |
+| L2 kernel = FSST string decompression | Canonical "can't be declared, must compute" case in the Vortex world | Complete — Phase 5 |
+| Interpret directly; no MLIR in MVP0 | Prove correctness/feasibility now; native speed is a later act | Complete — Phase 5 |
+| Acceptance = DuckDB SQL results match Vortex's decoder row-for-row | Concrete, end-to-end, falsifiable success bar | Complete — Phase 5 |
+| Defer the verifier / safety-boundary demo | MVP0 proves the decode chain, not the sandbox; safety is a later milestone | Still deferred |
+| Phase 6 before descriptor/CLI | A clean baseline prevents v2 work from inheriting stale docs or fragile verification steps | Complete — Phase 6 |
+| Phase 7 should prioritize descriptor/CLI before more kernels | Loom's next proof point is an independent, inspectable decoder contract rather than broader kernel coverage | Recommended next |
 
 ## Evolution
 
@@ -104,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-07 after Phase 3 (L1 Bitpack, FOR, and Arrow Builders) — verification passed 9/9; loom-core decodes Raw/BitPack/FOR into typed Arrow with row-for-row Vortex-oracle equality, zero vortex/fastlanes deps (D-02). Code review caught an unchecked-multiply panic in decode_raw (CR-01), fixed inline with a checked_mul guard + regression test. CR-02 (decode_for non-BitPack fallback drops the FOR reference) carried forward as a non-blocking Phase-4 landmine — unreachable in Phase 3.*
+*Last updated: 2026-06-08 after Phase 6 (MVP0 Hardening and Release Baseline) — MVP0 has a one-command release gate via `scripts/mvp0-verify.sh`, public docs distinguish the interpreter demo from the full Loom design, and Phase 7 is ready to focus on human-readable descriptors plus CLI tooling.*

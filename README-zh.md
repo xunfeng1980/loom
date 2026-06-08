@@ -14,6 +14,36 @@ Loom 是一种**随数据分发的解码器表示**:面向服务端数据引擎,
 
 ---
 
+## 当前 MVP0 实现
+
+当前仓库实现的是基于解释器的 MVP0,不是下文描述的完整分发型 IR。当前跑通的链路是:
+
+```
+in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
+  -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
+```
+
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致。
+
+运行完整 Phase 6 release gate:
+
+```bash
+bash scripts/mvp0-verify.sh
+```
+
+该 gate 覆盖的底层检查也可以手动运行:
+
+```bash
+cargo test --workspace
+cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
+rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
+bash scripts/duckdb-smoke-test.sh
+```
+
+当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。人类可读 descriptor、CLI、多列输出、verifier、MLIR/native lowering、完整 `.vortex` 文件支持都属于后续 milestone。
+
+---
+
 ## 1. 目标与非目标
 
 **目标**
@@ -187,6 +217,8 @@ statistics(input, range)                              -> ColumnStats   // 可选
 ---
 
 ## 12. 与既有方案的对位
+
+详细对比文档：[.planning/research/POSITIONING.md](.planning/research/POSITIONING.md)。
 
 | | 分发可移植 | 不可信沙箱 | 全函数(可证终止) | 原生满速 | 目标中立/版本稳定 | 强制 Arrow 输出 |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|

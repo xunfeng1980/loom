@@ -14,6 +14,36 @@ It is **not a smaller WebAssembly**, but a different species: **a non-general, n
 
 ---
 
+## Current MVP0 Implementation
+
+The repository currently implements an interpreter-based MVP0, not the complete distribution IR described below. The working path is:
+
+```
+in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
+  -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
+```
+
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures.
+
+Run the full Phase 6 release gate:
+
+```bash
+bash scripts/mvp0-verify.sh
+```
+
+The gate runs the same underlying checks manually available as:
+
+```bash
+cargo test --workspace
+cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
+rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
+bash scripts/duckdb-smoke-test.sh
+```
+
+The current `.loom` payload format is an MVP0 internal fixture format. Human-readable descriptors, CLI tooling, multi-column output, the verifier, MLIR/native lowering, and full `.vortex` file support are future milestones.
+
+---
+
 ## 1. Goals and Non-Goals
 
 **Goals**
@@ -187,6 +217,8 @@ statistics(input, range)                              -> ColumnStats   // option
 ---
 
 ## 12. Positioning Against Existing Approaches
+
+Detailed comparison note: [.planning/research/POSITIONING.md](.planning/research/POSITIONING.md).
 
 | | Distribution-portable | Untrusted sandbox | Total function (provably terminating) | Native full-speed | Target-neutral / version-stable | Mandatory Arrow output |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|

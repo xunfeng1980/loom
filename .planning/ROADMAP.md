@@ -25,6 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: L1 Bitpack, FOR, and Arrow Builders** - Implement the core decode infrastructure (Arrow typed builders, vortex_reader, LayoutNode model) and the first two L1 decoders with null handling (completed 2026-06-07)
 - [x] **Phase 4: L1 Dict, RLE, and L2 Escape Infrastructure** - Complete the remaining L1 decoders and wire the KernelEscape arm + L2KernelRegistry (FSST stub) so the full routing chain exists (completed 2026-06-07)
 - [x] **Phase 5: FSST L2 Kernel and Full Verification** - Implement the FSST L2 kernel and run the row-for-row verification harness across all encodings — the MVP0 acceptance gate (completed 2026-06-08)
+- [x] **Phase 6: MVP0 Hardening and Release Baseline** - Convert the completed MVP0 into a reproducible, documented baseline with one-command verification, stale planning cleanup, and explicit next-milestone boundaries (completed 2026-06-08)
 
 ## Phase Details
 
@@ -53,7 +54,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 2: DuckDB Extension Scaffold
 
-**Goal**: A stub DuckDB extension pinned to v1.5.3 builds, loads into DuckDB, and invokes the Rust stub decoder without crashing Ã¢ÂÂ proving the full CMake + Rust staticlib + DuckDB ABI chain
+**Goal**: A stub DuckDB extension pinned to v1.5.3 builds, loads into DuckDB, and invokes the Rust stub decoder without crashing -- proving the full CMake + Rust staticlib + DuckDB ABI chain
 **Depends on**: Phase 1
 **Requirements**: DUCK-01, DUCK-02, DUCK-03
 **Success Criteria** (what must be TRUE):
@@ -82,7 +83,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
   1. A programmatically constructed BitPacked Vortex array (non-byte-aligned width, e.g. 11-bit) decodes to an Arrow Int32Array whose values match the original input row-for-row
   2. A FrameOfReference column layered on bitpacking decodes correctly, with the reference scalar added to every unpacked value
-  3. At least one nullable column per encoding (bitpack, FOR) round-trips with nulls intact Ã¢ÂÂ `COUNT(col)` vs `COUNT(*)` in the Arrow output matches expected null count
+  3. At least one nullable column per encoding (bitpack, FOR) round-trips with nulls intact -- `COUNT(col)` vs `COUNT(*)` in the Arrow output matches expected null count
   4. `arrow_builder_output::finish()` produces `ArrayData` that can be exported via `to_ffi` without compile errors (arrow-rs version conflict would surface here)
   5. No `.vortex` file is read or written; all test inputs are constructed via `vortex-array` builder APIs in Rust
 
@@ -119,7 +120,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 5: FSST L2 Kernel and Full Verification
 
-**Goal**: The FSST L2 kernel decompresses FSST-encoded strings and dict-over-FSST columns correctly, and a DuckDB SQL query over a Loom-decoded column matches Vortex's own decoder row-for-row Ã¢ÂÂ the MVP0 acceptance gate
+**Goal**: The FSST L2 kernel decompresses FSST-encoded strings and dict-over-FSST columns correctly, and a DuckDB SQL query over a Loom-decoded column matches Vortex's own decoder row-for-row -- the MVP0 acceptance gate
 **Depends on**: Phase 4
 **Requirements**: L2-02, L2-03, VERIFY-01, VERIFY-02, VERIFY-03
 **Success Criteria** (what must be TRUE):
@@ -140,10 +141,33 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 05-03-PLAN.md - MVP0 layout payload codec, non-empty FFI input decode, Utf8 Arrow C buffer coverage (VERIFY-02, VERIFY-03)
 - [x] 05-04-PLAN.md - DuckDB payload emitter, payload-aware loom_scan, and final SQL acceptance gate (VERIFY-01, VERIFY-02, VERIFY-03)
 
+### Phase 6: MVP0 Hardening and Release Baseline
+
+**Goal**: The completed MVP0 is reproducible and reviewable from a clean checkout: documentation reflects the actual implementation, stale planning state is resolved, one command runs the acceptance gate, and build hygiene prevents stale Rust/C++ artifacts from masking regressions
+**Depends on**: Phase 5
+**Requirements**: BASE-01, DOC-01, DOC-02, VERIFY-04, BUILD-01
+**Success Criteria** (what must be TRUE):
+
+  1. `.planning/PROJECT.md`, `.planning/STATE.md`, `.planning/ROADMAP.md`, and `.planning/REQUIREMENTS.md` agree that MVP0 is complete and Phase 6 is the active hardening phase
+  2. README documents the current MVP0 implementation status, exact verification commands, and links the Vortex/AnyBlox/F3 positioning note
+  3. A single script, `scripts/mvp0-verify.sh`, runs the full release gate: workspace tests, core dependency guard, fixture hygiene grep, and DuckDB SQL smoke test
+  4. The DuckDB extension build path cannot silently reuse a stale Rust staticlib during the release gate
+  5. Phase 6 final verification passes from the repository root without requiring manual cleanup of generated fixture or extension outputs
+
+**Plans**: 3 plans across 3 waves
+
+- **Wave 1**: `06-01` Planning-state and README consistency cleanup
+- **Wave 2** *(blocked on Wave 1 completion)*: `06-02` One-command MVP0 verification gate and build hygiene
+- **Wave 3** *(blocked on Wave 2 completion)*: `06-03` Baseline audit, final docs, and Phase 7 readiness notes
+
+- [x] 06-01-PLAN.md - Update state/project/requirements/README, resolve stale blockers, and fix roadmap mojibake (BASE-01, DOC-01, DOC-02)
+- [x] 06-02-PLAN.md - Add `scripts/mvp0-verify.sh`, strengthen Rust staticlib rebuild behavior, and verify the full gate (VERIFY-04, BUILD-01)
+- [x] 06-03-PLAN.md - Run final baseline audit, record verification output, and prepare Phase 7 descriptor/CLI handoff notes (BASE-01, VERIFY-04)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 Ã¢ÂÂ 5
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -152,3 +176,4 @@ Phases execute in numeric order: 1 Ã¢ÂÂ 2 Ã¢ÂÂ 3 Ã¢ÂÂ 4 
 | 3. L1 Bitpack, FOR, and Arrow Builders | 2/2 | Complete    | 2026-06-07 |
 | 4. L1 Dict, RLE, and L2 Escape Infrastructure | 2/2 | Complete   | 2026-06-07 |
 | 5. FSST L2 Kernel and Full Verification | 4/4 | Complete | 2026-06-08 |
+| 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |

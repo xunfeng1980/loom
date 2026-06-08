@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: completed
-stopped_at: Phase 05 context gathered
-last_updated: "2026-06-08T00:14:44.168Z"
-last_activity: 2026-06-08 -- Phase 05 marked complete
+stopped_at: Phase 06 complete
+last_updated: "2026-06-08T00:00:00.000Z"
+last_activity: 2026-06-08 -- Phase 06 marked complete
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over a Vortex-encoded column decoded by the Loom interpreter, and get results that match Vortex's own decoder row-for-row.
-**Current focus:** Phase 05 — fsst-l2-kernel-and-full-verification
+**Current focus:** Phase 06 — mvp0-hardening-and-release-baseline complete; Phase 07 recommended next
 
 ## Current Position
 
-Phase: 05 — COMPLETE
-Plan: 4 of 4
-Status: Phase 05 complete
-Last activity: 2026-06-08 -- Phase 05 marked complete
+Phase: 06 — COMPLETE
+Plan: 3 of 3
+Status: Phase 06 complete
+Last activity: 2026-06-08 -- Phase 06 marked complete
 
 Progress: [██████████] 100%
 
@@ -67,6 +67,9 @@ Progress: [██████████] 100%
 | Phase 05 P02 | 17 min | 3 tasks | 5 files |
 | Phase 05 P03 | 5 min | 3 tasks | 6 files |
 | Phase 05 P04 | 9 min | 4 tasks | 6 files |
+| Phase 06 P01 | 5 min | 3 tasks | 8 files |
+| Phase 06 P02 | 5 min | 4 tasks | 2 files |
+| Phase 06 P03 | 5 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -104,9 +107,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 planning: **arrow_scan / ArrowArrayStream import path (D-01 deferred from Phase 2).** Phase 2 used direct DataChunk population because `arrow_scan` needs a top-level struct/record-batch schema and `loom_decode` emitted a bare primitive Int32 array. When Phase 3's real columnar decode produces record-batch-shaped output, replace `LoomScan`'s direct population with the `arrow_scan`/stream path. See 02-CONTEXT.md "D-01 REVISED".
-- Phase 4 planning: confirm `DictArray` sub-array accessor names in vortex-dict 0.74 source before planning (flagged in research/SUMMARY.md)
-- Phase 5 planning: confirm `FsstArray` internal field names in vortex-fsst 0.74 and `ArrowToDuckDB` include path/signature before planning (flagged in research/SUMMARY.md)
+- Phase 7 candidate: human-readable layout descriptor and CLI inspect/decode surface. See `.planning/phases/06-mvp0-hardening-and-release-baseline/06-HANDOFF.md`.
+- Phase 8 candidate: **arrow_scan / ArrowArrayStream import path.** Direct `DataChunk` population is acceptable for the single-column MVP0; revisit only when multi-column record-batch-shaped output exists.
 
 ### Quick Tasks Completed
 
@@ -124,6 +126,10 @@ None yet.
 | v2 | DX-04: Wall-clock timing comparison | Deferred | Roadmap |
 | v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Deferred | Roadmap |
 | v2 | COV-02: Multi-column table function | Deferred | Roadmap |
+| v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
+| v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
+| v2 foundation | VERIFY-04: One-command MVP0 release gate | Complete | Phase 6 |
+| v2 foundation | BUILD-01: Rust/DuckDB stale-artifact build hygiene | Complete | Phase 6 |
 
 ## Session Continuity
 

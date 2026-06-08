@@ -55,7 +55,15 @@ Requirements for MVP0. Each maps to a roadmap phase.
 
 ## v2 Requirements
 
-Deferred to a future milestone. Tracked, not in this roadmap.
+Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the completed MVP0 baseline before descriptor/CLI or multi-column work begins.
+
+### Baseline Hardening
+
+- [x] **BASE-01**: Planning state and project documentation consistently mark MVP0 complete and Phase 6 active, with stale blockers either removed or marked resolved
+- [x] **DOC-01**: README documents the implemented MVP0 surface, exact verification commands, and the distinction between current prototype and full Loom distribution IR design
+- [x] **DOC-02**: Vortex / AnyBlox / F3 positioning is linked from public docs and kept as a concrete reference for future v2 planning
+- [x] **VERIFY-04**: A single release-gate script runs the full MVP0 verification suite from the repository root
+- [x] **BUILD-01**: The release gate rebuilds Rust and DuckDB extension artifacts in a way that prevents stale `libloom_ffi.a` or extension binaries from masking regressions
 
 ### Developer Experience
 
@@ -114,11 +122,17 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | VERIFY-01 | Phase 5 | Complete |
 | VERIFY-02 | Phase 5 | Complete |
 | VERIFY-03 | Phase 5 | Complete |
+| BASE-01 | Phase 6 | Complete |
+| DOC-01 | Phase 6 | Complete |
+| DOC-02 | Phase 6 | Complete |
+| VERIFY-04 | Phase 6 | Complete |
+| BUILD-01 | Phase 6 | Complete |
 
 **Coverage:**
 
 - v1 requirements: 25 total
-- Mapped to phases: 25
+- v2 foundation requirements: 5 total
+- Mapped to phases: 30
 - Unmapped: 0 ✓
 
 ---
