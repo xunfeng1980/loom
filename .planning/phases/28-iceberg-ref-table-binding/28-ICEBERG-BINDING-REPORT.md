@@ -126,17 +126,17 @@ Phase 28 does not add the official `iceberg` crate by default. The tradeoff is l
 
 ## Release Gate Evidence
 
-Focused Plan 28-04 evidence:
+Final Plan 28-05 closeout evidence:
 
 | Command | Status |
 |---|---|
-| `cargo test -p loom-iceberg-binding --test mismatch_fail_closed` | passed during Plan 28-04 Task 1 |
-| `cargo test -p loom-iceberg-binding --test binding_handoff` | passed during Plan 28-04 Task 1 regression check |
-| `cargo test -p loom-iceberg-binding --test binding_contract` | passed during Plan 28-04 Task 1 regression check |
-| `bash -n scripts/iceberg-binding-test.sh && bash scripts/iceberg-binding-test.sh` | Plan 28-04 Task 3 focused gate command |
-| `! rg -q "iceberg-binding-test\\.sh" scripts/mvp0-verify.sh` | remains required until Plan 28-05 |
+| `bash -n scripts/iceberg-binding-test.sh` | passed during Plan 28-05 closeout |
+| `bash scripts/iceberg-binding-test.sh` | passed during Plan 28-05 closeout and again through `scripts/mvp0-verify.sh` |
+| `bash -n scripts/mvp0-verify.sh` | passed during Plan 28-05 closeout |
+| `python3 -c 'from pathlib import Path; text=Path("scripts/mvp0-verify.sh").read_text(); order=["scripts/source-ingress-contract-test.sh","scripts/lance-parquet-ingress-test.sh","scripts/iceberg-binding-test.sh","scripts/duckdb-smoke-test.sh"]; pos=[text.index(x) for x in order]; assert pos == sorted(pos), pos'` | passed; confirms Phase 28 runs after Phase 27 and before DuckDB smoke |
+| `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` | passed during Plan 28-05 closeout |
 
-Release gate evidence remains focused-gate evidence only until Plan 28-05 wires `scripts/mvp0-verify.sh` per D-13. This report does not claim main release-gate integration yet.
+The main release verifier now invokes `scripts/iceberg-binding-test.sh` after `scripts/lance-parquet-ingress-test.sh` and before `scripts/duckdb-smoke-test.sh`. This preserves the Phase 28 boundary: no Iceberg SQL route, DuckDB route, CLI route, public C ABI symbol, StarRocks surface, production catalog control, object-store credential handling, branch/tag mutation, or official `iceberg` SDK default dependency was added.
 
 ## Phase 29 Handoff
 
