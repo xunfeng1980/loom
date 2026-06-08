@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP: safety contract、proof-obligation matrix、focused no-panic/fail-closed tests、final proof narrative,以及接入 release gate 的 safety proof gate。Phase 13 增加 Full Loom Verifier foundation:一个很小的未来 `L2Core` slice、Rust abstract interpretation、SMT-ready obligations、Lean/Rocq soundness scaffold、TLA+ lifecycle invariant、`VerifiedArtifactFacts`,以及 full-verifier gate。它不是对所有未来 Loom artifact、native lowering 或真实 Vortex ingress 的完整生产级证明。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety/full-verifier case 会在 successful output 前 fail closed。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串,以及带稳定 Loom 自有参数格式的 ALP-style Float32/Float64 L2 kernel。Phase 11 增加第一版 Loom 分发容器:`.loom` fixture 现在以 `LMC1` 开头,它是带 version、required/optional feature flags 和 checked section directory 的本地分发边界。既有 `LMP1` 单列 layout payload 和 `LMT1` table payload 仍作为内部 wrapped payload 与 raw compatibility input 保留。Phase 9/11 的 structural verifier 会在 decode 前检查 MVP0 layout/table/container description,并用稳定的 code/path/message 诊断返回 malformed input。Phase 12 增加当前实现边界的 Safety Proof MVP: safety contract、proof-obligation matrix、focused no-panic/fail-closed tests、final proof narrative,以及接入 release gate 的 safety proof gate。Phase 13 增加 Full Loom Verifier foundation:一个很小的未来 `L2Core` slice、Rust abstract interpretation、SMT-ready obligations、Lean/Rocq soundness scaffold、TLA+ lifecycle invariant、`VerifiedArtifactFacts`,以及 full-verifier gate。Phase 14 增加第一版 verifier-gated textual MLIR/native lowering spike:只支持 bounded Int32 copy,带 fail-closed support diagnostics、typed primitive equivalence evidence,以及本地没有 MLIR tooling 时会显式 skip 的 optional `mlir-opt` probe。它不是对所有未来 Loom artifact、production native lowering 或真实 Vortex ingress 的完整生产级证明。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier/container/safety/full-verifier/native-lowering case 会在 successful output 前 fail closed。
 
 运行完整 MVP0 release gate:
 
@@ -107,6 +107,16 @@ cargo run --bin loom -- verify-l2core --sample
 ```
 
 相关文件位于 `.planning/phases/13-full-loom-verifier/`、`formal/lean/` 和 `specs/tla/`。该 foundation 定义 tiny `L2Core` spec、Rust executable verifier、SMT-ready constraint IR、Lean scaffold、TLA+ lifecycle invariant,以及给 Phase 14 lowering preconditions 使用的 `VerifiedArtifactFacts`。它明确不实现 MLIR/native lowering 或真实 Vortex file/container ingress。
+
+Phase 14 增加第一版 MLIR/native lowering spike:
+
+- `loom_core::native_lowering::check_lowering_support` 要求 accepted `verify_l2_core` report 和 present `VerifiedArtifactFacts`。
+- unsupported accepted program 会在 artifact emission 前 fail closed。
+- `lower_to_textual_mlir` 只为 bounded Int32 copy slice 生成 deterministic textual MLIR,使用标准 `func`、`arith`、`scf`、`memref` operation。
+- `execute_supported_copy_i32` 只提供 typed primitive equivalence evidence,不构造 Arrow array,也不写 Arrow raw buffer。
+- `scripts/native-lowering-test.sh` 已接入 release gate;`mlir-opt` validation 是 optional evidence。
+
+这仍然只是 spike,不是 production MLIR dialect、LLVM/JIT integration、vectorization path、native-speed claim 或 compiler-correctness proof。
 
 ---
 

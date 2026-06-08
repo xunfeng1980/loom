@@ -23,7 +23,7 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary: a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a final proof narrative, and a dedicated safety proof gate wired into the release gate. Phase 13 adds a Full Loom Verifier foundation for a tiny future `L2Core` slice: Rust abstract interpretation, SMT-ready obligations, Lean/Rocq soundness scaffold, TLA+ lifecycle invariant, `VerifiedArtifactFacts`, and a full-verifier gate. This is not a complete production proof for all future Loom artifacts, native lowering, or real Vortex ingress. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety/full-verifier cases that fail closed before successful output.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, dictionary-over-FSST strings, and an ALP-style Float32/Float64 L2 kernel with stable Loom-owned params. Phase 11 adds the first Loom distribution container v0: generated `.loom` fixtures now start with `LMC1`, a versioned container with required/optional feature flags and a checked section directory. Existing `LMP1` single-column layout payloads and `LMT1` table payloads remain supported as internal wrapped payloads and raw compatibility inputs. A first-pass structural verifier now checks MVP0 layout/table/container descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. Phase 12 adds a Safety Proof MVP for this implemented boundary: a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a final proof narrative, and a dedicated safety proof gate wired into the release gate. Phase 13 adds a Full Loom Verifier foundation for a tiny future `L2Core` slice: Rust abstract interpretation, SMT-ready obligations, Lean/Rocq soundness scaffold, TLA+ lifecycle invariant, `VerifiedArtifactFacts`, and a full-verifier gate. Phase 14 adds the first verifier-gated textual MLIR/native lowering spike for bounded Int32 copy, with fail-closed support diagnostics, typed primitive equivalence evidence, and an optional `mlir-opt` probe that is skipped when local MLIR tooling is absent. This is not a complete production proof for all future Loom artifacts, production native lowering, or real Vortex ingress. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier/container/safety/full-verifier/native-lowering cases that fail closed before successful output.
 
 Run the full MVP0 release gate:
 
@@ -107,6 +107,16 @@ cargo run --bin loom -- verify-l2core --sample
 ```
 
 The artifacts live in `.planning/phases/13-full-loom-verifier/`, `formal/lean/`, and `specs/tla/`. The foundation defines a tiny `L2Core` spec, Rust executable verifier, SMT-ready constraint IR, Lean scaffold, TLA+ lifecycle invariant, and `VerifiedArtifactFacts` for Phase 14 lowering preconditions. It deliberately does not implement MLIR/native lowering or real Vortex file/container ingress.
+
+Phase 14 adds the first MLIR/native lowering spike:
+
+- `loom_core::native_lowering::check_lowering_support` requires an accepted `verify_l2_core` report plus present `VerifiedArtifactFacts`.
+- Unsupported accepted programs fail closed before artifact emission.
+- `lower_to_textual_mlir` emits deterministic textual MLIR for only the bounded Int32 copy slice, using standard `func`, `arith`, `scf`, and `memref` operations.
+- `execute_supported_copy_i32` provides typed primitive equivalence evidence for that slice without constructing Arrow arrays or mutating Arrow raw buffers.
+- `scripts/native-lowering-test.sh` is wired into the release gate and treats `mlir-opt` validation as optional evidence.
+
+This is a spike, not a production MLIR dialect, LLVM/JIT integration, vectorization path, native-speed claim, or compiler-correctness proof.
 
 ---
 

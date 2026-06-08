@@ -8,8 +8,8 @@ Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried 
 complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
 introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
 reviewable as a formal safety-proof MVP. Phase 13 completes the full Loom verifier foundation
-over a tiny future `L2Core` slice. Phase 14 plans the MLIR/native lowering spike after the
-verifier handoff exists. Phase 15 remains a roadmap placeholder for real Vortex file ingress.
+over a tiny future `L2Core` slice. Phase 14 completes a verifier-gated textual MLIR/native lowering
+spike after the verifier handoff exists. Phase 15 remains a roadmap placeholder for real Vortex file ingress.
 
 ## Phases
 
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
 - [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
-- [ ] **Phase 14: MLIR/Native Lowering Spike** - Plan verifier-gated textual MLIR/native lowering over a tiny `L2Core` slice (planned)
+- [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [ ] **Phase 15: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
 ## Phase Details
@@ -394,19 +394,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 14-01-PLAN.md - Define the lowering contract and implement verifier-gated support predicate with fail-closed diagnostics (LOWER-01, VERIFIER-10)
+- [x] 14-01-PLAN.md - Define the lowering contract and implement verifier-gated support predicate with fail-closed diagnostics (LOWER-01, VERIFIER-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 14-02-PLAN.md - Emit deterministic textual MLIR for the bounded Int32 copy subset without mandatory MLIR/LLVM dependencies (LOWER-02)
+- [x] 14-02-PLAN.md - Emit deterministic textual MLIR for the bounded Int32 copy subset without mandatory MLIR/LLVM dependencies (LOWER-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 14-03-PLAN.md - Add supported-slice reference/equivalence tests and optional native-lowering gate script (LOWER-03, LOWER-04)
+- [x] 14-03-PLAN.md - Add supported-slice reference/equivalence tests and optional native-lowering gate script (LOWER-03, LOWER-04)
 
 **Wave 4** *(blocked on Waves 1-3 completion)*
 
-- [ ] 14-04-PLAN.md - Write final lowering report, update public/planning docs, wire release gate, run final verification, and close LOWER requirements (LOWER-01, LOWER-02, LOWER-03, LOWER-04, LOWER-05)
+- [x] 14-04-PLAN.md - Write final lowering report, update public/planning docs, wire release gate, run final verification, and close LOWER requirements (LOWER-01, LOWER-02, LOWER-03, LOWER-04, LOWER-05)
 
 ### Phase 15: Real Vortex File/Container Ingress
 
@@ -433,5 +433,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
 | 12. Formal Verifier / Safety Proof MVP | 4/4 | Complete | 2026-06-08 |
 | 13. Full Loom Verifier | 5/5 | Complete | 2026-06-08 |
-| 14. MLIR/Native Lowering Spike | 0/4 | Planned | - |
+| 14. MLIR/Native Lowering Spike | 4/4 | Complete | 2026-06-08 |
 | 15. Real Vortex File/Container Ingress | 0/? | Placeholder | - |

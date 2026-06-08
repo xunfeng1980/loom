@@ -37,6 +37,9 @@ pub mod l2_core;
 /// Executable verifier MVP for the Phase 13 `L2Core` slice.
 pub mod full_verifier;
 
+/// Verifier-gated native-lowering support checks for the Phase 14 spike.
+pub mod native_lowering;
+
 /// Human-readable MVP0 layout descriptor codec.
 pub mod descriptor;
 

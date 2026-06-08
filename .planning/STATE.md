@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: active
-stopped_at: Phase 14 planned
-last_updated: "2026-06-08T09:00:00.000Z"
-last_activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike planned
+status: complete
+stopped_at: Phase 14 complete
+last_updated: "2026-06-08T09:45:00.000Z"
+last_activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike complete
 progress:
   total_phases: 15
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 48
-  completed_plans: 44
-  percent: 92
+  completed_plans: 48
+  percent: 93
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 14 — MLIR/native lowering spike planned
+**Current focus:** Phase 15 — real Vortex file/container ingress placeholder
 
 ## Current Position
 
-Phase: 14 (mlir-native-lowering-spike) — PLANNED
-Plan: 0 of 4 complete
-Status: Phase 14 planned; ready for execution
-Last activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike planned
+Phase: 14 (mlir-native-lowering-spike) — COMPLETE
+Plan: 4 of 4 complete
+Status: Phase 14 complete; Phase 15 remains placeholder until explicitly planned
+Last activity: 2026-06-08 -- Phase 14 MLIR/native lowering spike complete
 
 Progress: [██████████] 100%
 
@@ -99,6 +99,10 @@ Progress: [██████████] 100%
 | Phase 13 P03 | 25 min | 3 tasks | 7 files |
 | Phase 13 P04 | 20 min | 3 tasks | 6 files |
 | Phase 13 P05 | 30 min | 3 tasks | 13 files |
+| Phase 14 P01 | 15 min | 3 tasks | 4 files |
+| Phase 14 P02 | 15 min | 3 tasks | 3 files |
+| Phase 14 P03 | 15 min | 3 tasks | 3 files |
+| Phase 14 P04 | 20 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -157,6 +161,7 @@ None yet.
 - Phase 13 complete: verifier foundation closed with final report, public/planning docs, `scripts/full-verifier-test.sh` wired into `scripts/mvp0-verify.sh`, and VERIFIER-01 through VERIFIER-10 marked complete. Phase 14 consumed the verifier handoff for lowering planning.
 - Phase 14 research complete: recommended verifier-gated textual MLIR first, optional native/JIT evidence second, and no mandatory MLIR/LLVM workspace dependency during the initial spike.
 - Phase 14 planned: 4 plans across lowering contract/support predicate, textual MLIR emission, supported-slice equivalence gate, and final docs/release-gate closeout.
+- Phase 14 complete: verifier-gated support predicate, deterministic textual MLIR for bounded Int32 copy, typed primitive equivalence evidence, optional `mlir-opt` gate, final report, docs, and release-gate integration are complete.
 - Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
 
 ### Quick Tasks Completed
@@ -193,12 +198,12 @@ None yet.
 | v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Complete | Phase 11 |
 | v3 safety | Formal verifier / safety proof MVP | Complete | Phase 12 |
 | v3 safety | Full Loom verifier | Complete | Phase 13 |
-| v3 native | MLIR/native lowering spike | Planned | Phase 14 |
+| v3 native | MLIR/native lowering spike | Complete | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 15 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T09:00:00.000Z
-Stopped at: Phase 14 planned
+Last session: 2026-06-08T09:45:00.000Z
+Stopped at: Phase 14 complete
 Phase 14 context: .planning/phases/14-mlir-native-lowering-spike/14-CONTEXT.md
-Resume file: .planning/phases/14-mlir-native-lowering-spike/14-01-PLAN.md
+Resume file: .planning/ROADMAP.md

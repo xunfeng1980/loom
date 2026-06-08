@@ -40,12 +40,12 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Distribution Container v0: `LMC1` wraps existing `LMP1`/`LMT1` payloads with versioning, required/optional feature flags, checked sections, CLI visibility, generated fixture coverage, DuckDB SQL smoke coverage, and malformed-container release-gate coverage — Phase 11
 - ✓ Formal verifier / Safety Proof MVP: the current `LMC1`/`LMP1`/`LMT1` byte-to-Arrow boundary has a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, final proof narrative, and release-gated `scripts/safety-proof-test.sh` evidence without claiming the future full Loom verifier — Phase 12
 - ✓ Full Loom Verifier foundation: a tiny `L2Core` spec, Rust executable verifier with stable diagnostics/facts, SMT-ready constraint IR, Lean/Rocq scaffold, TLA+ lifecycle invariant, and release-gated `scripts/full-verifier-test.sh` evidence without claiming complete production verification, native lowering safety, or real Vortex ingress — Phase 13
+- ✓ MLIR/native lowering spike: `loom_core::native_lowering` requires accepted `verify_l2_core` reports plus `VerifiedArtifactFacts`, rejects unsupported programs fail-closed, emits deterministic textual MLIR for bounded Int32 copy, and gates typed primitive equivalence evidence through `scripts/native-lowering-test.sh` without mandatory MLIR/LLVM/JIT dependencies — Phase 14
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 14 MLIR/native lowering spike is planned: first verifier-gated textual MLIR over a tiny `L2Core` bounded Int32 copy slice, with optional native/JIT evidence only.
 - [ ] Phase 15 remains a roadmap placeholder only: real Vortex file/container ingress.
 
 ### Out of Scope
@@ -102,7 +102,7 @@ If only one thing works, it is this end-to-end chain.
 | Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
-| Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Planned — Phase 14 |
+| Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 
 ## Evolution
 
@@ -122,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 after Phase 14 planning — verifier-gated textual MLIR/native lowering spike planned.*
+*Last updated: 2026-06-08 after Phase 14 completion — verifier-gated textual MLIR/native lowering spike implemented.*

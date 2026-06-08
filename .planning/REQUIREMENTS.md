@@ -129,11 +129,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### MLIR/Native Lowering Spike
 
-- [ ] **LOWER-01**: A lowering contract and Rust support predicate require an accepted `verify_l2_core` report plus present `VerifiedArtifactFacts`, and unsupported shapes fail closed with stable diagnostics before artifact emission
-- [ ] **LOWER-02**: The supported bounded Int32 copy `L2Core` slice emits deterministic textual MLIR using standard `func`, `arith`, `scf`, and `memref` dialect operations without mandatory `melior`, LLVM, or Cranelift dependencies
-- [ ] **LOWER-03**: Focused tests compare the supported slice against typed primitive reference output and cover negative range/capacity and unsupported-shape rejection cases
-- [ ] **LOWER-04**: A `scripts/native-lowering-test.sh` gate runs focused native-lowering tests and treats `mlir-opt`/native toolchain validation as explicit optional evidence when unavailable
-- [ ] **LOWER-05**: Public and planning docs state the narrow Phase 14 spike scope and do not claim production native compiler completion, custom Loom dialect completion, vectorization, mandatory JIT, or compiler correctness proof
+- [x] **LOWER-01**: A lowering contract and Rust support predicate require an accepted `verify_l2_core` report plus present `VerifiedArtifactFacts`, and unsupported shapes fail closed with stable diagnostics before artifact emission
+- [x] **LOWER-02**: The supported bounded Int32 copy `L2Core` slice emits deterministic textual MLIR using standard `func`, `arith`, `scf`, and `memref` dialect operations without mandatory `melior`, LLVM, or Cranelift dependencies
+- [x] **LOWER-03**: Focused tests compare the supported slice against typed primitive reference output and cover negative range/capacity and unsupported-shape rejection cases
+- [x] **LOWER-04**: A `scripts/native-lowering-test.sh` gate runs focused native-lowering tests and treats `mlir-opt`/native toolchain validation as explicit optional evidence when unavailable
+- [x] **LOWER-05**: Public and planning docs state the narrow Phase 14 spike scope and do not claim production native compiler completion, custom Loom dialect completion, vectorization, mandatory JIT, or compiler correctness proof
 
 ## Out of Scope
 
@@ -142,7 +142,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
-| MLIR/native lowering correctness proof and real Vortex file ingress proof | Phase 13 targets the Loom verifier foundation and lowering preconditions only; compiler lowering and real file-ingress proofs remain later phases (design.md §5, §7, §13) |
+| MLIR/native lowering correctness proof and real Vortex file ingress proof | Phase 14 completes only a verifier-gated textual MLIR spike; production compiler lowering/proof and real file-ingress proofs remain later phases (design.md §5, §7, §13) |
 | Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
@@ -222,11 +222,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | VERIFIER-08 | Phase 13 | Complete |
 | VERIFIER-09 | Phase 13 | Complete |
 | VERIFIER-10 | Phase 13 | Complete |
-| LOWER-01 | Phase 14 | Planned |
-| LOWER-02 | Phase 14 | Planned |
-| LOWER-03 | Phase 14 | Planned |
-| LOWER-04 | Phase 14 | Planned |
-| LOWER-05 | Phase 14 | Planned |
+| LOWER-01 | Phase 14 | Complete |
+| LOWER-02 | Phase 14 | Complete |
+| LOWER-03 | Phase 14 | Complete |
+| LOWER-04 | Phase 14 | Complete |
+| LOWER-05 | Phase 14 | Complete |
 
 **Coverage:**
 
@@ -245,4 +245,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 14 MLIR/Native Lowering Spike planned*
+*Last updated: 2026-06-08 — Phase 14 MLIR/Native Lowering Spike complete*
