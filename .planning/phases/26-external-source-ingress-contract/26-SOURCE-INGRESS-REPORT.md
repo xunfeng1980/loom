@@ -1,9 +1,10 @@
 # Phase 26 Source Ingress Report
 
-**Status:** Plan 26-04 evidence report.
+**Status:** Complete and release-gated.
 **Contract:** `.planning/phases/26-external-source-ingress-contract/26-SOURCE-INGRESS-CONTRACT.md`
-**Gate:** `scripts/source-ingress-contract-test.sh` is created in Plan 26-04
-and will be wired into the main release gate by Plan 26-05.
+**Gate:** `scripts/source-ingress-contract-test.sh`, wired into
+`scripts/mvp0-verify.sh` after `scripts/native-hardening-test.sh` and before
+`scripts/duckdb-smoke-test.sh`.
 
 ## Executive Summary
 
@@ -110,6 +111,28 @@ Oracle evidence is not a decode bypass. It is test/report evidence that the
 verified Loom artifact rows match the source-native reference for supported
 fixtures.
 
+## Release Gate Evidence
+
+The focused Phase 26 release gate is `scripts/source-ingress-contract-test.sh`.
+It is intentionally local to source-ingress evidence and does not add new source
+readers, public SQL/API controls, host-engine behavior, native kernels, package
+installs, object-store credentials, predicate pushdown, or parallel split
+execution.
+
+The gate runs:
+
+- `cargo test -p loom-source-ingress`
+- `cargo test -p loom-vortex-ingress --test source_ingress_contract`
+- `cargo test -p loom-vortex-ingress --test source_ingress_handoff`
+- `cargo test -p loom-vortex-ingress --test reader_facts_contract`
+- `cargo test -p loom-vortex-ingress --test single_column_to_loom`
+- `cargo test -p loom-vortex-ingress --test table_to_loom`
+- `cargo test -p loom-core --test artifact_verifier`
+
+The gate also checks required Phase 26 docs, implementation markers,
+dependency boundaries, public API creep markers, and the final report markers
+for release evidence, tradeoffs, non-goals, and Phase 27 handoff assumptions.
+
 ## Dependency and API Creep Evidence
 
 The current dependency boundary is:
@@ -131,7 +154,9 @@ Plan 26-04 adds `scripts/source-ingress-contract-test.sh` to check:
 - forbidden checks avoid matching their own script literals by constructing
   patterns from smaller pieces where needed.
 
-Plan 26-05 owns wiring the script into `scripts/mvp0-verify.sh`.
+Plan 26-05 wires the script into `scripts/mvp0-verify.sh` so the main release
+gate order is Phase 24 DuckDB native integration, Phase 25 native hardening,
+Phase 26 source ingress contract, then DuckDB SQL smoke.
 
 ## Current-Phase Tradeoffs
 

@@ -131,6 +131,8 @@ rg -q "Vortex Mapping" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
     || fail "report missing Vortex mapping"
 rg -q "Adapter Obligations" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
     || fail "report missing adapter obligations"
+rg -q "Release Gate Evidence" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
+    || fail "report missing release gate evidence"
 rg -q "Current-Phase Tradeoffs" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
     || fail "report missing current phase tradeoffs"
 rg -q "Non-Goals" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
