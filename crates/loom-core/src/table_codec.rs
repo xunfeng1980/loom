@@ -12,6 +12,7 @@ use crate::error::LoomDecodeError;
 use crate::l1_model::{decode_layout_to_array_data, LayoutDescription};
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::layout_codec::{decode_layout_payload, encode_layout_payload};
+use crate::verifier::verify_table;
 
 const MAGIC: &[u8; 4] = b"LMT1";
 const VERSION: u16 = 1;
@@ -95,9 +96,7 @@ pub fn decode_table_payload(bytes: &[u8]) -> Result<TableDescription, LoomDecode
         columns.push(TableColumn { name, layout });
     }
     reader.finish()?;
-    let table = TableDescription { row_count, columns };
-    table.validate()?;
-    Ok(table)
+    Ok(TableDescription { row_count, columns })
 }
 
 pub fn is_table_payload(bytes: &[u8]) -> bool {
@@ -108,7 +107,10 @@ pub fn decode_table_to_array_data(
     table: &TableDescription,
     registry: &L2KernelRegistry,
 ) -> Result<Vec<ArrayData>, LoomDecodeError> {
-    table.validate()?;
+    let report = verify_table(table, registry);
+    if let Some(err) = report.first_error() {
+        return Err(err);
+    }
     let mut arrays = Vec::with_capacity(table.columns.len());
     for column in &table.columns {
         let data = decode_layout_to_array_data(&column.layout, registry)?;

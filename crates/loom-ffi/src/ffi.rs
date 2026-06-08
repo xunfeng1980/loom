@@ -26,6 +26,7 @@ use arrow::ffi::{to_ffi, FFI_ArrowArray, FFI_ArrowSchema};
 use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
+use loom_core::verifier::verify_layout;
 
 // ---------------------------------------------------------------------------
 // Error enum
@@ -137,6 +138,10 @@ fn loom_decode_inner(
     } else {
         let desc = decode_layout_payload(input).map_err(|_| LoomError::DecodeFailed)?;
         let registry = L2KernelRegistry::default_for_mvp0();
+        let report = verify_layout(&desc, &registry);
+        if !report.is_ok() {
+            return Err(LoomError::DecodeFailed);
+        }
         decode_layout_to_array_data(&desc, &registry).map_err(|_| LoomError::DecodeFailed)?
     };
 
@@ -284,5 +289,39 @@ mod tests {
             )
         };
         assert_eq!(result, LoomError::NullPointer.code());
+    }
+
+    #[test]
+    fn malformed_verified_payload_returns_decode_failed() {
+        use arrow::datatypes::DataType;
+        use loom_core::l1_model::{LayoutDescription, LayoutNode};
+        use loom_core::layout_codec::encode_layout_payload;
+
+        let desc = LayoutDescription {
+            data_type: DataType::Int64,
+            root: LayoutNode::BitPack {
+                values_buf: vec![],
+                bit_width: 65,
+                offset: 0,
+                count: 1,
+                validity: None,
+                all_null: false,
+            },
+            row_count: 1,
+        };
+        let payload = encode_layout_payload(&desc);
+        let mut array = unsafe { std::mem::zeroed::<FFI_ArrowArray>() };
+        let mut schema = unsafe { std::mem::zeroed::<FFI_ArrowSchema>() };
+
+        let result = unsafe {
+            loom_decode(
+                payload.as_ptr(),
+                payload.len(),
+                &mut array as *mut _,
+                &mut schema as *mut _,
+            )
+        };
+
+        assert_eq!(result, LoomError::DecodeFailed.code());
     }
 }

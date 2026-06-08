@@ -88,11 +88,11 @@ Tracked for post-MVP0 work. Phase 6 starts the v2 foundation by hardening the co
 
 ### Safety Boundary
 
-- [ ] **SAFE-01**: A verifier module walks MVP0 layout and table descriptions before decode and returns typed diagnostics rather than panicking
-- [ ] **SAFE-02**: Verifier coverage rejects malformed structural invariants, including truncated buffers, invalid row/count relationships, non-monotonic run ends, unsupported type/layout combinations, unknown kernels, and table column mismatches
-- [ ] **SAFE-03**: Decode entry points either call the verifier or explicitly route through an existing authoritative decode-time check for each invariant
-- [ ] **SAFE-04**: `loom inspect` exposes verifier pass/fail status for binary payloads and descriptors
-- [ ] **VERIFY-06**: Negative verifier fixtures are included in the release gate and prove malformed inputs fail closed before DuckDB execution
+- [x] **SAFE-01**: A verifier module walks MVP0 layout and table descriptions before decode and returns typed diagnostics rather than panicking
+- [x] **SAFE-02**: Verifier coverage rejects malformed structural invariants, including truncated buffers, invalid row/count relationships, non-monotonic run ends, unsupported type/layout combinations, unknown kernels, and table column mismatches
+- [x] **SAFE-03**: Decode entry points either call the verifier or explicitly route through an existing authoritative decode-time check for each invariant
+- [x] **SAFE-04**: `loom inspect` exposes verifier pass/fail status for binary payloads and descriptors
+- [x] **VERIFY-06**: Negative verifier fixtures are included in the release gate and prove malformed inputs fail closed before DuckDB execution
 
 ## Out of Scope
 
@@ -155,11 +155,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DUCK-05 | Phase 8 | Complete |
 | STREAM-01 | Phase 8 | Complete |
 | VERIFY-05 | Phase 8 | Complete |
-| SAFE-01 | Phase 9 | Planned |
-| SAFE-02 | Phase 9 | Planned |
-| SAFE-03 | Phase 9 | Planned |
-| SAFE-04 | Phase 9 | Planned |
-| VERIFY-06 | Phase 9 | Planned |
+| SAFE-01 | Phase 9 | Complete |
+| SAFE-02 | Phase 9 | Complete |
+| SAFE-03 | Phase 9 | Complete |
+| SAFE-04 | Phase 9 | Complete |
+| VERIFY-06 | Phase 9 | Complete |
 
 **Coverage:**
 
@@ -173,4 +173,4 @@ Phase mapping finalized by roadmapper 2026-06-07.
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 9 verifier and safety boundary MVP started*
+*Last updated: 2026-06-08 — Phase 9 verifier and safety boundary MVP complete*

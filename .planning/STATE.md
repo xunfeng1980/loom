@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: planning
-stopped_at: Phase 09 planned
-last_updated: "2026-06-08T01:48:03.919Z"
-last_activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP started
+status: complete
+stopped_at: Phase 09 complete
+last_updated: "2026-06-08T09:58:04+08:00"
+last_activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP complete
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 27
-  completed_plans: 23
-  percent: 85
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 09 — verifier-and-safety-boundary-mvp
+**Current focus:** Phase 09 — verifier-and-safety-boundary-mvp complete
 
 ## Current Position
 
-Phase: 09 — NOT PLANNED
-Plan: 0 of 4
-Status: Phase 09 planned; ready for execution
-Last activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP started
+Phase: 09 — COMPLETE
+Plan: 4 of 4
+Status: Phase 09 complete; verifier MVP implemented and release gate passing
+Last activity: 2026-06-08 -- Phase 09 verifier and safety boundary MVP complete
 
-Progress: [████████▌ ] 85%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -78,6 +78,10 @@ Progress: [████████▌ ] 85%
 | Phase 08 P02 | 10 min | 4 tasks | 3 files |
 | Phase 08 P03 | 15 min | 4 tasks | 2 files |
 | Phase 08 P04 | 10 min | 4 tasks | 8 files |
+| Phase 09 P01 | 15 min | 3 tasks | 3 files |
+| Phase 09 P02 | 15 min | 3 tasks | 4 files |
+| Phase 09 P03 | 15 min | 3 tasks | 3 files |
+| Phase 09 P04 | 15 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -119,7 +123,7 @@ None yet.
 
 ### Roadmap Evolution
 
-- Phase 9 added: Verifier and Safety Boundary MVP.
+- Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
 
 ### Quick Tasks Completed
 
@@ -147,14 +151,14 @@ None yet.
 | v2 table | DUCK-05: DuckDB multi-column loom_scan | Complete | Phase 8 |
 | v2 table | STREAM-01: ArrowArrayStream decision | Complete | Phase 8 |
 | v2 table | VERIFY-05: Multi-column SQL acceptance | Complete | Phase 8 |
-| v2 safety | SAFE-01: Verifier module with typed diagnostics | Planned | Phase 9 |
-| v2 safety | SAFE-02: Structural invariant rejection coverage | Planned | Phase 9 |
-| v2 safety | SAFE-03: Decode entry verifier routing | Planned | Phase 9 |
-| v2 safety | SAFE-04: CLI verifier visibility | Planned | Phase 9 |
-| v2 safety | VERIFY-06: Negative verifier release gate | Planned | Phase 9 |
+| v2 safety | SAFE-01: Verifier module with typed diagnostics | Complete | Phase 9 |
+| v2 safety | SAFE-02: Structural invariant rejection coverage | Complete | Phase 9 |
+| v2 safety | SAFE-03: Decode entry verifier routing | Complete | Phase 9 |
+| v2 safety | SAFE-04: CLI verifier visibility | Complete | Phase 9 |
+| v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T01:48:03.910Z
-Stopped at: Phase 09 planned
-Resume file: .planning/phases/09-verifier-and-safety-boundary-mvp/09-01-PLAN.md
+Last session: 2026-06-08T09:58:04+08:00
+Stopped at: Phase 09 complete
+Resume file: .planning/phases/09-verifier-and-safety-boundary-mvp/09-04-SUMMARY.md

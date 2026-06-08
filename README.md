@@ -23,9 +23,9 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures.
+Supported MVP0 encodings are bitpack, frame-of-reference, dictionary, RLE, FSST strings, and dictionary-over-FSST strings. The current table path wraps multiple single-column layout payloads in an `LMT1` table payload, preserving `LMP1` single-column compatibility while letting CLI and DuckDB scan named columns. A first-pass structural verifier now checks MVP0 layout/table descriptions before decode and reports stable diagnostic code/path/message triples for malformed inputs. The acceptance bar is row and aggregate equality against Vortex's own decoder/oracle for generated fixtures, plus curated negative verifier cases that fail closed before DuckDB execution.
 
-Run the full Phase 6 release gate:
+Run the full MVP0 release gate:
 
 ```bash
 bash scripts/mvp0-verify.sh
@@ -37,10 +37,11 @@ The gate runs the same underlying checks manually available as:
 cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
+bash scripts/verifier-negative-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-The current `.loom` payload format is an MVP0 internal fixture format. The verifier, MLIR/native lowering, Arrow stream ABI, and full `.vortex` file support are future milestones.
+The current `.loom` payload format is an MVP0 internal fixture format. Phase 9's verifier is structural: it rejects malformed buffers, count mismatches, unsupported type/layout combinations, unknown kernels, and related table-shape errors for the implemented MVP0 surface. It is not the formal Loom verifier and does not claim totality or termination proofs; MLIR/native lowering, Arrow stream ABI, the full formal verifier, and full `.vortex` file support remain future milestones.
 
 Phase 7 adds reviewer-facing descriptor and CLI tooling:
 
@@ -50,6 +51,8 @@ cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
 cargo run --bin loom -- decode target/loom-duckdb-fixtures/fsst-utf8.loom
 cargo run -p loom-fixtures --bin loom_fixture_timing
 ```
+
+`loom inspect` prints `verification: pass` for valid payloads/descriptors and `verification: fail` with diagnostics for verifier-rejected inputs.
 
 The timing command reports illustrative wall-clock numbers for Loom interpreter decode vs Vortex oracle decode. It is not a benchmark and has no pass/fail speed threshold.
 

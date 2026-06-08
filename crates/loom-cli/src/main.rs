@@ -10,6 +10,7 @@ use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, Layout
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
+use loom_core::verifier::{verify_layout, verify_table, VerificationReport};
 
 fn main() {
     if let Err(err) = run() {
@@ -43,9 +44,15 @@ fn usage() -> String {
 
 fn inspect(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    let registry = L2KernelRegistry::default_for_mvp0();
     if is_table_payload(&bytes) {
         let table = decode_table_payload(&bytes).map_err(display_decode_error)?;
         println!("input: {}", path.display());
+        let report = verify_table(&table, &registry);
+        print_verification(&report);
+        if !report.is_ok() {
+            return Err("verification failed".to_string());
+        }
         println!("table_row_count: {}", table.row_count);
         println!("columns:");
         for column in &table.columns {
@@ -61,6 +68,11 @@ fn inspect(path: &Path) -> Result<(), String> {
     }
     let desc = load_layout(&bytes)?;
     println!("input: {}", path.display());
+    let report = verify_layout(&desc, &registry);
+    print_verification(&report);
+    if !report.is_ok() {
+        return Err("verification failed".to_string());
+    }
     println!("data_type: {}", data_type_name(&desc.data_type));
     println!("row_count: {}", desc.row_count);
     println!("layout:");
@@ -287,4 +299,20 @@ fn data_type_name(data_type: &DataType) -> &'static str {
 
 fn display_decode_error(err: LoomDecodeError) -> String {
     err.to_string()
+}
+
+fn print_verification(report: &VerificationReport) {
+    if report.is_ok() {
+        println!("verification: pass");
+        return;
+    }
+
+    println!("verification: fail");
+    println!("diagnostics:");
+    for diagnostic in report.diagnostics() {
+        println!(
+            "  - code={} path={} message={}",
+            diagnostic.code, diagnostic.path, diagnostic.message
+        );
+    }
 }

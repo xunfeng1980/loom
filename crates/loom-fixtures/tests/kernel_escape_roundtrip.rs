@@ -47,6 +47,6 @@ fn kernel_escape_unknown_id_returns_typed_error() {
 
     assert!(matches!(
         decode_layout_to_array_data(&desc, &registry),
-        Err(LoomDecodeError::UnknownKernel(99))
+        Err(LoomDecodeError::VerifierFailed { ref code, .. }) if code == "unknown-kernel"
     ));
 }

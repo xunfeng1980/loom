@@ -23,9 +23,9 @@ in-memory Vortex fixtures -> Loom layout payload -> loom-core interpreter
   -> Arrow C Data Interface -> DuckDB loom_scan(...) -> SQL checks
 ```
 
-MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致。
+MVP0 支持 bitpack、frame-of-reference、dictionary、RLE、FSST 字符串、dictionary-over-FSST 字符串。当前表路径用 `LMT1` table payload 包装多个单列 layout payload,保留 `LMP1` 单列兼容性,同时让 CLI 和 DuckDB 能扫描具名多列。Phase 9 已加入第一版 structural verifier,会在 decode 前检查 MVP0 layout/table description,并用稳定的 code/path/message 诊断返回 malformed input。验收标准是生成 fixture 后,通过 DuckDB SQL 查询得到的行结果和聚合结果都与 Vortex 自身 decoder/oracle 一致,并且 curated negative verifier case 会在进入 DuckDB 前 fail closed。
 
-运行完整 Phase 6 release gate:
+运行完整 MVP0 release gate:
 
 ```bash
 bash scripts/mvp0-verify.sh
@@ -37,10 +37,11 @@ bash scripts/mvp0-verify.sh
 cargo test --workspace
 cargo tree -p loom-core | awk '/vortex|fastlanes/{c++} END{print c+0}'
 rg -n 'vortex_file|vortex-file|\.vortex|VortexFile|from_path|read_file' crates/loom-fixtures
+bash scripts/verifier-negative-test.sh
 bash scripts/duckdb-smoke-test.sh
 ```
 
-当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。verifier、MLIR/native lowering、Arrow stream ABI、完整 `.vortex` 文件支持都属于后续 milestone。
+当前 `.loom` payload 格式是 MVP0 内部 fixture 格式。Phase 9 的 verifier 是结构检查:覆盖已实现 MVP0 surface 的 malformed buffer、count mismatch、不支持的 type/layout 组合、unknown kernel、table shape error 等。它不是正式 Loom verifier,也不声称已经完成 totality/termination proof;MLIR/native lowering、Arrow stream ABI、完整 formal verifier、完整 `.vortex` 文件支持仍属于后续 milestone。
 
 Phase 7 增加面向 reviewer 的 descriptor 和 CLI 工具:
 
@@ -50,6 +51,8 @@ cargo run --bin loom -- inspect target/loom-duckdb-fixtures/bitpack-i32.loom
 cargo run --bin loom -- decode target/loom-duckdb-fixtures/fsst-utf8.loom
 cargo run -p loom-fixtures --bin loom_fixture_timing
 ```
+
+`loom inspect` 对有效 payload/descriptor 打印 `verification: pass`;对 verifier 拒绝的输入打印 `verification: fail` 和诊断。
 
 timing 命令只输出 Loom interpreter decode 与 Vortex oracle decode 的示意性 wall-clock 数字。它不是 benchmark,也没有速度阈值。
 

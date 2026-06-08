@@ -131,6 +131,16 @@ pub enum LoomDecodeError {
 
     /// Human-readable MVP0 descriptor text is malformed or unsupported.
     MalformedDescriptor(String),
+
+    /// Structural verification failed before decode.
+    VerifierFailed {
+        /// Stable verifier diagnostic code.
+        code: String,
+        /// Descriptor path containing the failing node or field.
+        path: String,
+        /// Human-readable diagnostic message.
+        message: String,
+    },
 }
 
 impl fmt::Display for LoomDecodeError {
@@ -234,6 +244,13 @@ impl fmt::Display for LoomDecodeError {
             }
             LoomDecodeError::MalformedDescriptor(reason) => {
                 write!(f, "malformed descriptor: {reason}")
+            }
+            LoomDecodeError::VerifierFailed {
+                code,
+                path,
+                message,
+            } => {
+                write!(f, "verifier failed [{code}] at {path}: {message}")
             }
         }
     }

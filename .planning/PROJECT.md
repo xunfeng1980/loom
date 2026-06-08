@@ -35,15 +35,13 @@ If only one thing works, it is this end-to-end chain.
 - ✓ Human-readable descriptor and CLI: RON descriptor text roundtrips through `LayoutDescription`, binary payloads can be inspected, `loom inspect`/`loom decode` expose reviewer workflows, fixture samples expanded, and illustrative Loom-vs-Vortex timing output is available — Phase 7
 - ✓ Multi-column table output: `LMT1` table payloads wrap named `LMP1` column payloads, Rust and CLI can decode row-wise table output, DuckDB `loom_scan` returns mixed Int32/Boolean/Utf8 columns, and SQL row/projection/filter/aggregate checks are part of the release gate — Phase 8
 - ✓ ArrowArrayStream decision: direct DuckDB DataChunk population remains the Phase 8 path; ArrowArrayStream is deferred until a later table/record-batch FFI ABI is introduced — Phase 8
+- ✓ Verifier and safety boundary MVP: `loom_core::verifier` checks MVP0 layout/table descriptions with typed code/path/message diagnostics, Rust decode helpers and FFI ingress fail closed before Arrow output, `loom inspect` prints `verification: pass|fail`, and `scripts/mvp0-verify.sh` includes curated negative verifier coverage — Phase 9
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP0 hypotheses until shipped. -->
 
-- [ ] Phase 9: verifier module for MVP0 layout/table descriptions with typed diagnostics
-- [ ] Phase 9: negative fixtures for malformed payloads that fail closed before DuckDB execution
-- [ ] Phase 9: CLI verifier visibility through `loom inspect`
-- [ ] Phase 9: release gate includes verifier regression coverage
+- No active phase. Phase 9 is complete; next work should be planned as a new milestone or Phase 10.
 
 ### Out of Scope
 
@@ -94,7 +92,7 @@ If only one thing works, it is this end-to-end chain.
 | Descriptor format = RON for MVP0 | Recursive enum trees are clearer in RON than TOML; descriptor remains MVP0-scoped and unstable | Complete — Phase 7 |
 | Phase 8 should prioritize table output before more kernels | Multi-column schema/row semantics are more load-bearing for Loom's engine story than adding another scalar kernel | Complete — Phase 8 |
 | Keep direct DataChunk population for Phase 8 | Current FFI emits bare column arrays; `LMT1` can compose them into table output without introducing a new stream ABI | Complete — Phase 8 |
-| Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Active |
+| Phase 9 should prioritize verifier MVP before more decode coverage | Safety is Loom's core claim; after SQL and table output work, the next missing proof point is fail-closed validation of untrusted payload descriptions | Complete — Phase 9 |
 
 ## Evolution
 
@@ -114,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 starting Phase 9 (Verifier and Safety Boundary MVP) — the active scope is a first-pass verifier for MVP0 layout/table payloads, negative fixtures, CLI visibility, and release-gate coverage.*
+*Last updated: 2026-06-08 completing Phase 9 (Verifier and Safety Boundary MVP) — structural verifier, fail-closed decode/FFI/CLI routing, negative release gate coverage, and docs are complete. Formal verifier and totality proof remain future work.*

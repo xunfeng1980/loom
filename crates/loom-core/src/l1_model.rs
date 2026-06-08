@@ -26,6 +26,7 @@ use arrow_schema::DataType;
 use crate::arrow_builder_output::OutputBuilder;
 use crate::error::LoomDecodeError;
 use crate::l2_kernel_registry::L2KernelRegistry;
+use crate::verifier::verify_layout;
 
 // ---------------------------------------------------------------------------
 // LayoutNode — pure-data physical layout description (D-04)
@@ -275,6 +276,10 @@ pub fn decode_layout_to_array_data(
     desc: &LayoutDescription,
     registry: &L2KernelRegistry,
 ) -> Result<ArrayData, LoomDecodeError> {
+    let report = verify_layout(desc, registry);
+    if let Some(err) = report.first_error() {
+        return Err(err);
+    }
     decode_node_to_array_data_with_registry(&desc.root, &desc.data_type, Some(registry))
 }
 
@@ -1270,7 +1275,7 @@ mod tests {
         let registry = crate::l2_kernel_registry::L2KernelRegistry::default_for_mvp0();
         assert!(matches!(
             decode_layout_to_array_data(&desc, &registry),
-            Err(LoomDecodeError::UnknownKernel(99))
+            Err(LoomDecodeError::VerifierFailed { ref code, .. }) if code == "unknown-kernel"
         ));
     }
 

@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: MVP0 Hardening and Release Baseline** - Convert the completed MVP0 into a reproducible, documented baseline with one-command verification, stale planning cleanup, and explicit next-milestone boundaries (completed 2026-06-08)
 - [x] **Phase 7: Human-Readable Layout Descriptor and CLI** - Make Loom's layout contract inspectable and decodable outside Rust tests by adding a recursive descriptor format, roundtrip parser/printer, CLI inspect/decode commands, and expanded fixture/timing support (completed 2026-06-08)
 - [x] **Phase 8: Multi-Column Table Output and Arrow Stream Evaluation** - Promote the single-column MVP0 payload into table-shaped output with multiple named columns, mixed Arrow types, DuckDB SQL over real multi-column rows, and a documented ArrowArrayStream decision (completed 2026-06-08)
-- [ ] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command
+- [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
 
 ## Phase Details
 
@@ -236,16 +236,16 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1**
 
-- [ ] 09-01-PLAN.md - Add `loom_core::verifier` report/diagnostic model and structural layout/table verification (SAFE-01, SAFE-02)
+- [x] 09-01-PLAN.md - Add `loom_core::verifier` report/diagnostic model and structural layout/table verification (SAFE-01, SAFE-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 09-02-PLAN.md - Route verifier through Rust decode helpers and FFI ingress while preserving decode-time authoritative checks (SAFE-03)
-- [ ] 09-03-PLAN.md - Expose verifier status in `loom inspect` and add curated negative verifier gate (SAFE-04, VERIFY-06)
+- [x] 09-02-PLAN.md - Route verifier through Rust decode helpers and FFI ingress while preserving decode-time authoritative checks (SAFE-03)
+- [x] 09-03-PLAN.md - Expose verifier status in `loom inspect` and add curated negative verifier gate (SAFE-04, VERIFY-06)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 09-04-PLAN.md - Document verifier MVP behavior, audit stale FOR todo, run final gates, and close requirements (SAFE-01, SAFE-02, SAFE-03, SAFE-04, VERIFY-06)
+- [x] 09-04-PLAN.md - Document verifier MVP behavior, audit stale FOR todo, run final gates, and close requirements (SAFE-01, SAFE-02, SAFE-03, SAFE-04, VERIFY-06)
 
 ## Progress
 
@@ -262,4 +262,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. MVP0 Hardening and Release Baseline | 3/3 | Complete | 2026-06-08 |
 | 7. Human-Readable Layout Descriptor and CLI | 4/4 | Complete | 2026-06-08 |
 | 8. Multi-Column Table Output and Arrow Stream Evaluation | 4/4 | Complete | 2026-06-08 |
-| 9. Verifier and Safety Boundary MVP | 0/4 | Planned | - |
+| 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |

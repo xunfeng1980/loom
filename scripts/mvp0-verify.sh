@@ -45,10 +45,14 @@ set -e
 if [ "${rg_status}" -eq 0 ]; then
     fail "forbidden file-backed Vortex API references found in crates/loom-fixtures"
 elif [ "${rg_status}" -eq 1 ]; then
-    ok "fixture hygiene grep found no forbidden file-backed Vortex APIs"
+ok "fixture hygiene grep found no forbidden file-backed Vortex APIs"
 else
     fail "fixture hygiene grep failed with rg status ${rg_status}"
 fi
+
+info "Running verifier negative descriptor gate..."
+bash scripts/verifier-negative-test.sh
+ok "scripts/verifier-negative-test.sh"
 
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
