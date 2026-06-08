@@ -118,7 +118,7 @@ check_cargo_tree_clean() {
 check_direct_source_deps() {
     local refs unexpected
     refs="$(
-        rg -n '^[[:space:]]*([A-Za-z0-9_-]+[[:space:]]*=.*package[[:space:]]*=[[:space:]]*"(lance|parquet)"|(lance|parquet)[[:space:]]*=)' \
+        rg -n '^[[:space:]]*([A-Za-z0-9_-]+[[:space:]]*=.*package[[:space:]]*=[[:space:]]*"(lance|parquet)"|(lance|parquet)[[:space:]]*=|package[[:space:]]*=[[:space:]]*"(lance|parquet)")' \
             Cargo.toml crates/*/Cargo.toml || true
     )"
     unexpected="$(
