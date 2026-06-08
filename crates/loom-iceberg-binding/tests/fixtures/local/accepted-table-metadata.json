@@ -1,7 +1,7 @@
 {
   "format-version": 2,
   "table-uuid": "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30",
-  "location": "tests/fixtures/local/warehouse/demo/events",
+  "location": "tests/fixtures/local/tables/demo/events",
   "current-schema-id": 7,
   "current-snapshot-id": 314159,
   "snapshots": [

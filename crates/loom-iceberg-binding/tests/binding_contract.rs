@@ -1,7 +1,7 @@
 use loom_iceberg_binding::{
     iceberg_binding_facts_from_paths, source_ingress_report_from_iceberg_metadata_path,
-    IcebergBindingEvidence, IcebergBindingFacts, IcebergBindingReport,
-    IcebergBindingReportError, IcebergBindingStatus, IcebergTableRefIdentity,
+    IcebergBindingEvidence, IcebergBindingFacts, IcebergBindingReport, IcebergBindingReportError,
+    IcebergBindingStatus, IcebergTableRefIdentity,
 };
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic, SourceDiagnosticCode,
@@ -33,8 +33,7 @@ fn facts() -> IcebergBindingFacts {
 
 fn accepted_source_report() -> SourceIngressReport {
     let mut source_facts = SourceFacts::new(
-        SourceIdentity::new("iceberg-binding-fixture", "external-source")
-            .with_format_version("2"),
+        SourceIdentity::new("iceberg-binding-fixture", "external-source").with_format_version("2"),
         3,
     );
     source_facts.root_schema = Some(SourceSchemaFact::new("$.schema", "primitive"));
@@ -75,15 +74,8 @@ fn status_strings_are_stable() {
 
 #[test]
 fn accepted_report_requires_facts_evidence_and_matches() {
-    let report = IcebergBindingReport::accepted(
-        Some(facts()),
-        evidence(),
-        true,
-        true,
-        true,
-        true,
-    )
-    .expect("accepted binding report");
+    let report = IcebergBindingReport::accepted(Some(facts()), evidence(), true, true, true, true)
+        .expect("accepted binding report");
 
     assert_eq!(report.status, IcebergBindingStatus::Accepted);
     assert!(report.facts.is_some());
@@ -213,8 +205,9 @@ fn local_metadata_and_sidecar_parse_to_descriptive_binding_facts() {
         "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7"
     );
 
-    let report =
-        source_ingress_report_from_iceberg_metadata_path(&local_fixture("accepted-table-metadata.json"));
+    let report = source_ingress_report_from_iceberg_metadata_path(&local_fixture(
+        "accepted-table-metadata.json",
+    ));
     assert_eq!(report.status, SourceIngressStatus::Unsupported);
     assert!(report.facts.is_some());
     assert!(report.artifact_verification.artifact_byte_len.is_none());
@@ -225,8 +218,9 @@ fn local_metadata_and_sidecar_parse_to_descriptive_binding_facts() {
 
 #[test]
 fn remote_or_catalog_metadata_is_unsupported_and_byte_free() {
-    let report =
-        source_ingress_report_from_iceberg_metadata_path(&local_fixture("unsupported-remote-metadata.json"));
+    let report = source_ingress_report_from_iceberg_metadata_path(&local_fixture(
+        "unsupported-remote-metadata.json",
+    ));
 
     assert_eq!(report.status, SourceIngressStatus::Unsupported);
     assert_eq!(report.identity.source_kind, "iceberg-binding");
@@ -245,8 +239,9 @@ fn remote_or_catalog_metadata_is_unsupported_and_byte_free() {
 
 #[test]
 fn missing_identity_is_rejected_with_diagnostics_only() {
-    let report =
-        source_ingress_report_from_iceberg_metadata_path(&local_fixture("rejected-missing-identity.json"));
+    let report = source_ingress_report_from_iceberg_metadata_path(&local_fixture(
+        "rejected-missing-identity.json",
+    ));
 
     assert_eq!(report.status, SourceIngressStatus::Rejected);
     assert!(report.facts.is_none());
@@ -298,8 +293,9 @@ fn sidecar_accepted_claim_does_not_create_accepted_binding() {
         facts.artifact_sha256,
         "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7"
     );
-    let report =
-        source_ingress_report_from_iceberg_metadata_path(&local_fixture("accepted-table-metadata.json"));
+    let report = source_ingress_report_from_iceberg_metadata_path(&local_fixture(
+        "accepted-table-metadata.json",
+    ));
     assert_ne!(report.status, SourceIngressStatus::Accepted);
     assert!(!report.artifact_verification.accepted);
     assert!(report.oracle_evidence.is_none());

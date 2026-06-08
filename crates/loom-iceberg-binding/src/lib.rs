@@ -13,7 +13,7 @@
 pub mod binding_contract;
 
 pub use binding_contract::{
+    iceberg_binding_facts_from_paths, source_ingress_report_from_iceberg_metadata_path,
     IcebergBindingAcceptedArtifact, IcebergBindingEvidence, IcebergBindingFacts,
-    IcebergBindingReport, IcebergBindingReportError, IcebergBindingStatus,
-    IcebergTableRefIdentity,
+    IcebergBindingReport, IcebergBindingReportError, IcebergBindingStatus, IcebergTableRefIdentity,
 };
