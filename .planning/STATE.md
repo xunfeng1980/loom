@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: completed
-stopped_at: Completed 25-05-PLAN.md
-last_updated: "2026-06-09T02:38:12+08:00"
-last_activity: 2026-06-09 -- Phase 25 complete; Phase 26 external source ingress contract next
+stopped_at: Completed 26-05-PLAN.md
+last_updated: "2026-06-09T03:37:39+08:00"
+last_activity: 2026-06-09 -- Phase 26 complete; Phase 27 Lance + Parquet archival readability next
 progress:
   total_phases: 30
-  completed_phases: 25
-  total_plans: 102
-  completed_plans: 99
-  percent: 83
+  completed_phases: 26
+  total_plans: 107
+  completed_plans: 104
+  percent: 87
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 26 — external-source-ingress-contract
+**Current focus:** Phase 27 — lance-+-parquet-archival-readability-/-dataset-ingress
 
 ## Current Position
 
-Phase: 26
-Plan: research/planning next
-Status: Phase 25 complete and validated; Phase 26 external source ingress contract next
-Last activity: 2026-06-09 -- Phase 25 complete; Phase 26 external source ingress contract next
+Phase: 27
+Plan: Not started
+Status: Phase 26 complete and validated; Phase 27 Lance + Parquet archival readability / dataset ingress next
+Last activity: 2026-06-09 -- Phase 26 complete; Phase 27 Lance + Parquet archival readability next
 
-Progress: 83%
+Progress: 87%
 
 ## Progress Snapshot
 
-- Completed phases: 25 / 30
-- Completed executable plans: 99 / 102
+- Completed phases: 26 / 30
+- Completed executable plans: 104 / 107
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 26 next; Phase 25 completed 5/5 plans
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 25 native hardening wired after Phase 24 and before DuckDB SQL smoke
+- Current position: Phase 27 next; Phase 26 completed 5/5 plans
+- Last verified gate: `bash scripts/source-ingress-contract-test.sh` passed and `scripts/source-ingress-contract-test.sh` is wired into `scripts/mvp0-verify.sh` after Phase 25 native hardening and before DuckDB SQL smoke
 
 **Completed phase plan counts:**
 
@@ -57,6 +57,7 @@ Progress: 83%
 | 23 | Production native backend implementation | 5/5 complete |
 | 24 | DuckDB native execution integration MVP | 5/5 complete |
 | 25 | Native equivalence, cache, and fallback hardening | 5/5 complete |
+| 26 | External source ingress contract | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -182,8 +183,8 @@ None yet.
 - Phase 24 executing: 24-01 complete with `loom_ffi::duckdb_runtime`, verifier-backed runtime planning, projection/no-predicate/full-scan/single-worker route evidence, backend prepare/JIT comparison routing, and fail-closed mismatch/cancellation diagnostics.
 - Phase 24 executing: 24-02 complete with internal `loom_duckdb_*` FFI handles, `loom_duckdb_internal.h`, panic-safe route/diagnostic/native-buffer accessors, and public-header leakage gates.
 - Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
-- Phase 26 next: external source ingress contract after the hardened native execution contract, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
-- Phase 27 reserved as a roadmap placeholder only: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
+- Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
+- Phase 27 next: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
 - Phase 28 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract and source-ingress contract are credible.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
@@ -241,8 +242,8 @@ None yet.
 | v3 native | Production native backend implementation | Complete | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Complete | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Complete | Phase 25 |
-| v3 ingress | External source ingress contract | Next | Phase 26 |
-| v3 ingress | Lance + Parquet archival readability / dataset ingress | Placeholder | Phase 27 |
+| v3 ingress | External source ingress contract | Complete | Phase 26 |
+| v3 ingress | Lance + Parquet archival readability / dataset ingress | Next | Phase 27 |
 | v3 table | Iceberg ref/table binding | Placeholder | Phase 28 |
 | v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
 | v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 30 |
