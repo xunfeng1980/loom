@@ -217,11 +217,12 @@ mod prepare_routes {
         let native = native_plan_with_test_jit(None);
         let prepared = prepare_duckdb_runtime(&native, NativeBackendCancellation::default());
 
-        assert!(prepared.native_buffers.is_empty());
-        assert!(
-            prepared.diagnostics.iter().any(|diagnostic| {
+        if prepared.native_buffers.is_empty() {
+            assert!(prepared.diagnostics.iter().any(|diagnostic| {
                 diagnostic.code == "toolchain-skipped" || diagnostic.code == "toolchain-failed"
-            }) || !prepared.native_buffers.is_empty()
-        );
+            }));
+        } else {
+            assert_eq!(prepared.decision, DuckDbRouteDecision::NativeCandidate);
+        }
     }
 }

@@ -6,6 +6,9 @@
 //! runtime policy in C++.
 
 use arrow::datatypes::DataType;
+use loom_core::arrow_buffer_lowering::{
+    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes,
+};
 use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationFacts, ArtifactVerificationOptions,
     ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
@@ -22,7 +25,17 @@ use loom_core::runtime_abi::{
     RuntimeFallbackPolicy, RuntimeLoweringDisposition, RuntimePlan, RuntimeReaderSupport,
     RuntimeSafetyPolicy, SplitDescriptor, UnsupportedPredicatePolicy,
 };
-use loom_native_melior::backend::{NativeBackendIdentity, NATIVE_BACKEND_NAME};
+use loom_native_melior::backend::{
+    validate_backend_request, NativeBackendCancellation, NativeBackendIdentity,
+    NativeBackendReport, NativeBackendRequestInput, NativeBackendStatus, NATIVE_BACKEND_NAME,
+};
+use loom_native_melior::jit::{
+    compare_production_jit_output, execute_prepared_production_jit, ProductionJitOptions,
+    ProductionJitOutput, PRODUCTION_JIT_ENTRY_SYMBOL,
+};
+use loom_native_melior::pipeline::{
+    validate_and_prepare_production_backend, ProductionBackendPipelineOptions,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DuckDbRuntimePlanInput {
@@ -50,6 +63,7 @@ impl Default for DuckDbRuntimePolicy {
 pub struct DuckDbTestNativeFacts {
     pub row_count: u64,
     pub columns: Vec<DataType>,
+    pub test_jit_value_buffers: Option<Vec<Vec<u8>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,7 +120,23 @@ pub struct DuckDbRuntimePlanReport {
     pub policy: RuntimeSafetyPolicy,
     pub artifact_report: ArtifactVerificationReport,
     pub lowering_facts: Option<ProductionLoweringFacts>,
+    pub test_jit_value_buffers: Option<Vec<Vec<u8>>>,
     pub diagnostics: Vec<DuckDbRuntimeDiagnostic>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DuckDbPreparedRoute {
+    pub decision: DuckDbRouteDecision,
+    pub backend_report: Option<NativeBackendReport>,
+    pub native_buffers: Vec<DuckDbNativeBuffer>,
+    pub diagnostics: Vec<DuckDbRuntimeDiagnostic>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DuckDbNativeBuffer {
+    pub builder_id: String,
+    pub arrow_type: DataType,
+    pub value_buffer: Vec<u8>,
 }
 
 pub fn plan_duckdb_runtime(
@@ -150,6 +180,10 @@ pub fn plan_duckdb_runtime(
                 diagnostics,
                 Vec::new(),
                 &input.artifact_bytes,
+                input
+                    .policy
+                    .test_native_facts
+                    .and_then(|facts| facts.test_jit_value_buffers),
             );
             return Err(report);
         }
@@ -203,9 +237,167 @@ pub fn plan_duckdb_runtime(
         diagnostics,
         projection_plan.output_to_source,
         &input.artifact_bytes,
+        input
+            .policy
+            .test_native_facts
+            .and_then(|facts| facts.test_jit_value_buffers),
     );
 
     Ok(report)
+}
+
+pub fn prepare_duckdb_runtime(
+    plan_report: &DuckDbRuntimePlanReport,
+    cancellation: NativeBackendCancellation,
+) -> DuckDbPreparedRoute {
+    let mut diagnostics = plan_report.diagnostics.clone();
+
+    if plan_report.runtime_plan.decision != RuntimeExecutionDecision::NativeCandidate
+        || !plan_report.runtime_plan.diagnostics.is_empty()
+    {
+        return DuckDbPreparedRoute {
+            decision: plan_report.decision,
+            backend_report: None,
+            native_buffers: Vec::new(),
+            diagnostics,
+        };
+    }
+
+    let request_input = NativeBackendRequestInput {
+        runtime_plan: plan_report.runtime_plan.clone(),
+        runtime_cache_key: Some(plan_report.cache_key.clone()),
+        lowering_facts: plan_report.lowering_facts.clone(),
+        backend_identity: NativeBackendIdentity::preflight_only(),
+        cancellation: cancellation.clone(),
+    };
+    let mut backend_report = validate_and_prepare_production_backend(
+        request_input.clone(),
+        ProductionBackendPipelineOptions::default(),
+    );
+    diagnostics.extend(backend_diagnostics(&backend_report));
+
+    if !cancellation.cancelled {
+        if let Some(test_buffers) = plan_report.test_jit_value_buffers.as_ref() {
+            if let Ok(request) = validate_backend_request(request_input) {
+                backend_report = NativeBackendReport::accepted_pipeline(
+                    &request,
+                    request.backend_identity.clone(),
+                    PRODUCTION_JIT_ENTRY_SYMBOL,
+                    plan_report
+                        .lowering_facts
+                        .as_ref()
+                        .map(|facts| facts.shape.row_count())
+                        .unwrap_or(0),
+                    plan_report
+                        .lowering_facts
+                        .as_ref()
+                        .map(|facts| facts.shape.columns().len())
+                        .unwrap_or(0),
+                    "test accepted pipeline artifact",
+                );
+                diagnostics.push(DuckDbRuntimeDiagnostic {
+                    code: "test-jit-output".to_string(),
+                    path: "$.policy.test_native_facts.test_jit_value_buffers".to_string(),
+                    message: format!(
+                        "test-only JIT value buffers supplied for {} column(s)",
+                        test_buffers.len()
+                    ),
+                });
+            }
+        }
+    }
+
+    if backend_report.status == NativeBackendStatus::Cancelled {
+        return DuckDbPreparedRoute {
+            decision: DuckDbRouteDecision::Cancelled,
+            backend_report: Some(backend_report),
+            native_buffers: Vec::new(),
+            diagnostics,
+        };
+    }
+
+    if backend_report.status != NativeBackendStatus::Accepted
+        || !backend_report.diagnostics.is_empty()
+    {
+        return DuckDbPreparedRoute {
+            decision: decision_for_backend_status(backend_report.status, plan_report.policy),
+            backend_report: Some(backend_report),
+            native_buffers: Vec::new(),
+            diagnostics,
+        };
+    }
+
+    let Some(lowering_facts) = plan_report.lowering_facts.as_ref() else {
+        diagnostics.push(DuckDbRuntimeDiagnostic {
+            code: "missing-lowering-facts".to_string(),
+            path: "$.lowering_facts".to_string(),
+            message: "native prepare requires production lowering facts".to_string(),
+        });
+        return DuckDbPreparedRoute {
+            decision: DuckDbRouteDecision::FailClosed,
+            backend_report: Some(backend_report),
+            native_buffers: Vec::new(),
+            diagnostics,
+        };
+    };
+
+    let expected_buffers = match reference_value_buffers(lowering_facts) {
+        Ok(buffers) => buffers,
+        Err(mut failed) => {
+            diagnostics.append(&mut failed);
+            return DuckDbPreparedRoute {
+                decision: DuckDbRouteDecision::FailClosed,
+                backend_report: Some(backend_report),
+                native_buffers: Vec::new(),
+                diagnostics,
+            };
+        }
+    };
+
+    let jit_output = if let Some(test_buffers) = plan_report.test_jit_value_buffers.clone() {
+        ProductionJitOutput {
+            entry_symbol: PRODUCTION_JIT_ENTRY_SYMBOL.to_string(),
+            row_count: lowering_facts.shape.row_count(),
+            column_count: lowering_facts.shape.columns().len(),
+            value_buffers: test_buffers,
+        }
+    } else {
+        match execute_prepared_production_jit(
+            &backend_report,
+            &cancellation,
+            ProductionJitOptions::default(),
+        ) {
+            Ok(output) => output,
+            Err(report) => {
+                diagnostics.extend(backend_diagnostics(&report));
+                return DuckDbPreparedRoute {
+                    decision: decision_for_backend_status(report.status, plan_report.policy),
+                    backend_report: Some(report),
+                    native_buffers: Vec::new(),
+                    diagnostics,
+                };
+            }
+        }
+    };
+
+    if let Err(report) =
+        compare_production_jit_output(&backend_report, &expected_buffers, &jit_output)
+    {
+        diagnostics.extend(backend_diagnostics(&report));
+        return DuckDbPreparedRoute {
+            decision: DuckDbRouteDecision::FailClosed,
+            backend_report: Some(report),
+            native_buffers: Vec::new(),
+            diagnostics,
+        };
+    }
+
+    DuckDbPreparedRoute {
+        decision: DuckDbRouteDecision::NativeCandidate,
+        backend_report: Some(backend_report),
+        native_buffers: native_buffers_from_output(lowering_facts, jit_output),
+        diagnostics,
+    }
 }
 
 fn build_plan_report(
@@ -220,6 +412,7 @@ fn build_plan_report(
     diagnostics: Vec<DuckDbRuntimeDiagnostic>,
     output_to_source: Vec<u32>,
     artifact_bytes: &[u8],
+    test_jit_value_buffers: Option<Vec<Vec<u8>>>,
 ) -> DuckDbRuntimePlanReport {
     let runtime_plan = RuntimePlan {
         abi_version: RuntimeAbiVersion::CURRENT,
@@ -253,6 +446,7 @@ fn build_plan_report(
         policy,
         artifact_report,
         lowering_facts,
+        test_jit_value_buffers,
         diagnostics,
     }
 }
@@ -322,6 +516,75 @@ fn attach_test_native_facts(
         proof_obligation_ids: Vec::new(),
     });
     ArtifactVerificationReport::accepted(facts)
+}
+
+fn reference_value_buffers(
+    lowering_facts: &ProductionLoweringFacts,
+) -> Result<Vec<Vec<u8>>, Vec<DuckDbRuntimeDiagnostic>> {
+    let buffers = plan_arrow_buffers_from_decode_dialect(lowering_facts);
+    let Some(table) = buffers.table() else {
+        return Err(buffers
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| DuckDbRuntimeDiagnostic {
+                code: diagnostic.code.as_str().to_string(),
+                path: diagnostic.path.clone(),
+                message: diagnostic.message.clone(),
+            })
+            .collect());
+    };
+    Ok(table
+        .columns
+        .iter()
+        .map(reference_zeroed_value_bytes)
+        .collect())
+}
+
+fn native_buffers_from_output(
+    lowering_facts: &ProductionLoweringFacts,
+    output: ProductionJitOutput,
+) -> Vec<DuckDbNativeBuffer> {
+    lowering_facts
+        .shape
+        .columns()
+        .iter()
+        .zip(output.value_buffers)
+        .map(|(column, value_buffer)| DuckDbNativeBuffer {
+            builder_id: column.builder_id.clone(),
+            arrow_type: column.arrow_type.clone(),
+            value_buffer,
+        })
+        .collect()
+}
+
+fn decision_for_backend_status(
+    status: NativeBackendStatus,
+    policy: RuntimeSafetyPolicy,
+) -> DuckDbRouteDecision {
+    match status {
+        NativeBackendStatus::Accepted => DuckDbRouteDecision::NativeCandidate,
+        NativeBackendStatus::Cancelled => DuckDbRouteDecision::Cancelled,
+        NativeBackendStatus::SkippedToolchain
+            if policy.fallback == RuntimeFallbackPolicy::AllowInterpreter =>
+        {
+            DuckDbRouteDecision::InterpreterFallback
+        }
+        NativeBackendStatus::Rejected
+        | NativeBackendStatus::SkippedToolchain
+        | NativeBackendStatus::FailClosed => DuckDbRouteDecision::FailClosed,
+    }
+}
+
+fn backend_diagnostics(report: &NativeBackendReport) -> Vec<DuckDbRuntimeDiagnostic> {
+    report
+        .diagnostics
+        .iter()
+        .map(|diagnostic| DuckDbRuntimeDiagnostic {
+            code: diagnostic.code.as_str().to_string(),
+            path: diagnostic.path.clone(),
+            message: diagnostic.message.clone(),
+        })
+        .collect()
 }
 
 fn column_count_for(report: &ArtifactVerificationReport, input: &DuckDbRuntimePlanInput) -> u32 {
