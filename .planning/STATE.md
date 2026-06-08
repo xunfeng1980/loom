@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 23 23-03 complete; execute 23-04 verifier-gated JIT execution seed next
-last_updated: "2026-06-08T15:07:48.000Z"
-last_activity: 2026-06-08 -- Phase 23 23-03 production melior/LLVM pipeline complete
+stopped_at: Phase 23 23-04 complete; execute 23-05 backend release gate/report next
+last_updated: "2026-06-08T15:13:38.000Z"
+last_activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
 progress:
   total_phases: 28
   completed_phases: 22
   total_plans: 92
-  completed_plans: 90
-  percent: 82
+  completed_plans: 91
+  percent: 83
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 23 — Production Native Backend Implementation (23-04 next)
+**Current focus:** Phase 23 — Production Native Backend Implementation (23-05 next)
 
 ## Current Position
 
 Phase: 23 (Production Native Backend Implementation) — EXECUTING
-Plan: 4 of 5
-Status: 23-03 complete; execute 23-04 verifier-gated JIT execution seed and interpreter equivalence next
-Last activity: 2026-06-08 -- Phase 23 23-03 production melior/LLVM pipeline complete
+Plan: 5 of 5
+Status: 23-04 complete; execute 23-05 backend release gate, report, docs, and Phase 24 handoff next
+Last activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
 
-Progress: 82%
+Progress: 83%
 
 ## Progress Snapshot
 
 - Completed phases: 22 / 28
-- Completed executable plans: 90 / 92
+- Completed executable plans: 91 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 23 production native backend implementation is executing; 23-04 is next
+- Current position: Phase 23 production native backend implementation is executing; 23-05 is next
 - Last verified gate: Phase 22 focused gate passed; `scripts/runtime-abi-test.sh` is wired into `scripts/mvp0-verify.sh`
 
 **Completed phase plan counts:**
@@ -54,7 +54,7 @@ Progress: 82%
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 | 21 | Expanded Vortex encoding coverage | 5/5 complete |
 | 22 | Host native runtime ABI and execution policy | 5/5 complete |
-| 23 | Production native backend implementation | 3/5 executing |
+| 23 | Production native backend implementation | 4/5 executing |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -156,6 +156,7 @@ None yet.
 - Phase 23 executing: 23-01 complete with `23-BACKEND-CONTRACT.md`, `loom_native_melior::backend`, stable backend identity/diagnostics/cancellation modeling, runtime-plan/cache-key preflight validation, and focused `production_backend_contract` tests.
 - Phase 23 executing: 23-02 complete with `loom.decode` ODS/TableGen sources, Rust manifest drift checks against the Phase 20 textual surface, default MLIR-free manifest tests, and `scripts/production-backend-test.sh` strict `mlir-tblgen` validation.
 - Phase 23 executing: 23-03 complete with validated `NativeBackendRequest` to production MLIR/LLVM pipeline bridging, pipeline/toolchain identity in `NativeBackendReport`, skip-aware strict toolchain handling, production LLVM translation validation, and focused negative `production_backend_pipeline` tests.
+- Phase 23 executing: 23-04 complete with production JIT seed entry points over accepted `NativeBackendReport` artifacts, deterministic primitive reference-output comparison, cancellation checks, unsupported-shape rejection before toolchain probing, and focused `production_backend_jit` tests.
 - Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime ABI, mapping bind/init/local-init to plan/scan/worker and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
@@ -218,8 +219,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T15:07:48.000Z
-Stopped at: Phase 23 23-03 complete; execute 23-04 verifier-gated JIT execution seed next
+Last session: 2026-06-08T15:13:38.000Z
+Stopped at: Phase 23 23-04 complete; execute 23-05 backend release gate/report next
 
 Phase 17 handoff:
 
