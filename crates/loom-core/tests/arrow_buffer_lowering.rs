@@ -1,8 +1,8 @@
 use arrow_schema::DataType;
 use loom_core::arrow_buffer_lowering::{
     data_type_name, describe_column, lower_arrow_buffers_to_standard_mlir,
-    plan_arrow_buffers_from_decode_dialect, reference_zeroed_value_bytes, ArrowValidityPlan,
-    PrimitiveArrowType,
+    lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
+    reference_zeroed_value_bytes, ArrowValidityPlan, PrimitiveArrowType,
 };
 use loom_core::artifact_verifier::{
     ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
@@ -102,6 +102,32 @@ fn emits_standard_mlir_for_primitive_builder_plan() {
     let expected = "module {\n  func.func @loom_decode_build_buffers(%id: memref<?xi64>, %score: memref<?xf64>, %rows: index) {\n    %c0 = arith.constant 0 : index\n    %c1 = arith.constant 1 : index\n    %z0 = arith.constant 0 : i64\n    %z1 = arith.constant 0.000000e+00 : f64\n    scf.for %row = %c0 to %rows step %c1 {\n      memref.store %z0, %id[%row] : memref<?xi64>\n      memref.store %z1, %score[%row] : memref<?xf64>\n    }\n    return\n  }\n}\n";
     assert_eq!(mlir, expected);
     for marker in ["func.func", "arith.constant", "scf.for", "memref.store"] {
+        assert!(mlir.contains(marker), "missing {marker}");
+    }
+}
+
+#[test]
+fn emits_raw_copy_mlir_with_input_and_output_memrefs() {
+    let report = accepted_report(vec![
+        column("id", DataType::Int32, false),
+        column("score", DataType::Float64, false),
+    ]);
+    let support = check_production_lowering_support(&report);
+    let buffers = plan_arrow_buffers_from_decode_dialect(support.facts().expect("facts"));
+    let mlir = lower_arrow_raw_copy_to_standard_mlir(buffers.table().expect("table"))
+        .expect("supported table should lower to raw-copy MLIR text");
+
+    for marker in [
+        "llvm.emit_c_interface",
+        "%id_in: memref<?xi32>",
+        "%id_out: memref<?xi32>",
+        "%score_in: memref<?xf64>",
+        "%score_out: memref<?xf64>",
+        "memref.load %id_in",
+        "memref.store %value_id, %id_out",
+        "memref.load %score_in",
+        "memref.store %value_score, %score_out",
+    ] {
         assert!(mlir.contains(marker), "missing {marker}");
     }
 }
