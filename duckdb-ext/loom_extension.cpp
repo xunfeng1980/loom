@@ -893,16 +893,16 @@ static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
 }
 
 template <class T>
-static void FillNativeFixedWidthVector(const LoomDuckDbNativeBuffer &buffer,
-                                       Vector &vec,
-                                       idx_t count,
-                                       const char *kind) {
+static void FillFixedWidthNativeBytes(const LoomDuckDbNativeBuffer &buffer,
+                                      Vector &vec,
+                                      idx_t count,
+                                      const char *kind) {
     if (buffer.value_ptr == nullptr) {
         throw IOException("loom_scan: native %s values buffer is null", kind);
     }
     const auto expected_len = count * sizeof(T);
-    if (buffer.value_len < expected_len) {
-        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native %s buffer has %llu bytes, expected at least %llu",
+    if (buffer.value_len != expected_len) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native %s buffer has %llu bytes, expected exactly %llu",
                           kind,
                           static_cast<unsigned long long>(buffer.value_len),
                           static_cast<unsigned long long>(expected_len));
@@ -914,6 +914,40 @@ static void FillNativeFixedWidthVector(const LoomDuckDbNativeBuffer &buffer,
         std::memcpy(&value, buffer.value_ptr + (i * sizeof(T)), sizeof(T));
         out_data[i] = value;
     }
+}
+
+static const char *NativeArrowTypeForKind(LoomValueKind kind) {
+    switch (kind) {
+    case LoomValueKind::I32:
+        return "Int32";
+    case LoomValueKind::I64:
+        return "Int64";
+    case LoomValueKind::F32:
+        return "Float32";
+    case LoomValueKind::F64:
+        return "Float64";
+    case LoomValueKind::BOOL:
+    case LoomValueKind::UTF8:
+        throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
+    }
+    throw InternalException("unknown LoomValueKind");
+}
+
+static LogicalTypeId NativeDuckDbTypeForKind(LoomValueKind kind) {
+    switch (kind) {
+    case LoomValueKind::I32:
+        return LogicalTypeId::INTEGER;
+    case LoomValueKind::I64:
+        return LogicalTypeId::BIGINT;
+    case LoomValueKind::F32:
+        return LogicalTypeId::FLOAT;
+    case LoomValueKind::F64:
+        return LogicalTypeId::DOUBLE;
+    case LoomValueKind::BOOL:
+    case LoomValueKind::UTF8:
+        throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
+    }
+    throw InternalException("unknown LoomValueKind");
 }
 
 static idx_t NativeTypeWidth(LoomValueKind kind) {
@@ -960,22 +994,31 @@ static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &
     throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native buffer count does not match projected source columns");
 }
 
-static void FillNativeVector(const LoomDuckDbNativeBuffer &buffer,
-                             LoomValueKind kind,
-                             Vector &vec,
-                             idx_t count) {
+static void FillNativeBufferIntoVector(const LoomDuckDbNativeBuffer &buffer,
+                                       LoomValueKind kind,
+                                       Vector &vec,
+                                       idx_t count) {
+    const auto *expected_arrow_type = NativeArrowTypeForKind(kind);
+    if (buffer.arrow_type == nullptr || std::strcmp(buffer.arrow_type, expected_arrow_type) != 0) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers.arrow_type message=native buffer Arrow type does not match projected DuckDB column kind");
+    }
+    const auto expected_duckdb_type = NativeDuckDbTypeForKind(kind);
+    if (vec.GetType().id() != expected_duckdb_type) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.duckdb_type message=native buffer kind does not match DuckDB output vector type");
+    }
+
     switch (kind) {
     case LoomValueKind::I32:
-        FillNativeFixedWidthVector<int32_t>(buffer, vec, count, "Int32");
+        FillFixedWidthNativeBytes<int32_t>(buffer, vec, count, "Int32");
         break;
     case LoomValueKind::I64:
-        FillNativeFixedWidthVector<int64_t>(buffer, vec, count, "Int64");
+        FillFixedWidthNativeBytes<int64_t>(buffer, vec, count, "Int64");
         break;
     case LoomValueKind::F32:
-        FillNativeFixedWidthVector<float>(buffer, vec, count, "Float32");
+        FillFixedWidthNativeBytes<float>(buffer, vec, count, "Float32");
         break;
     case LoomValueKind::F64:
-        FillNativeFixedWidthVector<double>(buffer, vec, count, "Float64");
+        FillFixedWidthNativeBytes<double>(buffer, vec, count, "Float64");
         break;
     case LoomValueKind::BOOL:
     case LoomValueKind::UTF8:
@@ -1009,7 +1052,7 @@ static void LoomScan(
         output.SetCardinality(count);
         for (idx_t col = 0; col < state.output_column_count; col++) {
             const auto &buffer = NativeBufferForOutput(state, col);
-            FillNativeVector(buffer, state.column_kinds[col], output.data[col], count);
+            FillNativeBufferIntoVector(buffer, state.column_kinds[col], output.data[col], count);
         }
         state.batch_emitted = true;
         return;
