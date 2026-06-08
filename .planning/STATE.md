@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-06-08T22:24:29Z"
-last_activity: 2026-06-08 -- Phase 28 plan 28-01 complete
+stopped_at: Completed 28-02-PLAN.md
+last_updated: "2026-06-08T22:31:47Z"
+last_activity: 2026-06-08 -- Phase 28 plan 28-02 complete
 progress:
   total_phases: 30
   completed_phases: 22
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 28 (iceberg-ref-table-binding) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Executing Phase 28
-Last activity: 2026-06-08 -- Phase 28 plan 28-01 complete
+Last activity: 2026-06-08 -- Phase 28 plan 28-02 complete
 
 Progress: 90%
 
@@ -37,7 +37,7 @@ Progress: 90%
 - Completed phases: 27 / 30
 - Completed executable plans: 112 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 plan 28-01 complete; next plan is 28-02 local Iceberg metadata and sidecar fixture parsing
+- Current position: Phase 28 plan 28-02 complete; next plan is 28-03 accepted binding validation with verifier/hash/source/oracle evidence
 - Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed and is wired into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke
 
 **Completed phase plan counts:**
@@ -199,6 +199,7 @@ None yet.
 - Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
 - Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
 - Phase 28 executing: 28-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
+- Phase 28 executing: 28-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 

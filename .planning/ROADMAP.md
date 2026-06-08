@@ -797,7 +797,7 @@ Plans:
 
 ### Phase 28: Iceberg Ref/Table Binding
 
-**Status:** Executing. Plan 28-01 has established the adapter crate, binding contract model, and initial dependency/scope guards.
+**Status:** Executing. Plans 28-01 and 28-02 have established the adapter crate, binding contract model, local metadata/sidecar fact parser, fixtures, and focused dependency/scope/parser guards.
 **Depends on:** Phase 18, Phase 21, Phase 25, Phase 26, and Phase 27.
 **Goal:** Local Iceberg table/ref metadata can be bound to verifier-backed Loom artifacts through sidecar/reference evidence, preserving schema/snapshot identity, source/oracle evidence, and fail-closed verifier facts without adding query surfaces or a second source-ingress framework.
 **Requirements:** PHASE-28
@@ -811,7 +811,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 28-02-PLAN.md - Local Iceberg metadata and sidecar fixture parsing with identity/facts extraction (PHASE-28)
+- [x] 28-02-PLAN.md - Local Iceberg metadata and sidecar fixture parsing with identity/facts extraction (PHASE-28)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -871,6 +871,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Iceberg Ref/Table Binding | 1/5 | Executing | - |
+| 28. Iceberg Ref/Table Binding | 2/5 | Executing | - |
 | 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
 | 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
