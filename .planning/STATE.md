@@ -161,7 +161,7 @@ None yet.
 - Phase 24 ready for research/planning: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime/backend contract, mapping bind/init/local-init/function to plan/scan/worker/next-batch and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
-- Phase 27 reserved as a roadmap placeholder only: Lance dataset binding/ingress through the external source ingress contract, scanning supported Arrow-compatible Lance datasets into verified `LMC1`/`LMT1` artifacts before deeper Lance metadata binding.
+- Phase 27 reserved as a roadmap placeholder only: Lance + Parquet archival readability through the external source ingress contract, generating verifier-backed Loom artifacts so supported schema, fragment/row-group metadata, and column data remain readable and rewritable across source-reader version drift, with both current-version and old-version read/write proofs.
 - Phase 28 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract and source-ingress contract are credible.
 - Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
 - Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
@@ -170,6 +170,8 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260608-wy8 | Extend Phase 27 archival readability target to Lance and Parquet | 2026-06-08 | none | [260608-wy8-extend-phase-27-archival-readability-tar](./quick/260608-wy8-extend-phase-27-archival-readability-tar/) |
+| 260608-wwx | Refine Phase 27 Lance archival readability roadmap target | 2026-06-08 | none | [260608-wwx-refine-phase-27-lance-archival-readabili](./quick/260608-wwx-refine-phase-27-lance-archival-readabili/) |
 | 260608-waw | Add external source ingress and Lance phases to roadmap | 2026-06-08 | this commit | [260608-waw-add-external-source-ingress-and-lance-ph](./quick/260608-waw-add-external-source-ingress-and-lance-ph/) |
 | 260608-vni | Update Phase 23 and 24 roadmap handoff from Phase 22 ABI deep research | 2026-06-08 | 3ed57a5 | [260608-vni-update-phase-23-and-24-roadmap-handoff-f](./quick/260608-vni-update-phase-23-and-24-roadmap-handoff-f/) |
 | 260608-v17 | Polish English and Chinese READMEs with final minimal logo, DuckDB data flow, and quickstart | 2026-06-08 | none | [260608-v17-polish-readme-with-logo-duckdb-data-flow](./quick/260608-v17-polish-readme-with-logo-duckdb-data-flow/) |
@@ -218,7 +220,7 @@ None yet.
 | v3 engine | DuckDB native execution integration MVP | Ready for planning | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
 | v3 ingress | External source ingress contract | Placeholder | Phase 26 |
-| v3 ingress | Lance dataset binding / ingress | Placeholder | Phase 27 |
+| v3 ingress | Lance + Parquet archival readability / dataset ingress | Placeholder | Phase 27 |
 | v3 table | Iceberg ref/table binding | Placeholder | Phase 28 |
 | v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
 | v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 30 |
