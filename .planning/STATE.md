@@ -4,13 +4,13 @@ milestone: v1.5.3
 milestone_name: milestone
 status: completed
 stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-06-08T20:42:10.168Z"
+last_updated: "2026-06-08T21:04:18.578Z"
 last_activity: 2026-06-08 -- Phase 27 Plan 01 complete
 progress:
   total_phases: 30
   completed_phases: 21
   total_plans: 112
-  completed_plans: 91
+  completed_plans: 92
   percent: 70
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 27 (lance-parquet-archival-readability-dataset-ingress) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Plan 27-01 complete; ready for Plan 27-02
 Last activity: 2026-06-08 -- Phase 27 Plan 01 complete
 
@@ -116,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P03]: Lance facts classify supported shapes in SourceCoverage only; accepted reports and artifact bytes remain deferred to Plan 27-04.
 - [Phase 27]: [Phase 27 P03]: Lance SDK objects and object-store state remain private to loom-lance-ingress; generic/core/ffi crates receive only source-neutral facts and diagnostics.
 - [Phase 27]: [Phase 27 P03]: Arrow extension metadata is treated as unsupported schema even when the physical storage type is a supported primitive.
+- [Phase 27]: [Phase 27 P04]: Accepted Lance and Parquet source reports are constructed only after verify_artifact accepts emitted LMC1 bytes and source oracle evidence is accepted.
+- [Phase 27]: [Phase 27 P04]: Parquet uses ArrowScan evidence and Lance uses SourceNativeScan evidence; both remain evidence paths rather than Loom decode bypasses.
+- [Phase 27]: [Phase 27 P04]: Legacy readability uses actual older writer outputs from parquet 57.0.0 and lance 6.0.0 paired with sibling verifier-accepted Loom artifacts.
 
 ### Pending Todos
 
@@ -258,7 +261,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T20:42:10.161Z
+Last session: 2026-06-08T21:03:59.281Z
 Stopped at: Completed 27-03-PLAN.md
 
 Phase 17 handoff:
@@ -321,3 +324,4 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P01 | 13m | 3 tasks | 11 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P02 | 6m | 3 tasks | 6 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P03 | 5m23s | 3 tasks | 5 files |
+| Phase 27-lance-parquet-archival-readability-dataset-ingress P04 | 62m | 3 tasks | 20 files |
