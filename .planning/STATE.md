@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 16 complete; Phase 17 placeholder next
+stopped_at: Phase 17 unified artifact verification pipeline research started
 last_updated: "2026-06-08T09:30:00.000Z"
-last_activity: 2026-06-08 -- Phase 16 complete
+last_activity: 2026-06-08 -- Phase 17 research started
 progress:
   total_phases: 24
   completed_phases: 16
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 17 — unified-artifact-verification-pipeline (placeholder)
+**Current focus:** Phase 17 — unified-artifact-verification-pipeline (research)
 
 ## Current Position
 
-Phase: 17 (unified-artifact-verification-pipeline) — PLACEHOLDER
+Phase: 17 (unified-artifact-verification-pipeline) — RESEARCH
 Plan: 0 of ?
-Status: Phase 16 complete; Phase 17 unified verifier pipeline ready for research/planning when requested
-Last activity: 2026-06-08 -- Phase 16 complete
+Status: Phase 17 research started; unified verifier pipeline report created
+Last activity: 2026-06-08 -- Phase 17 research started
 
 Progress: 67%
 
@@ -37,7 +37,7 @@ Progress: 67%
 - Completed phases: 16 / 24
 - Completed executable plans: 57 / 57
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 16 complete; Phase 17 remains a placeholder for unifying payload and L2Core verification into one artifact pipeline
+- Current position: Phase 17 research started for unifying payload and L2Core verification into one artifact pipeline
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after Phase 16 JIT boundary work
 
 **Completed phase plan counts:**
@@ -117,7 +117,7 @@ None yet.
 - Phase 16 research started: recommended an optional `loom-native-melior` backend crate, explicit LLVM/MLIR toolchain probing, verifier-gated programmatic MLIR construction, optional MLIR ExecutionEngine/JIT evidence, and fail-closed rejection before native artifact creation.
 - Phase 16 planned: 5 sequential plans across optional backend crate/toolchain contract, programmatic `melior` module construction, MLIR validation gate, ExecutionEngine/JIT equivalence, and docs/release-gate closeout.
 - Phase 16 complete: `loom-native-melior` provides optional backend/toolchain facts, verifier-gated artifact construction, MLIR validation, JIT boundary diagnostics, skip-aware `scripts/melior-jit-test.sh`, and release-gate integration for bounded Int32 copy evidence only. Local LLVM/MLIR major 21 is recorded as normal-mode skip and strict-mode failure against expected major 22.
-- Phase 17 reserved as a roadmap placeholder only: unified artifact verification pipeline from `LMC1` artifact/schema/features through L1 structural verification, L2Core verification, constraints/facts, `VerifiedArtifactFacts`, and lowering-ready report.
+- Phase 17 research started: `.planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md` recommends a fail-closed `verify_artifact` pipeline from `LMC1` artifact/schema/features through L1 structural verification, optional L2Core verification, constraints/facts fusion, `VerifiedArtifactFacts`, and lowering-ready report.
 - Phase 18 reserved as a roadmap placeholder only: complete Vortex reader expansion beyond the narrow Phase 15 ingress slice, before engine-integrated native execution.
 - Phase 19 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after unified verifier and complete-reader constraints are available.
 - Phase 20-22 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -164,7 +164,7 @@ None yet.
 | v3 native | MLIR/native lowering spike | Complete | Phase 14 |
 | v3 ingress | Real Vortex file/container ingress | Complete | Phase 15 |
 | v3 native | Full melior/LLVM/JIT backend integration | Complete | Phase 16 |
-| v3 verifier | Unified artifact verification pipeline | Placeholder | Phase 17 |
+| v3 verifier | Unified artifact verification pipeline | Research | Phase 17 |
 | v3 ingress | Complete Vortex reader | Placeholder | Phase 18 |
 | v3 native | Production decode dialect and native kernel expansion | Placeholder | Phase 19 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 20 |
@@ -176,11 +176,12 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T09:30:00.000Z
-Stopped at: Phase 16 complete; Phase 17 placeholder next
+Stopped at: Phase 17 unified artifact verification pipeline research started
 Phase 15 research: .planning/phases/15-real-vortex-file-container-ingress/15-RESEARCH.md
 Phase 15 context: .planning/phases/15-real-vortex-file-container-ingress/15-CONTEXT.md
 Phase 15 report: .planning/phases/15-real-vortex-file-container-ingress/15-INGRESS-REPORT.md
 Phase 16 research: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-RESEARCH.md
 Phase 16 report: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-BACKEND-REPORT.md
 Phase 16 summary: .planning/phases/16-full-melior-llvm-jit-backend-integration/16-SUMMARY.md
+Phase 17 research: .planning/phases/17-unified-artifact-verification-pipeline/17-RESEARCH.md
 Resume file: .planning/ROADMAP.md
