@@ -106,6 +106,14 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **DIST-04**: `loom inspect` exposes container version, features, sections, payload kind, schema summary, and verifier status
 - [x] **DIST-05**: The release gate covers container-wrapped payload success and negative container rejection cases
 
+### Formal Safety Proof
+
+- [ ] **PROOF-01**: A reviewer-readable safety contract and proof-obligation matrix define the implemented boundary, stable diagnostic/error categories, source evidence, executable evidence, and explicit exclusions
+- [ ] **PROOF-02**: Focused executable tests prove curated malformed `LMC1`/`LMP1`/`LMT1`/descriptor inputs fail closed through typed errors or verifier diagnostics rather than panicking
+- [ ] **PROOF-03**: A written safety proof explains no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded parser/interpreter/kernel loops for the current implementation
+- [ ] **PROOF-04**: A dedicated `scripts/safety-proof-test.sh` gate checks proof docs, obligation IDs, static safety invariants, focused tests, and existing negative gates, and is invoked by `scripts/mvp0-verify.sh`
+- [ ] **PROOF-05**: Public and planning docs state the narrow Phase 12 proof scope and do not claim future Loom IR, future L2 language, MLIR/native lowering, real Vortex ingress, signature, attestation, or correctness proofs
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -113,8 +121,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | MLIR `decode` dialect / native codegen | MVP0 interprets directly; native speed is the design's later act (design.md §8) |
-| Formal verifier, totality/termination proofs | Phase 9 is only a first-pass structural verifier; formal totality proofs remain later work (design.md §5, §7, §13) |
-| Non-terminating-input safety demo | Phase 9 covers malformed structural payloads; full totality/non-termination proof belongs to the formal verifier |
+| Full formal proof of future Loom IR, future L2 total-function language, MLIR/native lowering, or real Vortex file ingress | Phase 12 targets only the current implemented byte-to-Arrow safety boundary; future compiler/file-ingress proofs remain later work (design.md §5, §7, §13) |
+| Non-terminating-input safety demo for future user-defined languages or native lowering | Phase 12 covers bounded loops in the current parser/interpreter/kernel implementation only |
 | Full `.vortex` file layout (footer / layout tree / multi-chunk) | MVP0 decodes a single column, not a file container (design.md §10) |
 | `statistics()` / `projection_mask` / `range` ABI | Single-column decode only; random access + stats come later (design.md §9) |
 | Versioned distribution container, feature flags, content-hash URI, native fast-path | Distribution concerns follow the decode chain (design.md §10–11) |
@@ -178,6 +186,11 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | DIST-03 | Phase 11 | Complete |
 | DIST-04 | Phase 11 | Complete |
 | DIST-05 | Phase 11 | Complete |
+| PROOF-01 | Phase 12 | Planned |
+| PROOF-02 | Phase 12 | Planned |
+| PROOF-03 | Phase 12 | Planned |
+| PROOF-04 | Phase 12 | Planned |
+| PROOF-05 | Phase 12 | Planned |
 
 **Coverage:**
 
@@ -188,9 +201,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v2 table-output requirements: 7 total
 - v2 safety-boundary requirements: 5 total
 - v3 distribution-container requirements: 5 total
-- Mapped to phases: 52
+- v3 formal-safety-proof requirements: 5 total
+- Mapped to phases: 57
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 11 Distribution Container v0 complete; Phase 12-14 placeholders remain recorded*
+*Last updated: 2026-06-08 — Phase 12 Formal Verifier / Safety Proof MVP planned; Phase 13-14 placeholders remain recorded*

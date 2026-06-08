@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: phase_complete
-stopped_at: Phase 11 complete
-last_updated: "2026-06-08T03:45:00.000Z"
-last_activity: 2026-06-08 -- Phase 11 complete; LMC1 distribution container v0 documented, gated, verified, and requirements closed
+status: phase_planned
+stopped_at: Phase 12 planned
+last_updated: "2026-06-08T04:10:00.000Z"
+last_activity: 2026-06-08 -- Phase 12 planned; formal verifier / safety proof MVP split into 4 executable plans
 progress:
   total_phases: 14
   completed_phases: 11
-  total_plans: 35
+  total_plans: 39
   completed_plans: 35
-  percent: 100
+  percent: 90
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 11 complete; Phase 12/13/14 remain roadmap placeholders
+**Current focus:** Phase 12 planned; Phase 13/14 remain roadmap placeholders
 
 ## Current Position
 
-Phase: 11 (distribution-container-v0) — COMPLETE
-Plan: 4 of 4
-Status: Phase 11 complete
-Last activity: 2026-06-08 -- Phase 11 complete; LMC1 distribution container v0 documented, gated, verified, and requirements closed
+Phase: 12 (formal-verifier-safety-proof-mvp) — PLANNED
+Plan: 0 of 4
+Status: Ready for execution
+Last activity: 2026-06-08 -- Phase 12 planned; formal verifier / safety proof MVP split into 4 executable plans
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -90,6 +90,10 @@ Progress: [██████████] 100%
 | Phase 11 P02 | 20 min | 3 tasks | 4 files |
 | Phase 11 P03 | 25 min | 3 tasks | 5 files |
 | Phase 11 P04 | 20 min | 3 tasks | 8 files |
+| Phase 12 P01 | planned | 3 tasks | 2 files |
+| Phase 12 P02 | planned | 4 tasks | 3 files |
+| Phase 12 P03 | planned | 3 tasks | 3 files |
+| Phase 12 P04 | planned | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -139,7 +143,8 @@ None yet.
 - Phase 11 executing: 11-02 complete with `verify_container`, container-aware Rust decode helpers, and `loom_decode` support for single-column `LMC1` containers without C ABI changes.
 - Phase 11 executing: 11-03 complete with CLI inspect/decode support, generated `LMC1` smoke fixtures, DuckDB bind support, and container-aware negative verifier scripting.
 - Phase 11 complete: `LMC1` Distribution Container v0 now has docs, generated fixture coverage, DuckDB SQL smoke coverage, malformed-container release-gate coverage, and DIST-01 through DIST-05 closed.
-- Phase 12, Phase 13, and Phase 14 added as roadmap placeholders only: formal verifier/safety proof MVP, MLIR/native lowering spike, and real Vortex file/container ingress.
+- Phase 12 planned: formal verifier / safety proof MVP will add a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a dedicated safety proof gate, and final proof docs for the current implemented boundary only.
+- Phase 13 and Phase 14 remain roadmap placeholders only: MLIR/native lowering spike and real Vortex file/container ingress.
 
 ### Quick Tasks Completed
 
@@ -173,12 +178,12 @@ None yet.
 | v2 safety | SAFE-04: CLI verifier visibility | Complete | Phase 9 |
 | v2 safety | VERIFY-06: Negative verifier release gate | Complete | Phase 9 |
 | v3 distribution | DIST-01..DIST-05: Distribution Container v0 | Complete | Phase 11 |
-| v3 safety | Formal verifier / safety proof MVP | Placeholder | Phase 12 |
+| v3 safety | Formal verifier / safety proof MVP | Planned | Phase 12 |
 | v3 native | MLIR/native lowering spike | Placeholder | Phase 13 |
 | v3 ingress | Real Vortex file/container ingress | Placeholder | Phase 14 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T03:45:00.000Z
-Stopped at: Phase 11 complete
+Last session: 2026-06-08T04:10:00.000Z
+Stopped at: Phase 12 planned
 Resume file: .planning/ROADMAP.md

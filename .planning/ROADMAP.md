@@ -6,8 +6,9 @@ Loom MVP0 proves one narrow chain end-to-end: Vortex-style encoded payloads are 
 pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed Apache
 Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL. Phases 1-10
 complete the MVP0/v2 proof chain. Phase 11 begins the next step toward the final Loom goal by
-introducing a versioned distribution container boundary; Phases 12-14 are roadmap placeholders for
-formal safety proof, native lowering, and real Vortex file ingress.
+introducing a versioned distribution container boundary. Phase 12 makes that implemented boundary
+reviewable as a formal safety-proof MVP. Phases 13-14 remain roadmap placeholders for native lowering
+and real Vortex file ingress.
 
 ## Phases
 
@@ -29,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 9: Verifier and Safety Boundary MVP** - Add a first-pass verifier for layout/table payloads that rejects malformed or unsafe decode descriptions before execution and exposes a reviewer-visible verification command (completed 2026-06-08)
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
-- [ ] **Phase 12: Formal Verifier / Safety Proof MVP** - Placeholder for moving beyond structural validation into a formal safety proof surface (not expanded)
+- [ ] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP
 - [ ] **Phase 13: MLIR/Native Lowering Spike** - Placeholder for testing Loom-to-native lowering after the distribution boundary exists (not expanded)
 - [ ] **Phase 14: Real Vortex File/Container Ingress** - Placeholder for reading real Vortex file/container metadata after Loom's own container boundary is stable (not expanded)
 
@@ -310,8 +311,32 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 12: Formal Verifier / Safety Proof MVP
 
-**Status:** Placeholder only. Do not expand until Phase 11 is planned or complete.
+**Goal:** Make Loom's implemented `LMC1`/`LMP1`/`LMT1` byte-to-Arrow safety boundary reviewable and mechanically guarded through a safety contract, proof-obligation matrix, focused no-panic/fail-closed tests, a bounded-loop safety argument, and a dedicated release gate.
+**Requirements:** PROOF-01, PROOF-02, PROOF-03, PROOF-04, PROOF-05
 **Depends on:** Phase 11
+**Research:** `.planning/phases/12-formal-verifier-safety-proof-mvp/12-RESEARCH.md`
+**Success Criteria** (what must be TRUE):
+
+  1. A safety contract and proof-obligation matrix define the current implemented boundary, source evidence, executable evidence, release-gate evidence, and explicit exclusions
+  2. Curated malformed `LMC1`/`LMP1`/`LMT1`/descriptor inputs fail closed through typed errors or verifier diagnostics and do not panic in focused tests
+  3. The written safety proof explains no-unsafe-core, FFI panic containment, decode-before-Arrow behavior, and bounded parser/interpreter/kernel loops for the current implementation
+  4. `scripts/safety-proof-test.sh` checks proof docs, obligation IDs, static invariants, focused tests, and existing negative gates
+  5. `scripts/mvp0-verify.sh` invokes the safety proof gate, and docs do not claim future L2 language, MLIR/native lowering, real Vortex ingress, or correctness proofs
+
+**Plans:** 4 plans across 3 waves
+
+**Wave 1**
+
+- [ ] 12-01-PLAN.md - Define the safety contract, proof-obligation matrix, loop-bound audit, and unsafe-boundary argument (PROOF-01, PROOF-03, PROOF-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 12-02-PLAN.md - Add focused core/FFI no-panic and fail-closed safety contract tests (PROOF-02, PROOF-03)
+- [ ] 12-03-PLAN.md - Add `scripts/safety-proof-test.sh`, wire it into `mvp0-verify.sh`, and map gate evidence (PROOF-02, PROOF-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 12-04-PLAN.md - Write final safety proof, update public/planning docs, run final gates, and close PROOF requirements (PROOF-01, PROOF-02, PROOF-03, PROOF-04, PROOF-05)
 
 ### Phase 13: MLIR/Native Lowering Spike
 
@@ -341,6 +366,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Verifier and Safety Boundary MVP | 4/4 | Complete | 2026-06-08 |
 | 10. Additional L2 Kernels and Numeric Compression Coverage | 4/4 | Complete | 2026-06-08 |
 | 11. Distribution Container v0 | 4/4 | Complete | 2026-06-08 |
-| 12. Formal Verifier / Safety Proof MVP | 0/? | Placeholder | - |
+| 12. Formal Verifier / Safety Proof MVP | 0/4 | Planned | - |
 | 13. MLIR/Native Lowering Spike | 0/? | Placeholder | - |
 | 14. Real Vortex File/Container Ingress | 0/? | Placeholder | - |
