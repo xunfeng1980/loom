@@ -2,6 +2,6 @@
 name = "loom-source-ingress"
 version = "0.1.0"
 edition = "2021"
-description = "Dependency-light source-neutral ingress contract types for Loom"
+description = "Dependency-light source-neutral ingress contract types for Loom with no source SDK dependencies"
 
 [dependencies]
