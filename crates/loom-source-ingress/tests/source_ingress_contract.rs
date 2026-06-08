@@ -6,6 +6,52 @@ use loom_source_ingress::{
     SourceSchemaFact, SourceSegmentFact, SourceSplitFact,
 };
 
+fn manifest_text() -> String {
+    std::fs::read_to_string(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR")))
+        .expect("read manifest")
+}
+
+fn dependency_section(text: &str) -> Vec<&str> {
+    let mut in_dependencies = false;
+    let mut lines = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[dependencies]" {
+            in_dependencies = true;
+            continue;
+        }
+        if in_dependencies && trimmed.starts_with('[') {
+            break;
+        }
+        if in_dependencies && !trimmed.is_empty() && !trimmed.starts_with('#') {
+            lines.push(trimmed);
+        }
+    }
+
+    lines
+}
+
+fn forbidden_source_markers() -> Vec<String> {
+    [
+        ("Vor", "tex"),
+        ("vor", "tex"),
+        ("fast", "lanes"),
+        ("L", "ance"),
+        ("Par", "quet"),
+        ("Ice", "berg"),
+        ("M", "CAP"),
+        ("Z", "arr"),
+        ("Le", "Robot"),
+        ("object", "_store"),
+        ("duck", "db"),
+        ("mel", "ior"),
+    ]
+    .into_iter()
+    .map(|(left, right)| format!("{left}{right}"))
+    .collect()
+}
+
 #[test]
 fn source_ingress_contract_public_types_exist() {
     let _ = SourceIngressStatus::Accepted;
@@ -33,6 +79,37 @@ fn source_ingress_contract_public_types_exist() {
         SourceIdentity::new("mock", "mock-format"),
         SourceDiagnostic::new(SourceDiagnosticCode::OpenFailed, "$", "open failed"),
     );
+}
+
+#[test]
+fn crate_manifest_documents_and_enforces_dependency_hygiene() {
+    let manifest = manifest_text();
+
+    assert!(manifest.contains("no source SDK dependencies"));
+    assert!(
+        dependency_section(&manifest).is_empty(),
+        "generic source contract crate must not carry runtime dependencies"
+    );
+}
+
+#[test]
+fn contract_sources_do_not_contain_source_specific_public_vocabulary() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let source = std::fs::read_to_string(format!("{manifest_dir}/src/lib.rs")).expect("read src");
+    let tests =
+        std::fs::read_to_string(format!("{manifest_dir}/tests/source_ingress_contract.rs"))
+            .expect("read tests");
+
+    for marker in forbidden_source_markers() {
+        assert!(
+            !source.contains(&marker),
+            "source contract API leaked marker {marker}"
+        );
+        assert!(
+            !tests.contains(&marker),
+            "source contract tests leaked marker {marker}"
+        );
+    }
 }
 
 fn mock_identity() -> SourceIdentity {
