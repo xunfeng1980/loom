@@ -560,7 +560,7 @@ LMC1 artifact
 
 **Suggested plan split:**
 - [x] 19-01-PLAN.md - Solver contract and obligation report model
-- [ ] 19-02-PLAN.md - Deterministic Bitwuzla-primary SMT-LIB emitter
+- [x] 19-02-PLAN.md - Deterministic Bitwuzla-primary SMT-LIB emitter
 - [ ] 19-03-PLAN.md - Optional `loom-solver-smt` crate with Bitwuzla backend
 - [ ] 19-04-PLAN.md - Artifact verifier solver-discharge integration
 - [ ] 19-05-PLAN.md - CLI, release gate, and solver verifier closeout
@@ -634,7 +634,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 16. Full melior/LLVM/JIT Backend Integration | 5/5 | Complete | 2026-06-08 |
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
-| 19. Solver-backed Full Artifact Verifier | 1/5 | In Progress | - |
+| 19. Solver-backed Full Artifact Verifier | 2/5 | In Progress | - |
 | 20. Production Decode Dialect and Native Kernel Expansion | 0/? | Placeholder | - |
 | 21. Expanded Vortex Encoding Coverage | 0/? | Placeholder | - |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |

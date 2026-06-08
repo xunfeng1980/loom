@@ -3,6 +3,11 @@
 //! `loom-core` owns the report vocabulary and deterministic SMT-LIB contract
 //! metadata. Solver process execution lives outside this crate.
 
+use std::collections::BTreeSet;
+use std::fmt::Write as _;
+
+use crate::l2_core::constraints::{ConstraintSet, ConstraintTerm, IntegerType, LoomConstraint};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolverBackendKind {
     Z3,
@@ -92,6 +97,21 @@ impl SolverQuerySemantics {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::BadStateUnsat => "bad-state-unsat",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SmtLibScriptFamily {
+    Required,
+    CrossCheck,
+}
+
+impl SmtLibScriptFamily {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Required => "required",
+            Self::CrossCheck => "cross-check",
         }
     }
 }
@@ -191,11 +211,50 @@ impl SolverObligationStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SmtLibScript {
     pub id: String,
+    pub family: SmtLibScriptFamily,
     pub logic: SolverTheory,
     pub text: String,
     pub expected_success: SolverRawResult,
     pub obligation_ids: Vec<String>,
     pub deterministic_id: String,
+}
+
+impl SmtLibScript {
+    pub fn required_qfbv(
+        id: impl Into<String>,
+        text: String,
+        obligation_ids: Vec<String>,
+    ) -> Self {
+        let id = id.into();
+        let deterministic_id = deterministic_text_id(&id, &text);
+        Self {
+            id,
+            family: SmtLibScriptFamily::Required,
+            logic: SolverTheory::QfBv,
+            text,
+            expected_success: SolverRawResult::Unsat,
+            obligation_ids,
+            deterministic_id,
+        }
+    }
+
+    pub fn cross_check_qflia(
+        id: impl Into<String>,
+        text: String,
+        obligation_ids: Vec<String>,
+    ) -> Self {
+        let id = id.into();
+        let deterministic_id = deterministic_text_id(&id, &text);
+        Self {
+            id,
+            family: SmtLibScriptFamily::CrossCheck,
+            logic: SolverTheory::QfLia,
+            text,
+            expected_success: SolverRawResult::Unsat,
+            obligation_ids,
+            deterministic_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -329,4 +388,240 @@ impl SolverDischargeReport {
             && self.unknown_count == 0
             && self.skipped_count == 0
     }
+}
+
+pub fn emit_required_qfbv_script(
+    script_id: impl Into<String>,
+    constraints: &ConstraintSet,
+) -> SmtLibScript {
+    let script_id = script_id.into();
+    let mut constraints: Vec<_> = constraints.iter().collect();
+    constraints.sort_by(|left, right| left.id().cmp(right.id()));
+
+    let mut vars = BTreeSet::new();
+    for constraint in &constraints {
+        collect_constraint_vars(constraint, &mut vars);
+    }
+
+    let mut text = String::new();
+    text.push_str("(set-info :smt-lib-version 2.7)\n");
+    text.push_str("(set-option :print-success false)\n");
+    text.push_str("(set-option :produce-models true)\n");
+    text.push_str("(set-option :produce-unsat-cores true)\n");
+    text.push_str("(set-logic QF_BV)\n\n");
+    let _ = writeln!(text, "; loom-smt-script {script_id}");
+    text.push_str("; loom-smt-family required\n");
+    text.push_str("; loom-smt-primary-backend bitwuzla\n\n");
+
+    for var in vars {
+        let _ = writeln!(
+            text,
+            "(declare-const {} (_ BitVec 64))",
+            smt_symbol(&var)
+        );
+    }
+    if !constraints.is_empty() {
+        text.push('\n');
+    }
+
+    let mut obligation_ids = Vec::new();
+    for (idx, constraint) in constraints.iter().enumerate() {
+        let name = format!("bad_{}_{}", sanitize_symbol(constraint.id()), idx);
+        let bad = bad_state_qfbv(constraint);
+        let _ = writeln!(
+            text,
+            "(assert (! {bad} :named {}))",
+            smt_symbol(&name)
+        );
+        obligation_ids.push(constraint.id().to_string());
+    }
+
+    text.push_str("\n(check-sat)\n(exit)\n");
+    SmtLibScript::required_qfbv(script_id, text, obligation_ids)
+}
+
+fn collect_constraint_vars(constraint: &LoomConstraint, vars: &mut BTreeSet<String>) {
+    match constraint {
+        LoomConstraint::Le { left, right, .. }
+        | LoomConstraint::Lt { left, right, .. }
+        | LoomConstraint::Eq { left, right, .. }
+        | LoomConstraint::AddNoOverflow { left, right, .. }
+        | LoomConstraint::MulNoOverflow { left, right, .. } => {
+            collect_term_vars(left, vars);
+            collect_term_vars(right, vars);
+        }
+        LoomConstraint::InRange {
+            value,
+            lower,
+            upper_exclusive,
+            ..
+        } => {
+            collect_term_vars(value, vars);
+            collect_term_vars(lower, vars);
+            collect_term_vars(upper_exclusive, vars);
+        }
+        LoomConstraint::Decreases { previous, next, .. } => {
+            collect_term_vars(previous, vars);
+            collect_term_vars(next, vars);
+        }
+        LoomConstraint::NonNegative { value, .. } => collect_term_vars(value, vars),
+        LoomConstraint::FeatureImplies { .. } => {}
+    }
+}
+
+fn collect_term_vars(term: &ConstraintTerm, vars: &mut BTreeSet<String>) {
+    match term {
+        ConstraintTerm::Var(name) => {
+            vars.insert(name.clone());
+        }
+        ConstraintTerm::Int(_) => {}
+        ConstraintTerm::Add(left, right)
+        | ConstraintTerm::Sub(left, right)
+        | ConstraintTerm::Mul(left, right) => {
+            collect_term_vars(left, vars);
+            collect_term_vars(right, vars);
+        }
+    }
+}
+
+fn bad_state_qfbv(constraint: &LoomConstraint) -> String {
+    match constraint {
+        LoomConstraint::Le { left, right, .. } => {
+            format!("(bvugt {} {})", term_qfbv(left), term_qfbv(right))
+        }
+        LoomConstraint::Lt { left, right, .. } => {
+            format!("(not (bvult {} {}))", term_qfbv(left), term_qfbv(right))
+        }
+        LoomConstraint::Eq { left, right, .. } => {
+            format!("(not (= {} {}))", term_qfbv(left), term_qfbv(right))
+        }
+        LoomConstraint::AddNoOverflow {
+            left, right, ty, ..
+        } => {
+            let left = term_qfbv_with_type(left, ty);
+            let right = term_qfbv_with_type(right, ty);
+            format!("(bvult (bvadd {left} {right}) {left})")
+        }
+        LoomConstraint::MulNoOverflow {
+            left, right, ty, ..
+        } => {
+            let left = term_qfbv_with_type(left, ty);
+            let right = term_qfbv_with_type(right, ty);
+            format!("(and (not (= {right} {})) (bvult (bvmul {left} {right}) {left}))", bv_const(0, bits_for_type(ty)))
+        }
+        LoomConstraint::InRange {
+            value,
+            lower,
+            upper_exclusive,
+            ..
+        } => format!(
+            "(or (bvult {} {}) (not (bvult {} {})))",
+            term_qfbv(value),
+            term_qfbv(lower),
+            term_qfbv(value),
+            term_qfbv(upper_exclusive)
+        ),
+        LoomConstraint::Decreases { previous, next, .. } => {
+            format!("(not (bvult {} {}))", term_qfbv(next), term_qfbv(previous))
+        }
+        LoomConstraint::NonNegative { .. } | LoomConstraint::FeatureImplies { .. } => {
+            "false".to_string()
+        }
+    }
+}
+
+fn term_qfbv(term: &ConstraintTerm) -> String {
+    term_qfbv_bits(term, 64)
+}
+
+fn term_qfbv_with_type(term: &ConstraintTerm, ty: &IntegerType) -> String {
+    term_qfbv_bits(term, bits_for_type(ty))
+}
+
+fn term_qfbv_bits(term: &ConstraintTerm, bits: u16) -> String {
+    match term {
+        ConstraintTerm::Var(name) => smt_symbol(name),
+        ConstraintTerm::Int(value) => bv_const(*value, bits),
+        ConstraintTerm::Add(left, right) => {
+            format!(
+                "(bvadd {} {})",
+                term_qfbv_bits(left, bits),
+                term_qfbv_bits(right, bits)
+            )
+        }
+        ConstraintTerm::Sub(left, right) => {
+            format!(
+                "(bvsub {} {})",
+                term_qfbv_bits(left, bits),
+                term_qfbv_bits(right, bits)
+            )
+        }
+        ConstraintTerm::Mul(left, right) => {
+            format!(
+                "(bvmul {} {})",
+                term_qfbv_bits(left, bits),
+                term_qfbv_bits(right, bits)
+            )
+        }
+    }
+}
+
+fn bits_for_type(ty: &IntegerType) -> u16 {
+    match ty {
+        // Phase 19 starts with a stable 64-bit policy so all symbolic
+        // variables have one declaration width. Narrow native widths can be
+        // refined later by the backend-specific emitter.
+        IntegerType::Int32 | IntegerType::UInt32 => 64,
+        IntegerType::Int64 | IntegerType::UInt64 | IntegerType::RowIndex => 64,
+    }
+}
+
+fn bv_const(value: i128, bits: u16) -> String {
+    let bits = bits.clamp(1, 128);
+    let mask = if bits == 128 {
+        u128::MAX
+    } else {
+        (1u128 << bits) - 1
+    };
+    let wrapped = if value >= 0 {
+        (value as u128) & mask
+    } else {
+        let magnitude = value.unsigned_abs() & mask;
+        ((!magnitude).wrapping_add(1)) & mask
+    };
+    if bits % 4 == 0 {
+        let hex_width = usize::from(bits / 4);
+        format!("#x{wrapped:0hex_width$x}")
+    } else {
+        format!("(_ bv{wrapped} {bits})")
+    }
+}
+
+fn smt_symbol(raw: &str) -> String {
+    format!("loom_{}", sanitize_symbol(raw))
+}
+
+fn sanitize_symbol(raw: &str) -> String {
+    let mut out = String::new();
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        "anon".to_string()
+    } else {
+        out
+    }
+}
+
+fn deterministic_text_id(id: &str, text: &str) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in id.bytes().chain(text.bytes()) {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("fnv64-{hash:016x}")
 }

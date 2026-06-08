@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 19 19-01 complete; 19-02 next
-last_updated: "2026-06-08T11:55:00.000Z"
-last_activity: 2026-06-08 -- Phase 19 19-01 complete
+stopped_at: Phase 19 19-02 complete; 19-03 next
+last_updated: "2026-06-08T12:10:00.000Z"
+last_activity: 2026-06-08 -- Phase 19 19-02 complete
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 72
-  completed_plans: 68
+  completed_plans: 69
   percent: 69
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 19 (solver-backed-full-artifact-verifier) — IN PROGRESS
-Plan: 19-01 complete; 19-02 next
-Status: Phase 19 19-01 added the solver-neutral contract/report model, Bitwuzla-primary backend declarations, `ArtifactVerificationFacts.solver_report`, and focused discharge invariant tests.
-Last activity: 2026-06-08 -- Phase 19 19-01 complete
+Plan: 19-01 and 19-02 complete; 19-03 next
+Status: Phase 19 19-02 added deterministic Bitwuzla-primary `QF_BV` SMT-LIB script emission from current `LoomConstraint` values, required-vs-cross-check script family metadata, stable bad-state assertion names, and focused emitter tests.
+Last activity: 2026-06-08 -- Phase 19 19-02 complete
 
 Progress: 69%
 
 ## Progress Snapshot
 
 - Completed phases: 18 / 26
-- Completed executable plans: 68 / 72
+- Completed executable plans: 69 / 72
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-02 deterministic Bitwuzla-primary SMT-LIB emitter next
+- Current position: Phase 19 solver-backed full artifact verifier in progress; 19-03 optional `loom-solver-smt` Bitwuzla backend next
 - Last verified gate: `bash scripts/mvp0-verify.sh` passed after local LLVM/MLIR 22.1.7 upgrade; Phase 16 feature-enabled `melior` JIT evidence now passes without skip
 
 **Completed phase plan counts:**
@@ -50,7 +50,7 @@ Progress: 69%
 | 16 | Optional verifier-gated melior/LLVM/JIT backend evidence | 5/5 |
 | 17 | Unified artifact verification pipeline | 5/5 |
 | 18 | Complete Vortex reader | 5/5 |
-| 19 | Solver-backed full artifact verifier | 1/5 in progress |
+| 19 | Solver-backed full artifact verifier | 2/5 in progress |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -130,6 +130,7 @@ None yet.
 - Phase 19 research refreshed: recommended solver-neutral obligation/report types in `loom-core`, deterministic SMT-LIB v2.7 emission, optional `loom-solver-smt` subprocess backend with `z3`/`cvc5`/`bitwuzla` backend declarations from day one, Bitwuzla as the primary implemented backend, a Bitwuzla-supported `QF_BV` required path, Z3/cvc5 as optional adapters or strict cross-check paths, and fail-closed handling for `sat`, `unknown`, timeout, parse error, solver crash, missing strict solver, and cross-check disagreement.
 - Phase 19 planned: 5 plans across solver contract/report model, deterministic Bitwuzla-primary `QF_BV` SMT-LIB emission, optional `loom-solver-smt` Bitwuzla backend, artifact verifier solver-discharge integration, and CLI/release-gate closeout.
 - Phase 19 executing: 19-01 complete with `19-SOLVER-CONTRACT.md`, `loom_core::solver`, `ArtifactVerificationFacts.solver_report`, backend declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla primary metadata, and focused solver contract tests.
+- Phase 19 executing: 19-02 complete with deterministic Bitwuzla-primary `QF_BV` SMT-LIB script emission, required/cross-check script family metadata, named bad-state assertions, stable FNV-style script IDs, and focused `smtlib_emitter` tests.
 - Phase 20 reserved as a roadmap placeholder only: production MLIR decode dialect and native kernel expansion after solver-backed verifier evidence and complete-reader constraints are available.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
 - Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
@@ -190,7 +191,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T11:10:32.000Z
-Stopped at: Phase 19 19-01 complete; 19-02 next
+Stopped at: Phase 19 19-02 complete; 19-03 next
 
 Phase 17 handoff:
 
@@ -218,4 +219,5 @@ Phase 19 research: .planning/phases/19-solver-backed-full-artifact-verifier/19-R
 Phase 19 context: .planning/phases/19-solver-backed-full-artifact-verifier/19-CONTEXT.md
 Phase 19 plans: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-PLAN.md through 19-05-PLAN.md
 Phase 19 19-01 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-01-SUMMARY.md
+Phase 19 19-02 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-02-SUMMARY.md
 Resume file: .planning/ROADMAP.md
