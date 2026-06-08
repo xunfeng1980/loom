@@ -9,12 +9,12 @@ The shipped backend is evidence, not a production native compiler. It preserves 
 ## Local toolchain facts
 
 - Expected MLIR major: `22`
-- Local Homebrew LLVM/MLIR major observed by the gate: `21`
+- Local Homebrew LLVM/MLIR major observed by the gate after toolchain upgrade: `22`
 - Optional `melior` crate version: `0.27.0`
 - Transitive MLIR binding expectation: `mlir-sys v220.0.2`
-- Normal gate behavior: `[SKIP] detected LLVM/MLIR major 21, expected 22`
-- Strict gate behavior: `[FAIL] detected LLVM/MLIR major 21, expected 22`
-- Feature-enabled build skip reason: `mlir-sys v220.0.2` / `tblgen` require a compatible `llvm-config`
+- Normal gate behavior after upgrade: `PASSED`
+- Strict gate behavior after upgrade: `PASSED`
+- Feature-enabled build requirement: Homebrew LLVM's keg-only bin directory must be on `PATH` while compiling `mlir-sys v220.0.2` / `tblgen`; `scripts/melior-jit-test.sh` injects the detected compatible tool directory before running feature-enabled tests.
 
 ## Backend crate boundary
 
@@ -58,7 +58,7 @@ Unsupported programs fail closed before native artifact creation.
 
 Malformed MLIR returns `mlir-verification-failed` or `pass-pipeline-failed` depending on where validation fails.
 
-## JIT evidence and skip reason
+## JIT evidence
 
 `loom_native_melior::jit::execute_copy_i32_jit` defines the typed primitive JIT boundary:
 
@@ -67,7 +67,7 @@ Malformed MLIR returns `mlir-verification-failed` or `pass-pipeline-failed` depe
 - `&[i32]`
 - `Result<Vec<i32>, MeliorBackendReport>`
 
-The local machine does not execute feature-enabled JIT because the available LLVM/MLIR major is `21` while Phase 16 expects `22`. This is recorded as optional evidence skip in normal mode and as fail-closed strict evidence in `LOOM_REQUIRE_MELIOR_JIT=1` mode.
+The local machine now executes the feature-enabled `melior`/LLVM/JIT evidence path against Homebrew LLVM/MLIR `22.1.7`. The gate also validates the high-level `arith`/`scf`/`memref` MLIR through an explicit LLVM lowering pipeline before `mlir-translate --mlir-to-llvmir`.
 
 ## Fail-closed negative coverage
 

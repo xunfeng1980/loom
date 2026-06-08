@@ -92,6 +92,7 @@ if [ "${llvm_major}" != "${EXPECTED_MLIR_MAJOR}" ]; then
 fi
 
 ok "compatible LLVM/MLIR ${EXPECTED_MLIR_MAJOR} toolchain detected"
+export PATH="$(dirname "${llvm_config}"):${PATH}"
 
 info "Running feature-enabled melior jit equivalence tests..."
 cargo test -p loom-native-melior --features melior jit

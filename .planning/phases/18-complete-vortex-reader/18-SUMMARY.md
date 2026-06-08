@@ -40,7 +40,7 @@ Final closeout commands:
 - `bash scripts/mvp0-verify.sh`
 - `git diff --check`
 
-Status: all final closeout commands passed on 2026-06-08. The full release gate preserved the expected normal-mode Phase 16 optional backend skip for local LLVM/MLIR major 21 versus expected major 22.
+Status: all final closeout commands passed on 2026-06-08. After the local LLVM/MLIR `22.1.7` upgrade, the Phase 16 optional backend gate now passes its feature-enabled `melior` JIT path rather than skipping for toolchain mismatch.
 
 ## Deviations
 

@@ -8,6 +8,8 @@ use crate::report::{
 };
 use crate::toolchain::{probe_toolchain, require_compatible_toolchain};
 
+const LLVM_LOWERING_PIPELINE: &str = "builtin.module(convert-scf-to-cf,convert-cf-to-llvm,expand-strided-metadata,finalize-memref-to-llvm,convert-func-to-llvm,convert-arith-to-llvm,reconcile-unrealized-casts)";
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MlirValidationOptions {
     pub require_compatible_toolchain: bool,
@@ -120,6 +122,14 @@ pub fn validate_translation_to_llvm_ir(
         );
         return report;
     };
+    let Some(mlir_opt) = tool_path(&toolchain, MlirToolKind::MlirOpt) else {
+        report.push(
+            MeliorBackendDiagnosticCode::ToolchainMissing,
+            "$.toolchain.mlir-opt",
+            "mlir-opt is required before Phase 16 LLVM IR translation",
+        );
+        return report;
+    };
 
     let path = temp_mlir_path("loom-melior-translate");
     if let Err(err) = fs::write(&path, &artifact.mlir_text) {
@@ -131,11 +141,47 @@ pub fn validate_translation_to_llvm_ir(
         return report;
     }
 
+    let lowered_path = temp_mlir_path("loom-melior-lowered");
+    let lowering_output = Command::new(&mlir_opt)
+        .arg(&path)
+        .arg(format!("--pass-pipeline={LLVM_LOWERING_PIPELINE}"))
+        .output();
+    if let Ok(output) = &lowering_output {
+        if output.status.success() {
+            let _ = fs::write(&lowered_path, &output.stdout);
+        }
+    }
+    let _ = fs::remove_file(&path);
+
+    match lowering_output {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => {
+            let _ = fs::remove_file(&lowered_path);
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.llvm-lowering",
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            );
+            return report;
+        }
+        Err(err) => {
+            let _ = fs::remove_file(&lowered_path);
+            report.supported = false;
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.llvm-lowering",
+                format!("failed to run mlir-opt lowering pipeline: {err}"),
+            );
+            return report;
+        }
+    }
+
     let output = Command::new(&mlir_translate)
         .arg("--mlir-to-llvmir")
-        .arg(&path)
+        .arg(&lowered_path)
         .output();
-    let _ = fs::remove_file(&path);
+    let _ = fs::remove_file(&lowered_path);
 
     match output {
         Ok(output) if output.status.success() => report,

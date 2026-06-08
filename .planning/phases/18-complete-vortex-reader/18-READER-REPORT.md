@@ -97,7 +97,7 @@ Final verification commands:
 - `bash scripts/mvp0-verify.sh`
 - `git diff --check`
 
-Result: all commands passed on 2026-06-08. `scripts/melior-jit-test.sh`, as invoked by `scripts/mvp0-verify.sh`, reported the expected normal-mode skip for local LLVM/MLIR major 21 versus expected major 22; this is recorded as optional backend skip evidence, not production JIT success.
+Result: all commands passed on 2026-06-08. After upgrading local Homebrew LLVM/MLIR to `22.1.7`, `scripts/melior-jit-test.sh` also passes its feature-enabled `melior` JIT path instead of reporting the earlier optional toolchain skip.
 
 ## Deferred Work
 
