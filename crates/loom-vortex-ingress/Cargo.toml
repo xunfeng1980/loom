@@ -16,3 +16,4 @@ vortex-session = "=0.74.0"
 
 [dev-dependencies]
 arrow = { workspace = true }
+vortex-fastlanes = { workspace = true }

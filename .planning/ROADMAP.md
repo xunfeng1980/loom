@@ -17,7 +17,9 @@ JIT backend. Phase 21 widens Vortex encoding/layout coverage after the solver an
 oversized engine-integrated native execution placeholder into a runtime ABI/policy phase, a production native backend implementation
 phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 26 and Phase 27 reserve the table-format and
 multi-engine query surface that should follow: Iceberg ref/table binding first, then
-StarRocks + DuckDB dual query surface.
+StarRocks + DuckDB dual query surface. Full arbitrary Vortex semantic
+compatibility remains a later dedicated compatibility phase, not part of the
+finite Phase 21 coverage matrix or the Phase 23 production backend.
 
 ## Phases
 
@@ -48,13 +50,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
 - [x] **Phase 19: Solver-backed Full Artifact Verifier** - Real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (complete)
 - [x] **Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence, without claiming a complete compiled dialect or production JIT backend (complete)
-- [ ] **Phase 21: Expanded Vortex Encoding Coverage** - Planned widening of supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout
+- [x] **Phase 21: Expanded Vortex Encoding Coverage** - Widen supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (complete)
 - [ ] **Phase 22: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
 - [ ] **Phase 23: Production Native Backend Implementation** - Placeholder for the real compiled `loom.decode` ODS dialect, melior pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend that consumes Phase 22 ABI/policy decisions (not expanded)
 - [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
 - [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
 - [ ] **Phase 26: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path and full reader boundary are credible (not expanded)
 - [ ] **Phase 27: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
+- [ ] **Phase 28: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
 
 ## Phase Details
 
@@ -590,22 +593,31 @@ LMC1 artifact
 
 ### Phase 21: Expanded Vortex Encoding Coverage
 
-**Status:** Planned.
+**Status:** Complete (2026-06-08). See `21-COVERAGE-MATRIX.md`,
+`21-COVERAGE-REPORT.md`, and `21-SUMMARY.md`.
 **Depends on:** Phase 18, Phase 19, and Phase 20.
 **Ordering decision:** Widen real Vortex coverage after the verifier and first production lowering seed exist, not because that seed is permanently complete. This phase should add representative Vortex encodings, layouts, and storage modes beyond the Phase 18 accepted matrix, preserve Loom-owned facts and diagnostics, emit artifacts only when verifier/lowering facts accept them, and add Vortex oracle/equivalence gates. For every new encoding/layout, Phase 21 must record a paired decision: interpreter-only for now, production-lowering-supported with dialect/native delta, or fail-closed/deferred with stable diagnostics. It must not become solver work, host-runtime ABI work, production backend implementation, or DuckDB/Iceberg integration.
 **Research:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-RESEARCH.md`
 **Context:** `.planning/phases/21-expanded-vortex-encoding-coverage/21-CONTEXT.md`
 
-**Suggested plan split:**
-- [ ] 21-01-PLAN.md - Coverage matrix and reader fact contract
-- [ ] 21-02-PLAN.md - Nullable primitive and chunked primitive coverage
-- [ ] 21-03-PLAN.md - Dictionary, RunEnd, and sequence coverage
-- [ ] 21-04-PLAN.md - Bitpack, FOR, and numeric compression coverage
-- [ ] 21-05-PLAN.md - Report, release gate, and Phase 22/23 handoff
+**Delivered plan split:**
+- [x] 21-01-PLAN.md - Coverage matrix and reader fact contract
+- [x] 21-02-PLAN.md - Nullable primitive and chunked primitive coverage
+- [x] 21-03-PLAN.md - Dictionary, RunEnd, and sequence coverage
+- [x] 21-04-PLAN.md - Bitpack, FOR, and numeric compression coverage
+- [x] 21-05-PLAN.md - Report, release gate, and Phase 22/23 handoff
+
+**Closeout:** Phase 21 added `VortexEncodingCoverage`,
+`VortexEmissionDisposition`, and `VortexLoweringDisposition`; focused
+nullable/chunked/dictionary/RLE/bitpack/FOR real Vortex tests; canonical raw
+emission evidence where safe; fail-closed nullable/string/compression
+deferrals; and `scripts/vortex-encoding-coverage-test.sh` wired into the
+release gate. Structured native support for dictionary/run-end/bitpack/FOR
+remains a Phase 23 backend delta.
 
 ### Phase 22: Host Native Runtime ABI and Execution Policy
 
-**Status:** Placeholder only. Do not expand until Phase 18 establishes the complete Vortex reader boundary, Phase 19 establishes solver-backed verifier evidence, Phase 20 identifies the production native lowering seed, and Phase 21 widens the Vortex encoding surface.
+**Status:** Placeholder only; ready for research/planning after Phase 21.
 **Depends on:** Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21.
 **Ordering decision:** Define the engine-independent boundary before touching a host engine or committing to the production backend mechanics, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, StarRocks, compiled dialect, or JIT implementation phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 27 validation.
 
@@ -641,10 +653,16 @@ LMC1 artifact
 **Depends on:** Phase 26.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
 
+### Phase 28: Full Vortex Semantic Compatibility
+
+**Status:** Placeholder only. Do not expand until Phase 27 proves the same table-bound Loom artifacts through at least two query surfaces.
+**Depends on:** Phase 21, Phase 23, Phase 25, and Phase 27.
+**Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -668,10 +686,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
 | 19. Solver-backed Full Artifact Verifier | 5/5 | Complete | 2026-06-08 |
 | 20. Production Decode Dialect Seed and Raw Primitive Native Lowering | 5/5 | Complete | 2026-06-08 |
-| 21. Expanded Vortex Encoding Coverage | 0/5 | Planned | - |
+| 21. Expanded Vortex Encoding Coverage | 5/5 | Complete | 2026-06-08 |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
 | 23. Production Native Backend Implementation | 0/? | Placeholder | - |
 | 24. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
 | 26. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
 | 27. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
+| 28. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |

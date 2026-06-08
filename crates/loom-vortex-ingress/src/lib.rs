@@ -189,6 +189,62 @@ impl VortexReaderEmissionKind {
     }
 }
 
+/// Semantic shape of emitted Loom artifacts for coverage reporting.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexEmissionDisposition {
+    None,
+    CanonicalRaw,
+    CanonicalTable,
+    StructuredLayout,
+}
+
+impl VortexEmissionDisposition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::CanonicalRaw => "canonical-raw",
+            Self::CanonicalTable => "canonical-table",
+            Self::StructuredLayout => "structured-layout",
+        }
+    }
+}
+
+/// Native-lowering support classification for a reader-covered Vortex shape.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexLoweringDisposition {
+    InterpreterOnly,
+    ProductionLoweringSupported,
+    FailClosedDeferred,
+}
+
+impl VortexLoweringDisposition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::InterpreterOnly => "interpreter-only",
+            Self::ProductionLoweringSupported => "production-lowering-supported",
+            Self::FailClosedDeferred => "fail-closed/deferred",
+        }
+    }
+}
+
+/// Phase 21 coverage facts. This separates reader support, artifact emission,
+/// and native-lowering disposition for every inspected Vortex shape.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexEncodingCoverage {
+    pub dtype_kind: String,
+    pub nullable: Option<bool>,
+    pub root_layout_encoding: String,
+    pub layout_class: String,
+    pub array_encoding: String,
+    pub has_splits: bool,
+    pub has_statistics: bool,
+    pub reader_support: VortexReaderSupport,
+    pub emission_kind: VortexReaderEmissionKind,
+    pub emission_disposition: VortexEmissionDisposition,
+    pub lowering_disposition: VortexLoweringDisposition,
+    pub notes: Vec<String>,
+}
+
 /// Stable diagnostic code vocabulary for the complete-reader boundary.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VortexReaderDiagnosticCode {
@@ -302,6 +358,7 @@ pub struct VortexReaderFacts {
     pub footer_approx_byte_size: Option<usize>,
     pub support: VortexReaderSupport,
     pub emission_kind: VortexReaderEmissionKind,
+    pub coverage: VortexEncodingCoverage,
     pub diagnostics: Vec<VortexReaderDiagnostic>,
 }
 
@@ -440,6 +497,15 @@ fn reader_facts_from_file(
     let root_dtype = dtype_fact_from_dtype("$", file.dtype());
     let split_facts = split_facts_from_file(file, &mut diagnostics);
 
+    let coverage = coverage_from_reader_shape(
+        &root_dtype,
+        layout.encoding_id().as_ref(),
+        split_facts.as_slice(),
+        file.file_stats().is_some(),
+        support,
+        emission_kind,
+    );
+
     VortexReaderFacts {
         source_kind,
         vortex_file_version: vortex_file::VERSION,
@@ -454,7 +520,125 @@ fn reader_facts_from_file(
         footer_approx_byte_size: footer.approx_byte_size(),
         support,
         emission_kind,
+        coverage,
         diagnostics,
+    }
+}
+
+fn coverage_from_reader_shape(
+    root_dtype: &VortexReaderDTypeFact,
+    root_layout_encoding: &str,
+    split_facts: &[VortexReaderSplitFact],
+    has_statistics: bool,
+    reader_support: VortexReaderSupport,
+    emission_kind: VortexReaderEmissionKind,
+) -> VortexEncodingCoverage {
+    let emission_disposition = match emission_kind {
+        VortexReaderEmissionKind::None => VortexEmissionDisposition::None,
+        VortexReaderEmissionKind::Lmp1 => VortexEmissionDisposition::CanonicalRaw,
+        VortexReaderEmissionKind::Lmt1 => VortexEmissionDisposition::CanonicalTable,
+    };
+    let layout_class = layout_class(root_layout_encoding);
+    let array_encoding = array_encoding(root_dtype, root_layout_encoding);
+    let can_use_current_production_lowering = reader_support == VortexReaderSupport::Accepted
+        && root_dtype.nullable == Some(false)
+        && layout_class != "chunked"
+        && matches!(array_encoding.as_str(), "primitive" | "struct")
+        && matches!(
+            emission_kind,
+            VortexReaderEmissionKind::Lmp1 | VortexReaderEmissionKind::Lmt1
+        );
+    let lowering_disposition = match (reader_support, emission_kind) {
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmp1)
+        | (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmt1)
+            if can_use_current_production_lowering =>
+        {
+            VortexLoweringDisposition::ProductionLoweringSupported
+        }
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmp1)
+        | (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmt1) => {
+            VortexLoweringDisposition::InterpreterOnly
+        }
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::None)
+        | (VortexReaderSupport::Unsupported, _)
+        | (VortexReaderSupport::Rejected, _) => VortexLoweringDisposition::FailClosedDeferred,
+    };
+    let mut notes = Vec::new();
+    if emission_disposition == VortexEmissionDisposition::CanonicalRaw
+        || emission_disposition == VortexEmissionDisposition::CanonicalTable
+    {
+        notes.push(
+            "canonicalized Vortex scan rows feed the current Loom raw/table artifact shape"
+                .to_string(),
+        );
+    }
+    if lowering_disposition == VortexLoweringDisposition::FailClosedDeferred {
+        notes.push(
+            "valid input remains fact-bearing but has no Phase 21 artifact emission".to_string(),
+        );
+    }
+    if lowering_disposition == VortexLoweringDisposition::InterpreterOnly {
+        notes.push("reader can emit a verified canonical artifact, but original Vortex shape is outside the production native-lowering slice".to_string());
+    }
+
+    VortexEncodingCoverage {
+        dtype_kind: root_dtype.kind.clone(),
+        nullable: root_dtype.nullable,
+        root_layout_encoding: root_layout_encoding.to_string(),
+        layout_class: layout_class.to_string(),
+        array_encoding,
+        has_splits: !split_facts.is_empty(),
+        has_statistics,
+        reader_support,
+        emission_kind,
+        emission_disposition,
+        lowering_disposition,
+        notes,
+    }
+}
+
+fn layout_class(root_layout_encoding: &str) -> &'static str {
+    if root_layout_encoding.contains("stats") {
+        "statistics-wrapper"
+    } else if root_layout_encoding.contains("struct") {
+        "struct"
+    } else if root_layout_encoding.contains("chunk") {
+        "chunked"
+    } else {
+        "primitive-or-leaf"
+    }
+}
+
+fn array_encoding(root_dtype: &VortexReaderDTypeFact, root_layout_encoding: &str) -> String {
+    let root_layout_encoding = root_layout_encoding.to_ascii_lowercase();
+    if root_layout_encoding.contains("dict") {
+        return "dictionary".to_string();
+    }
+    if root_layout_encoding.contains("runend") || root_layout_encoding.contains("rle") {
+        return "run-end".to_string();
+    }
+    if root_layout_encoding.contains("sequence") {
+        return "sequence".to_string();
+    }
+    if root_layout_encoding.contains("bitpack") || root_layout_encoding.contains("bit-packed") {
+        return "bitpack".to_string();
+    }
+    if root_layout_encoding.contains("for") || root_layout_encoding.contains("frame") {
+        return "frame-of-reference".to_string();
+    }
+
+    match root_dtype.kind.as_str() {
+        "primitive" => "primitive".to_string(),
+        "struct" => "struct".to_string(),
+        "utf8" | "binary" => "varbin".to_string(),
+        "bool" => "boolean".to_string(),
+        other => {
+            if other.is_empty() {
+                "unknown".to_string()
+            } else {
+                other.to_string()
+            }
+        }
     }
 }
 

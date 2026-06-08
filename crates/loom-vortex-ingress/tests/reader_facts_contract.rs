@@ -1,8 +1,9 @@
 use std::sync::LazyLock;
 
 use loom_vortex_ingress::{
-    reader_facts_from_vortex_buffer, VortexIngressStatus, VortexReaderDiagnosticCode,
-    VortexReaderEmissionKind, VortexReaderSupport,
+    reader_facts_from_vortex_buffer, VortexEmissionDisposition, VortexIngressStatus,
+    VortexLoweringDisposition, VortexReaderDiagnosticCode, VortexReaderEmissionKind,
+    VortexReaderSupport,
 };
 use vortex_array::arrays::VarBinArray;
 use vortex_array::dtype::{DType, Nullability};
@@ -55,6 +56,31 @@ fn reader_facts_contract_stable_strings() {
     assert_eq!(VortexReaderEmissionKind::None.as_str(), "none");
     assert_eq!(VortexReaderEmissionKind::Lmp1.as_str(), "LMP1");
     assert_eq!(VortexReaderEmissionKind::Lmt1.as_str(), "LMT1");
+    assert_eq!(VortexEmissionDisposition::None.as_str(), "none");
+    assert_eq!(
+        VortexEmissionDisposition::CanonicalRaw.as_str(),
+        "canonical-raw"
+    );
+    assert_eq!(
+        VortexEmissionDisposition::CanonicalTable.as_str(),
+        "canonical-table"
+    );
+    assert_eq!(
+        VortexEmissionDisposition::StructuredLayout.as_str(),
+        "structured-layout"
+    );
+    assert_eq!(
+        VortexLoweringDisposition::InterpreterOnly.as_str(),
+        "interpreter-only"
+    );
+    assert_eq!(
+        VortexLoweringDisposition::ProductionLoweringSupported.as_str(),
+        "production-lowering-supported"
+    );
+    assert_eq!(
+        VortexLoweringDisposition::FailClosedDeferred.as_str(),
+        "fail-closed/deferred"
+    );
     assert_eq!(
         VortexReaderDiagnosticCode::VerificationRequired.as_str(),
         "READER_VERIFICATION_REQUIRED"
@@ -69,6 +95,21 @@ fn reader_facts_contract_supported_i32_reports_complete_boundary_fields() {
     assert_eq!(facts.row_count, 3);
     assert_eq!(facts.support, VortexReaderSupport::Accepted);
     assert_eq!(facts.emission_kind, VortexReaderEmissionKind::Lmp1);
+    assert_eq!(facts.coverage.reader_support, VortexReaderSupport::Accepted);
+    assert_eq!(facts.coverage.emission_kind, VortexReaderEmissionKind::Lmp1);
+    assert_eq!(
+        facts.coverage.emission_disposition,
+        VortexEmissionDisposition::CanonicalRaw
+    );
+    assert_eq!(
+        facts.coverage.lowering_disposition,
+        VortexLoweringDisposition::ProductionLoweringSupported
+    );
+    assert_eq!(facts.coverage.dtype_kind, "primitive");
+    assert_eq!(facts.coverage.nullable, Some(false));
+    assert_eq!(facts.coverage.array_encoding, "primitive");
+    assert!(!facts.coverage.root_layout_encoding.is_empty());
+    assert!(!facts.coverage.layout_class.is_empty());
     assert_eq!(facts.root_dtype.kind, "primitive");
     assert_eq!(facts.root_dtype.nullable, Some(false));
     assert!(facts.root_dtype.summary.contains("I32"));
@@ -113,6 +154,21 @@ fn reader_facts_contract_unsupported_valid_file_emits_no_artifact_kind() {
     assert_eq!(facts.row_count, 3);
     assert_eq!(facts.support, VortexReaderSupport::Unsupported);
     assert_eq!(facts.emission_kind, VortexReaderEmissionKind::None);
+    assert_eq!(
+        facts.coverage.reader_support,
+        VortexReaderSupport::Unsupported
+    );
+    assert_eq!(facts.coverage.emission_kind, VortexReaderEmissionKind::None);
+    assert_eq!(
+        facts.coverage.emission_disposition,
+        VortexEmissionDisposition::None
+    );
+    assert_eq!(
+        facts.coverage.lowering_disposition,
+        VortexLoweringDisposition::FailClosedDeferred
+    );
+    assert_eq!(facts.coverage.dtype_kind, "utf8");
+    assert_eq!(facts.coverage.array_encoding, "varbin");
     assert_eq!(facts.root_dtype.kind, "utf8");
 }
 

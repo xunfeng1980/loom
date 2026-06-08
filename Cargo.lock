@@ -1634,6 +1634,7 @@ dependencies = [
  "loom-core",
  "vortex-array",
  "vortex-buffer",
+ "vortex-fastlanes",
  "vortex-file",
  "vortex-io",
  "vortex-layout",

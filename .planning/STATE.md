@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Formal/native/solver tools managed and verified; Phase 21 execution next
-last_updated: "2026-06-08T13:40:00.000Z"
-last_activity: 2026-06-08 -- Lean/TLC, LLVM/MLIR, and Bitwuzla tools managed and gates verified
+stopped_at: Phase 21 complete; Phase 22 host native runtime ABI and execution policy next
+last_updated: "2026-06-08T14:30:00.000Z"
+last_activity: 2026-06-08 -- Phase 21 expanded Vortex encoding coverage implemented and release-gated
 progress:
-  total_phases: 27
-  completed_phases: 20
+  total_phases: 28
+  completed_phases: 21
   total_plans: 82
-  completed_plans: 77
-  percent: 74
+  completed_plans: 82
+  percent: 75
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 21 — expanded Vortex encoding coverage (planned; execution next)
+**Current focus:** Phase 22 — host native runtime ABI and execution policy (research/planning next)
 
 ## Current Position
 
-Phase: 21 (expanded-vortex-encoding-coverage) — PLANNED
-Plan: 21-01 through 21-05 planned; execution next
-Status: Phase 21 is planned across five executable slices: coverage/disposition matrix, nullable and chunked primitive coverage, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression classification, and release-gate/report handoff to Phase 22/23.
-Last activity: 2026-06-08 -- Lean/TLC, LLVM/MLIR, and Bitwuzla tools managed and gates verified
+Phase: 22 (host-native-runtime-abi-and-execution-policy) — NEXT
+Plan: Phase 22 research/planning is next
+Status: Phase 21 closed the expanded Vortex encoding coverage matrix with facts, oracle evidence, release gate, and Phase 22/23 handoffs. Phase 22 should now lock host runtime ABI and execution policy before production backend and host integration work.
+Last activity: 2026-06-08 -- Phase 21 expanded Vortex encoding coverage implemented and release-gated
 
-Progress: 74%
+Progress: 75%
 
 ## Progress Snapshot
 
-- Completed phases: 20 / 27
-- Completed executable plans: 77 / 82
+- Completed phases: 21 / 28
+- Completed executable plans: 82 / 82
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 21 expanded Vortex encoding coverage is planned; execution is next
-- Last verified gate: `mise run verify` passed with managed Lean/TLC, LLVM/MLIR 22.1.7, Bitwuzla 0.9.1, Phase 20 production native-lowering, and DuckDB SQL smoke coverage
+- Current position: Phase 22 host native runtime ABI and execution policy is next
+- Last verified gate: Phase 21 focused gates passed; final `scripts/vortex-encoding-coverage-test.sh` / `scripts/mvp0-verify.sh` verification is recorded in Phase 21 summary
 
 **Completed phase plan counts:**
 
@@ -52,7 +52,7 @@ Progress: 74%
 | 18 | Complete Vortex reader | 5/5 |
 | 19 | Solver-backed full artifact verifier | 5/5 complete |
 | 20 | Production decode dialect/native kernel expansion | 5/5 complete |
-| 21 | Expanded Vortex encoding coverage | 0/5 planned |
+| 21 | Expanded Vortex encoding coverage | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -144,6 +144,7 @@ None yet.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout.
 - Phase 21 research started: recommended a finite coverage matrix over dtype/nullability/array encoding/layout/statistics/emission/lowering disposition, with priority on nullable primitives, chunked primitives, dictionary/run-end/sequence, bitpack/FOR integer facts, and explicit Phase 22 ABI plus Phase 23 backend handoff.
 - Phase 21 planned: 21-01 through 21-05 cover the coverage/disposition matrix, nullable and chunked primitive facts, dictionary/run-end/sequence coverage, bitpack/FOR/numeric compression coverage, and release-gate/report handoff to Phase 22/23.
+- Phase 21 complete: expanded real Vortex coverage now records reader support, artifact emission, oracle evidence, and native-lowering disposition separately. Nullable primitives fail closed with null-preserving facts; chunked/dictionary/RLE/bitpack/FOR fixtures have row oracle evidence and canonical raw emission where safe; string/ALP/PCodec-style compression remains deferred until Loom-owned params are extracted and verified. `scripts/vortex-encoding-coverage-test.sh` is wired into the release gate.
 - Phase 22-25 split research complete: the former engine-integrated native execution MVP placeholder is now four placeholders covering host native runtime ABI/policy, production native backend implementation, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 22 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
 - Phase 23 reserved as a roadmap placeholder only: production native backend implementation with compiled `loom.decode` ODS dialect, `melior` pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution over the Phase 22 runtime contract.
@@ -151,6 +152,7 @@ None yet.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
 - Phase 26 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
 - Phase 27 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 28 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 
 ### Quick Tasks Completed
 
@@ -193,18 +195,19 @@ None yet.
 | v3 ingress | Complete Vortex reader | Complete | Phase 18 |
 | v3 verifier | Solver-backed full artifact verifier | Complete | Phase 19 |
 | v3 native | Production decode dialect seed and raw primitive native lowering | Complete | Phase 20 |
-| v3 ingress | Expanded Vortex encoding coverage | Planned | Phase 21 |
+| v3 ingress | Expanded Vortex encoding coverage | Complete | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 22 |
 | v3 native | Production native backend implementation | Placeholder | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
 | v3 table | Iceberg ref/table binding | Placeholder | Phase 26 |
 | v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 27 |
+| v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 28 |
 
 ## Session Continuity
 
 Last session: 2026-06-08T13:30:00.000Z
-Stopped at: Phase 21 planned; execution next
+Stopped at: Phase 21 complete; Phase 22 research/planning next
 
 Phase 17 handoff:
 
@@ -245,4 +248,6 @@ Phase 20 summary: .planning/phases/20-production-decode-dialect-and-native-kerne
 Phase 21 research: .planning/phases/21-expanded-vortex-encoding-coverage/21-RESEARCH.md
 Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTEXT.md
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
+Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
+Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
 Resume file: .planning/ROADMAP.md
