@@ -133,7 +133,7 @@ fn root_schema_fact(schema: &Schema) -> SourceSchemaFact {
 fn field_schema_fact(field: &Field) -> SourceSchemaFact {
     let mut fact = SourceSchemaFact::new(
         format!("$.schema.{}", field.name()),
-        logical_kind(field.data_type()),
+        logical_kind_for_field(field),
     );
     fact.nullable = Some(field.is_nullable());
     fact.field_count = child_field_count(field.data_type());
@@ -226,10 +226,14 @@ fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverag
         && schema
             .fields()
             .iter()
-            .all(|field| !field.is_nullable() && is_supported_primitive(field.data_type()));
+            .all(|field| {
+                !field.is_nullable()
+                    && !field_has_extension_metadata(field)
+                    && is_supported_primitive(field.data_type())
+            });
     let mut coverage = SourceCoverage::new(
         if field_count == 1 {
-            logical_kind(schema.fields()[0].data_type()).to_string()
+            logical_kind_for_field(&schema.fields()[0]).to_string()
         } else {
             "struct".to_string()
         },
@@ -267,6 +271,12 @@ fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverag
 fn unsupported_note(schema: &Schema) -> String {
     if schema.fields().iter().any(|field| field.is_nullable()) {
         "nullable Lance fields are unsupported for Phase 27 emission".to_string()
+    } else if schema
+        .fields()
+        .iter()
+        .any(|field| field_has_extension_metadata(field))
+    {
+        "extension Lance fields are unsupported for Phase 27 emission".to_string()
     } else if schema
         .fields()
         .iter()
@@ -312,7 +322,7 @@ fn diagnostic_for_facts(facts: &SourceFacts) -> SourceDiagnostic {
     if facts
         .schema_facts
         .iter()
-        .any(|fact| matches!(fact.logical_kind.as_str(), "nested" | "dictionary"))
+        .any(|fact| matches!(fact.logical_kind.as_str(), "nested" | "dictionary" | "extension"))
     {
         return SourceDiagnostic::new(
             SourceDiagnosticCode::UnsupportedSchema,
@@ -344,6 +354,21 @@ fn logical_kind(data_type: &DataType) -> &'static str {
         | DataType::Timestamp(_, _) => "logical",
         _ => "unsupported",
     }
+}
+
+fn logical_kind_for_field(field: &Field) -> &'static str {
+    if field_has_extension_metadata(field) {
+        "extension"
+    } else {
+        logical_kind(field.data_type())
+    }
+}
+
+fn field_has_extension_metadata(field: &Field) -> bool {
+    field
+        .metadata()
+        .keys()
+        .any(|key| key.eq_ignore_ascii_case("ARROW:extension:name"))
 }
 
 fn child_field_count(data_type: &DataType) -> Option<usize> {
