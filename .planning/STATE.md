@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Completed 26-05-PLAN.md
-last_updated: "2026-06-09T03:37:39+08:00"
-last_activity: 2026-06-09 -- Phase 26 complete; Phase 27 Lance + Parquet archival readability next
+status: executing
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-06-08T20:26:16.174Z"
+last_activity: 2026-06-08 -- Phase 27 execution started
 progress:
   total_phases: 30
   completed_phases: 26
-  total_plans: 107
-  completed_plans: 104
-  percent: 87
+  total_plans: 112
+  completed_plans: 105
+  percent: 94
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 27 — lance-+-parquet-archival-readability-/-dataset-ingress
+**Current focus:** Phase 27 — lance-parquet-archival-readability-dataset-ingress
 
 ## Current Position
 
-Phase: 27
-Plan: Not started
-Status: Phase 26 complete and validated; Phase 27 Lance + Parquet archival readability / dataset ingress next
-Last activity: 2026-06-09 -- Phase 26 complete; Phase 27 Lance + Parquet archival readability next
+Phase: 27 (lance-parquet-archival-readability-dataset-ingress) — EXECUTING
+Plan: 2 of 5
+Status: Plan 27-01 complete; ready for Plan 27-02
+Last activity: 2026-06-08 -- Phase 27 Plan 01 complete
 
-Progress: 87%
+Progress: 94%
 
 ## Progress Snapshot
 
 - Completed phases: 26 / 30
-- Completed executable plans: 104 / 107
+- Completed executable plans: 105 / 112
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 27 next; Phase 26 completed 5/5 plans
-- Last verified gate: `bash scripts/source-ingress-contract-test.sh` passed and `scripts/source-ingress-contract-test.sh` is wired into `scripts/mvp0-verify.sh` after Phase 25 native hardening and before DuckDB SQL smoke
+- Current position: Phase 27 Plan 2 of 5 next; Phase 27 Plan 1 completed
+- Last verified gate: `bash scripts/lance-parquet-ingress-test.sh` passed for Phase 27 scaffold and dependency/scope guards; it is intentionally not wired into `scripts/mvp0-verify.sh` until Plan 27-05
 
 **Completed phase plan counts:**
 
@@ -108,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-03: Interpreter/reference bytes remain the oracle for supported non-null primitive native helper routes; unsupported strings, nullability, compression, predicates, splits, malformed artifacts, mismatch, and cancellation are negative/fallback evidence.
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-04: DuckDB SQL hardening uses public `loom_scan(path)` plus internal route reports for cache smoke, projection drift, fallback, strict fail-closed, cancellation, and public API creep gates.
 - [Phase 25-native-equivalence-cache-and-fallback-hardening]: 25-05: Main release gate runs Phase 25 native hardening after Phase 24 and before DuckDB smoke; final report records bounded equivalence/cache/fallback evidence and Phase 26 handoff assumptions.
+- [Phase 27]: [Phase 27 P01]: Lance and Parquet SDK dependencies stay isolated to adapter crates with exact workspace pins; generic/core/ffi/public surfaces remain SDK-free.
+- [Phase 27]: [Phase 27 P01]: SourceIngressAcceptedArtifact is a source-neutral bytes-plus-report handoff; existing Vortex adapter-local handoff remains stable for now.
+- [Phase 27]: [Phase 27 P01]: Phase 27 guard script remains unwired from mvp0-verify until Plan 27-05.
 
 ### Pending Todos
 
@@ -250,8 +253,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-09T02:35:00+08:00
-Stopped at: Completed 25-05-PLAN.md
+Last session: 2026-06-08T20:26:16.165Z
+Stopped at: Completed 27-01-PLAN.md
 
 Phase 17 handoff:
 
@@ -310,3 +313,4 @@ Resume file: None
 | Phase 24-duckdb-native-execution-integration-mvp P05 | 8min | 3 tasks | 7 files |
 | Phase 25-native-equivalence-cache-and-fallback-hardening P02 | 10m32s | 3 tasks | 4 files |
 | Phase 25-native-equivalence-cache-and-fallback-hardening P05 | ~15min | 3 tasks | 6 files |
+| Phase 27-lance-parquet-archival-readability-dataset-ingress P01 | 13m | 3 tasks | 11 files |
