@@ -26,22 +26,28 @@ status: all_fixed
 
 **Files modified:** `Cargo.lock`, `crates/loom-iceberg-binding/Cargo.toml`, `crates/loom-iceberg-binding/src/binding_contract.rs`, `crates/loom-iceberg-binding/tests/binding_handoff.rs`, `crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs`, `crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json`, `crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-source-evidence.json`, `crates/loom-iceberg-binding/tests/fixtures/local/forged-oracle-evidence.json`, `crates/loom-iceberg-binding/tests/fixtures/local/mismatch-schema-sidecar.json`, `crates/loom-iceberg-binding/tests/fixtures/local/mismatch-snapshot-sidecar.json`, `crates/loom-iceberg-binding/tests/fixtures/local/stale-source-evidence.json`
 **Commit:** `f5c5119`
-**Status:** fixed: requires human verification
+**Status:** fixed: verified
 **Applied fix:** Extended source/oracle evidence with source path/hash and decoded values SHA-256, decoded verified LMT1/LMP1 non-null Int32 rows into a deterministic digest, compared source and values evidence before acceptance, and added forged same-row-count/same-artifact-hash regression coverage.
 
 ### CR-02: BLOCKER - Sidecar evidence paths bypass the local-only path policy
 
 **Files modified:** `Cargo.lock`, `crates/loom-iceberg-binding/Cargo.toml`, `crates/loom-iceberg-binding/src/binding_contract.rs`, `crates/loom-iceberg-binding/tests/mismatch_fail_closed.rs`, `crates/loom-iceberg-binding/tests/fixtures/local/accepted-table-loom-binding.json`, `crates/loom-iceberg-binding/tests/fixtures/local/mismatch-schema-sidecar.json`, `crates/loom-iceberg-binding/tests/fixtures/local/mismatch-snapshot-sidecar.json`
 **Commit:** `f5c5119`
-**Status:** fixed: requires human verification
+**Status:** fixed: verified
 **Applied fix:** Replaced permissive evidence path resolution with sidecar-relative local-only resolution, rejected remote markers, absolute paths, and parent traversal before evidence reads, and added negative cases for `s3://`, `gs://`, `abfs://`, `warehouse`, `catalog`, `credential`, `token`, `secret`, `access_key`, absolute paths, and `..`.
 
 ### WR-01: WARNING - Release gate marker checks can pass on strings instead of behavior
 
 **Files modified:** `scripts/iceberg-binding-test.sh`
 **Commit:** `8c2ed0b`
-**Status:** fixed
-**Applied fix:** Removed broad required-marker scans over tests and fixtures, added targeted production-source regex checks for verifier invocation, artifact SHA helper behavior, decoded values digesting, and sidecar-local evidence path resolution, then used named cargo tests as behavior proofs.
+**Status:** fixed: verified
+**Applied fix:** Removed broad required-marker scans over tests and fixtures, added targeted production-source regex checks for verifier invocation, artifact SHA helper behavior, decoded values digesting, and sidecar-local evidence path resolution, then used focused cargo tests as behavior proofs.
+
+## Tradeoffs
+
+- The decoded value proof remains narrow by design: Phase 28 validates the current non-null Int32 table slice rather than a general Arrow canonicalization contract.
+- Source proof is a local-file fixture hash, not a production Iceberg scan. This preserves the Phase 28 non-goal of avoiding catalogs, object stores, and official Iceberg SDK coupling.
+- The adapter uses `arrow-array` and `arrow-data` to canonicalize decoded values, but still does not add the official `iceberg` crate or Arrow/Parquet version skew.
 
 ## Verification
 

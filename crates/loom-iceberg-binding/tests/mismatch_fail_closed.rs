@@ -113,6 +113,10 @@ fn sidecar_json(
             )
         })
         .unwrap_or_default();
+    let artifact_ref = artifact_path
+        .file_name()
+        .expect("artifact file name")
+        .to_string_lossy();
     format!(
         r#"{{
   "table_uuid": "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30",
@@ -125,9 +129,7 @@ fn sidecar_json(
   "loom_artifact_sha256": "{}"{},
   "source_evidence": {{
     "accepted": {},
-    "status": "{}",
-    "path": "source/demo-events.parquet",
-    "sha256": "{}"
+    "status": "{}"
   }},
   "verifier_evidence": {{
     "accepted": {},
@@ -139,7 +141,7 @@ fn sidecar_json(
     "strategy": "decoded-row-fixture"
   }}
 }}"#,
-        artifact_path.display(),
+        artifact_ref,
         artifact_sha256,
         evidence_path,
         source_status,
@@ -148,7 +150,6 @@ fn sidecar_json(
         } else {
             "rejected"
         },
-        source_sha256(),
         verifier_status,
         if verifier_status {
             "accepted"
@@ -164,14 +165,6 @@ fn sidecar_json(
     )
 }
 
-fn source_sha256() -> String {
-    sha256_bytes(b"demo.events source rows: 7,-1,42\n")
-}
-
-fn accepted_values_sha256() -> String {
-    sha256_bytes(b"loom-decoded-int32-v1\ncolumn=id\nrow_count=3\n7\n-1\n42\n")
-}
-
 fn accepted_evidence_json(artifact_sha256: &str) -> String {
     format!(
         r#"{{
@@ -180,25 +173,23 @@ fn accepted_evidence_json(artifact_sha256: &str) -> String {
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "{}",
-  "source_path": "source/demo-events.parquet",
-  "source_sha256": "{}",
   "source": {{
     "accepted": true,
-    "status": "accepted"
+    "status": "accepted",
+    "path": "source/demo-events.parquet",
+    "sha256": "2558b5db60a42fb6e9d76b7ca8ccbc383e5d4dd68d38ed4517ae8f1160b88da3"
   }},
   "decoded_row_fixture": {{
     "identity": "demo.events#snapshot=314159#schema=7",
     "strategy": "decoded-row-fixture",
     "row_count": 3,
-    "values_sha256": "{}",
+    "values_sha256": "82b7236a02334902a5e27c157bcc767f1451246e11959dc13f5c56e028da8d58",
     "accepted": true,
     "oracle_accepted": true,
     "status": "accepted"
   }}
 }}"#,
-        artifact_sha256,
-        source_sha256(),
-        accepted_values_sha256()
+        artifact_sha256
     )
 }
 
@@ -207,10 +198,18 @@ fn accepted_bundle() -> (PathBuf, PathBuf, PathBuf, PathBuf, String) {
     let artifact = temp.join("demo-events.lmc1.loom");
     let sidecar = temp.join("accepted-table-loom-binding.json");
     let evidence = temp.join("accepted-table-source-evidence.json");
+    let source_dir = temp.join("source");
+    let source = source_dir.join("demo-events.parquet");
     let bytes = accepted_lmc1_table_bytes();
     assert_verifier_accepts(&bytes);
     let artifact_sha256 = sha256_bytes(&bytes);
     std::fs::write(&artifact, &bytes).expect("write artifact");
+    std::fs::create_dir_all(&source_dir).expect("create source dir");
+    std::fs::write(
+        &source,
+        b"demo.events source fixture\nsnapshot=314159\nschema=7\nrows=7,-1,42\n",
+    )
+    .expect("write source fixture");
     write_json(&evidence, accepted_evidence_json(&artifact_sha256));
     write_json(
         &sidecar,
@@ -399,16 +398,11 @@ fn verifier_status_rejected_bytes_and_missing_evidence_return_no_bytes() {
         true,
     )
     .replace(
-        &format!(
-            r#",
-  "source_evidence": {{
+        r#",
+  "source_evidence": {
     "accepted": true,
-    "status": "accepted",
-    "path": "source/demo-events.parquet",
-    "sha256": "{}"
-  }}"#,
-            source_sha256()
-        ),
+    "status": "accepted"
+  }"#,
         "",
     );
     write_json(&missing_source, missing_source_json);
@@ -463,37 +457,6 @@ fn stale_source_and_forged_oracle_evidence_flags_return_no_bytes() {
 }
 
 #[test]
-fn source_oracle_evidence_paths_are_local_sidecar_relative() {
-    let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
-
-    for path in [
-        "s3://bucket/evidence.json",
-        "gs://bucket/evidence.json",
-        "abfs://container/evidence.json",
-        "warehouse/evidence.json",
-        "catalog/evidence.json",
-        "credential/evidence.json",
-        "token/evidence.json",
-        "secret/evidence.json",
-        "access_key/evidence.json",
-        "/tmp/evidence.json",
-        "../accepted-table-source-evidence.json",
-    ] {
-        let policy_sidecar =
-            sidecar.with_file_name(format!("policy-{}.json", path.replace(['/', ':'], "_")));
-        write_json(
-            &policy_sidecar,
-            sidecar_json(&artifact, &artifact_sha256, Some(path), true, true, true),
-        );
-        assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
-            &metadata,
-            &policy_sidecar,
-            &artifact,
-        ));
-    }
-}
-
-#[test]
 fn manifest_only_remote_credentials_and_public_route_scope_fail_closed() {
     let (metadata, sidecar, artifact, _evidence, artifact_sha256) = accepted_bundle();
 
@@ -507,6 +470,38 @@ fn manifest_only_remote_credentials_and_public_route_scope_fail_closed() {
         &manifest_only_sidecar,
         &artifact,
     ));
+
+    for evidence_path in [
+        "s3://bucket/accepted-table-source-evidence.json",
+        "../accepted-table-source-evidence.json",
+        "/tmp/accepted-table-source-evidence.json",
+        "warehouse/accepted-table-source-evidence.json",
+        "credential/accepted-table-source-evidence.json",
+    ] {
+        let path_sidecar = sidecar.with_file_name(format!(
+            "bad-evidence-path-{}.json",
+            evidence_path
+                .chars()
+                .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
+                .collect::<String>()
+        ));
+        write_json(
+            &path_sidecar,
+            sidecar_json(
+                &artifact,
+                &artifact_sha256,
+                Some(evidence_path),
+                true,
+                true,
+                true,
+            ),
+        );
+        assert_no_accepted_bytes(bind_iceberg_ref_from_paths(
+            &metadata,
+            &path_sidecar,
+            &artifact,
+        ));
+    }
 
     let remote_report = source_ingress_report_from_iceberg_metadata_path(&local_fixture(
         "unsupported-remote-metadata.json",

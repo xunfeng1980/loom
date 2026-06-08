@@ -8,12 +8,11 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
-use std::path::Component;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use arrow_array::{Array, Int32Array};
-use arrow_schema::DataType;
+use arrow_array::{Array, ArrowPrimitiveType, Int32Array};
+use arrow_data::ArrayData;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::{
     decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
@@ -173,13 +172,6 @@ impl IcebergBindingReport {
             evidence: None,
         }
     }
-
-    fn with_facts_if_missing(mut self, facts: IcebergBindingFacts) -> Self {
-        if self.facts.is_none() {
-            self.facts = Some(facts);
-        }
-        self
-    }
 }
 
 /// Extract descriptive Iceberg table/ref facts from local metadata plus a Loom
@@ -206,12 +198,11 @@ pub fn iceberg_binding_facts_from_paths(
         sidecar.oracle_evidence.as_ref(),
         "sidecar oracle evidence accepted status is required",
     )?;
-    let evidence_path = required_sidecar_text(
+    required_sidecar_text(
         sidecar.source_oracle_evidence_path.clone(),
         "$.source_oracle_evidence_path",
         "sidecar source/oracle evidence artifact path is required",
     )?;
-    validate_local_sidecar_reference(&evidence_path, "source/oracle evidence path")?;
 
     let facts = IcebergBindingFacts {
         identity,
@@ -233,6 +224,15 @@ pub fn iceberg_binding_facts_from_paths(
             format!("remote or catalog path/control is unsupported in Plan 28-02: {marker}"),
         ));
     }
+    resolve_local_sidecar_path(sidecar_path, &facts.artifact_path, "Loom artifact path")?;
+    resolve_local_sidecar_path(
+        sidecar_path,
+        sidecar
+            .source_oracle_evidence_path
+            .as_deref()
+            .unwrap_or_default(),
+        "source/oracle evidence path",
+    )?;
 
     Ok(facts)
 }
@@ -301,13 +301,6 @@ pub fn bind_iceberg_ref_from_paths(
         ));
     }
 
-    if !artifact_path_matches(&facts.artifact_path, artifact_path) {
-        return Err(IcebergBindingReport::unsupported(
-            Some(facts),
-            "explicit artifact path does not match sidecar Loom artifact path",
-        ));
-    }
-
     require_sidecar_evidence_accepted(
         sidecar.verifier_evidence.as_ref(),
         "sidecar verifier evidence accepted status is required",
@@ -320,6 +313,15 @@ pub fn bind_iceberg_ref_from_paths(
         sidecar.oracle_evidence.as_ref(),
         "sidecar oracle evidence accepted status is required",
     )?;
+
+    let resolved_artifact_path =
+        resolve_local_sidecar_path(sidecar_path, &facts.artifact_path, "Loom artifact path")?;
+    if !artifact_path_matches(&resolved_artifact_path, artifact_path) {
+        return Err(IcebergBindingReport::unsupported(
+            Some(facts),
+            "explicit artifact path does not match sidecar Loom artifact path",
+        ));
+    }
 
     let artifact_bytes = fs::read(artifact_path).map_err(|error| {
         IcebergBindingReport::rejected(format!(
@@ -365,8 +367,6 @@ pub fn bind_iceberg_ref_from_paths(
         .unwrap_or("unknown payload");
     let artifact_row_count = artifact_row_count_bound(&artifact_bytes, payload_kind)
         .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
-    let values_sha256 = decoded_values_sha256(&artifact_bytes, payload_kind, &registry)
-        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
     let artifact_verification = SourceArtifactVerificationSummary::accepted(
         artifact_bytes.len(),
         format!(
@@ -380,17 +380,19 @@ pub fn bind_iceberg_ref_from_paths(
         "$.source_oracle_evidence_path",
         "sidecar source/oracle evidence artifact path is required",
     )?;
-    let evidence_path = resolve_local_sidecar_path(sidecar_path, &evidence_path)
-        .map_err(|report| report.with_facts_if_missing(facts.clone()))?;
+    let evidence_path =
+        resolve_local_sidecar_path(sidecar_path, &evidence_path, "source/oracle evidence path")?;
     let evidence = read_source_oracle_evidence(&evidence_path)
         .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
     validate_source_oracle_evidence(
         &facts,
-        &sidecar,
         &evidence,
+        &evidence_path,
+        &artifact_bytes,
         &actual_sha256,
-        &values_sha256,
         artifact_row_count,
+        payload_kind,
+        &registry,
         SourceOracleStrategy::DecodedRowFixture,
     )?;
 
@@ -496,7 +498,6 @@ struct SidecarEvidence {
     accepted: Option<bool>,
     status: Option<String>,
     path: Option<String>,
-    sha256: Option<String>,
     summary: Option<String>,
     strategy: Option<String>,
 }
@@ -508,16 +509,16 @@ struct SourceOracleEvidenceArtifact {
     schema_id: i32,
     snapshot_id: i64,
     artifact_sha256: String,
-    source_path: String,
-    source_sha256: String,
-    source: EvidenceStatus,
+    source: SourceEvidenceStatus,
     decoded_row_fixture: DecodedRowFixtureEvidence,
 }
 
 #[derive(Debug, Deserialize)]
-struct EvidenceStatus {
+struct SourceEvidenceStatus {
     accepted: bool,
     status: Option<String>,
+    path: String,
+    sha256: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -760,13 +761,15 @@ fn accepted_source_facts_from_binding(
     source_facts
 }
 
-fn artifact_path_matches(sidecar_artifact_path: &str, artifact_path: &Path) -> bool {
-    if sidecar_artifact_path == artifact_path.display().to_string() {
+fn artifact_path_matches(sidecar_artifact_path: &Path, artifact_path: &Path) -> bool {
+    if sidecar_artifact_path == artifact_path {
         return true;
     }
 
-    let sidecar_path = Path::new(sidecar_artifact_path);
-    match (sidecar_path.canonicalize(), artifact_path.canonicalize()) {
+    match (
+        sidecar_artifact_path.canonicalize(),
+        artifact_path.canonicalize(),
+    ) {
         (Ok(sidecar_path), Ok(argument_path)) => sidecar_path == argument_path,
         _ => false,
     }
@@ -824,10 +827,17 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
     Ok(digest.to_ascii_lowercase())
 }
 
-fn validate_local_sidecar_reference(
+fn resolve_local_sidecar_path(
+    sidecar_path: &Path,
     referenced_path: &str,
     label: &str,
-) -> Result<(), IcebergBindingReport> {
+) -> Result<PathBuf, IcebergBindingReport> {
+    let referenced_path = referenced_path.trim();
+    if referenced_path.is_empty() {
+        return Err(IcebergBindingReport::rejected(format!(
+            "{label} must not be empty"
+        )));
+    }
     if let Some(marker) = forbidden_local_marker(referenced_path) {
         return Err(IcebergBindingReport::unsupported(
             None,
@@ -838,32 +848,51 @@ fn validate_local_sidecar_reference(
     if referenced.is_absolute() {
         return Err(IcebergBindingReport::unsupported(
             None,
-            format!("absolute {label}s are unsupported"),
+            format!("absolute {label} is unsupported"),
         ));
     }
-    for component in referenced.components() {
-        if matches!(
-            component,
-            Component::ParentDir | Component::RootDir | Component::Prefix(_)
-        ) {
-            return Err(IcebergBindingReport::unsupported(
-                None,
-                format!("parent traversal in {label}s is unsupported"),
-            ));
-        }
+    if referenced
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(IcebergBindingReport::unsupported(
+            None,
+            format!("{label} must stay under the sidecar directory"),
+        ));
     }
-    Ok(())
-}
 
-fn resolve_local_sidecar_path(
-    sidecar_path: &Path,
-    referenced_path: &str,
-) -> Result<PathBuf, IcebergBindingReport> {
-    validate_local_sidecar_reference(referenced_path, "source/oracle evidence path")?;
     let base = sidecar_path.parent().ok_or_else(|| {
         IcebergBindingReport::rejected("sidecar path must have a parent directory")
     })?;
-    Ok(base.join(Path::new(referenced_path)))
+    Ok(base.join(referenced))
+}
+
+fn resolve_local_evidence_path(
+    evidence_path: &Path,
+    referenced_path: &str,
+) -> Result<PathBuf, String> {
+    let referenced_path = referenced_path.trim();
+    if referenced_path.is_empty() {
+        return Err("source evidence path must not be empty".to_string());
+    }
+    if let Some(marker) = forbidden_local_marker(referenced_path) {
+        return Err(format!("unsupported source evidence path: {marker}"));
+    }
+    let referenced = Path::new(referenced_path);
+    if referenced.is_absolute() {
+        return Err("absolute source evidence path is unsupported".to_string());
+    }
+    if referenced
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err("source evidence path must stay under the evidence directory".to_string());
+    }
+
+    let base = evidence_path
+        .parent()
+        .ok_or_else(|| "source/oracle evidence path must have a parent directory".to_string())?;
+    Ok(base.join(referenced))
 }
 
 fn read_source_oracle_evidence(path: &Path) -> Result<SourceOracleEvidenceArtifact, String> {
@@ -877,11 +906,13 @@ fn read_source_oracle_evidence(path: &Path) -> Result<SourceOracleEvidenceArtifa
 
 fn validate_source_oracle_evidence(
     facts: &IcebergBindingFacts,
-    sidecar: &LoomBindingSidecar,
     evidence: &SourceOracleEvidenceArtifact,
+    evidence_path: &Path,
+    artifact_bytes: &[u8],
     artifact_sha256: &str,
-    values_sha256: &str,
     artifact_row_count: u64,
+    payload_kind: &str,
+    registry: &L2KernelRegistry,
     expected_strategy: SourceOracleStrategy,
 ) -> Result<(), IcebergBindingReport> {
     let decoded = &evidence.decoded_row_fixture;
@@ -916,50 +947,26 @@ fn validate_source_oracle_evidence(
             "source/oracle evidence artifact SHA-256 does not match recomputed artifact hash",
         ));
     }
-    if let Some(marker) = forbidden_local_marker(&evidence.source_path) {
-        return Err(IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            format!("source evidence path is unsupported: {marker}"),
-        ));
-    }
-    validate_sha256_hex(&evidence.source_sha256)
-        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
-    let sidecar_source = sidecar.source_evidence.as_ref().ok_or_else(|| {
-        IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            "sidecar source evidence accepted status is required",
-        )
-    })?;
-    let sidecar_source_path = sidecar_source.path.as_deref().ok_or_else(|| {
-        IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            "sidecar source evidence path is required",
-        )
-    })?;
-    let sidecar_source_sha256 = sidecar_source.sha256.as_deref().ok_or_else(|| {
-        IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            "sidecar source evidence SHA-256 is required",
-        )
-    })?;
-    validate_sha256_hex(sidecar_source_sha256)
-        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
-    if evidence.source_path != sidecar_source_path {
-        return Err(IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            "source/oracle evidence source path does not match sidecar source evidence path",
-        ));
-    }
-    if evidence.source_sha256 != sidecar_source_sha256 {
-        return Err(IcebergBindingReport::unsupported(
-            Some(facts.clone()),
-            "source/oracle evidence source SHA-256 does not match sidecar source evidence hash",
-        ));
-    }
     if !evidence.source.accepted || evidence.source.status.as_deref() != Some("accepted") {
         return Err(IcebergBindingReport::unsupported(
             Some(facts.clone()),
             "source evidence artifact status is not accepted",
+        ));
+    }
+    let source_path = resolve_local_evidence_path(evidence_path, &evidence.source.path)
+        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
+    let source_bytes = fs::read(&source_path).map_err(|error| {
+        IcebergBindingReport::unsupported(
+            Some(facts.clone()),
+            format!("source evidence artifact source bytes could not be opened: {error}"),
+        )
+    })?;
+    let source_sha256 = sha256_bytes(&source_bytes)
+        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
+    if source_sha256 != evidence.source.sha256 {
+        return Err(IcebergBindingReport::unsupported(
+            Some(facts.clone()),
+            "source evidence SHA-256 does not match local source bytes",
         ));
     }
     if decoded.strategy != expected_strategy.as_str() {
@@ -986,10 +993,12 @@ fn validate_source_oracle_evidence(
             "source/oracle evidence row count does not match verified Loom artifact row count",
         ));
     }
-    if decoded.values_sha256 != values_sha256 {
+    let decoded_values_sha256 = decoded_values_sha256(artifact_bytes, payload_kind, registry)
+        .map_err(|diagnostic| IcebergBindingReport::unsupported(Some(facts.clone()), diagnostic))?;
+    if decoded.values_sha256 != decoded_values_sha256 {
         return Err(IcebergBindingReport::unsupported(
             Some(facts.clone()),
-            "decoded-row fixture values SHA-256 does not match verified Loom artifact rows",
+            "decoded-row fixture values SHA-256 does not match verified Loom artifact values",
         ));
     }
     if !decoded.accepted
@@ -1005,14 +1014,6 @@ fn validate_source_oracle_evidence(
     Ok(())
 }
 
-fn validate_sha256_hex(value: &str) -> Result<(), String> {
-    if value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        Ok(())
-    } else {
-        Err("source evidence SHA-256 must be a 64-character hex digest".to_string())
-    }
-}
-
 fn decoded_values_sha256(
     bytes: &[u8],
     payload_kind: &str,
@@ -1020,28 +1021,32 @@ fn decoded_values_sha256(
 ) -> Result<String, String> {
     if payload_kind.contains("LMT1") {
         let table = decode_table_payload_maybe_container(bytes).map_err(|error| {
-            format!("verified LMT1 artifact rows could not be decoded: {error}")
+            format!("verified LMT1 artifact values could not be decoded: {error}")
         })?;
-        if table.columns.len() != 1 {
-            return Err(
-                "verified LMT1 artifact decoded values digest only supports one Int32 column"
-                    .to_string(),
-            );
-        }
         let arrays = decode_table_to_array_data(&table, registry).map_err(|error| {
             format!("verified LMT1 artifact arrays could not be decoded: {error}")
         })?;
-        return int32_values_sha256(&table.columns[0].name, &arrays[0]);
+        let mut canonical = Vec::new();
+        canonical.extend_from_slice(format!("LMT1\nrow_count={}\n", table.row_count).as_bytes());
+        canonical.extend_from_slice(format!("column_count={}\n", table.columns.len()).as_bytes());
+        for (column, data) in table.columns.iter().zip(arrays) {
+            canonical.extend_from_slice(format!("column={}\n", column.name).as_bytes());
+            append_int32_array_digest_lines(&mut canonical, &data)?;
+        }
+        return sha256_bytes(&canonical);
     }
 
     if payload_kind.contains("LMP1") {
         let layout = decode_layout_payload_maybe_container(bytes).map_err(|error| {
-            format!("verified LMP1 artifact rows could not be decoded: {error}")
+            format!("verified LMP1 artifact values could not be decoded: {error}")
         })?;
-        let array = decode_layout_to_array_data(&layout, registry).map_err(|error| {
+        let data = decode_layout_to_array_data(&layout, registry).map_err(|error| {
             format!("verified LMP1 artifact array could not be decoded: {error}")
         })?;
-        return int32_values_sha256("value", &array);
+        let mut canonical = Vec::new();
+        canonical.extend_from_slice(format!("LMP1\nrow_count={}\n", layout.row_count).as_bytes());
+        append_int32_array_digest_lines(&mut canonical, &data)?;
+        return sha256_bytes(&canonical);
     }
 
     Err(format!(
@@ -1049,32 +1054,23 @@ fn decoded_values_sha256(
     ))
 }
 
-fn int32_values_sha256(
-    column_name: &str,
-    array_data: &arrow_data::ArrayData,
-) -> Result<String, String> {
-    if array_data.data_type() != &DataType::Int32 {
-        return Err(
-            "verified artifact decoded values digest only supports non-null Int32 rows".to_string(),
-        );
+fn append_int32_array_digest_lines(out: &mut Vec<u8>, data: &ArrayData) -> Result<(), String> {
+    if data.data_type() != &arrow_array::types::Int32Type::DATA_TYPE {
+        return Err(format!(
+            "decoded-row fixture currently supports Int32 values only, found {:?}",
+            data.data_type()
+        ));
     }
-    let array = Int32Array::from(array_data.clone());
-    if array.null_count() != 0 {
-        return Err(
-            "verified artifact decoded values digest only supports non-null Int32 rows".to_string(),
-        );
+    out.extend_from_slice(b"type=Int32\n");
+    let values = Int32Array::from(data.clone());
+    for row in 0..values.len() {
+        if values.is_null(row) {
+            out.extend_from_slice(format!("{row}=null\n").as_bytes());
+        } else {
+            out.extend_from_slice(format!("{row}={}\n", values.value(row)).as_bytes());
+        }
     }
-
-    let mut canonical = format!(
-        "loom-decoded-int32-v1\ncolumn={column_name}\nrow_count={}\n",
-        array.len()
-    );
-    for index in 0..array.len() {
-        canonical.push_str(&array.value(index).to_string());
-        canonical.push('\n');
-    }
-    sha256_bytes(canonical.as_bytes())
-        .map_err(|diagnostic| format!("decoded values SHA-256 could not be computed: {diagnostic}"))
+    Ok(())
 }
 
 fn artifact_row_count_bound(bytes: &[u8], payload_kind: &str) -> Result<u64, String> {
@@ -1232,7 +1228,6 @@ fn sidecar_evidence_marker(evidence: Option<&SidecarEvidence>) -> Option<String>
         .path
         .as_deref()
         .and_then(forbidden_local_marker)
-        .or_else(|| evidence.sha256.as_deref().and_then(forbidden_local_marker))
         .or_else(|| evidence.summary.as_deref().and_then(forbidden_local_marker))
         .or_else(|| evidence.status.as_deref().and_then(forbidden_local_marker))
         .or_else(|| {
@@ -1252,9 +1247,7 @@ fn forbidden_local_marker(value: &str) -> Option<String> {
         "abfs:",
         "warehouse",
         "credential",
-        "token",
         "secret",
-        "access_key",
         "rest",
         "catalog",
     ]

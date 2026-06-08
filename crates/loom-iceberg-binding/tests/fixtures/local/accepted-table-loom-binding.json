@@ -11,8 +11,7 @@
   "source_evidence": {
     "accepted": true,
     "status": "accepted",
-    "path": "source/demo-events.parquet",
-    "sha256": "bb6b66e15e903679917b57081ac69055e09609301a2b2492018ccae99d50fb97"
+    "path": "source/demo-events.parquet"
   },
   "verifier_evidence": {
     "accepted": true,

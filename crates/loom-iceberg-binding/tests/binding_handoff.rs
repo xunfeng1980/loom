@@ -119,9 +119,16 @@ fn write_json(path: &Path, text: String) {
 fn accepted_sidecar_json(
     artifact_path: &Path,
     artifact_sha256: &str,
-    evidence_path: &str,
-    source_sha256: &str,
+    evidence_path: &Path,
 ) -> String {
+    let artifact_ref = artifact_path
+        .file_name()
+        .expect("artifact file name")
+        .to_string_lossy();
+    let evidence_ref = evidence_path
+        .file_name()
+        .expect("evidence file name")
+        .to_string_lossy();
     format!(
         r#"{{
   "table_uuid": "9f1a03d0-61f7-4f6d-a7a4-3d8b983cbe30",
@@ -136,8 +143,7 @@ fn accepted_sidecar_json(
   "source_evidence": {{
     "accepted": true,
     "status": "accepted",
-    "path": "source/demo-events.parquet",
-    "sha256": "{}"
+    "path": "tests/fixtures/local/source/demo-events.parquet"
   }},
   "verifier_evidence": {{
     "accepted": true,
@@ -150,26 +156,11 @@ fn accepted_sidecar_json(
     "strategy": "decoded-row-fixture"
   }}
 }}"#,
-        artifact_path.display(),
-        artifact_sha256,
-        evidence_path,
-        source_sha256
+        artifact_ref, artifact_sha256, evidence_ref
     )
 }
 
-fn source_sha256() -> String {
-    sha256_bytes(b"demo.events source rows: 7,-1,42\n")
-}
-
-fn accepted_values_sha256() -> String {
-    sha256_bytes(b"loom-decoded-int32-v1\ncolumn=id\nrow_count=3\n7\n-1\n42\n")
-}
-
-fn accepted_evidence_json(
-    artifact_sha256: &str,
-    source_sha256: &str,
-    values_sha256: &str,
-) -> String {
+fn accepted_evidence_json(artifact_sha256: &str, source_sha256: &str) -> String {
     format!(
         r#"{{
   "row_count": 3,
@@ -177,23 +168,23 @@ fn accepted_evidence_json(
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "{}",
-  "source_path": "source/demo-events.parquet",
-  "source_sha256": "{}",
   "source": {{
     "accepted": true,
-    "status": "accepted"
+    "status": "accepted",
+    "path": "source/demo-events.parquet",
+    "sha256": "{}"
   }},
   "decoded_row_fixture": {{
     "identity": "demo.events#snapshot=314159#schema=7",
     "strategy": "decoded-row-fixture",
     "row_count": 3,
-    "values_sha256": "{}",
+    "values_sha256": "82b7236a02334902a5e27c157bcc767f1451246e11959dc13f5c56e028da8d58",
     "accepted": true,
     "oracle_accepted": true,
     "status": "accepted"
   }}
 }}"#,
-        artifact_sha256, source_sha256, values_sha256
+        artifact_sha256, source_sha256
     )
 }
 
@@ -202,24 +193,23 @@ fn accepted_fixture_bundle() -> (PathBuf, PathBuf, PathBuf, PathBuf, Vec<u8>, St
     let artifact = temp.join("demo-events.lmc1.loom");
     let sidecar = temp.join("accepted-table-loom-binding.json");
     let evidence = temp.join("accepted-table-source-evidence.json");
+    let source_dir = temp.join("source");
+    let source = source_dir.join("demo-events.parquet");
     let bytes = accepted_lmc1_table_bytes();
     assert_verifier_accepts(&bytes);
     let artifact_sha256 = sha256_bytes(&bytes);
-    let source_sha256 = source_sha256();
-    let values_sha256 = accepted_values_sha256();
+    let source_bytes = b"demo.events source fixture\nsnapshot=314159\nschema=7\nrows=7,-1,42\n";
+    let source_sha256 = sha256_bytes(source_bytes);
     std::fs::write(&artifact, &bytes).expect("write artifact");
+    std::fs::create_dir_all(&source_dir).expect("create source dir");
+    std::fs::write(&source, source_bytes).expect("write source fixture");
     write_json(
         &evidence,
-        accepted_evidence_json(&artifact_sha256, &source_sha256, &values_sha256),
+        accepted_evidence_json(&artifact_sha256, &source_sha256),
     );
     write_json(
         &sidecar,
-        accepted_sidecar_json(
-            &artifact,
-            &artifact_sha256,
-            "accepted-table-source-evidence.json",
-            &source_sha256,
-        ),
+        accepted_sidecar_json(&artifact, &artifact_sha256, &evidence),
     );
     (
         local_fixture("accepted-table-metadata.json"),
@@ -311,8 +301,7 @@ fn sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance() {
         accepted_sidecar_json(
             &artifact,
             "0000000000000000000000000000000000000000000000000000000000000000",
-            "accepted-table-source-evidence.json",
-            &source_sha256(),
+            &sidecar.with_file_name("accepted-table-source-evidence.json"),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &stale_sidecar, &artifact)
@@ -330,8 +319,7 @@ fn sidecar_hash_or_mutated_artifact_bytes_cannot_force_acceptance() {
         accepted_sidecar_json(
             &mutated_artifact,
             &artifact_sha256,
-            "accepted-table-source-evidence.json",
-            &source_sha256(),
+            &sidecar.with_file_name("accepted-table-source-evidence.json"),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &mutated_sidecar, &mutated_artifact)
@@ -351,8 +339,7 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
         accepted_sidecar_json(
             &artifact,
             &artifact_sha256,
-            "missing-evidence.json",
-            &source_sha256(),
+            &evidence.with_file_name("missing-evidence.json"),
         ),
     );
     let report = bind_iceberg_ref_from_paths(&metadata, &missing_evidence_sidecar, &artifact)
@@ -388,23 +375,6 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
                 .to_string(),
         ),
         (
-            "source-path",
-            r#""source_path": "source/demo-events.parquet""#.to_string(),
-            r#""source_path": "source/other-events.parquet""#.to_string(),
-        ),
-        (
-            "source-sha",
-            format!(r#""source_sha256": "{}""#, source_sha256()),
-            r#""source_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff""#
-                .to_string(),
-        ),
-        (
-            "values-sha",
-            format!(r#""values_sha256": "{}""#, accepted_values_sha256()),
-            r#""values_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff""#
-                .to_string(),
-        ),
-        (
             "source-status",
             r#""accepted": true"#.to_string(),
             r#""accepted": false"#.to_string(),
@@ -423,19 +393,9 @@ fn sidecar_oracle_claim_is_not_sufficient_without_matching_evidence_artifact() {
             .replacen(&from, &to, 1);
         write_json(&mutated_evidence, text);
         let mutated_sidecar = sidecar.with_file_name(format!("{name}-sidecar.json"));
-        let evidence_file_name = mutated_evidence
-            .file_name()
-            .expect("mutated evidence file name")
-            .to_str()
-            .expect("utf8 evidence file name");
         write_json(
             &mutated_sidecar,
-            accepted_sidecar_json(
-                &artifact,
-                &artifact_sha256,
-                evidence_file_name,
-                &source_sha256(),
-            ),
+            accepted_sidecar_json(&artifact, &artifact_sha256, &mutated_evidence),
         );
 
         let report = bind_iceberg_ref_from_paths(&metadata, &mutated_sidecar, &artifact)

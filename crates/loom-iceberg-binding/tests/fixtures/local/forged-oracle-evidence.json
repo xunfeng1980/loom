@@ -4,11 +4,11 @@
   "schema_id": 7,
   "snapshot_id": 314159,
   "artifact_sha256": "4cfcf1c6e9233e2f2fc97a0162f5e9c60bb92f9e5f5c9572de700f98474421b7",
-  "source_path": "source/demo-events.parquet",
-  "source_sha256": "bb6b66e15e903679917b57081ac69055e09609301a2b2492018ccae99d50fb97",
   "source": {
     "accepted": true,
-    "status": "accepted"
+    "status": "accepted",
+    "path": "source/demo-events.parquet",
+    "sha256": "2558b5db60a42fb6e9d76b7ca8ccbc383e5d4dd68d38ed4517ae8f1160b88da3"
   },
   "decoded_row_fixture": {
     "identity": "demo.events#snapshot=314159#schema=7",
