@@ -6,11 +6,17 @@
 
 ## Phase Boundary
 
-Phase 20 turns the Phase 14/16 native-lowering spikes into a production-shaped
-lowering surface. It must remain a backend of the verifier: accepted structure is
-not enough, and collected constraints are not enough. Production native lowering
-may only consume accepted artifact reports whose constraints are discharged or
-not required.
+Phase 20 turns the Phase 14/16 native-lowering spikes into the first
+production-shaped lowering surface. It must remain a backend of the verifier:
+accepted structure is not enough, and collected constraints are not enough.
+Production native lowering may only consume accepted artifact reports whose
+constraints are discharged or not required.
+
+Phase 20 does not permanently finish the lowering surface for all future
+encodings. It establishes a narrow dialect/lowering seed. Phase 21 must treat new
+encoding coverage and native lowering as paired deltas: every new encoding is
+interpreter-only, lowering-supported, or fail-closed/deferred by explicit
+decision.
 
 ## Locked Decisions
 
@@ -24,6 +30,8 @@ not required.
 - LLVM/MLIR 22 validation is allowed as optional or strict gate evidence.
 - Initial kernel expansion targets fixed-size primitive output and primitive
   multi-column table batches.
+- `loom.decode` is an extensible seed; Phase 21 may add dialect/native deltas
+  when it widens encoding coverage.
 
 ## Scope Fences
 
@@ -42,7 +50,7 @@ Out of scope:
 - DuckDB native execution; defer to Phase 23.
 - Native cache/equivalence hardening; defer to Phase 24.
 - Expanded Vortex encoding coverage beyond the current accepted matrix; defer to
-  Phase 21.
+  Phase 21, with paired interpreter/lowering/deferred decisions per encoding.
 - New solver backend work or checked proof objects.
 
 ## Canonical References

@@ -6,14 +6,15 @@
 
 ## Executive Summary
 
-Phase 20 should turn the previous native-lowering spikes into a production-shaped
-lowering surface, not into host-engine integration and not into a second
-unverified execution path.
+Phase 20 should turn the previous native-lowering spikes into the first
+production-shaped lowering surface, not into host-engine integration and not
+into a second unverified execution path.
 
 Recommended direction:
 
 1. Define a Loom-owned MLIR `loom.decode` dialect contract and textual surface
-   for verified decode programs.
+   for a narrow verified decode seed, while acknowledging that later encoding
+   coverage will force paired dialect/lowering deltas.
 2. Require accepted artifact verification plus solver-backed
    `ConstraintDischargeStatus::Discharged` before production native lowering.
 3. Lower from the dialect contract to standard MLIR dialects (`scf`, `arith`,
@@ -28,6 +29,13 @@ Recommended direction:
 This is the right bridge between the current verifier line and the later host
 native runtime phases: Loom still proves and gates what may lower; MLIR only
 takes over after the trust boundary.
+
+Important caveat: Phase 20 and Phase 21 are two axes, not a one-way gate. Phase
+20 establishes the first lowering abstraction over a narrow primitive matrix.
+Phase 21 must not pretend that expanded Vortex coverage can always happen
+without reopening dialect/lowering work. Each newly accepted encoding should
+carry an explicit decision: interpreter-only, production-lowering-supported with
+a dialect/native delta, or fail-closed/deferred.
 
 ## Local Starting Point
 
@@ -189,6 +197,12 @@ Out of scope:
 - Checked proof objects or formal proof completion.
 
 ## Dialect Contract Recommendation
+
+The dialect should be treated as an extensible seed, not as a frozen complete
+IR. The initial op set must be abstract enough to survive bitpack/FOR/dict/RLE
+pressure, but Phase 20 should only implement and validate the primitive subset it
+can actually prove. Phase 21 is expected to add or specialize ops as each
+encoding joins the supported matrix.
 
 Use a small `loom.decode` surface with operations grouped by role:
 

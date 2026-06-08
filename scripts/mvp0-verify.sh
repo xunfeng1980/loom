@@ -97,6 +97,10 @@ info "Running Phase 19 solver-backed verifier gate..."
 bash scripts/solver-verifier-test.sh
 ok "scripts/solver-verifier-test.sh"
 
+info "Running Phase 20 production native-lowering gate..."
+bash scripts/production-native-lowering-test.sh
+ok "scripts/production-native-lowering-test.sh"
+
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh
 ok "scripts/duckdb-smoke-test.sh"

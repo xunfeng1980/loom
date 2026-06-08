@@ -56,9 +56,7 @@ fn find_section_entry(bytes: &[u8], kind: u16) -> usize {
     panic!("section kind {kind} not found in test fixture")
 }
 
-fn diagnostic_codes(
-    report: &loom_core::verifier::VerificationReport,
-) -> Vec<VerificationCode> {
+fn diagnostic_codes(report: &loom_core::verifier::VerificationReport) -> Vec<VerificationCode> {
     report
         .diagnostics()
         .iter()
@@ -89,8 +87,7 @@ fn obl_12_02_container_malformed_bytes_do_not_panic() {
 
     let mut bad_section = wrapped_i32_payload();
     let layout_entry = find_section_entry(&bad_section, 2);
-    bad_section[layout_entry + 4..layout_entry + 12]
-        .copy_from_slice(&u64::MAX.to_le_bytes());
+    bad_section[layout_entry + 4..layout_entry + 12].copy_from_slice(&u64::MAX.to_le_bytes());
     assert_no_panic(|| assert!(decode_container(&bad_section).is_err()));
     assert_no_panic(|| assert!(!verify_container(&bad_section, &registry).is_ok()));
 }
@@ -219,5 +216,8 @@ fn obl_12_04_05_table_verifier_failure_blocks_arrow_output() {
     );
 
     let decoded = assert_no_panic(|| decode_table_to_array_data(&table, &registry));
-    assert!(decoded.is_err(), "invalid table must not produce Arrow output");
+    assert!(
+        decoded.is_err(),
+        "invalid table must not produce Arrow output"
+    );
 }

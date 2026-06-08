@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: active
-stopped_at: Phase 20 planned; Phase 20 execution next
-last_updated: "2026-06-08T12:55:00.000Z"
-last_activity: 2026-06-08 -- Phase 20 planned
+stopped_at: Phase 20 complete; Phase 21 next
+last_updated: "2026-06-08T13:30:00.000Z"
+last_activity: 2026-06-08 -- Phase 20 complete
 progress:
   total_phases: 26
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 77
-  completed_plans: 72
-  percent: 72
+  completed_plans: 77
+  percent: 77
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 20 — production decode dialect and native kernel expansion (planned; execute next)
+**Current focus:** Phase 21 — expanded Vortex encoding coverage (placeholder; discuss/research next)
 
 ## Current Position
 
-Phase: 20 (production-decode-dialect-and-native-kernel-expansion) — PLANNED
-Plan: 20-01 through 20-05 planned; execution next
-Status: Phase 20 plans define a verifier-backed production native-lowering surface: discharged-facts gate, `loom.decode` dialect contract/textual surface, primitive Arrow/raw-buffer builder lowering, primitive multi-column native kernel expansion, and optional/strict MLIR 22 validation closeout.
-Last activity: 2026-06-08 -- Phase 20 planned
+Phase: 20 (production-decode-dialect-and-native-kernel-expansion) — COMPLETE
+Plan: 20-01 through 20-05 complete; Phase 21 next
+Status: Phase 20 shipped a verifier-backed production native-lowering seed: discharged-facts gate, `loom.decode` dialect contract/textual surface, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column native kernel matrix, deferred diagnostics for complex encodings, optional/strict MLIR 22 validation, release-gate wiring, and final report.
+Last activity: 2026-06-08 -- Phase 20 complete
 
 Progress: 72%
 
 ## Progress Snapshot
 
-- Completed phases: 19 / 26
-- Completed executable plans: 72 / 77
+- Completed phases: 20 / 26
+- Completed executable plans: 77 / 77
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 20 planned; Phase 20 production decode dialect/native kernel expansion is next to execute
-- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including Phase 19 solver-backed verifier gate with Homebrew Bitwuzla 0.9.1 at `/opt/homebrew/bin/bitwuzla`
+- Current position: Phase 20 complete; Phase 21 expanded Vortex encoding coverage is next to discuss/research
+- Last verified gate: `bash scripts/mvp0-verify.sh` passed, including the Phase 20 production native-lowering gate in normal and strict mode with LLVM/MLIR 22.1.7
 
 **Completed phase plan counts:**
 
@@ -51,7 +51,7 @@ Progress: 72%
 | 17 | Unified artifact verification pipeline | 5/5 |
 | 18 | Complete Vortex reader | 5/5 |
 | 19 | Solver-backed full artifact verifier | 5/5 complete |
-| 20 | Production decode dialect/native kernel expansion | planned; 0/5 complete |
+| 20 | Production decode dialect/native kernel expansion | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -136,6 +136,9 @@ None yet.
 - Phase 19 executing: 19-04 complete with `apply_solver_discharge`, artifact verifier facts carrying trusted solver reports only after matching/discharged obligations, artifact lowering readiness blocked for `CollectedOnly` constraints, and `loom-solver-smt` artifact-level Bitwuzla helper tests.
 - Phase 19 complete: 19-05 closed with solver-backed `loom verify-artifact --solver-bitwuzla --l2core-sample`, release-gate wiring through `scripts/solver-verifier-test.sh` and `scripts/mvp0-verify.sh`, final solver report, public/planning docs, and Phase 20 handoff requiring discharged facts.
 - Phase 20 planned: 20-01 through 20-05 cover the production lowering contract/discharged-facts gate, `loom.decode` dialect contract and textual surface, Arrow raw-buffer builder lowering, primitive multi-column native kernel expansion, and MLIR validation/report/closeout.
+- Phase 20/21 roadmap caveat added: production lowering and expanded encoding coverage are coupled axes, not a one-way sequence; Phase 21 must classify each new encoding as interpreter-only, lowering-supported with a dialect/native delta, or fail-closed/deferred.
+- Phase 22 ABI caveat added: engine independence is a design claim until a second consumer validates it; predicate/projection pushdown plus concurrency/reentrancy/thread ownership must be decided in Phase 22.
+- Phase 20 complete: production native-lowering gate, `loom.decode` textual surface, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, explicit bitpack/FOR/complex-encoding deferral, production MLIR validation hook, `scripts/production-native-lowering-test.sh`, release-gate wiring, and final report are complete.
 - Phase 21 reserved as a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix after solver-backed verifier evidence and production lowering surfaces exist.
 - Phase 22-24 split research complete: the former engine-integrated native execution MVP placeholder is now three placeholders covering host native runtime ABI/policy, DuckDB native integration MVP, and native equivalence/cache/fallback hardening.
 - Phase 22 reserved as a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
@@ -184,7 +187,7 @@ None yet.
 | v3 verifier | Unified artifact verification pipeline | Complete | Phase 17 |
 | v3 ingress | Complete Vortex reader | Complete | Phase 18 |
 | v3 verifier | Solver-backed full artifact verifier | Complete | Phase 19 |
-| v3 native | Production decode dialect and native kernel expansion | Planned | Phase 20 |
+| v3 native | Production decode dialect and native kernel expansion | Complete | Phase 20 |
 | v3 ingress | Expanded Vortex encoding coverage | Placeholder | Phase 21 |
 | v3 engine | Host native runtime ABI and execution policy | Placeholder | Phase 22 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 23 |
@@ -194,8 +197,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-08T12:55:00.000Z
-Stopped at: Phase 20 planned; Phase 20 execution next
+Last session: 2026-06-08T13:30:00.000Z
+Stopped at: Phase 20 complete; Phase 21 next
 
 Phase 17 handoff:
 
@@ -231,4 +234,6 @@ Phase 19 summary: .planning/phases/19-solver-backed-full-artifact-verifier/19-SU
 Phase 20 research: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-RESEARCH.md
 Phase 20 context: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-CONTEXT.md
 Phase 20 plans: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-01-PLAN.md through 20-05-PLAN.md
+Phase 20 report: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-NATIVE-LOWERING-REPORT.md
+Phase 20 summary: .planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-SUMMARY.md
 Resume file: .planning/ROADMAP.md

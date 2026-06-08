@@ -15,6 +15,15 @@ pub struct MlirValidationOptions {
     pub require_compatible_toolchain: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProductionMlirArtifact {
+    pub entry_symbol: String,
+    pub mlir_text: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub artifact_summary: String,
+}
+
 pub fn validate_with_mlir_opt(
     artifact: &MeliorModuleArtifact,
     options: MlirValidationOptions,
@@ -206,6 +215,93 @@ pub fn validate_translation_to_llvm_ir(
     }
 }
 
+pub fn validate_production_standard_mlir(
+    artifact: &ProductionMlirArtifact,
+    options: MlirValidationOptions,
+) -> MeliorBackendReport {
+    let mut report = MeliorBackendReport {
+        entry_symbol: Some(artifact.entry_symbol.clone()),
+        row_count: Some(artifact.row_count),
+        artifact_summary: Some(artifact.artifact_summary.clone()),
+        ..MeliorBackendReport::default()
+    };
+    if !validate_production_mlir_shape(artifact) {
+        report.push(
+            MeliorBackendDiagnosticCode::MlirVerificationFailed,
+            "$.mlir_text",
+            "Phase 20 production MLIR artifact shape is malformed",
+        );
+        return report;
+    }
+
+    let toolchain = if options.require_compatible_toolchain {
+        match require_compatible_toolchain() {
+            Ok(facts) => facts,
+            Err(mut err) => {
+                err.entry_symbol = Some(artifact.entry_symbol.clone());
+                err.row_count = Some(artifact.row_count);
+                err.artifact_summary = Some(artifact.artifact_summary.clone());
+                return err;
+            }
+        }
+    } else {
+        let facts = probe_toolchain();
+        if !facts.compatible {
+            report.toolchain = Some(facts);
+            return report;
+        }
+        facts
+    };
+
+    let Some(mlir_opt) = tool_path(&toolchain, MlirToolKind::MlirOpt) else {
+        report.toolchain = Some(toolchain);
+        report.push(
+            MeliorBackendDiagnosticCode::ToolchainMissing,
+            "$.toolchain.mlir-opt",
+            "mlir-opt is required for Phase 20 production MLIR validation",
+        );
+        return report;
+    };
+
+    let path = temp_mlir_path("loom-production-validate");
+    if let Err(err) = fs::write(&path, &artifact.mlir_text) {
+        report.toolchain = Some(toolchain);
+        report.push(
+            MeliorBackendDiagnosticCode::PassPipelineFailed,
+            "$.tempfile",
+            format!("failed to write temporary MLIR file: {err}"),
+        );
+        return report;
+    }
+
+    let output = Command::new(&mlir_opt).arg(&path).output();
+    let _ = fs::remove_file(&path);
+
+    report.toolchain = Some(toolchain);
+    match output {
+        Ok(output) if output.status.success() => {
+            report.supported = true;
+            report
+        }
+        Ok(output) => {
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.production",
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            );
+            report
+        }
+        Err(err) => {
+            report.push(
+                MeliorBackendDiagnosticCode::PassPipelineFailed,
+                "$.mlir-opt.production",
+                format!("failed to run mlir-opt: {err}"),
+            );
+            report
+        }
+    }
+}
+
 fn artifact_report(artifact: &MeliorModuleArtifact) -> MeliorBackendReport {
     MeliorBackendReport {
         entry_symbol: Some(artifact.entry_symbol.clone()),
@@ -233,6 +329,18 @@ fn validate_mlir_shape(artifact: &MeliorModuleArtifact) -> Result<(), MeliorBack
     } else {
         Err(MeliorBackendDiagnosticCode::MlirVerificationFailed)
     }
+}
+
+fn validate_production_mlir_shape(artifact: &ProductionMlirArtifact) -> bool {
+    artifact.entry_symbol == "loom_decode_build_buffers"
+        && artifact.column_count > 0
+        && artifact.mlir_text.contains("module {")
+        && artifact
+            .mlir_text
+            .contains("func.func @loom_decode_build_buffers")
+        && artifact.mlir_text.contains("scf.for")
+        && artifact.mlir_text.contains("memref.store")
+        && artifact.mlir_text.contains("return")
 }
 
 fn tool_path(facts: &crate::report::MlirToolchainFacts, kind: MlirToolKind) -> Option<String> {

@@ -40,6 +40,15 @@ pub mod full_verifier;
 /// Verifier-gated native-lowering support checks for the Phase 14 spike.
 pub mod native_lowering;
 
+/// Production native-lowering support gate for Phase 20+.
+pub mod production_native_lowering;
+
+/// Loom-owned textual `loom.decode` dialect surface for Phase 20+.
+pub mod decode_dialect;
+
+/// Primitive Arrow/raw-buffer builder plans for Phase 20+.
+pub mod arrow_buffer_lowering;
+
 /// Unified artifact-facing verifier report model for Phase 17+.
 pub mod artifact_verifier;
 

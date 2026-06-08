@@ -45,12 +45,12 @@ fail-closed boundary as Loom grows toward native execution and table bindings.
 - ✓ Unified artifact verification pipeline: `loom_core::artifact_verifier` verifies `LMC1` artifacts through container/manifest/L1 structural checks, optionally fuses accepted `L2Core` `VerifiedArtifactFacts`, records constraint status, reports lowering readiness, exposes `loom verify-artifact`, and gates the evidence through `scripts/artifact-verifier-test.sh` — Phase 17
 - ✓ Complete Vortex reader boundary: isolated `loom-vortex-ingress` now emits recursive Loom-owned reader dtype/layout/segment/split facts, classifies accepted/unsupported/rejected inputs fail-closed, supports non-null Int32/Int64/Float32/Float64 single-column emission plus non-null primitive struct/table emission to verifier-accepted `LMC1`/`LMT1`, exposes CLI reader/artifact-verifier status, and gates the evidence through `scripts/complete-vortex-reader-test.sh` — Phase 18
 - ✓ Solver-backed full artifact verifier: solver-neutral obligation/report types, deterministic Bitwuzla-primary `QF_BV` SMT-LIB emission, optional `loom-solver-smt` backend declarations for `z3`/`cvc5`/`bitwuzla`, Bitwuzla subprocess discharge, artifact-verifier solver facts, CLI visibility, and release-gated strict solver evidence are complete without claiming production native execution — Phase 19
+- ✓ Production decode dialect and native kernel expansion seed: production lowering starts from accepted artifact reports with `Discharged`/`NotRequired` facts, emits deterministic `loom.decode` textual artifacts, plans primitive Arrow/raw-buffer builders, supports raw non-null Int32/Int64/Float32/Float64 single/table slices, validates standard MLIR text, and gates evidence through `scripts/production-native-lowering-test.sh` without claiming host execution or arbitrary encoding coverage — Phase 20
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 20 remains a roadmap placeholder only: production MLIR decode dialect and native kernel expansion.
 - [ ] Phase 21 remains a roadmap placeholder only: expanded Vortex encoding/layout/storage coverage beyond the Phase 18 accepted matrix.
 - [ ] Phase 22 remains a roadmap placeholder only: host native runtime ABI and execution policy over complete-reader, expanded-encoding, and solver-backed verifier artifacts.
 - [ ] Phase 23 remains a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract.
