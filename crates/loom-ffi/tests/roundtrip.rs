@@ -14,6 +14,7 @@ use arrow::array::{Array, Float32Array, Float64Array, Int32Array, StringArray};
 use arrow::datatypes::DataType;
 use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
 use loom_core::alp_params::{AlpOutputType, AlpParams};
+use loom_core::container_codec::{wrap_layout_payload, Feature};
 use loom_core::fsst_params::FsstParams;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
@@ -142,6 +143,66 @@ fn roundtrip_decode_payload_i32_values() {
     if let Some(release_fn) = ffi_schema.release {
         unsafe { release_fn(&mut { ffi_schema } as *mut _) };
     }
+}
+
+#[test]
+fn roundtrip_decode_container_payload_i32_values() {
+    let values = [10i32, -20, 30];
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: DataType::Int32,
+        root: LayoutNode::Raw {
+            data: values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 4,
+            count: values.len(),
+        },
+        row_count: values.len(),
+    });
+    let wrapped = wrap_layout_payload(&payload).expect("wrap layout payload");
+
+    let (ffi_array, ffi_schema) = unsafe { call_loom_decode(&wrapped) };
+    let array_data = unsafe { from_ffi(ffi_array, &ffi_schema) }
+        .expect("from_ffi must succeed for container i32 payload");
+    let array = Int32Array::from(array_data);
+
+    assert_eq!(array.values(), values.as_slice());
+    assert_eq!(array.null_count(), 0);
+
+    drop(array);
+    if let Some(release_fn) = ffi_schema.release {
+        unsafe { release_fn(&mut { ffi_schema } as *mut _) };
+    }
+}
+
+#[test]
+fn container_unknown_required_feature_returns_decode_failed() {
+    let values = [10i32, -20, 30];
+    let payload = encode_layout_payload(&LayoutDescription {
+        data_type: DataType::Int32,
+        root: LayoutNode::Raw {
+            data: values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+            elem_size: 4,
+            count: values.len(),
+        },
+        row_count: values.len(),
+    });
+    let mut wrapped = wrap_layout_payload(&payload).expect("wrap layout payload");
+    let required_features_offset = 4 + 2 + 2;
+    let unknown_required = Feature::SingleColumnLmp1.mask() | (1u64 << 63);
+    wrapped[required_features_offset..required_features_offset + 8]
+        .copy_from_slice(&unknown_required.to_le_bytes());
+
+    let mut ffi_array: FFI_ArrowArray = unsafe { std::mem::zeroed() };
+    let mut ffi_schema: FFI_ArrowSchema = unsafe { std::mem::zeroed() };
+    let code = unsafe {
+        loom_decode(
+            wrapped.as_ptr(),
+            wrapped.len(),
+            &mut ffi_array as *mut _,
+            &mut ffi_schema as *mut _,
+        )
+    };
+
+    assert_eq!(code, LoomError::DecodeFailed.code());
 }
 
 #[test]

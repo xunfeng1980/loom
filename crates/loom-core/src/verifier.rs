@@ -11,6 +11,10 @@ use std::fmt;
 use arrow_schema::DataType;
 
 use crate::alp_params::AlpParams;
+use crate::container_codec::{
+    decode_container, decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
+    extract_wrapped_payload, WrappedPayload,
+};
 use crate::error::LoomDecodeError;
 use crate::fsst_params::FsstParams;
 use crate::l1_model::bitpack;
@@ -31,6 +35,7 @@ pub enum VerificationCode {
     InvalidDictionaryCode,
     UnknownKernel,
     MalformedKernelParams,
+    ContainerShape,
     TableShape,
 }
 
@@ -48,6 +53,7 @@ impl VerificationCode {
             VerificationCode::InvalidDictionaryCode => "invalid-dictionary-code",
             VerificationCode::UnknownKernel => "unknown-kernel",
             VerificationCode::MalformedKernelParams => "malformed-kernel-params",
+            VerificationCode::ContainerShape => "container-shape",
             VerificationCode::TableShape => "table-shape",
         }
     }
@@ -179,6 +185,79 @@ pub fn verify_table(table: &TableDescription, registry: &L2KernelRegistry) -> Ve
     }
 
     report
+}
+
+pub fn verify_container(bytes: &[u8], registry: &L2KernelRegistry) -> VerificationReport {
+    let mut report = VerificationReport::default();
+    match decode_container(bytes) {
+        Ok(_) => {}
+        Err(err) => {
+            report.push(
+                VerificationCode::ContainerShape,
+                container_error_path(&err),
+                err.to_string(),
+            );
+            return report;
+        }
+    }
+
+    match extract_wrapped_payload(bytes) {
+        Ok(WrappedPayload::Layout(_)) => match decode_layout_payload_maybe_container(bytes) {
+            Ok(desc) => {
+                let layout_report = verify_layout(&desc, registry);
+                for diagnostic in layout_report.diagnostics() {
+                    report.push(
+                        diagnostic.code,
+                        format!("$.payload{}", diagnostic.path.trim_start_matches('$')),
+                        diagnostic.message.clone(),
+                    );
+                }
+            }
+            Err(err) => report.push(
+                VerificationCode::ContainerShape,
+                "$.sections.layout_payload",
+                err.to_string(),
+            ),
+        },
+        Ok(WrappedPayload::Table(_)) => match decode_table_payload_maybe_container(bytes) {
+            Ok(table) => {
+                let table_report = verify_table(&table, registry);
+                for diagnostic in table_report.diagnostics() {
+                    report.push(
+                        diagnostic.code,
+                        format!("$.payload{}", diagnostic.path.trim_start_matches('$')),
+                        diagnostic.message.clone(),
+                    );
+                }
+            }
+            Err(err) => report.push(
+                VerificationCode::ContainerShape,
+                "$.sections.table_payload",
+                err.to_string(),
+            ),
+        },
+        Err(err) => report.push(
+            VerificationCode::ContainerShape,
+            container_error_path(&err),
+            err.to_string(),
+        ),
+    }
+
+    report
+}
+
+fn container_error_path(err: &LoomDecodeError) -> &'static str {
+    match err {
+        LoomDecodeError::MalformedContainer(reason) if reason.contains("feature") => {
+            "$.required_features"
+        }
+        LoomDecodeError::MalformedContainer(reason) if reason.contains("version") => "$.version",
+        LoomDecodeError::MalformedContainer(reason) if reason.contains("magic") => "$.magic",
+        LoomDecodeError::MalformedContainer(reason) if reason.contains("section") => "$.sections",
+        LoomDecodeError::MalformedContainer(reason) if reason.contains("header") => "$.header",
+        LoomDecodeError::MalformedContainer(_) => "$.container",
+        _ => "$.container",
+    }
 }
 
 fn verify_node(
@@ -597,6 +676,9 @@ fn dictionary_code_data_type(codes: &LayoutNode) -> DataType {
 mod tests {
     use super::*;
     use crate::alp_params::{AlpOutputType, AlpParams};
+    use crate::container_codec::{wrap_layout_payload, wrap_table_payload};
+    use crate::layout_codec::encode_layout_payload;
+    use crate::table_codec::{encode_table_payload, TableColumn};
 
     fn registry() -> L2KernelRegistry {
         L2KernelRegistry::default_for_mvp0()
@@ -617,6 +699,73 @@ mod tests {
         assert!(
             report.diagnostics().iter().any(|d| d.code == code),
             "expected {code}, got {:?}",
+            report.diagnostics()
+        );
+    }
+
+    fn raw_i32_desc() -> LayoutDescription {
+        LayoutDescription {
+            data_type: DataType::Int32,
+            root: LayoutNode::Raw {
+                data: [1i32, 2, 3]
+                    .iter()
+                    .flat_map(|value| value.to_le_bytes())
+                    .collect(),
+                elem_size: 4,
+                count: 3,
+            },
+            row_count: 3,
+        }
+    }
+
+    fn simple_table() -> TableDescription {
+        TableDescription {
+            row_count: 3,
+            columns: vec![TableColumn {
+                name: "value".to_string(),
+                layout: raw_i32_desc(),
+            }],
+        }
+    }
+
+    #[test]
+    fn valid_layout_container_passes() {
+        let raw = encode_layout_payload(&raw_i32_desc());
+        let wrapped = wrap_layout_payload(&raw).expect("wrap layout");
+
+        let report = verify_container(&wrapped, &registry());
+
+        assert!(report.is_ok(), "{:?}", report.diagnostics());
+    }
+
+    #[test]
+    fn valid_table_container_passes() {
+        let raw = encode_table_payload(&simple_table()).expect("encode table");
+        let wrapped = wrap_table_payload(&raw).expect("wrap table");
+
+        let report = verify_container(&wrapped, &registry());
+
+        assert!(report.is_ok(), "{:?}", report.diagnostics());
+    }
+
+    #[test]
+    fn container_unknown_required_feature_fails() {
+        let raw = encode_layout_payload(&raw_i32_desc());
+        let mut wrapped = wrap_layout_payload(&raw).expect("wrap layout");
+        let required_features_offset = 4 + 2 + 2;
+        let unknown_required = 1u64 << 63;
+        wrapped[required_features_offset..required_features_offset + 8]
+            .copy_from_slice(&unknown_required.to_le_bytes());
+
+        let report = verify_container(&wrapped, &registry());
+
+        assert_code(&report, VerificationCode::ContainerShape);
+        assert!(
+            report
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.path == "$.required_features"),
+            "{:?}",
             report.diagnostics()
         );
     }

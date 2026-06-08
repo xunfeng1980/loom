@@ -5,6 +5,9 @@
 //! bytes in checked container sections.
 
 use crate::error::LoomDecodeError;
+use crate::l1_model::LayoutDescription;
+use crate::layout_codec::decode_layout_payload;
+use crate::table_codec::{decode_table_payload, TableDescription};
 
 pub const MAGIC: &[u8; 4] = b"LMC1";
 pub const VERSION: u16 = 1;
@@ -188,6 +191,12 @@ pub enum PayloadKind {
     RawTable,
     Container,
     Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WrappedPayload {
+    Layout(Vec<u8>),
+    Table(Vec<u8>),
 }
 
 pub fn payload_kind(bytes: &[u8]) -> PayloadKind {
@@ -479,6 +488,48 @@ pub fn table_payload_section(desc: &ContainerDescription) -> Option<&[u8]> {
         .map(|section| section.bytes.as_slice())
 }
 
+pub fn extract_wrapped_payload(bytes: &[u8]) -> Result<WrappedPayload, LoomDecodeError> {
+    match payload_kind(bytes) {
+        PayloadKind::RawLayout => Ok(WrappedPayload::Layout(bytes.to_vec())),
+        PayloadKind::RawTable => Ok(WrappedPayload::Table(bytes.to_vec())),
+        PayloadKind::Container => {
+            let container = decode_container(bytes)?;
+            if let Some(payload) = layout_payload_section(&container) {
+                Ok(WrappedPayload::Layout(payload.to_vec()))
+            } else if let Some(payload) = table_payload_section(&container) {
+                Ok(WrappedPayload::Table(payload.to_vec()))
+            } else {
+                Err(LoomDecodeError::MalformedContainer(
+                    "expected payload section",
+                ))
+            }
+        }
+        PayloadKind::Unknown => Err(LoomDecodeError::MalformedContainer("unknown payload kind")),
+    }
+}
+
+pub fn decode_layout_payload_maybe_container(
+    bytes: &[u8],
+) -> Result<LayoutDescription, LoomDecodeError> {
+    match extract_wrapped_payload(bytes)? {
+        WrappedPayload::Layout(payload) => decode_layout_payload(&payload),
+        WrappedPayload::Table(_) => Err(LoomDecodeError::MalformedContainer(
+            "expected layout payload",
+        )),
+    }
+}
+
+pub fn decode_table_payload_maybe_container(
+    bytes: &[u8],
+) -> Result<TableDescription, LoomDecodeError> {
+    match extract_wrapped_payload(bytes)? {
+        WrappedPayload::Table(payload) => decode_table_payload(&payload),
+        WrappedPayload::Layout(_) => Err(LoomDecodeError::MalformedContainer(
+            "expected table payload",
+        )),
+    }
+}
+
 fn validate_feature_bits(required_features: u64) -> Result<(), LoomDecodeError> {
     if required_features & !KNOWN_REQUIRED_FEATURE_MASK != 0 {
         return Err(LoomDecodeError::MalformedContainer(
@@ -573,6 +624,10 @@ impl<'a> Reader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::l1_model::LayoutNode;
+    use crate::layout_codec::encode_layout_payload;
+    use crate::table_codec::{encode_table_payload, TableColumn};
+    use arrow_schema::DataType;
 
     fn layout_payload() -> Vec<u8> {
         let mut bytes = RAW_LAYOUT_MAGIC.to_vec();
@@ -584,6 +639,31 @@ mod tests {
         let mut bytes = RAW_TABLE_MAGIC.to_vec();
         bytes.extend_from_slice(b"table-bytes");
         bytes
+    }
+
+    fn raw_i32_desc() -> LayoutDescription {
+        LayoutDescription {
+            data_type: DataType::Int32,
+            root: LayoutNode::Raw {
+                data: [10i32, -20, 30]
+                    .iter()
+                    .flat_map(|value| value.to_le_bytes())
+                    .collect(),
+                elem_size: 4,
+                count: 3,
+            },
+            row_count: 3,
+        }
+    }
+
+    fn simple_table() -> TableDescription {
+        TableDescription {
+            row_count: 3,
+            columns: vec![TableColumn {
+                name: "value".to_string(),
+                layout: raw_i32_desc(),
+            }],
+        }
     }
 
     fn minimal_layout_container() -> ContainerDescription {
@@ -681,6 +761,44 @@ mod tests {
     }
 
     #[test]
+    fn layout_decode_helper_accepts_raw_and_wrapped_payloads() {
+        let raw = encode_layout_payload(&raw_i32_desc());
+        let wrapped = wrap_layout_payload(&raw).expect("wrap layout");
+
+        let raw_decoded = decode_layout_payload_maybe_container(&raw).expect("decode raw");
+        let wrapped_decoded =
+            decode_layout_payload_maybe_container(&wrapped).expect("decode wrapped");
+
+        assert_eq!(raw_decoded.data_type, wrapped_decoded.data_type);
+        assert_eq!(raw_decoded.row_count, wrapped_decoded.row_count);
+    }
+
+    #[test]
+    fn table_decode_helper_accepts_raw_and_wrapped_payloads() {
+        let raw = encode_table_payload(&simple_table()).expect("encode table");
+        let wrapped = wrap_table_payload(&raw).expect("wrap table");
+
+        let raw_decoded = decode_table_payload_maybe_container(&raw).expect("decode raw table");
+        let wrapped_decoded =
+            decode_table_payload_maybe_container(&wrapped).expect("decode wrapped table");
+
+        assert_eq!(raw_decoded.row_count, wrapped_decoded.row_count);
+        assert_eq!(raw_decoded.columns[0].name, wrapped_decoded.columns[0].name);
+    }
+
+    #[test]
+    fn layout_decode_helper_rejects_table_container() {
+        let raw = encode_table_payload(&simple_table()).expect("encode table");
+        let wrapped = wrap_table_payload(&raw).expect("wrap table");
+
+        let err = decode_layout_payload_maybe_container(&wrapped).expect_err("reject table");
+        assert_eq!(
+            err,
+            LoomDecodeError::MalformedContainer("expected layout payload")
+        );
+    }
+
+    #[test]
     fn payload_kind_classifies_known_magic_values() {
         assert_eq!(payload_kind(&layout_payload()), PayloadKind::RawLayout);
         assert_eq!(payload_kind(&table_payload()), PayloadKind::RawTable);
@@ -753,8 +871,7 @@ mod tests {
     fn rejects_section_offset_overflow() {
         let mut encoded = encode_container(&minimal_layout_container()).expect("encode");
         let first_entry_len = HEADER_PREFIX_LEN + 12;
-        encoded[first_entry_len..first_entry_len + 8]
-            .copy_from_slice(&u64::MAX.to_le_bytes());
+        encoded[first_entry_len..first_entry_len + 8].copy_from_slice(&u64::MAX.to_le_bytes());
 
         assert_eq!(
             decode_container(&encoded),

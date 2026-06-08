@@ -23,9 +23,9 @@ use std::panic::{self, AssertUnwindSafe};
 
 use arrow::array::Array;
 use arrow::ffi::{to_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::container_codec::decode_layout_payload_maybe_container;
 use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_core::layout_codec::decode_layout_payload;
 use loom_core::verifier::verify_layout;
 
 // ---------------------------------------------------------------------------
@@ -136,7 +136,8 @@ fn loom_decode_inner(
         builder.append_null();
         builder.finish().into_data()
     } else {
-        let desc = decode_layout_payload(input).map_err(|_| LoomError::DecodeFailed)?;
+        let desc =
+            decode_layout_payload_maybe_container(input).map_err(|_| LoomError::DecodeFailed)?;
         let registry = L2KernelRegistry::default_for_mvp0();
         let report = verify_layout(&desc, &registry);
         if !report.is_ok() {
