@@ -7,11 +7,11 @@ stopped_at: Phase 23 23-04 complete; execute 23-05 backend release gate/report n
 last_updated: "2026-06-08T15:13:38.000Z"
 last_activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
 progress:
-  total_phases: 28
+  total_phases: 30
   completed_phases: 22
   total_plans: 92
   completed_plans: 91
-  percent: 83
+  percent: 77
 ---
 
 # Project State
@@ -30,11 +30,11 @@ Plan: 5 of 5
 Status: 23-04 complete; execute 23-05 backend release gate, report, docs, and Phase 24 handoff next
 Last activity: 2026-06-08 -- Phase 23 23-04 production JIT seed complete
 
-Progress: 83%
+Progress: 77%
 
 ## Progress Snapshot
 
-- Completed phases: 22 / 28
+- Completed phases: 22 / 30
 - Completed executable plans: 91 / 92
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 23 production native backend implementation is executing; 23-05 is next
@@ -159,14 +159,17 @@ None yet.
 - Phase 23 executing: 23-04 complete with production JIT seed entry points over accepted `NativeBackendReport` artifacts, deterministic primitive reference-output comparison, cancellation checks, unsupported-shape rejection before toolchain probing, and focused `production_backend_jit` tests.
 - Phase 24 reserved as a roadmap placeholder only: DuckDB native execution integration MVP over the Phase 22 runtime contract and Phase 23 production backend. Phase 24 must keep DuckDB as a natural adapter over the runtime ABI, mapping bind/init/local-init to plan/scan/worker and testing projection/threading plus Arrow release/error/cancel paths.
 - Phase 25 reserved as a roadmap placeholder only: native equivalence, cache, and fallback hardening before table-format binding.
-- Phase 26 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- Phase 27 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
-- Phase 28 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
+- Phase 26 reserved as a roadmap placeholder only: external source ingress contract after the hardened native execution contract is credible, abstracting Vortex ingress facts/diagnostics/support/emission patterns before adding more sources.
+- Phase 27 reserved as a roadmap placeholder only: Lance dataset binding/ingress through the external source ingress contract, scanning supported Arrow-compatible Lance datasets into verified `LMC1`/`LMT1` artifacts before deeper Lance metadata binding.
+- Phase 28 reserved as a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract and source-ingress contract are credible.
+- Phase 29 reserved as a roadmap placeholder only: StarRocks + DuckDB dual query surface after Iceberg binding exists.
+- Phase 30 reserved as a roadmap placeholder only: full arbitrary Vortex semantic compatibility after ABI/backend/hardening/table-binding and dual-query-surface evidence exists.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260608-waw | Add external source ingress and Lance phases to roadmap | 2026-06-08 | this commit | [260608-waw-add-external-source-ingress-and-lance-ph](./quick/260608-waw-add-external-source-ingress-and-lance-ph/) |
 | 260608-vni | Update Phase 23 and 24 roadmap handoff from Phase 22 ABI deep research | 2026-06-08 | 3ed57a5 | [260608-vni-update-phase-23-and-24-roadmap-handoff-f](./quick/260608-vni-update-phase-23-and-24-roadmap-handoff-f/) |
 | 260608-v17 | Polish English and Chinese READMEs with final minimal logo, DuckDB data flow, and quickstart | 2026-06-08 | none | [260608-v17-polish-readme-with-logo-duckdb-data-flow](./quick/260608-v17-polish-readme-with-logo-duckdb-data-flow/) |
 | 260608-vfc | Extend Phase 22 deep research with C API, Node-API/N-API, and natural API design lessons | 2026-06-08 | 58f9cd4 | [260608-vfc-extend-phase-22-deep-research-with-c-api](./quick/260608-vfc-extend-phase-22-deep-research-with-c-api/) |
@@ -213,9 +216,11 @@ None yet.
 | v3 native | Production native backend implementation | Planned | Phase 23 |
 | v3 engine | DuckDB native execution integration MVP | Placeholder | Phase 24 |
 | v3 engine | Native equivalence, cache, and fallback hardening | Placeholder | Phase 25 |
-| v3 table | Iceberg ref/table binding | Placeholder | Phase 26 |
-| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 27 |
-| v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 28 |
+| v3 ingress | External source ingress contract | Placeholder | Phase 26 |
+| v3 ingress | Lance dataset binding / ingress | Placeholder | Phase 27 |
+| v3 table | Iceberg ref/table binding | Placeholder | Phase 28 |
+| v3 engine | StarRocks + DuckDB dual query surface | Placeholder | Phase 29 |
+| v3 compatibility | Full Vortex semantic compatibility | Placeholder | Phase 30 |
 
 ## Session Continuity
 

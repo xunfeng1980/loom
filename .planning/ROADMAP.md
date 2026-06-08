@@ -15,11 +15,13 @@ production native expansion. Phase 20 completed the first verifier-gated product
 primitive Arrow/raw-buffer lowering, and raw primitive native-kernel evidence without claiming a complete compiled dialect or production
 JIT backend. Phase 21 widens Vortex encoding/layout coverage after the solver and lowering seed exist. Phases 22-25 split the formerly
 oversized engine-integrated native execution placeholder into a runtime ABI/policy phase, a production native backend implementation
-phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 26 and Phase 27 reserve the table-format and
-multi-engine query surface that should follow: Iceberg ref/table binding first, then
-StarRocks + DuckDB dual query surface. Full arbitrary Vortex semantic
-compatibility remains a later dedicated compatibility phase, not part of the
-finite Phase 21 coverage matrix or the Phase 23 production backend.
+phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 26 abstracts the Vortex ingress facts,
+diagnostics, support classification, and emission disposition pattern into a generic external-source ingress contract before more source
+formats are added. Phase 27 applies that contract to Lance dataset binding/ingress, using Lance's Arrow-native shape to scan supported
+datasets into verifier-routed `LMC1`/`LMT1` artifacts before any deeper Lance fragment/metadata binding claims. Phases 28 and 29 reserve the
+table-format and multi-engine query surface that should follow: Iceberg ref/table binding first, then StarRocks + DuckDB dual query surface.
+Full arbitrary Vortex semantic compatibility remains a later dedicated compatibility phase, not part of the finite Phase 21 coverage matrix
+or the Phase 23 production backend.
 
 ## Phases
 
@@ -55,9 +57,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 23: Production Native Backend Implementation** - Planned backend implementation over Phase 22 `RuntimePlan`/`RuntimeCacheKey`: compiled `loom.decode` ODS evidence, melior/LLVM pipeline, backend identity, cancellation, and verifier-gated JIT seed (research/planning started 2026-06-08)
 - [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
 - [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
-- [ ] **Phase 26: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path and full reader boundary are credible (not expanded)
-- [ ] **Phase 27: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
-- [ ] **Phase 28: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
+- [ ] **Phase 26: External Source Ingress Contract** - Placeholder for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (not expanded)
+- [ ] **Phase 27: Lance Dataset Binding / Ingress** - Placeholder for scanning supported Lance datasets into verified `LMC1`/`LMT1` artifacts through the external-source ingress contract, with deeper Lance fragment/metadata binding deferred until the first vertical slice is proven (not expanded)
+- [ ] **Phase 28: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path, full reader boundary, and external-source ingress contract are credible (not expanded)
+- [ ] **Phase 29: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
+- [ ] **Phase 30: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
 
 ## Phase Details
 
@@ -620,7 +624,7 @@ remains a Phase 23 backend delta.
 **Status:** Complete (2026-06-08). See `22-RUNTIME-ABI-CONTRACT.md`,
 `22-RUNTIME-ABI-REPORT.md`, and `22-SUMMARY.md`.
 **Depends on:** Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21.
-**Ordering decision:** Define the engine-independent boundary before touching a host engine or committing to the production backend mechanics, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, StarRocks, compiled dialect, or JIT implementation phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 27 validation.
+**Ordering decision:** Define the engine-independent boundary before touching a host engine or committing to the production backend mechanics, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, StarRocks, compiled dialect, or JIT implementation phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 29 validation.
 
 **Split research:** `.planning/research/ENGINE-INTEGRATION-SPLIT.md`
 **Research:** `.planning/phases/22-host-native-runtime-abi-and-execution-policy/22-RESEARCH.md`
@@ -692,28 +696,40 @@ or arbitrary Vortex semantic compatibility.
 **Depends on:** Phase 24.
 **Ordering decision:** Harden the native execution path before making it table-format-visible. This phase should add oracle/equivalence matrices against interpreter/Vortex rows, native artifact cache reuse and invalidation semantics, unsupported-program negative coverage, deterministic diagnostics, performance smoke evidence, and release-gate wiring. It is the closeout for the engine-integrated native execution story, not a new query surface.
 
-### Phase 26: Iceberg Ref/Table Binding
+### Phase 26: External Source Ingress Contract
 
 **Status:** Placeholder only. Do not expand until Phase 25 hardens the native execution contract.
 **Depends on:** Phase 18, Phase 21, and Phase 25.
-**Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase.
+**Ordering decision:** Abstract the proven Vortex ingress boundary before adding more source formats. This phase should define a source-neutral ingress contract for source facts, diagnostics, support classification, emission disposition, dependency isolation, verifier-routed `LMC1`/`LMT1` emission, oracle/equivalence evidence, and fail-closed unsupported/rejected behavior. It should reuse lessons from `loom-vortex-ingress` without exposing Vortex-specific types in the generic contract. It must not become Lance implementation, MCAP/Zarr/LeRobot support, Iceberg binding, or host-engine integration.
 
-### Phase 27: StarRocks + DuckDB Dual Query Surface
+### Phase 27: Lance Dataset Binding / Ingress
 
-**Status:** Placeholder only. Do not expand until Phase 26 establishes the Iceberg binding contract.
+**Status:** Placeholder only. Do not expand until Phase 26 establishes the external source ingress contract.
 **Depends on:** Phase 26.
+**Ordering decision:** Make Lance the first non-Vortex source integration because Lance is Arrow-native and therefore close to Loom's successful output contract. The first slice should scan supported local Lance datasets through an isolated Lance ingress boundary, extract source facts and diagnostics through the Phase 26 contract, emit verified `LMC1`/`LMT1` artifacts for supported Arrow-compatible primitive/table shapes, and record oracle/equivalence evidence against Lance/Arrow scan output. Deeper binding of Loom artifacts into Lance fragments, manifests, indices, or dataset metadata should remain a later decision after the scan-to-verified-artifact path is proven. It must not add Iceberg binding, StarRocks/DuckDB dual-query work, MCAP/Zarr/LeRobot support, or arbitrary Lance semantic compatibility.
+
+### Phase 28: Iceberg Ref/Table Binding
+
+**Status:** Placeholder only. Do not expand until Phase 27 proves the Lance ingress vertical slice.
+**Depends on:** Phase 18, Phase 21, Phase 25, Phase 26, and Phase 27.
+**Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
+
+### Phase 29: StarRocks + DuckDB Dual Query Surface
+
+**Status:** Placeholder only. Do not expand until Phase 28 establishes the Iceberg binding contract.
+**Depends on:** Phase 28.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
 
-### Phase 28: Full Vortex Semantic Compatibility
+### Phase 30: Full Vortex Semantic Compatibility
 
-**Status:** Placeholder only. Do not expand until Phase 27 proves the same table-bound Loom artifacts through at least two query surfaces.
-**Depends on:** Phase 21, Phase 23, Phase 25, and Phase 27.
+**Status:** Placeholder only. Do not expand until Phase 29 proves the same table-bound Loom artifacts through at least two query surfaces.
+**Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 29.
 **Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -742,6 +758,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 23. Production Native Backend Implementation | 0/? | Placeholder | - |
 | 24. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |
 | 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
-| 26. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
-| 27. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
-| 28. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
+| 26. External Source Ingress Contract | 0/? | Placeholder | - |
+| 27. Lance Dataset Binding / Ingress | 0/? | Placeholder | - |
+| 28. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
+| 29. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
+| 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
