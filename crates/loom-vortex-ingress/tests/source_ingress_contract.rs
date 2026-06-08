@@ -1,10 +1,17 @@
 use std::sync::LazyLock;
 
 use loom_source_ingress::{
+    SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceDiagnosticFamily,
     SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
 };
+use loom_vortex_ingress::source_contract::{
+    source_diagnostic_from_vortex_ingress_diagnostic,
+    source_diagnostic_from_vortex_reader_diagnostic,
+};
 use loom_vortex_ingress::{
-    reader_facts_from_vortex_buffer, source_facts_from_vortex_buffer, VortexReaderEmissionKind,
+    reader_facts_from_vortex_buffer, source_facts_from_vortex_buffer,
+    source_ingress_report_from_vortex_buffer, VortexIngressDiagnostic, VortexIngressDiagnosticCode,
+    VortexReaderDiagnostic, VortexReaderDiagnosticCode, VortexReaderEmissionKind,
     VortexReaderSupport,
 };
 use vortex_array::arrays::{StructArray, VarBinArray};
@@ -147,4 +154,114 @@ fn unsupported_utf8_maps_to_fail_closed_source_contract() {
         coverage.lowering_disposition,
         SourceLoweringDisposition::FailClosedDeferred
     );
+}
+
+#[test]
+fn diagnostic_mapping_preserves_neutral_family_and_source_detail() {
+    let reader_cases = [
+        (
+            VortexReaderDiagnosticCode::OpenFailed,
+            SourceDiagnosticCode::OpenFailed,
+            SourceDiagnosticFamily::Open,
+        ),
+        (
+            VortexReaderDiagnosticCode::SplitUnavailable,
+            SourceDiagnosticCode::SplitUnavailable,
+            SourceDiagnosticFamily::Layout,
+        ),
+        (
+            VortexReaderDiagnosticCode::TraversalFailed,
+            SourceDiagnosticCode::LayoutUnavailable,
+            SourceDiagnosticFamily::Layout,
+        ),
+        (
+            VortexReaderDiagnosticCode::UnsupportedLayout,
+            SourceDiagnosticCode::UnsupportedLayout,
+            SourceDiagnosticFamily::Layout,
+        ),
+        (
+            VortexReaderDiagnosticCode::UnsupportedDType,
+            SourceDiagnosticCode::UnsupportedSchema,
+            SourceDiagnosticFamily::Schema,
+        ),
+        (
+            VortexReaderDiagnosticCode::UnsupportedConversion,
+            SourceDiagnosticCode::UnsupportedConversion,
+            SourceDiagnosticFamily::Conversion,
+        ),
+        (
+            VortexReaderDiagnosticCode::VerificationRequired,
+            SourceDiagnosticCode::VerificationFailed,
+            SourceDiagnosticFamily::Verification,
+        ),
+    ];
+
+    for (vortex_code, source_code, family) in reader_cases {
+        let source = source_diagnostic_from_vortex_reader_diagnostic(&VortexReaderDiagnostic::new(
+            vortex_code,
+            "$.reader",
+            "reader diagnostic",
+        ));
+        assert_eq!(source.code, source_code);
+        assert_eq!(source.family, family);
+        assert_eq!(source.path, "$.reader");
+        assert_eq!(source.message, "reader diagnostic");
+        assert_eq!(source.source_detail.as_deref(), Some(vortex_code.as_str()));
+    }
+
+    let ingress = source_diagnostic_from_vortex_ingress_diagnostic(&VortexIngressDiagnostic::new(
+        VortexIngressDiagnosticCode::UnsupportedConversion,
+        "$.payload",
+        "conversion diagnostic",
+    ));
+    assert_eq!(ingress.code, SourceDiagnosticCode::UnsupportedConversion);
+    assert_eq!(ingress.family, SourceDiagnosticFamily::Conversion);
+    assert_eq!(ingress.path, "$.payload");
+    assert_eq!(ingress.message, "conversion diagnostic");
+    assert_eq!(
+        ingress.source_detail.as_deref(),
+        Some(VortexIngressDiagnosticCode::UnsupportedConversion.as_str())
+    );
+}
+
+#[test]
+fn malformed_buffer_maps_to_rejected_source_report_without_facts() {
+    let report = source_ingress_report_from_vortex_buffer(b"not a vortex file");
+
+    assert_eq!(report.status, SourceIngressStatus::Rejected);
+    assert!(report.facts.is_none());
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(
+        report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(report.oracle_evidence.is_none());
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(report.diagnostics[0].code, SourceDiagnosticCode::OpenFailed);
+    assert_eq!(report.diagnostics[0].family, SourceDiagnosticFamily::Open);
+}
+
+#[test]
+fn unsupported_valid_source_report_keeps_facts_without_artifact_or_oracle() {
+    let rows = [Some("a"), Some("b"), Some("c")];
+    let bytes = vortex_file_bytes(VarBinArray::from_iter(
+        rows,
+        DType::Utf8(Nullability::Nullable),
+    ));
+    let report = source_ingress_report_from_vortex_buffer(&bytes);
+
+    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert!(report.facts.is_some());
+    assert_eq!(report.emission_kind, SourceEmissionKind::None);
+    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(
+        report.lowering_disposition,
+        SourceLoweringDisposition::FailClosedDeferred
+    );
+    assert_eq!(
+        report.artifact_verification,
+        SourceArtifactVerificationSummary::not_applicable()
+    );
+    assert!(report.oracle_evidence.is_none());
 }
