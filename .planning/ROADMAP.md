@@ -11,11 +11,12 @@ file ingress. Phase 16 completed optional verifier-gated `melior`/LLVM/JIT backe
 the largest verifier gap by unifying the current payload verifier and future `L2Core` verifier foundation into one artifact verification
 pipeline. Phase 18 completed the Vortex reader boundary beyond the narrow Phase 15 ingress slice. Phase 19
 completed the solver-backed full artifact verifier that upgrades collected obligations into Bitwuzla-discharged verifier evidence before
-production native expansion. Phase 20 is planned and preserves the production MLIR decode dialect/native kernel expansion step
-as a verifier backend that consumes discharged facts. Phase 21 widens Vortex
-encoding/layout coverage after the solver and lowering surfaces exist. Phases 22-24 split the formerly oversized engine-integrated native
-execution placeholder into a runtime ABI/policy phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase.
-Phase 25 and Phase 26 reserve the table-format and multi-engine query surface that should follow: Iceberg ref/table binding first, then
+production native expansion. Phase 20 completed the first verifier-gated production lowering seed: `loom.decode` textual contract,
+primitive Arrow/raw-buffer lowering, and raw primitive native-kernel evidence without claiming a complete compiled dialect or production
+JIT backend. Phase 21 widens Vortex encoding/layout coverage after the solver and lowering seed exist. Phases 22-25 split the formerly
+oversized engine-integrated native execution placeholder into a runtime ABI/policy phase, a production native backend implementation
+phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 26 and Phase 27 reserve the table-format and
+multi-engine query surface that should follow: Iceberg ref/table binding first, then
 StarRocks + DuckDB dual query surface.
 
 ## Phases
@@ -46,13 +47,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 17: Unified Artifact Verification Pipeline** - Fail-closed artifact verifier pipeline from `LMC1` container/schema/features/kernel manifest through L1 verification, L2Core verification, constraints/facts, and lowering-ready report (complete)
 - [x] **Phase 18: Complete Vortex Reader** - Complete expansion from Phase 15's narrow real-ingress slice into an isolated, fail-closed Vortex reader boundary with recursive facts, supported artifact emission, CLI visibility, and release-gate evidence
 - [x] **Phase 19: Solver-backed Full Artifact Verifier** - Real solver discharge over the unified artifact pipeline after complete-reader facts exist and before production native expansion (complete)
-- [x] **Phase 20: Production Decode Dialect and Native Kernel Expansion** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence (complete)
-- [ ] **Phase 21: Expanded Vortex Encoding Coverage** - Placeholder for widening supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and production lowering surfaces exist (not expanded)
+- [x] **Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering** - First verifier-gated production native-lowering surface seed with `loom.decode` textual contract, primitive Arrow/raw-buffer builder lowering, raw primitive multi-column matrix, and strict MLIR 22 validation evidence, without claiming a complete compiled dialect or production JIT backend (complete)
+- [ ] **Phase 21: Expanded Vortex Encoding Coverage** - Placeholder for widening supported Vortex encoding/layout coverage beyond Phase 18's accepted matrix after solver-backed verifier evidence and the Phase 20 lowering seed exist, with a paired lowering disposition for each new encoding/layout (not expanded)
 - [ ] **Phase 22: Host Native Runtime ABI and Execution Policy** - Placeholder for the engine-independent ABI, artifact/facts contract, cache key, fail-closed policy, and interpreter fallback semantics that host engines will call (not expanded)
-- [ ] **Phase 23: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
-- [ ] **Phase 24: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
-- [ ] **Phase 25: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path and full reader boundary are credible (not expanded)
-- [ ] **Phase 26: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
+- [ ] **Phase 23: Production Native Backend Implementation** - Placeholder for the real compiled `loom.decode` ODS dialect, melior pass pipeline, LLVM lowering, and verifier-gated LLVM/JIT execution backend that consumes Phase 22 ABI/policy decisions (not expanded)
+- [ ] **Phase 24: DuckDB Native Execution Integration MVP** - Placeholder for wiring verified native execution into the DuckDB table-function path over complete-reader artifacts with interpreter fallback (not expanded)
+- [ ] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Placeholder for oracle/equivalence gates, native artifact cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (not expanded)
+- [ ] **Phase 26: Iceberg Ref/Table Binding** - Placeholder for binding Loom distribution artifacts into Iceberg table/reference metadata after the native execution path and full reader boundary are credible (not expanded)
+- [ ] **Phase 27: StarRocks + DuckDB Dual Query Surface** - Placeholder for proving the same Loom/Iceberg-bound artifacts can be queried through both StarRocks and DuckDB surfaces (not expanded)
 
 ## Phase Details
 
@@ -566,17 +568,17 @@ LMC1 artifact
 - [x] 19-04-PLAN.md - Artifact verifier solver-discharge integration
 - [x] 19-05-PLAN.md - CLI, release gate, and solver verifier closeout
 
-### Phase 20: Production Decode Dialect and Native Kernel Expansion
+### Phase 20: Production Decode Dialect Seed and Raw Primitive Native Lowering
 
 **Status:** Complete.
 **Depends on:** Phase 16, Phase 17, Phase 18, and Phase 19.
-**Ordering decision:** Preserve the first production MLIR/native expansion step after verifier unification, complete-reader evidence, and solver-backed artifact verification. This phase should introduce the custom Loom MLIR decode dialect seed, Arrow/raw-buffer builder lowering, vectorization decisions, multi-column native lowering, and native kernels beyond the bounded Int32 copy slice. It must not become host-engine integration, complete-reader work, or solver work.
+**Ordering decision:** Preserve the first production lowering seed after verifier unification, complete-reader evidence, and solver-backed artifact verification. This phase introduced the `loom.decode` textual contract, Arrow/raw-buffer builder lowering, raw primitive multi-column lowering, and strict MLIR 22 validation evidence over a narrow primitive matrix. It is complete only as a seed: it does not claim a compiled C++/ODS dialect, a production `melior` pass pipeline, LLVM/JIT execution, host-engine integration, complete-reader work, or solver work.
 **Research:** `.planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-RESEARCH.md`
 **Context:** `.planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-CONTEXT.md`
 **Report:** `.planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-NATIVE-LOWERING-REPORT.md`
 **Summary:** `.planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-SUMMARY.md`
 
-**Research recommendation:** Make Phase 20 the first production native-lowering surface, not a host-engine execution phase. Define a `loom.decode` dialect contract and deterministic textual surface over a narrow primitive seed, require accepted artifact verification plus solver-backed `Discharged` facts before emission, lower to standard MLIR dialects for validation, expand first through primitive Arrow/raw-buffer builders and multi-column primitive table slices, and keep compiled C++/ODS dialect registration plus `melior`/LLVM/JIT behind optional toolchain gates until the op surface is stable. Default workspace builds must remain MLIR-free; strict native-lowering gates may require LLVM/MLIR 22. This is not a claim that Phase 21 can widen encodings without touching lowering; each new encoding must declare whether it is interpreter-only, lowering-supported, or intentionally deferred with diagnostics.
+**Research recommendation:** Treat Phase 20 as the first production native-lowering surface seed, not a host-engine execution phase and not the full production backend. Define a `loom.decode` dialect contract and deterministic textual surface over a narrow primitive seed, require accepted artifact verification plus solver-backed `Discharged` facts before emission, lower to standard MLIR dialects for validation, and expand first through primitive Arrow/raw-buffer builders and multi-column primitive table slices. Default workspace builds must remain MLIR-free; strict native-lowering gates may require LLVM/MLIR 22. Move the real compiled C++/ODS dialect registration, `melior` pass pipeline, LLVM lowering, and LLVM/JIT execution backend to Phase 23 after Phase 22 locks the host runtime ABI/policy. This is not a claim that Phase 21 can widen encodings without touching lowering; each new encoding must declare whether it is interpreter-only, lowering-supported, or intentionally deferred with diagnostics.
 
 **Suggested plan split:**
 - [x] 20-01-PLAN.md - Production lowering contract and discharged-facts gate
@@ -587,46 +589,52 @@ LMC1 artifact
 
 ### Phase 21: Expanded Vortex Encoding Coverage
 
-**Status:** Placeholder only. Do not expand until Phase 19 provides solver-backed artifact verifier evidence and Phase 20 identifies the production decode/native lowering surface.
+**Status:** Placeholder only. Do not expand until Phase 19 provides solver-backed artifact verifier evidence and Phase 20 identifies the production decode/native lowering seed.
 **Depends on:** Phase 18, Phase 19, and Phase 20.
-**Ordering decision:** Widen real Vortex coverage after the verifier and first production lowering surfaces exist, not because those surfaces are permanently complete. This phase should add representative Vortex encodings, layouts, and storage modes beyond the Phase 18 accepted matrix, preserve Loom-owned facts and diagnostics, emit artifacts only when verifier/lowering facts accept them, and add Vortex oracle/equivalence gates. For every new encoding/layout, Phase 21 must record a paired decision: interpreter-only for now, production-lowering-supported with dialect/native delta, or fail-closed/deferred with stable diagnostics. It must not become solver work, host-runtime ABI work, or DuckDB/Iceberg integration.
+**Ordering decision:** Widen real Vortex coverage after the verifier and first production lowering seed exist, not because that seed is permanently complete. This phase should add representative Vortex encodings, layouts, and storage modes beyond the Phase 18 accepted matrix, preserve Loom-owned facts and diagnostics, emit artifacts only when verifier/lowering facts accept them, and add Vortex oracle/equivalence gates. For every new encoding/layout, Phase 21 must record a paired decision: interpreter-only for now, production-lowering-supported with dialect/native delta, or fail-closed/deferred with stable diagnostics. It must not become solver work, host-runtime ABI work, production backend implementation, or DuckDB/Iceberg integration.
 
 ### Phase 22: Host Native Runtime ABI and Execution Policy
 
-**Status:** Placeholder only. Do not expand until Phase 18 establishes the complete Vortex reader boundary, Phase 19 establishes solver-backed verifier evidence, Phase 20 identifies the production native lowering surface, and Phase 21 widens the Vortex encoding surface.
+**Status:** Placeholder only. Do not expand until Phase 18 establishes the complete Vortex reader boundary, Phase 19 establishes solver-backed verifier evidence, Phase 20 identifies the production native lowering seed, and Phase 21 widens the Vortex encoding surface.
 **Depends on:** Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21.
-**Ordering decision:** Define the engine-independent boundary before touching a host engine, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, or StarRocks integration phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 26 validation.
+**Ordering decision:** Define the engine-independent boundary before touching a host engine or committing to the production backend mechanics, while treating engine independence as a design claim until a second consumer proves it. This phase should lock the native callable ABI, artifact identity, verified-facts handoff, cache key, diagnostics, memory ownership, Arrow/raw-buffer output contract, predicate/projection pushdown contract, concurrency/reentrancy/thread-ownership model, fail-closed policy, and interpreter fallback semantics over complete-reader artifacts. It should not become a DuckDB, Iceberg, StarRocks, compiled dialect, or JIT implementation phase, and it should document which ABI choices remain DuckDB-shaped assumptions pending Phase 27 validation.
 
 **Split research:** `.planning/research/ENGINE-INTEGRATION-SPLIT.md`
 
-### Phase 23: DuckDB Native Execution Integration MVP
+### Phase 23: Production Native Backend Implementation
 
 **Status:** Placeholder only. Do not expand until Phase 22 defines the host native runtime ABI and execution policy.
 **Depends on:** Phase 22.
-**Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should wire the Phase 22 runtime into `loom_scan`/DuckDB table-function execution over complete-reader artifacts, select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. It must not absorb Iceberg binding or StarRocks comparison.
+**Ordering decision:** Implement the real production backend after the ABI/policy is explicit and before any host engine depends on it. This phase should move beyond the Phase 20 textual seed by adding a compiled `loom.decode` ODS dialect, op verifiers, lowering/conversion passes, a `melior` pass pipeline, LLVM lowering, verifier-gated LLVM/JIT execution, strict toolchain/release gates, and equivalence evidence against the interpreter for the supported Phase 21 matrix. It must not become DuckDB integration, cache hardening, Iceberg binding, or StarRocks comparison.
 
-### Phase 24: Native Equivalence, Cache, and Fallback Hardening
+### Phase 24: DuckDB Native Execution Integration MVP
 
-**Status:** Placeholder only. Do not expand until Phase 23 proves the DuckDB native execution MVP.
+**Status:** Placeholder only. Do not expand until Phase 23 implements the production native backend.
 **Depends on:** Phase 23.
+**Ordering decision:** Prove one concrete host integration before broadening the table story. DuckDB is the first host because the project already has a C++ table-function path and SQL smoke gates. This phase should wire the Phase 22 runtime and Phase 23 production backend into `loom_scan`/DuckDB table-function execution over complete-reader artifacts, select native only when verifier/native facts accept the program, fall back to the interpreter where policy allows, and preserve fail-closed diagnostics. It must not absorb Iceberg binding or StarRocks comparison.
+
+### Phase 25: Native Equivalence, Cache, and Fallback Hardening
+
+**Status:** Placeholder only. Do not expand until Phase 24 proves the DuckDB native execution MVP.
+**Depends on:** Phase 24.
 **Ordering decision:** Harden the native execution path before making it table-format-visible. This phase should add oracle/equivalence matrices against interpreter/Vortex rows, native artifact cache reuse and invalidation semantics, unsupported-program negative coverage, deterministic diagnostics, performance smoke evidence, and release-gate wiring. It is the closeout for the engine-integrated native execution story, not a new query surface.
 
-### Phase 25: Iceberg Ref/Table Binding
+### Phase 26: Iceberg Ref/Table Binding
 
-**Status:** Placeholder only. Do not expand until Phase 24 hardens the native execution contract.
-**Depends on:** Phase 18, Phase 21, and Phase 24.
+**Status:** Placeholder only. Do not expand until Phase 25 hardens the native execution contract.
+**Depends on:** Phase 18, Phase 21, and Phase 25.
 **Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase.
 
-### Phase 26: StarRocks + DuckDB Dual Query Surface
+### Phase 27: StarRocks + DuckDB Dual Query Surface
 
-**Status:** Placeholder only. Do not expand until Phase 25 establishes the Iceberg binding contract.
-**Depends on:** Phase 25.
+**Status:** Placeholder only. Do not expand until Phase 26 establishes the Iceberg binding contract.
+**Depends on:** Phase 26.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -649,10 +657,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 17. Unified Artifact Verification Pipeline | 5/5 | Complete | 2026-06-08 |
 | 18. Complete Vortex Reader | 5/5 | Complete | 2026-06-08 |
 | 19. Solver-backed Full Artifact Verifier | 5/5 | Complete | 2026-06-08 |
-| 20. Production Decode Dialect and Native Kernel Expansion | 5/5 | Complete | 2026-06-08 |
+| 20. Production Decode Dialect Seed and Raw Primitive Native Lowering | 5/5 | Complete | 2026-06-08 |
 | 21. Expanded Vortex Encoding Coverage | 0/? | Placeholder | - |
 | 22. Host Native Runtime ABI and Execution Policy | 0/? | Placeholder | - |
-| 23. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |
-| 24. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
-| 25. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
-| 26. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
+| 23. Production Native Backend Implementation | 0/? | Placeholder | - |
+| 24. DuckDB Native Execution Integration MVP | 0/? | Placeholder | - |
+| 25. Native Equivalence, Cache, and Fallback Hardening | 0/? | Placeholder | - |
+| 26. Iceberg Ref/Table Binding | 0/? | Placeholder | - |
+| 27. StarRocks + DuckDB Dual Query Surface | 0/? | Placeholder | - |
