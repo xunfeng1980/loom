@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: planning
-stopped_at: Phase 10 planned
-last_updated: "2026-06-08T02:24:31Z"
-last_activity: 2026-06-08 -- Phase 10 planned as 4 ALP float L2 coverage plans
+status: executing
+stopped_at: Phase 10 executing
+last_updated: "2026-06-08T02:30:27.270Z"
+last_activity: 2026-06-08 -- Phase 10 P01 complete; ALP core kernel committed
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
   percent: 90
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-07)
 
 ## Current Position
 
-Phase: 10 — PLANNED
-Plan: 0 of 4
-Status: Phase 10 planned; ready for execution
-Last activity: 2026-06-08 -- Phase 10 planned as 4 ALP float L2 coverage plans
+Phase: 10 (additional-l2-kernels-and-numeric-compression-coverage) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 10
+Last activity: 2026-06-08 -- Phase 10 P01 complete; ALP core kernel committed
 
 Progress: [█████████ ] 90%
 
@@ -82,7 +82,7 @@ Progress: [█████████ ] 90%
 | Phase 09 P02 | 15 min | 3 tasks | 4 files |
 | Phase 09 P03 | 15 min | 3 tasks | 3 files |
 | Phase 09 P04 | 15 min | 3 tasks | 8 files |
-| Phase 10 P01 | planned | 3 tasks | 9 files |
+| Phase 10 P01 | 15 min | 3 tasks | 9 files |
 | Phase 10 P02 | planned | 3 tasks | 6 files |
 | Phase 10 P03 | planned | 3 tasks | 5 files |
 | Phase 10 P04 | planned | 3 tasks | 9 files |
@@ -128,7 +128,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
-- Phase 10 planned: Additional L2 Kernels and Numeric Compression Coverage, split into 4 ALP Float32/Float64 coverage plans across 3 waves.
+- Phase 10 executing: 10-01 complete with Float32/Float64 core support, checked `AlpParams`, ALP kernel id `1`, and verifier checks.
 
 ### Quick Tasks Completed
 
@@ -140,7 +140,7 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | Planned | Phase 10 |
+| v2 | COV-01: Additional L2 kernels (ALP float, delta-of-delta) | In Progress | Phase 10 |
 | v2 | COV-02: Multi-column table function | Complete | Phase 8 |
 | v2 foundation | BASE-01: MVP0 planning/docs baseline cleanup | Complete | Phase 6 |
 | v2 foundation | DOC-01/DOC-02: README and positioning documentation cleanup | Complete | Phase 6 |
@@ -165,5 +165,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-08T02:20:31.197Z
-Stopped at: Phase 10 planned
-Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-01-PLAN.md
+Stopped at: Phase 10 executing
+Resume file: .planning/phases/10-additional-l2-kernels-and-numeric-compression-coverage/10-02-PLAN.md
