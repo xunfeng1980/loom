@@ -13,6 +13,26 @@ fn read_text(path: impl AsRef<Path>) -> String {
         .unwrap_or_else(|error| panic!("read {}: {error}", path.as_ref().display()))
 }
 
+fn non_comment_code(text: &str) -> String {
+    text.lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty()
+                || trimmed.starts_with("//")
+                || trimmed.starts_with('#')
+                || trimmed.starts_with('*')
+                || trimmed.starts_with("/*")
+                || trimmed.starts_with("*/")
+            {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn dependency_sections(text: &str) -> Vec<&str> {
     let mut in_dependency_section = false;
     let mut lines = Vec::new();
@@ -45,16 +65,25 @@ fn no_default_starrocks_runtime_or_client_dependency_is_present() {
     for marker in [
         "starrocks",
         "mysql",
+        "mysql_async",
+        "mysqlclient",
         "jdbc",
         "odbc",
         "reqwest",
+        "ureq",
+        "hyper",
+        "tonic",
         "aws-sdk",
+        "aws_config",
         "object_store",
+        "object-store",
         "docker",
+        "bollard",
+        "kube",
     ] {
         assert!(
             !deps.contains(marker),
-            "Phase 29 adapter must not add default runtime/client dependency marker {marker}"
+            "Phase 30 adapter must not add default runtime/client/catalog dependency marker {marker}"
         );
     }
 }
@@ -74,13 +103,51 @@ fn public_host_surfaces_keep_existing_duckdb_sql_only() {
         format!("loom_scan_{}", "starrocks"),
         format!("loom_{}_query", "starrocks"),
         format!("{}_catalog", "starrocks"),
+        format!("{}_credential", "starrocks"),
+        format!("{}_external_table", "starrocks"),
+        format!("{}_runtime_smoke", "starrocks"),
+        format!("{}_jdbc", "starrocks"),
+        format!("{}_odbc", "starrocks"),
+        "CREATE EXTERNAL TABLE".to_string(),
+        "aws_access_key".to_string(),
+        "secret_access_key".to_string(),
     ];
     for file in surfaces {
-        let text = read_text(&file);
+        let text = non_comment_code(&read_text(&file));
         for marker in &forbidden {
             assert!(
                 !text.contains(marker),
                 "public host surface contains forbidden marker {marker}: {}",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn neutral_crates_do_not_absorb_phase30_query_surface_vocabulary() {
+    let root = workspace_root();
+    let neutral_files = [
+        root.join("crates/loom-core/src/lib.rs"),
+        root.join("crates/loom-ffi/src/lib.rs"),
+        root.join("crates/loom-source-ingress/src/lib.rs"),
+        root.join("crates/loom-iceberg-binding/src/lib.rs"),
+    ];
+    let forbidden = [
+        format!("{}{}", "Star", "Rocks"),
+        format!("{}{}", "star", "rocks"),
+        "dual-query-surface".to_string(),
+        "query_surface".to_string(),
+        "external table".to_string(),
+        "distributed execution".to_string(),
+        "predicate pushdown".to_string(),
+    ];
+    for file in neutral_files {
+        let text = non_comment_code(&read_text(&file));
+        for marker in &forbidden {
+            assert!(
+                !text.contains(marker),
+                "neutral crate leaked Phase 30 marker {marker}: {}",
                 file.display()
             );
         }

@@ -23,6 +23,36 @@ pub enum QueryKind {
     Sum,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum UnsupportedQueryFeature {
+    Join,
+    FreeformSql,
+    ExternalTableDdl,
+    RemoteCatalog,
+    Credentials,
+    NestedField,
+    NullableExpansion,
+    DistributedExecution,
+    PredicatePushdown,
+}
+
+impl UnsupportedQueryFeature {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Join => "join",
+            Self::FreeformSql => "freeform-sql",
+            Self::ExternalTableDdl => "external-table-ddl",
+            Self::RemoteCatalog => "remote-catalog",
+            Self::Credentials => "credentials",
+            Self::NestedField => "nested-field",
+            Self::NullableExpansion => "nullable-expansion",
+            Self::DistributedExecution => "distributed-execution",
+            Self::PredicatePushdown => "predicate-pushdown",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BindingIdentityEvidence {
     pub table_uuid: String,
@@ -146,7 +176,32 @@ pub fn validate_starrocks_descriptor(
             "only projection id is supported in Phase 29",
         ));
     }
+    let expected_result = canonical_query_matrix(accepted)?
+        .into_iter()
+        .find(|result| result.kind == descriptor.query_kind)
+        .ok_or_else(|| {
+            DualQuerySurfaceDiagnostic::unsupported(
+                "descriptor query kind is outside the Phase 30 query matrix",
+            )
+        })?;
+    if descriptor.expected_result_digest != expected_result.digest
+        || descriptor.expected_values != expected_result.values
+        || descriptor.expected_scalar != expected_result.scalar
+    {
+        return Err(DualQuerySurfaceDiagnostic::rejected(
+            "descriptor expected result evidence does not match accepted Loom artifact",
+        ));
+    }
     Ok(())
+}
+
+pub fn plan_unsupported_query_feature(
+    feature: UnsupportedQueryFeature,
+) -> Result<StarRocksQueryDescriptor, DualQuerySurfaceDiagnostic> {
+    Err(DualQuerySurfaceDiagnostic::unsupported(format!(
+        "unsupported Phase 30 query feature: {}",
+        feature.as_str()
+    )))
 }
 
 fn descriptor_for_result(
