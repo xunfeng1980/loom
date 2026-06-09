@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: planning
-stopped_at: Phase 32 planned
-last_updated: "2026-06-09T03:10:00Z"
-last_activity: 2026-06-09 -- Planned Phase 32 MVP1 architecture and code review
+status: executing
+stopped_at: Phase 32 plan 32-01 complete
+last_updated: "2026-06-09T03:28:00Z"
+last_activity: 2026-06-09 -- Completed Phase 32 claim ledger and documentation truth audit
 progress:
   total_phases: 32
   completed_phases: 30
   total_plans: 138
-  completed_plans: 131
-  percent: 95
+  completed_plans: 132
+  percent: 96
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 32 executing
-Plan: 32-01 executing
-Status: Phase 32 executing claim-ledger review; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Started Phase 32 claim ledger and documentation truth audit
+Plan: 32-02 ready
+Status: Phase 32 executing evidence-matrix review; Phase 30 dual-query remains partial/deferred
+Last activity: 2026-06-09 -- Completed Phase 32 claim ledger and documentation truth audit
 
-Progress: 95%
+Progress: 96%
 
 ## Progress Snapshot
 
 - Completed phases: 30 / 32
-- Completed executable plans: 131 / 138
+- Completed executable plans: 132 / 138
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 32 planned: 5 review-first plans will separate proven execution evidence from deferred, scaffold, skipped, and fallback-only claims
+- Current position: Phase 32 executing: claim ledger complete; execution evidence matrix and focused review audit gate are next
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/duckdb-source-e2e-test.sh` passed; `scripts/mvp1-verify.sh` now wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
 
 **Completed phase plan counts:**
@@ -63,7 +63,7 @@ Progress: 95%
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
-| 32 | MVP1 Architecture and Code Review | 0/5 planned |
+| 32 | MVP1 Architecture and Code Review | 1/5 executing |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -148,6 +148,7 @@ Recent decisions affecting current work:
 - [Quick 260609-eip]: DuckDB `loom_scan` may execute single-column `LMA1` through interpreter fallback; native lowering remains unsupported for `Arrow semantic payload` and continues to report lowering diagnostics.
 - [Phase 32]: Added as a review-first phase to audit MVP1 architecture, code quality, ABI/FFI boundaries, true execution evidence, release gates, dependency isolation, and documentation claims before further feature expansion.
 - [Phase 32]: Planned as five review-first plans: claim ledger, execution evidence audit, architecture/ABI/dependency audit, code-quality review with narrow remediation, and MVP1 go/no-go readiness closeout.
+- [Phase 32 P01]: Claim ledger classifies source compatibility as proven at the Arrow semantic layer, DuckDB `LMA1` SQL as bounded to the single-column e2e slice, native `LMA1` execution as unsupported/fallback, `LMC2` as deferred, and Phase 30 dual-surface as partial.
 
 ### Pending Todos
 
@@ -233,7 +234,7 @@ None yet.
 - Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
 - Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
-- Phase 32 planned: 5 plans across claim truth, execution evidence, architecture boundaries, code review, and release readiness.
+- Phase 32 executing: 32-01 completed the claim ledger and documentation truth audit; 32-02 will build the execution evidence matrix and review audit gate seed.
 
 ### Quick Tasks Completed
 
