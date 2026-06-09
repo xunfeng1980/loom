@@ -88,8 +88,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **MVP2 — Coverage, Second Engine, Productization** *(future milestone — planned, not active. Widen coverage and add a real second engine — the two forces that should shape the ABI — then freeze the ABI, then build distribution/security on top and bind the MVP1.5 lineage record.)*
 
 - [x] **Phase 42: Verified + Native Coverage Expansion** - Widen the accepted Vortex/Lance/Parquet encoding/layout/shape matrix, each new shape carrying a paired verified-lineage + native-execution + interpreter-fallback disposition
-- [ ] **Phase 43: StarRocks Live Runtime Integration** - The genuine second consumer that turns "engine-independent ABI" from a design claim into evidence, querying the same accepted artifacts through a live StarRocks runtime (in progress)
-- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by two real engines and the full coverage matrix
+- [ ] **Phase 43: StarRocks Live Runtime Integration** - Suspended pending live StarRocks runtime/client availability; completed contract/gate/ABI-findings work remains retained, while `ENGINE-01` moves to a pre-GA reactivation gate
+- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, and Phase 43's recorded ABI findings; live second-engine runtime evidence is deferred to pre-GA reactivation
 - [ ] **Phase 45: Content-Addressed Distribution and Signing** - Content-hash artifact identity, signatures, and attestation that binds the MVP1.5 verified-lineage record to the artifact
 - [ ] **Phase 46: Remote Fetch and Encryption** - Remote/object-store ingress with fail-closed remote verification and encryption in transit/at rest
 - [ ] **Phase 47: Production Hardening and GA Gate** - Scale performance, fuzz/soak, security review, and the general-availability release gate
@@ -1077,11 +1077,11 @@ Plans:
 
 ## Milestone: MVP2 — Coverage, Second Engine, Productization
 
-> **Status: Phase 42 active.** Requirement IDs below (`COV2-*`, `ENGINE-*`, `ABI2-*`, `DIST2-*`, `HARDEN-*`) are now being refined as MVP2 starts from coverage expansion; later-phase IDs remain placeholders until their phases begin.
+> **Status: Phase 44 ready.** Phase 42 is complete. Phase 43 completed its contract/gate/ABI-findings work but is suspended until a live StarRocks runtime/client is available; `ENGINE-01` is deferred to a pre-GA reactivation gate rather than blocking ABI freeze planning.
 
-**Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) prove engine-independence with a genuine second consumer, and (3) become a distributable, signed, fetchable artifact — in that order, because each later phase depends on the contract the earlier one stabilizes.
+**Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) freeze and productize the ABI with every live-engine gap explicitly tracked, and (3) revalidate engine independence before GA once a genuine second consumer is available.
 
-**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widens coverage and adds a real second engine — the two forces that should *shape* the ABI — and only then freezes it. Distribution/security is built last, on top of the frozen ABI, and binds the MVP1.5 lineage record.
+**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widened coverage and attempted the second-engine runtime proof. Because the live StarRocks runtime is externally blocked, Phase 43's contract and ABI findings are retained, ABI freeze may proceed with an explicit N=1/runtime-evidence caveat, and `ENGINE-01` must be reactivated before GA rather than silently waived.
 
 ### Phase 42: Verified + Native Coverage Expansion
 
@@ -1101,7 +1101,7 @@ Plans:
 
 ### Phase 43: StarRocks Live Runtime Integration
 
-**Status:** In progress / pending live runtime evidence. Plans 43-01 through 43-03 completed the typed runtime evidence contract, focused runtime gate, ABI findings report, and MVP2 gate wiring. Local contract mode passes, strict live mode fails closed without StarRocks env/client inputs, and no live StarRocks runtime query has been collected locally yet; therefore `ENGINE-01` remains open and Phase 44 must not start.
+**Status:** Suspended / pending live runtime evidence. Plans 43-01 through 43-03 completed the typed runtime evidence contract, focused runtime gate, ABI findings report, and MVP2 gate wiring. Local contract mode passes, strict live mode fails closed without StarRocks env/client inputs, and no live StarRocks runtime query has been collected locally yet. `ENGINE-01` remains open and must be reactivated before GA, but it no longer blocks Phase 44 ABI-freeze planning.
 **Goal:** Prove engine-independence empirically: a live, different query engine consumes the same accepted artifacts and returns equivalent results.
 **Depends on:** Phase 42, MVP1 Phase 22 (ABI) and Phase 30 (StarRocks descriptor evidence).
 **Requirements:** ENGINE-01, ENGINE-02, ENGINE-03
@@ -1112,23 +1112,23 @@ Plans:
   3. Fail-closed behavior holds in StarRocks: unsupported shapes are rejected, not silently mis-decoded.
 
 **Non-goals:** Not freezing the ABI yet (this phase exists to *inform* the freeze). Not a third engine. Not productization.
-**Ordering decision:** The second consumer must exist before the ABI is frozen, because it is the only thing that can falsify the engine-independence claim — the N=1 gap flagged since MVP1.
-**Plans:** 3/3 complete, but phase completion is pending live runtime evidence. Wave 1: [x] `43-01-PLAN.md` StarRocks runtime evidence contract. Wave 2: [x] `43-02-PLAN.md` cross-engine equivalence + fail-closed runtime gate, [x] `43-03-PLAN.md` ABI-shape findings + MVP2 wiring.
+**Ordering decision:** The second consumer remains the real falsifier for engine-independence, but it depends on external runtime availability. Rather than letting missing runtime tooling freeze the whole roadmap, Phase 43 is parked with fail-closed gates and ABI findings retained; the live runtime proof is a pre-GA reactivation requirement.
+**Plans:** 3/3 complete, but phase completion is suspended pending live runtime evidence. Wave 1: [x] `43-01-PLAN.md` StarRocks runtime evidence contract. Wave 2: [x] `43-02-PLAN.md` cross-engine equivalence + fail-closed runtime gate, [x] `43-03-PLAN.md` ABI-shape findings + MVP2 wiring. See `43-SUSPENSION-NOTE.md`.
 
 ### Phase 44: ABI Freeze and Compatibility Contract
 
 **Status:** Not started.
 **Goal:** Freeze the host native runtime ABI with a versioned, documented compatibility policy.
-**Depends on:** Phase 42 (coverage surface) and Phase 43 (second engine).
+**Depends on:** Phase 42 (coverage surface), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 44 entry blocker.
 **Requirements:** ABI2-01, ABI2-02, ABI2-03
 **Success Criteria** (what must be TRUE):
 
   1. `loom_runtime.h` / the C ABI is frozen at a v1: every symbol, struct, ownership rule, cache-key shape, projection/predicate contract, and concurrency/reentrancy guarantee is documented and versioned.
   2. A compatibility policy defines what changes are allowed within a major version (additive only) vs. require a major bump, with an ABI-version negotiation handshake at load time.
-  3. A cross-engine ABI conformance gate (DuckDB + StarRocks) passes against the frozen header, and an ABI-drift guard fails closed on any unversioned change.
+  3. An ABI conformance gate passes against the frozen header using DuckDB plus the Phase 43 StarRocks descriptor/runtime-evidence contract where live runtime is unavailable; ABI-drift guard fails closed on any unversioned change, and the live StarRocks conformance gap remains a named pre-GA blocker.
 
 **Non-goals:** No new engines or formats. No distribution/security transport. The freeze does not claim toolchain verification (MLIR/LLVM stays in TCB).
-**Ordering decision:** Freeze only after two real engines and the coverage matrix have shaped the contract; freezing earlier would lock in DuckDB-shaped assumptions.
+**Ordering decision:** Freeze after the coverage matrix and Phase 43 ABI findings have shaped the contract, while preserving an explicit live-second-engine caveat. The freeze must not claim that StarRocks runtime evidence exists until `ENGINE-01` is reactivated and closed.
 **Plans:** 2 plans across 2 waves (Wave 1: freeze + version handshake; Wave 2: conformance + drift gate).
 
 ### Phase 45: Content-Addressed Distribution and Signing
@@ -1167,13 +1167,13 @@ Plans:
 
 **Status:** Not started.
 **Goal:** Make the verified, covered, distributable system production-grade and declare GA.
-**Depends on:** Phases 42–46.
+**Depends on:** Phases 42–46 plus reactivated Phase 43 live StarRocks runtime evidence (`ENGINE-01`).
 **Requirements:** HARDEN-01, HARDEN-02, HARDEN-03
 **Success Criteria** (what must be TRUE):
 
   1. Performance at scale is measured on representative datasets (native vs interpreter vs reference engines) with published numbers; the native path demonstrates a real, repeatable speed advantage on the supported matrix.
   2. Continuous fuzzing and a soak test run against ingress, verifier, decode, ABI, and remote paths with no fail-open findings; a third-party-style security review of the FFI/ABI/crypto surface is recorded.
-  3. A single `scripts/ga-verify.sh` gate composes mvp0/mvp1/verified-lineage/coverage/engine-conformance/distribution gates and is green from a clean checkout; docs state the supported matrix, the TCB, and the explicit non-claims.
+  3. A single `scripts/ga-verify.sh` gate composes mvp0/mvp1/verified-lineage/coverage/engine-conformance/distribution gates and is green from a clean checkout; docs state the supported matrix, the TCB, the explicit non-claims, and accepted live StarRocks runtime evidence from the reactivated Phase 43 gate.
 
 **Non-goals:** Not new features. GA covers the supported matrix and stated TCB only — not arbitrary shapes, not toolchain verification, not correctness.
 **Ordering decision:** Hardening last; it composes every prior gate and is the honest GA boundary.
@@ -1195,8 +1195,8 @@ MVP1.5 P36→37→38→39 (no P35 dep) ───────┘
 MVP1.5 P36–41 ──> verified-lineage record ─┐
                                             ├─> MVP2 P42 (coverage, lineage-backed)
                                             └─> MVP2 P45 (attestation binds record)
-MVP2: P42 coverage ─┐
-      P43 StarRocks ─┴─> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
+MVP2: P42 coverage ──> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
+      P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before P47
 ```
 
 ## Progress
@@ -1250,7 +1250,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 3/3 | Complete (MVP2) | 42-03 complete |
-| 43. StarRocks Live Runtime Integration | 3/3 | Pending live evidence (MVP2) | - |
+| 43. StarRocks Live Runtime Integration | 3/3 | Suspended pending live evidence (MVP2; reactivates before GA) | - |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |

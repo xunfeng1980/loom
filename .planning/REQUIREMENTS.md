@@ -197,7 +197,7 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### StarRocks Live Runtime Integration
 
-- [ ] **ENGINE-01**: StarRocks runtime evidence is collected only from a live runtime query over a Loom-bound/accepted artifact identity, and accepted rows/scalars match the oracle and DuckDB matrix for the supported query set
+- [ ] **ENGINE-01**: Suspended until live StarRocks runtime/client inputs are available; when reactivated before GA, runtime evidence must be collected only from a live runtime query over a Loom-bound/accepted artifact identity, and accepted rows/scalars must match the oracle and DuckDB matrix for the supported query set
 - [x] **ENGINE-02**: Phase 43 records every observed DuckDB-shaped ABI assumption exposed by the StarRocks consumer and classifies each as fixed-now, accepted asymmetry, or Phase 44 freeze input
 - [x] **ENGINE-03**: Unsupported StarRocks runtime shapes, descriptor drift, missing runtime configuration, and output mismatches fail closed with typed diagnostics and cannot produce accepted runtime evidence
 
