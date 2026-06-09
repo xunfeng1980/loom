@@ -1,7 +1,7 @@
 # Phase 35 Native Arrow Semantic Execution Report
 
 **Date:** 2026-06-09
-**Status:** In progress, gate wired in 35-04
+**Status:** Complete, gate wired in 35-04 and closed in 35-05
 
 ## Positive Evidence
 

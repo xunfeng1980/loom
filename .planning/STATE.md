@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 35 35-04 complete; executing 35-05
-last_updated: "2026-06-09T08:29:07Z"
-last_activity: 2026-06-09 -- Phase 35 35-04 wired focused and broad native Arrow semantic gates
+stopped_at: Phase 35 complete; ready for Phase 36
+last_updated: "2026-06-09T08:41:22Z"
+last_activity: 2026-06-09 -- Phase 35 35-05 completed docs, requirements, roadmap/state closeout
 progress:
-  total_phases: 35
-  completed_phases: 34
+  total_phases: 47
+  completed_phases: 35
   total_plans: 153
-  completed_plans: 152
-  percent: 97
+  completed_plans: 153
+  percent: 74
 ---
 
 # Project State
@@ -20,25 +20,25 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-06-09)
 
-**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while direct `LMA1` remains regression-only bridge evidence.
-**Current focus:** Phase 35 — Native Arrow Semantic Execution
+**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
+**Current focus:** Phase 36 — Verified-Lineage Contract and TCB Declaration
 
 ## Current Position
 
-Phase: 35 (Native Arrow Semantic Execution) — EXECUTING
-Plan: 4 of 5
-Status: Executing 35-05 docs and phase closeout
-Last activity: 2026-06-09 -- 35-04 wired focused and broad native Arrow semantic gates
+Phase: 36 (Verified-Lineage Contract and TCB Declaration) — READY
+Plan: 0 of 1
+Status: Phase 35 complete; ready to discuss/plan Phase 36
+Last activity: 2026-06-09 -- 35-05 completed docs, requirements, roadmap/state closeout
 
-Progress: Phase 35 35-04 complete; closeout docs are next
+Progress: Phase 35 complete; Phase 36 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
-- Completed phases: 34 / 35
-- Completed executable plans: 152 / 153
-- Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 35 should add engine-neutral native execution evidence for Arrow semantic artifacts
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 34 DuckDB LMC2 SQL surface gate wired after Phase 33 and before Phase 29/30/DuckDB smoke
+- Completed phases: 35 / 47
+- Completed executable plans: 153 / 153
+- Current milestone stage: MVP1.5 / Verified Lineage planning track
+- Current position: Phase 36 should define verified-lineage contract, obligation matrix, and TCB declaration
+- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 35 native Arrow semantic execution gate wired after DuckDB source e2e
 
 **Completed phase plan counts:**
 
@@ -66,7 +66,7 @@ Progress: Phase 35 35-04 complete; closeout docs are next
 | 32 | MVP1 Architecture and Code Review | 5/5 complete |
 | 33 | LMC2 Arrow Semantic Container Wrapper | 5/5 complete |
 | 34 | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 complete |
-| 35 | Native Arrow Semantic Execution | 4/5 executing |
+| 35 | Native Arrow Semantic Execution | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -259,6 +259,7 @@ None yet.
 - Phase 35 35-02 complete: native/reference equivalence evidence is explicit, with `native-output-mismatch` diagnostics for injected divergent output rather than inferring correctness from execution alone.
 - Phase 35 35-03 complete: native Arrow semantic execution now has host-neutral backend identity/runtime decision/cache-key evidence; unsupported shapes may follow fallback policy but cannot seed native cache keys.
 - Phase 35 35-04 complete: `scripts/native-arrow-semantic-execution-test.sh` is wired into `scripts/mvp1-verify.sh`, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the new Phase 35 gate.
+- Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
 
 ### Quick Tasks Completed
 
@@ -322,12 +323,12 @@ None yet.
 | v3 engine | StarRocks + DuckDB dual query surface | Complete as bounded DuckDB executable plus StarRocks-compatible offline descriptor proof; live runtime optional | Phase 30 |
 | v3 distribution | LMC2 Arrow semantic container wrapper | Complete; default source artifacts are `LMC2(LMA1)` and direct `LMA1` is a bounded DuckDB bridge only | Phase 33 |
 | v3 query | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | Complete; default `LMC2(LMA1)` primitive/nullable artifacts query directly, direct `LMA1` is regression-only, logical/nested SQL is fail-closed unsupported | Phase 34 |
-| v3 native | Native Arrow Semantic Execution | In progress; 35-01..35-04 added engine-neutral primitive nullable `LMC2(LMA1)` native execution, explicit equivalence, runtime/cache identity, and focused/broad gates | Phase 35 |
+| v3 native | Native Arrow Semantic Execution | Complete; engine-neutral primitive nullable `LMC2(LMA1)` / direct `LMA1` native execution, explicit equivalence, runtime/cache identity, fail-closed unsupported shapes, and focused/broad gates | Phase 35 |
 
 ## Session Continuity
 
-Last session: 2026-06-09T07:36:09Z
-Stopped at: Phase 35 35-04 complete; executing 35-05
+Last session: 2026-06-09T08:41:22Z
+Stopped at: Phase 35 complete; ready for Phase 36
 
 Phase 17 handoff:
 

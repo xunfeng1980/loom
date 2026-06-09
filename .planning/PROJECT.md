@@ -19,9 +19,11 @@ decoded values. Parquet, Lance, and Vortex sources that materialize as Arrow now
 emit verifier-accepted `LMC2(LMA1)` distribution artifacts by default. Real Vortex
 files can enter Loom through the complete-reader boundary, and the DuckDB native
 path is hardened with bounded equivalence, in-process cache, fallback, and
-fail-closed evidence. Later phases should preserve the verifier-gated,
-fail-closed boundary as Loom grows toward broader SQL and native Arrow semantic
-execution.
+fail-closed evidence. Engine-neutral native Arrow semantic execution now exists
+for the bounded one-batch nullable fixed-width primitive `LMC2(LMA1)` /
+direct-`LMA1` slice. Later phases should preserve the verifier-gated,
+fail-closed boundary as Loom grows toward broader SQL, richer Arrow shapes, and
+host integration.
 
 ## Requirements
 
@@ -58,12 +60,13 @@ execution.
 - ✓ DuckDB native execution integration MVP: public `loom_scan(path)` routes eligible complete-reader artifacts through Phase 22 runtime policy and Phase 23 backend, preserves interpreter fallback/fail-closed diagnostics/direct DataChunk output, passes projected column ids into runtime projection/cache input, and gates evidence through `scripts/duckdb-native-integration-test.sh` plus `scripts/mvp0-verify.sh` — Phase 24
 - ✓ Native equivalence, cache, and fallback hardening: public `loom_scan(path)` now has release-gated evidence for supported non-null primitive native equivalence, same-process in-process cache miss/insert/hit smoke behavior, key-driven invalidation, unsupported-route fallback/strict fail-closed diagnostics, malformed/cancel/mismatch recovery, and a final bounded report at `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md` — Phase 25
 - ✓ DuckDB Arrow semantic SQL surface for `LMC2(LMA1)`: public `loom_scan(path)` now binds and scans default wrapped Arrow semantic artifacts directly, supports one-batch multi-column primitive/Utf8/Boolean nullable SQL with projection/filter/aggregate/null evidence, keeps direct `LMA1` as regression-only bridge input, and fails closed with explicit unsupported diagnostics for Date32 logical and Struct nested fixtures — Phase 34
+- ✓ Native Arrow semantic execution: `loom_core::native_arrow_semantic` verifier-gates default `LMC2(LMA1)` and explicit direct `LMA1`, copies one-batch nullable fixed-width primitive Boolean/Int32/Int64/Float32/Float64 columns through typed builders into a new Arrow `RecordBatch`, exposes explicit native/reference equivalence and mismatch diagnostics, records engine-neutral runtime/cache identity, and gates fail-closed unsupported Utf8/logical/nested/multi-batch behavior through `scripts/native-arrow-semantic-execution-test.sh` and `scripts/mvp1-verify.sh` — Phase 35
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 35 is the native Arrow semantic execution focus: engine-neutral native backend evidence should consume the Phase 33 wrapper contract and Phase 22-25 runtime/native foundations.
+- [ ] MVP1.5 Phase 36 is the next planned phase: verified-lineage contract and TCB declaration. This is a future milestone planning item, not part of the completed MVP1 native Arrow semantic execution claim.
 
 ### Out of Scope
 
@@ -82,7 +85,7 @@ execution.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets Loom use Vortex crates in oracle/fixture/ingress boundaries while keeping `loom-core` and `loom-ffi` Vortex-free.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
 - **Design philosophy carried into MVP1:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface before widening backend and engine integration.
-- **What MVP1 is *not* trying to prove yet:** DuckDB SQL over all `LMC2(LMA1)` Arrow semantic shapes, native Arrow semantic execution, native speed, arbitrary direct source physical decoding semantics, complete production verification of all future Loom artifacts, or live StarRocks runtime integration. Phase 34 supports the staged primitive/nullable SQL surface and records logical/nested unsupported diagnostics; Phase 35 owns engine-neutral native Arrow semantic execution.
+- **What MVP1 is *not* trying to prove yet:** DuckDB SQL over all `LMC2(LMA1)` Arrow semantic shapes, DuckDB consumption of the Phase 35 native Arrow semantic route, native speed, Utf8/logical/nested native Arrow semantic execution, arbitrary direct source physical decoding semantics, complete production verification of all future Loom artifacts, or live StarRocks runtime integration. Phase 34 supports the staged primitive/nullable SQL surface and records logical/nested unsupported diagnostics; Phase 35 supports only the engine-neutral one-batch nullable fixed-width primitive native Arrow semantic slice.
 
 ## Constraints
 
@@ -139,6 +142,7 @@ execution.
 | Phase 30 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. Because Phase 29 was skipped, Phase 30 must not rely on dual-query evidence. | Starting by user override — Phase 30 |
 | Phase 33 should settle `LMC2(LMA1)` before broader query/native claims | The distribution contract must be explicit before DuckDB and native backends decide whether they consume direct `LMA1` or wrapped artifacts. | Complete — Phase 33 |
 | Phase 34 should make DuckDB consume default `LMC2(LMA1)` before native Arrow semantic claims | Queryability and native execution are different evidence layers; DuckDB now unwraps/scans default artifacts through interpreter-backed Arrow C Data while Phase 35 remains engine-neutral native execution. | Complete — Phase 34 |
+| Phase 35 should remain engine-neutral and separate from DuckDB SQL | Native correctness should be proven as verifier-gated Arrow semantic execution with explicit equivalence/runtime/cache evidence before any host consumes it. | Complete — Phase 35 |
 
 ## Evolution
 
@@ -158,4 +162,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 after Phase 34 closeout — DuckDB now queries default `LMC2(LMA1)` primitive/nullable Arrow semantic artifacts directly; Phase 35 handles native Arrow semantic execution.*
+*Last updated: 2026-06-09 after Phase 35 closeout — native Arrow semantic execution is now engine-neutral, verifier-gated, and bounded to one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.*

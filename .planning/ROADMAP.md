@@ -29,7 +29,7 @@ dual-query surface proof: DuckDB executable SQL plus StarRocks-compatible offlin
 compatibility reset around full Arrow semantic artifacts, and Phase 33 implements the `LMC2(LMA1)` distribution wrapper so arbitrary Lance/Parquet schemas and materialized Vortex dtypes
 can be accepted by verifier-backed Arrow schema/value/null roundtrip evidence rather than narrow canonical raw layouts. Phase 32 paused feature expansion for an end-to-end
 architecture and code review across the completed MVP1 path, with explicit attention to true execution evidence, overclaim boundaries, ABI/FFI safety, dependency isolation,
-release-gate fidelity, and cleanup recommendations. Phases 34-35 are the next post-MVP1 claim-expansion track: broadening DuckDB SQL over `LMC2(LMA1)` Arrow semantic artifacts beyond the current single-column bridge slice, and then adding engine-neutral native execution for Arrow semantic payloads.
+release-gate fidelity, and cleanup recommendations. Phases 34-35 completed the post-MVP1 claim-expansion track: DuckDB now queries default `LMC2(LMA1)` Arrow semantic artifacts over the staged primitive/nullable SQL surface, and Loom now has engine-neutral native Arrow semantic execution evidence for the bounded one-batch nullable fixed-width primitive slice.
 
 ## Phases
 
@@ -74,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 32: MVP1 Architecture and Code Review** - Audit the full MVP1 design and implementation for architectural consistency, true execution evidence, ABI/FFI safety, release-gate fidelity, dependency boundaries, code quality, and overclaim cleanup before further feature expansion (completed 2026-06-09)
 - [x] **Phase 33: LMC2 Arrow Semantic Container Wrapper** - Implement the `LMC2` distribution wrapper around verifier-backed `LMA1` Arrow semantic payloads before expanding query or native claims (completed 2026-06-09)
 - [x] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads (completed 2026-06-09)
-- [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback (in progress)
+- [x] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback (completed 2026-06-09)
 
 **MVP1.5 — Verified Lineage** *(future milestone — planned, not active; supersedes the earlier parked Phase 36/37. Stages 0/B/C/D do not depend on Phase 35 and may start while Phase 35 is in flight; only Phase 40 depends on Phase 35. Standing red line: Loom guarantees safety + well-formedness, never correctness — every "verified" claim maps to one named evidence layer or to the explicit TCB.)*
 
@@ -953,9 +953,9 @@ Plans:
 
 ### Phase 35: Native Arrow Semantic Execution
 
-**Status:** In Progress. Phase 32 classified native Arrow semantic execution as unsupported/fallback-only; this phase is the first point where that claim may change. Phase 35 is now planned as five engine-neutral execution/evidence slices.
+**Status:** Complete. Phase 35 adds engine-neutral native Arrow semantic execution for verifier-accepted `LMC2(LMA1)` and explicit direct `LMA1` one-batch nullable fixed-width primitive artifacts, with explicit native/reference equivalence, runtime/cache identity, focused and broad gate coverage, and fail-closed unsupported-shape diagnostics.
 **Depends on:** Phase 33 and the native/runtime foundations from Phases 22-25. Consumes Phase 34 only for DuckDB integration evidence; native correctness remains engine-neutral.
-**Goal:** Add true verifier-gated native execution for Arrow semantic payloads, including support predicates, lowering facts, native buffer semantics, interpreter/native equivalence gates, fail-closed diagnostics, cache/fallback behavior, and release-gate evidence for representative Arrow semantic shapes.
+**Goal:** Add true verifier-gated native execution for Arrow semantic payloads, including support predicates, native buffer semantics, native/reference equivalence gates, fail-closed diagnostics, runtime/cache identity, fallback policy evidence, and release-gate evidence for representative bounded Arrow semantic shapes.
 **Requirements:** PHASE-35
 **Ordering decision:** Native Arrow semantic execution should remain separate from DuckDB SQL broadening so the project does not confuse "queryable" with "natively executed." If native support starts before Phase 34 completes, it must stay engine-neutral and avoid DuckDB SQL claims. This phase must not count route scaffolding, zero/reference buffers, toolchain skip, or interpreter fallback as positive native semantic evidence.
 **Plans:**
@@ -963,7 +963,7 @@ Plans:
 - [x] 35-02-PLAN.md - Explicit native/reference equivalence report and mismatch diagnostics
 - [x] 35-03-PLAN.md - Runtime/cache identity evidence for native Arrow semantic execution
 - [x] 35-04-PLAN.md - Focused Phase 35 gate and broad MVP1 release-gate wiring
-- [ ] 35-05-PLAN.md - Documentation, requirements, roadmap/state closeout
+- [x] 35-05-PLAN.md - Documentation, requirements, roadmap/state closeout
 
 ## Milestone: MVP1.5 — Verified Lineage
 
@@ -1238,7 +1238,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 32. MVP1 Architecture and Code Review | 5/5 | Complete | 2026-06-09 |
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
-| 35. Native Arrow Semantic Execution | 4/5 | In Progress | - |
+| 35. Native Arrow Semantic Execution | 5/5 | Complete | 2026-06-09 |
 | 36. Verified-Lineage Contract and TCB Declaration | 0/0 | Planned (MVP1.5) | - |
 | 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 0/0 | Planned (MVP1.5) | - |
 | 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |

@@ -155,6 +155,10 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 - [x] **PHASE-34**: DuckDB `loom_scan(path)` accepts default verifier-backed `LMC2(LMA1)` artifacts directly, preserves Arrow field names, supports one-batch multi-column primitive/Utf8/Boolean nullable SQL with projection/filter/aggregate/null evidence, keeps direct `LMA1` as regression-only bridge input, rejects unsupported logical/nested SQL shapes with stable diagnostics, and does not claim native Arrow semantic execution
 
+### Native Arrow Semantic Execution
+
+- [x] **PHASE-35**: Verifier-accepted default `LMC2(LMA1)` and explicit direct `LMA1` Arrow semantic artifacts can execute through an engine-neutral native backend for one-batch nullable fixed-width primitive Boolean/Int32/Int64/Float32/Float64 columns, producing a new Arrow `RecordBatch` with explicit native/reference equivalence, runtime/cache identity, fail-closed unsupported Utf8/logical/nested/multi-batch diagnostics, focused/broad gate coverage, and no claim that DuckDB consumes the native route
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -255,6 +259,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PHASE-31 | Phase 31 | Complete |
 | PHASE-33 | Phase 33 | Complete |
 | PHASE-34 | Phase 34 | Complete |
+| PHASE-35 | Phase 35 | Complete |
 
 **Coverage:**
 
@@ -272,9 +277,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 full-arrow-semantic-source-compatibility requirements: 1 total
 - v3 lmc2-arrow-semantic-container-wrapper requirements: 1 total
 - v3 duckdb-arrow-semantic-sql-surface requirements: 1 total
-- Mapped to phases: 80
+- v3 native-arrow-semantic-execution requirements: 1 total
+- Mapped to phases: 81
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-09 — Phase 34 DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) complete*
+*Last updated: 2026-06-09 — Phase 35 Native Arrow Semantic Execution complete*

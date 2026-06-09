@@ -26,7 +26,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts over the Phase 34 primitive/nullable SQL surface |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
-| Native lowering | Verifier-gated textual MLIR / decode-dialect evidence and raw primitive lowering preparation |
+| Native execution | Engine-neutral native Arrow semantic execution for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts, with explicit equivalence, runtime/cache identity, and fail-closed unsupported-shape diagnostics |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
 slices over broad unverified format support.
@@ -179,8 +179,22 @@ bash scripts/duckdb-lmc2-sql-surface-test.sh
 This verifies the Phase 34 query surface: one-batch, multi-column
 primitive/Utf8/Boolean nullable `LMC2(LMA1)` artifacts work through
 `loom_scan(...)`, while Date32 logical and Struct nested fixtures fail closed
-with explicit unsupported diagnostics. Native Arrow semantic execution remains
-Phase 35 scope.
+with explicit unsupported diagnostics. Native Arrow semantic execution is
+covered by the separate engine-neutral Phase 35 gate and is not consumed by
+DuckDB yet.
+
+### 10. Run the native Arrow semantic execution gate
+
+```bash
+bash scripts/native-arrow-semantic-execution-test.sh
+```
+
+This verifies the Phase 35 native route: verifier-accepted `LMC2(LMA1)` and
+explicit direct `LMA1` artifacts execute through an engine-neutral backend for
+one-batch nullable `Boolean`, `Int32`, `Int64`, `Float32`, and `Float64`
+columns. Utf8, logical, nested, multi-batch, malformed, and verifier-rejected
+inputs fail closed. This is native execution evidence, not a DuckDB integration
+claim and not full Arrow shape support.
 
 ## Repository Map
 
@@ -238,6 +252,7 @@ bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
 bash scripts/lmc2-arrow-semantic-container-test.sh
 bash scripts/duckdb-source-e2e-test.sh
+bash scripts/native-arrow-semantic-execution-test.sh
 ```
 
 The broad release-style gate is:
@@ -248,7 +263,8 @@ bash scripts/mvp1-verify.sh
 
 `scripts/mvp1-verify.sh` runs the inherited `scripts/mvp0-verify.sh` gate first,
 including the full Arrow semantic, `LMC2(LMA1)` wrapper, and DuckDB LMC2 SQL
-surface gates, then runs the DuckDB source e2e gate.
+surface gates, then runs the DuckDB source e2e gate and the native Arrow
+semantic execution gate.
 
 Formal and external tooling is explicit. Missing Lean/TLC, LLVM/MLIR, or
 Bitwuzla is not treated as success unless the corresponding opt-out environment
