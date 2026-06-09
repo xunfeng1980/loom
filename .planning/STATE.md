@@ -3,42 +3,42 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 33 context gathered
-last_updated: "2026-06-09T07:22:30.269Z"
-last_activity: 2026-06-09 -- Phase 33 execution started
+stopped_at: Phase 33 complete; ready for Phase 34
+last_updated: "2026-06-09T07:36:09Z"
+last_activity: 2026-06-09 -- Phase 33 completed and release-gated
 progress:
   total_phases: 35
-  completed_phases: 27
+  completed_phases: 33
   total_plans: 143
-  completed_plans: 123
-  percent: 77
+  completed_plans: 143
+  percent: 94
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-08)
+See: .planning/PROJECT.md (updated 2026-06-09)
 
-**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and the current Parquet/Lance/Vortex source-backed single-column `LMA1` e2e artifacts, and get expected row/aggregate results.
-**Current focus:** Phase 33 — LMC2 Arrow Semantic Container Wrapper
+**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and current source-backed direct-`LMA1` DuckDB bridge fixtures, while Parquet/Lance/Vortex source distribution artifacts default to verifier-accepted `LMC2(LMA1)`.
+**Current focus:** Phase 34 — DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)
 
 ## Current Position
 
-Phase: 33 (LMC2 Arrow Semantic Container Wrapper) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-06-09 -- Completed quick task 260609-lb2: real L2Core Lean predicates
+Phase: 34 (DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)) — READY
+Plan: 0 of 0
+Status: Ready for discussion/planning
+Last activity: 2026-06-09 -- Phase 33 completed and release-gated
 
-Progress: 100%
+Progress: Phase 33 complete; Phase 34 not yet planned
 
 ## Progress Snapshot
 
-- Completed phases: 32 / 32
-- Completed executable plans: 138 / 138
+- Completed phases: 33 / 35
+- Completed executable plans: 143 / 143
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: All planned phases complete: Phase 30 closed after Phase 32 with bounded dual query-surface evidence and release-gate wiring
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 30 wired after Phase 29 and before DuckDB smoke
+- Current position: Phase 33 closed; Phase 34 should broaden DuckDB SQL over default `LMC2(LMA1)` artifacts
+- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with Phase 33 LMC2 wrapper gate wired after Phase 31 full Arrow semantic compatibility and before Phase 29/30/DuckDB smoke
 
 **Completed phase plan counts:**
 
@@ -64,6 +64,7 @@ Progress: 100%
 | 30 | StarRocks + DuckDB Dual Query Surface | 5/5 complete; DuckDB executable plus StarRocks-compatible offline descriptor proof |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
 | 32 | MVP1 Architecture and Code Review | 5/5 complete |
+| 33 | LMC2 Arrow Semantic Container Wrapper | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -141,19 +142,22 @@ Recent decisions affecting current work:
 - [Phase 31]: 31-01 added the `LMC2`/`LMA1` Arrow semantic contract and core module scaffolds; `NullableRaw` WIP is not present in `loom-core`.
 - [Phase 31]: 31-02 added an IPC-backed `LMA1` codec that verifies Arrow semantic payloads before encode and after decode; Arrow IPC is the carrier, not the trust boundary.
 - [Phase 31]: 31-03 and 31-04 changed Parquet and Lance accepted emission from narrow `LMC1(LMP1/LMT1)` raw/table artifacts to verifier-accepted `LMA1` Arrow semantic artifacts with source Arrow equality tests.
-- [Phase 31]: Current tradeoff: `LMA1` direct verifier acceptance is implemented; `LMC2` container wrapping remains a Phase 31 finalization item rather than a blocker for Parquet/Lance semantic e2e evidence.
+- [Phase 31]: Current tradeoff before Phase 33: `LMA1` direct verifier acceptance was implemented while `LMC2` container wrapping remained unresolved; Phase 33 later resolved the wrapper.
 - [Phase 31]: 31-05 added Vortex Arrow executor materialization into verifier-accepted `LMA1` semantic artifacts; legacy Vortex `LMC1` helper remains for older narrow raw/table tests while the Phase 31 path uses `emit_source_ingress_lma1_from_vortex_buffer`.
 - [Phase 31]: 31-06 wired `scripts/full-arrow-semantic-compatibility-test.sh` into `scripts/mvp0-verify.sh` after Phase 28 and before Phase 29, added the final compatibility report, and updated public docs to avoid DuckDB/native overclaims.
-- [Quick 260609-eip]: MVP1 verify is the broad check entry point; it runs `scripts/mvp0-verify.sh` first, then DuckDB e2e over Parquet, Lance, and Vortex source-backed single-column `LMA1` artifacts.
-- [Quick 260609-eip]: DuckDB `loom_scan` may execute single-column `LMA1` through interpreter fallback; native lowering remains unsupported for `Arrow semantic payload` and continues to report lowering diagnostics.
+- [Quick 260609-eip]: MVP1 verify is the broad check entry point; after Phase 33 it runs `scripts/mvp0-verify.sh` first, including the LMC2 wrapper gate, then DuckDB e2e over explicit Parquet/Lance/Vortex direct-`LMA1` bridge fixtures.
+- [Quick 260609-eip]: DuckDB `loom_scan` may execute single-column direct-`LMA1` bridge artifacts through interpreter fallback; native lowering remains unsupported for `Arrow semantic payload` and continues to report lowering diagnostics.
 - [Phase 32]: Added as a review-first phase to audit MVP1 architecture, code quality, ABI/FFI boundaries, true execution evidence, release gates, dependency isolation, and documentation claims before further feature expansion.
 - [Phase 32]: Planned as five review-first plans: claim ledger, execution evidence audit, architecture/ABI/dependency audit, code-quality review with narrow remediation, and MVP1 go/no-go readiness closeout.
-- [Phase 32 P01]: Claim ledger classifies source compatibility as proven at the Arrow semantic layer, DuckDB `LMA1` SQL as bounded to the single-column e2e slice, native `LMA1` execution as unsupported/fallback, `LMC2` as deferred, and Phase 30 dual-surface as partial.
+- [Phase 32 P01]: Claim ledger classified source compatibility as proven at the Arrow semantic layer, DuckDB `LMA1` SQL as bounded to the single-column e2e slice, native `LMA1` execution as unsupported/fallback, `LMC2` as not yet implemented before Phase 33, and Phase 30 dual-surface as partial before its later closeout.
 - [Phase 32 P02]: Execution evidence matrix records what each major gate proves and does not prove; `scripts/mvp1-review-audit-test.sh` is a marker/report audit seed, not a runtime semantics gate.
-- [Phase 32 P03]: Architecture boundary review found source SDK isolation and public/internal FFI separation intact; direct `LMA1` is implemented, `LMC2` remains future wrapper, and native lowering rejects `Arrow semantic payload`.
+- [Phase 32 P03]: Architecture boundary review found source SDK isolation and public/internal FFI separation intact; direct `LMA1` was implemented, `LMC2` was not yet implemented before Phase 33, and native lowering rejected `Arrow semantic payload`.
 - [Phase 32 P04]: Code review found no high-severity production bug in the reviewed slice; medium residual risks remain around narrow direct `LMA1` FFI/DuckDB support, hand-maintained internal DuckDB header drift, and test-assisted native facts.
-- [Phase 32 P05]: MVP1 readiness is GO only for the bounded baseline: verifier-backed source-to-Arrow semantic `LMA1` compatibility, DuckDB SQL over legacy tables and current single-column source-backed `LMA1` e2e fixtures, bounded native route/cache/fallback/fail-closed hardening, source SDK isolation, and a narrow public `loom.h`.
-- [Phase 32 P05]: MVP1 readiness is explicitly not a GO for broad production-native execution, arbitrary DuckDB `LMA1` SQL, implemented `LMC2`, or Phase 30 StarRocks/full dual-surface completion.
+- [Phase 32 P05]: MVP1 readiness was GO only for the bounded baseline before Phase 33: verifier-backed source-to-Arrow semantic compatibility, DuckDB SQL over legacy tables and current single-column source-backed direct-`LMA1` e2e fixtures, bounded native route/cache/fallback/fail-closed hardening, source SDK isolation, and a narrow public `loom.h`.
+- [Phase 32 P05]: MVP1 readiness was explicitly not a GO for broad production-native execution, arbitrary DuckDB Arrow semantic SQL, implemented `LMC2`, or Phase 30 StarRocks/full dual-surface completion; Phase 33 later implemented `LMC2`.
+- [Phase 33]: Complete on 2026-06-09. Default source emission and old `emit_source_ingress_lma1_*` semantic entry names now emit verifier-accepted `LMC2(LMA1)` distribution artifacts.
+- [Phase 33]: Direct `LMA1` remains only an explicitly generated DuckDB bridge fixture for current bounded source e2e SQL until Phase 34 teaches DuckDB to scan default `LMC2(LMA1)`.
+- [Phase 33]: `scripts/lmc2-arrow-semantic-container-test.sh` is wired into `scripts/mvp0-verify.sh` after `scripts/full-arrow-semantic-compatibility-test.sh`; `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed.
 - [Phase 30 P04]: Query-surface negative coverage now rejects descriptor identity/result drift, Phase 29 binding drift, sidecar-only/manifest-only/stale evidence, forged oracle evidence, and unsupported query features without accepted descriptor or binding bytes.
 - [Phase 30 P05]: Phase 30 is complete as bounded dual query-surface evidence: executable DuckDB `loom_scan(path)` rows/aggregates plus deterministic StarRocks-compatible offline descriptors over one accepted Phase 29 binding. Optional live StarRocks runtime smoke is env-gated and supplemental only.
 
@@ -242,6 +246,7 @@ None yet.
 - Phase 30 caveat: StarRocks-compatible evidence is offline descriptor/query evidence by default; optional live runtime smoke is supplemental and requires explicit `STARROCKS_*` env inputs.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
 - Phase 32 complete: 32-05 produced the MVP1 readiness report, finalized the review audit gate, passed `RUSTC_WRAPPER= bash scripts/mvp1-verify.sh`, and closed with a bounded GO decision while preserving Phase 30 partial/deferred status.
+- Phase 33 complete: 33-05 wired `scripts/lmc2-arrow-semantic-container-test.sh` into the broad release verifier, updated docs/state, produced `33-LMC2-REPORT.md`, and passed `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh`.
 
 ### Quick Tasks Completed
 
@@ -303,11 +308,12 @@ None yet.
 | v3 compatibility | Full Lance + Parquet + Vortex semantic compatibility | Active | Phase 28 |
 | v3 table | Iceberg ref/table binding | Complete | Phase 29 |
 | v3 engine | StarRocks + DuckDB dual query surface | Complete as bounded DuckDB executable plus StarRocks-compatible offline descriptor proof; live runtime optional | Phase 30 |
+| v3 distribution | LMC2 Arrow semantic container wrapper | Complete; default source artifacts are `LMC2(LMA1)` and direct `LMA1` is a bounded DuckDB bridge only | Phase 33 |
 
 ## Session Continuity
 
-Last session: 2026-06-09T06:24:27.360Z
-Stopped at: Phase 33 context gathered
+Last session: 2026-06-09T07:36:09Z
+Stopped at: Phase 33 complete; ready for Phase 34
 
 Phase 17 handoff:
 

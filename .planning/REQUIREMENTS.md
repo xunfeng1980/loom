@@ -145,7 +145,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Full Arrow Semantic Source Compatibility
 
-- [ ] **PHASE-31**: Any Lance or Parquet source that the upstream reader can materialize as Arrow, and any Vortex source/dtype that Vortex can materialize as Arrow, can be encoded into a verifier-backed Loom Arrow semantic artifact, decoded back to Arrow, and compared for schema/value/null/metadata equality without relying on narrow `LMP1`/`LMT1` raw-layout coverage
+- [x] **PHASE-31**: Any Lance or Parquet source that the upstream reader can materialize as Arrow, and any Vortex source/dtype that Vortex can materialize as Arrow, can be encoded into a verifier-backed Loom Arrow semantic artifact, decoded back to Arrow, and compared for schema/value/null/metadata equality without relying on narrow `LMP1`/`LMT1` raw-layout coverage
+
+### LMC2 Arrow Semantic Container Wrapper
+
+- [x] **PHASE-33**: The default Arrow semantic source-distribution artifact is a verifier-accepted `LMC2(LMA1)` wrapper with version/features/section checks, artifact-verifier routing and CLI facts, source-ingress emission cutover, focused and broad release-gate coverage, and explicit non-claims for broad DuckDB SQL and native Arrow semantic execution
 
 ## Out of Scope
 
@@ -244,7 +248,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | INGEST-03 | Phase 15 | Complete |
 | INGEST-04 | Phase 15 | Complete |
 | INGEST-05 | Phase 15 | Complete |
-| PHASE-31 | Phase 31 | Planned |
+| PHASE-31 | Phase 31 | Complete |
+| PHASE-33 | Phase 33 | Complete |
 
 **Coverage:**
 
@@ -260,9 +265,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 mlir-native-lowering-spike requirements: 5 total
 - v3 real-vortex-ingress requirements: 5 total
 - v3 full-arrow-semantic-source-compatibility requirements: 1 total
-- Mapped to phases: 78
+- v3 lmc2-arrow-semantic-container-wrapper requirements: 1 total
+- Mapped to phases: 79
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-09 — Phase 31 Full Arrow Semantic Source Compatibility planned*
+*Last updated: 2026-06-09 — Phase 33 LMC2 Arrow Semantic Container Wrapper complete*

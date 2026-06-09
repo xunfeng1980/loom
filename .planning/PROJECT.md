@@ -8,16 +8,20 @@ total-function language whose only possible output is well-formed Apache Arrow
 project is now in MVP1 / v3, focused on distribution containers, verifier-backed
 safety, native-lowering preparation, complete-reader Vortex ingress, bounded
 native execution hardening, and the post-native source/table/query-surface path.
+The default Arrow semantic source-distribution artifact is now `LMC2(LMA1)`.
 
 ## Core Value
 
-A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads,
-including mixed-column table payloads, and get row/aggregate results that match
-the expected decoded values. Real Vortex files can enter Loom through the Phase
-18 complete-reader boundary, and the DuckDB native path is now hardened with
-bounded equivalence, in-process cache, fallback, and fail-closed evidence. Later
-phases should preserve the verifier-gated, fail-closed boundary as Loom grows
-toward source ingress and table bindings.
+A user can run a SQL query in DuckDB over Loom-decoded payloads, including
+mixed-column table payloads and bounded source-backed direct-`LMA1` bridge
+fixtures, and get row/aggregate results that match the expected decoded values.
+Parquet, Lance, and Vortex sources that materialize as Arrow now emit
+verifier-accepted `LMC2(LMA1)` distribution artifacts by default. Real Vortex
+files can enter Loom through the complete-reader boundary, and the DuckDB native
+path is hardened with bounded equivalence, in-process cache, fallback, and
+fail-closed evidence. Later phases should preserve the verifier-gated,
+fail-closed boundary as Loom grows toward broader SQL and native Arrow semantic
+execution.
 
 ## Requirements
 
@@ -58,11 +62,8 @@ toward source ingress and table bindings.
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] Phase 26 is the next active focus: define an external source ingress contract after native hardening, without implementing Lance/Parquet/Iceberg bindings inside the contract phase.
-- [ ] Phase 27 remains a roadmap placeholder only: Lance + Parquet archival readability / dataset ingress.
-- [ ] Phase 28 remains a roadmap placeholder only: Iceberg ref/table binding after the hardened native execution contract is credible.
-- [x] Phase 29 is skipped/deferred by user request: StarRocks + DuckDB dual query surface is not implemented and must not be cited as evidence.
-- [ ] Phase 30 starts by user override: full arbitrary Vortex semantic compatibility proceeds after ABI/backend/hardening/table binding but without Phase 29 dual-query-surface evidence.
+- [ ] Phase 34 is the next query-surface focus: DuckDB should accept default `LMC2(LMA1)` artifacts, unwrap to the inner `LMA1`, and broaden Arrow semantic SQL in staged layers.
+- [ ] Phase 35 is the native Arrow semantic execution focus: engine-neutral native backend evidence should consume the Phase 33 wrapper contract and Phase 22-25 runtime/native foundations.
 
 ### Out of Scope
 
@@ -81,7 +82,7 @@ toward source ingress and table bindings.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets Loom use Vortex crates in oracle/fixture/ingress boundaries while keeping `loom-core` and `loom-ffi` Vortex-free.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
 - **Design philosophy carried into MVP1:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface before widening backend and engine integration.
-- **What MVP1 is *not* trying to prove yet:** native speed, arbitrary Vortex decode semantics, complete production verification of all future Loom artifacts, Iceberg table binding, or multi-engine query execution. Phase 12 covers only the current implemented byte-to-Arrow safety boundary; Phase 13 adds the future-verifier foundation but its Lean theorem is a scaffold over `True` placeholder predicates, not load-bearing proof evidence; Phase 14 starts only a narrow verifier-gated textual lowering spike; Phase 16 adds bounded backend evidence only; Phase 17 unifies artifact verification; Phase 18 establishes complete-reader facts and a finite accepted emission matrix; Phase 19 adds Bitwuzla-backed SMT discharge for current verifier obligations; Phase 21 expands representative Vortex coverage but still does not claim arbitrary Vortex semantics, checked proof objects, or production native execution.
+- **What MVP1 is *not* trying to prove yet:** broad DuckDB SQL over all `LMC2(LMA1)` Arrow semantic shapes, native Arrow semantic execution, native speed, arbitrary direct source physical decoding semantics, complete production verification of all future Loom artifacts, or live StarRocks runtime integration. Phase 33 implements the `LMC2` wrapper and verifier/source emission cutover only; Phase 34 owns broader DuckDB SQL and Phase 35 owns engine-neutral native Arrow semantic execution.
 
 ## Constraints
 
@@ -136,6 +137,7 @@ toward source ingress and table bindings.
 | Phase 28 should bind Iceberg refs/tables before adding dual query surfaces | Table metadata identity and verifier facts need one stable contract before StarRocks and DuckDB are compared as host query surfaces. | Placeholder — Phase 28 |
 | Phase 29 should prove StarRocks + DuckDB over the same Loom/Iceberg-bound artifacts | The next engine story should avoid inventing a second artifact format and instead compare two query surfaces over one table binding. | Skipped/deferred by user request — Phase 29 |
 | Phase 30 should own arbitrary Vortex semantic compatibility | Full Vortex coverage spans too many encoding families, layout wrappers, storage modes, null/nested semantics, pushdown interactions, and oracle matrices to hide inside Phase 21, Phase 23, or a host-engine integration phase. Because Phase 29 was skipped, Phase 30 must not rely on dual-query evidence. | Starting by user override — Phase 30 |
+| Phase 33 should settle `LMC2(LMA1)` before broader query/native claims | The distribution contract must be explicit before DuckDB and native backends decide whether they consume direct `LMA1` or wrapped artifacts. | Complete — Phase 33 |
 
 ## Evolution
 
@@ -155,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 after Phase 25 closeout — DuckDB native execution hardening is release-gated through bounded equivalence, in-process cache, fallback, and strict fail-closed evidence; Phase 26 external source ingress is the next active focus.*
+*Last updated: 2026-06-09 after Phase 33 closeout — `LMC2(LMA1)` is the default Arrow semantic source-distribution artifact; Phase 34 broadens DuckDB SQL over the wrapper, and Phase 35 handles native Arrow semantic execution.*
