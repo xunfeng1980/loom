@@ -88,7 +88,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **MVP2 — Coverage, Second Engine, Productization** *(future milestone — planned, not active. Widen coverage and add a real second engine — the two forces that should shape the ABI — then freeze the ABI, then build distribution/security on top and bind the MVP1.5 lineage record.)*
 
 - [x] **Phase 42: Verified + Native Coverage Expansion** - Widen the accepted Vortex/Lance/Parquet encoding/layout/shape matrix, each new shape carrying a paired verified-lineage + native-execution + interpreter-fallback disposition
-- [ ] **Phase 43: StarRocks Live Runtime Integration** - The genuine second consumer that turns "engine-independent ABI" from a design claim into evidence, querying the same accepted artifacts through a live StarRocks runtime
+- [ ] **Phase 43: StarRocks Live Runtime Integration** - The genuine second consumer that turns "engine-independent ABI" from a design claim into evidence, querying the same accepted artifacts through a live StarRocks runtime (in progress)
 - [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by two real engines and the full coverage matrix
 - [ ] **Phase 45: Content-Addressed Distribution and Signing** - Content-hash artifact identity, signatures, and attestation that binds the MVP1.5 verified-lineage record to the artifact
 - [ ] **Phase 46: Remote Fetch and Encryption** - Remote/object-store ingress with fail-closed remote verification and encryption in transit/at rest
@@ -1101,7 +1101,7 @@ Plans:
 
 ### Phase 43: StarRocks Live Runtime Integration
 
-**Status:** Not started.
+**Status:** In progress. Context and three execution plans are in place. Current execution is constrained by the local absence of a StarRocks runtime/client; skipped runtime evidence must remain visibly non-accepted until a live query is actually run.
 **Goal:** Prove engine-independence empirically: a live, different query engine consumes the same accepted artifacts and returns equivalent results.
 **Depends on:** Phase 42, MVP1 Phase 22 (ABI) and Phase 30 (StarRocks descriptor evidence).
 **Requirements:** ENGINE-01, ENGINE-02, ENGINE-03
@@ -1113,7 +1113,7 @@ Plans:
 
 **Non-goals:** Not freezing the ABI yet (this phase exists to *inform* the freeze). Not a third engine. Not productization.
 **Ordering decision:** The second consumer must exist before the ABI is frozen, because it is the only thing that can falsify the engine-independence claim — the N=1 gap flagged since MVP1.
-**Plans:** 3 plans across 2 waves (Wave 1: StarRocks runtime path; Wave 2: equivalence matrix + ABI-shape findings).
+**Plans:** 0/3 complete. Wave 1: [ ] `43-01-PLAN.md` StarRocks runtime evidence contract. Wave 2: [ ] `43-02-PLAN.md` cross-engine equivalence + fail-closed runtime gate, [ ] `43-03-PLAN.md` ABI-shape findings + MVP2 wiring.
 
 ### Phase 44: ABI Freeze and Compatibility Contract
 
@@ -1250,7 +1250,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 3/3 | Complete (MVP2) | 42-03 complete |
-| 43. StarRocks Live Runtime Integration | 0/0 | Planned (MVP2) | - |
+| 43. StarRocks Live Runtime Integration | 0/3 | In Progress (MVP2) | - |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |

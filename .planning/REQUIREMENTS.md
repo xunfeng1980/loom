@@ -195,6 +195,12 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **COV2-02**: Lance and Parquet schema rows record accepted `LMC2(LMA1)` source semantic coverage, native-supported fixed-width primitive subsets, interpreter-only Utf8/nested rows, and fail-closed/deferred unsupported shapes
 - [x] **COV2-03**: A focused Phase 42 gate validates the living matrix and is wired into the broad verifier before closeout
 
+### StarRocks Live Runtime Integration
+
+- [ ] **ENGINE-01**: StarRocks runtime evidence is collected only from a live runtime query over a Loom-bound/accepted artifact identity, and accepted rows/scalars match the oracle and DuckDB matrix for the supported query set
+- [ ] **ENGINE-02**: Phase 43 records every observed DuckDB-shaped ABI assumption exposed by the StarRocks consumer and classifies each as fixed-now, accepted asymmetry, or Phase 44 freeze input
+- [ ] **ENGINE-03**: Unsupported StarRocks runtime shapes, descriptor drift, missing runtime configuration, and output mismatches fail closed with typed diagnostics and cannot produce accepted runtime evidence
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.

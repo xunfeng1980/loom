@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 42 complete; ready for Phase 43
+stopped_at: Phase 43 planning complete; executing 43-01
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 42 — Verified + Native Coverage Expansion
+**Current focus:** Phase 43 — StarRocks Live Runtime Integration
 
 ## Current Position
 
-Phase 42 IN PROGRESS: Verified + Native Coverage Expansion
+Phase 43 IN PROGRESS: StarRocks Live Runtime Integration
 Plan: 0 of 0
-Status: Phase 42 complete; ready to discuss/plan Phase 43
+Status: Phase 43 context/plans complete; executing 43-01 runtime evidence contract
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 42 is complete; Phase 43 is the next roadmap phase
+Progress: Phase 42 is complete; Phase 43 is in progress with 0/3 plans complete
 
 ## Progress Snapshot
 
 - Completed phases: 41 / 47
 - Completed executable plans: 164 / 164
 - Current milestone stage: MVP2 planned next / coverage expansion
-- Current position: Phase 42 should widen verified/native coverage while preserving per-shape lineage and fallback disposition
+- Current position: Phase 43 should turn Phase 30 StarRocks-compatible descriptors into explicit live-runtime evidence without treating missing runtime/configuration as accepted evidence
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
@@ -276,6 +276,7 @@ None yet.
 - Phase 42 42-01 complete: added a Vortex verified/native coverage row set, focused tests, and the first `42-COVERAGE-MATRIX.md` rows. Native support is assigned to emitted verified artifact shapes only; canonical Vortex rows remain interpreter-only value bridges.
 - Phase 42 42-02 complete: added source-neutral verified/native coverage row vocabulary plus Parquet and Lance schema matrix tests for native-supported fixed-width primitive `LMC2(LMA1)` rows and interpreter-only Utf8/List/Struct rows.
 - Phase 42 complete: added `scripts/verified-native-coverage-expansion-test.sh`, `scripts/mvp2-verify.sh`, closed COV2-03, and finalized the Vortex/Lance/Parquet living coverage matrix for Phase 43/44 handoff.
+- Phase 43 planning complete: added context, discussion log, and three execution plans for runtime evidence contract, cross-engine equivalence/fail-closed gate, and ABI findings. Local workstation currently lacks `docker`, `mysql`, and `mariadb`; live runtime evidence must remain pending unless explicit StarRocks env/client inputs are provided.
 
 ### Quick Tasks Completed
 
