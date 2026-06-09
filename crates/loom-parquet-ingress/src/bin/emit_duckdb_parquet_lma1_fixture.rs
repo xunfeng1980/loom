@@ -5,6 +5,9 @@ use std::sync::Arc;
 
 use arrow_array::{Int32Array, RecordBatch};
 use arrow_schema::{DataType, Field, Schema};
+use loom_core::arrow_semantic_codec::{
+    decode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
+};
 use loom_parquet_ingress::emit_source_ingress_lma1_from_parquet_path;
 use parquet::arrow::ArrowWriter;
 
@@ -24,6 +27,7 @@ fn run() -> Result<(), String> {
 
     let source_path = out_dir.join("source.parquet");
     let loom_path = out_dir.join("parquet.loom");
+    let duckdb_bridge_path = out_dir.join("parquet-duckdb-bridge-lma1.loom");
     let schema = Arc::new(Schema::new(vec![Field::new(
         "value",
         DataType::Int32,
@@ -47,12 +51,18 @@ fn run() -> Result<(), String> {
         .map_err(|err| format!("close parquet writer: {err}"))?;
 
     let accepted = emit_source_ingress_lma1_from_parquet_path(&source_path)
-        .map_err(|report| format!("emit LMA1 from Parquet failed: {:?}", report.diagnostics))?;
-    fs::write(&loom_path, accepted.bytes)
+        .map_err(|report| format!("emit LMC2 from Parquet failed: {:?}", report.diagnostics))?;
+    let duckdb_bridge = decode_arrow_semantic_container_payload(&accepted.bytes)
+        .and_then(|payload| encode_arrow_semantic_payload(&payload))
+        .map_err(|err| format!("build direct LMA1 DuckDB bridge from Parquet LMC2: {err}"))?;
+    fs::write(&loom_path, &accepted.bytes)
         .map_err(|err| format!("write {}: {err}", loom_path.display()))?;
+    fs::write(&duckdb_bridge_path, duckdb_bridge)
+        .map_err(|err| format!("write {}: {err}", duckdb_bridge_path.display()))?;
 
     println!("source: {}", source_path.display());
     println!("loom: {}", loom_path.display());
+    println!("duckdb_bridge_lma1: {}", duckdb_bridge_path.display());
     println!("status: {}", accepted.report.status.as_str());
     println!("emission_kind: {}", accepted.report.emission_kind.as_str());
     Ok(())

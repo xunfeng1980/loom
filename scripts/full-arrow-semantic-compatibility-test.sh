@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# full-arrow-semantic-compatibility-test.sh - Phase 31 Arrow semantic source gate.
+# full-arrow-semantic-compatibility-test.sh - Phase 31/33 Arrow semantic source gate.
 
 set -euo pipefail
 
@@ -29,18 +29,22 @@ check_marker() {
     rg -q --fixed-strings "${pattern}" "${file}" || fail "missing ${label}: ${pattern} in ${file}"
 }
 
-echo "=== Loom Phase 31 full Arrow semantic compatibility gate ==="
+echo "=== Loom Phase 31/33 full Arrow semantic compatibility gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking semantic artifact markers..."
 check_marker "ArrowSemantic" crates/loom-source-ingress/src/lib.rs "source emission kind"
+check_marker "LMC2(LMA1)" crates/loom-source-ingress/src/lib.rs "wrapped source emission display"
 check_marker "decode_arrow_semantic_payload" crates/loom-core/src/artifact_verifier.rs "LMA1 verifier routing"
+check_marker "decode_arrow_semantic_container_payload" crates/loom-parquet-ingress/tests/full_arrow_schema_compatibility.rs "Parquet LMC2 semantic decode"
+check_marker "decode_arrow_semantic_container_payload" crates/loom-lance-ingress/tests/full_arrow_schema_compatibility.rs "Lance LMC2 semantic decode"
+check_marker "decode_arrow_semantic_container_payload" crates/loom-vortex-ingress/tests/full_arrow_dtype_semantic_compatibility.rs "Vortex LMC2 semantic decode"
 check_marker "encode_arrow_semantic_payload" crates/loom-parquet-ingress/src/source_contract.rs "Parquet semantic emission"
 check_marker "encode_arrow_semantic_payload" crates/loom-lance-ingress/src/source_contract.rs "Lance semantic emission"
 ok "semantic artifact markers are present"
 
-info "Running core LMA1 and source full-schema tests..."
+info "Running core LMA1/LMC2 and source full-schema tests..."
 cargo test -p loom-core --test arrow_semantic
 cargo test -p loom-parquet-ingress --test full_arrow_schema_compatibility
 cargo test -p loom-lance-ingress --test full_arrow_schema_compatibility
@@ -50,4 +54,5 @@ ok "full Arrow semantic source tests"
 info "Running source handoff regression tests..."
 cargo test -p loom-parquet-ingress --test source_ingress_handoff
 cargo test -p loom-lance-ingress --test source_ingress_handoff
+cargo test -p loom-vortex-ingress --test source_ingress_handoff
 ok "source handoff regressions"

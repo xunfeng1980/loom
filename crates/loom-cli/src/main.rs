@@ -820,6 +820,7 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
 
     if let Some(facts) = report.facts() {
         println!("facts: present");
+        println!("artifact: {}", facts.artifact_kind);
         println!("artifact_kind: {}", facts.artifact_kind);
         println!(
             "container_version: {}",
@@ -847,8 +848,33 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
             "payload_kind: {}",
             facts.payload_kind.as_deref().unwrap_or("unknown")
         );
+        println!(
+            "payload: {}",
+            facts.payload_kind.as_deref().unwrap_or("unknown")
+        );
+        println!(
+            "row_count_bound: {}",
+            facts
+                .row_count_bound
+                .map_or_else(|| "unknown".to_string(), |rows| rows.to_string())
+        );
         println!("constraint_status: {}", facts.constraint_status.as_str());
         println!("lowering_ready: {}", facts.lowering_ready.ready);
+        println!(
+            "lowering_backend: {}",
+            facts.lowering_ready.backend.as_deref().unwrap_or("none")
+        );
+        if facts.lowering_ready.diagnostics.is_empty() {
+            println!("lowering_diagnostics: none");
+        } else {
+            println!("lowering_diagnostics:");
+            for diagnostic in &facts.lowering_ready.diagnostics {
+                println!(
+                    "lowering_diagnostic: code={} path={} message={}",
+                    diagnostic.code, diagnostic.path, diagnostic.message
+                );
+            }
+        }
         println!(
             "production_discharge_ready: {}",
             facts.lowering_ready.ready && facts.constraint_status.as_str() == "discharged"
@@ -858,6 +884,8 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
         println!("facts: none");
         println!("constraint_status: none");
         println!("lowering_ready: false");
+        println!("lowering_backend: none");
+        println!("lowering_diagnostics: none");
         println!("production_discharge_ready: false");
         print_solver_report(None);
     }

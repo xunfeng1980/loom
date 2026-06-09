@@ -3,6 +3,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
+use loom_core::arrow_semantic_codec::{
+    decode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
+};
 use loom_vortex_ingress::emit_source_ingress_lma1_from_vortex_buffer;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::memory::MemorySession;
@@ -36,17 +39,24 @@ fn run() -> Result<(), String> {
 
     let source_path = out_dir.join("source.vortex");
     let loom_path = out_dir.join("vortex.loom");
+    let duckdb_bridge_path = out_dir.join("vortex-duckdb-bridge-lma1.loom");
     let vortex_bytes = vortex_file_bytes(PrimitiveArray::from_iter([7i32, -1, 42]));
     fs::write(&source_path, &vortex_bytes)
         .map_err(|err| format!("write {}: {err}", source_path.display()))?;
 
     let accepted = emit_source_ingress_lma1_from_vortex_buffer(&vortex_bytes)
-        .map_err(|report| format!("emit LMA1 from Vortex failed: {:?}", report.diagnostics))?;
-    fs::write(&loom_path, accepted.bytes)
+        .map_err(|report| format!("emit LMC2 from Vortex failed: {:?}", report.diagnostics))?;
+    let duckdb_bridge = decode_arrow_semantic_container_payload(&accepted.bytes)
+        .and_then(|payload| encode_arrow_semantic_payload(&payload))
+        .map_err(|err| format!("build direct LMA1 DuckDB bridge from Vortex LMC2: {err}"))?;
+    fs::write(&loom_path, &accepted.bytes)
         .map_err(|err| format!("write {}: {err}", loom_path.display()))?;
+    fs::write(&duckdb_bridge_path, duckdb_bridge)
+        .map_err(|err| format!("write {}: {err}", duckdb_bridge_path.display()))?;
 
     println!("source: {}", source_path.display());
     println!("loom: {}", loom_path.display());
+    println!("duckdb_bridge_lma1: {}", duckdb_bridge_path.display());
     println!("status: {}", accepted.report.status.as_str());
     println!("emission_kind: {}", accepted.report.emission_kind.as_str());
     Ok(())

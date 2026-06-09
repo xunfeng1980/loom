@@ -34,20 +34,21 @@ echo "=== Loom MVP1 DuckDB source e2e gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
-info "Generating Parquet, Lance, and Vortex source-backed LMA1 fixtures..."
+info "Generating Parquet, Lance, and Vortex source-backed LMC2 distribution fixtures plus bounded DuckDB bridge fixtures..."
 rm -rf "${FIXTURE_DIR}"
 mkdir -p "${FIXTURE_DIR}"
 cargo run -p loom-parquet-ingress --bin emit_duckdb_parquet_lma1_fixture -- "${FIXTURE_DIR}/parquet" >/dev/null
 cargo run -p loom-lance-ingress --bin emit_duckdb_lance_lma1_fixture -- "${FIXTURE_DIR}/lance" >/dev/null
 cargo run -p loom-vortex-ingress --bin emit_duckdb_vortex_lma1_fixture -- "${FIXTURE_DIR}/vortex" >/dev/null
-ok "generated source-backed LMA1 fixtures in ${FIXTURE_DIR}"
+ok "generated source-backed LMC2 fixtures and direct LMA1 DuckDB bridge fixtures in ${FIXTURE_DIR}"
 
-assert_lma1() {
+assert_magic() {
     local payload="$1"
+    local expected="$2"
     local magic
     magic="$(dd if="${payload}" bs=4 count=1 2>/dev/null)"
-    if [ "${magic}" != "LMA1" ]; then
-        fail "expected ${payload} to be an LMA1 artifact, got '${magic}'"
+    if [ "${magic}" != "${expected}" ]; then
+        fail "expected ${payload} to be a ${expected} artifact, got '${magic}'"
     fi
 }
 
@@ -57,9 +58,19 @@ for payload in \
     "${FIXTURE_DIR}/vortex/vortex.loom"
 do
     test -f "${payload}" || fail "missing fixture ${payload}"
-    assert_lma1 "${payload}"
+    assert_magic "${payload}" "LMC2"
 done
-ok "all source-backed DuckDB fixtures are LMA1"
+ok "all source-backed distribution fixtures are LMC2"
+
+for payload in \
+    "${FIXTURE_DIR}/parquet/parquet-duckdb-bridge-lma1.loom" \
+    "${FIXTURE_DIR}/lance/lance-duckdb-bridge-lma1.loom" \
+    "${FIXTURE_DIR}/vortex/vortex-duckdb-bridge-lma1.loom"
+do
+    test -f "${payload}" || fail "missing DuckDB bridge fixture ${payload}"
+    assert_magic "${payload}" "LMA1"
+done
+ok "direct LMA1 DuckDB bridge fixtures are explicitly labeled"
 
 info "Building loom.duckdb_extension..."
 cargo build -p loom-ffi --release
@@ -125,7 +136,7 @@ check_source_artifact() {
     local expected_rows=$'7\n-1\n42'
     local expected_agg="3,48,-1,42"
 
-    info "Checking DuckDB SQL over ${label} LMA1 artifact..."
+    info "Checking bounded DuckDB SQL over ${label} direct LMA1 bridge artifact..."
     sql_to_file "SELECT value FROM loom_scan('${payload}')" "${rows_out}"
     local actual_rows
     actual_rows="$(cat "${rows_out}")"
@@ -143,12 +154,12 @@ check_source_artifact() {
     if [ "${actual_agg}" != "${expected_agg}" ]; then
         fail "aggregate mismatch for ${label}: expected '${expected_agg}', got '${actual_agg}'"
     fi
-    ok "${label} source -> LMA1 -> DuckDB SQL matched"
+    ok "${label} source -> LMC2 distribution proof plus direct LMA1 DuckDB bridge SQL matched"
 }
 
-check_source_artifact "parquet" "${FIXTURE_DIR}/parquet/parquet.loom"
-check_source_artifact "lance" "${FIXTURE_DIR}/lance/lance.loom"
-check_source_artifact "vortex" "${FIXTURE_DIR}/vortex/vortex.loom"
+check_source_artifact "parquet" "${FIXTURE_DIR}/parquet/parquet-duckdb-bridge-lma1.loom"
+check_source_artifact "lance" "${FIXTURE_DIR}/lance/lance-duckdb-bridge-lma1.loom"
+check_source_artifact "vortex" "${FIXTURE_DIR}/vortex/vortex-duckdb-bridge-lma1.loom"
 
 echo ""
 echo "${GRN}=== DuckDB source e2e gate PASSED ===${RST}"
