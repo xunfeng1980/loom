@@ -49,11 +49,17 @@ rm -rf "${FIXTURE_DIR}"
 cargo run -p loom-fixtures --bin emit_arrow_semantic_lmc2_sql_fixture -- "${FIXTURE_DIR}" >/dev/null
 LMC2_PAYLOAD="${FIXTURE_DIR}/multi-column-lmc2.loom"
 LMA1_PAYLOAD="${FIXTURE_DIR}/multi-column-direct-lma1.loom"
+LOGICAL_PAYLOAD="${FIXTURE_DIR}/logical-date32-lmc2.loom"
+NESTED_PAYLOAD="${FIXTURE_DIR}/nested-struct-lmc2.loom"
 test -f "${LMC2_PAYLOAD}" || fail "missing ${LMC2_PAYLOAD}"
 test -f "${LMA1_PAYLOAD}" || fail "missing ${LMA1_PAYLOAD}"
+test -f "${LOGICAL_PAYLOAD}" || fail "missing ${LOGICAL_PAYLOAD}"
+test -f "${NESTED_PAYLOAD}" || fail "missing ${NESTED_PAYLOAD}"
 assert_magic "${LMC2_PAYLOAD}" "LMC2"
 assert_magic "${LMA1_PAYLOAD}" "LMA1"
-ok "generated default LMC2 and direct LMA1 regression fixtures"
+assert_magic "${LOGICAL_PAYLOAD}" "LMC2"
+assert_magic "${NESTED_PAYLOAD}" "LMC2"
+ok "generated default LMC2, direct LMA1 regression, logical, and nested fixtures"
 
 info "Building loom.duckdb_extension..."
 cargo build -p loom-ffi --release
@@ -131,6 +137,27 @@ assert_query() {
     ok "${name}"
 }
 
+assert_query_fails() {
+    local name="$1"
+    local sql="$2"
+    local expected="$3"
+    local out="${TMP_DIR}/${name}.out"
+    local err="${TMP_DIR}/${name}.err"
+
+    info "Checking ${name}..."
+    if "${DUCKDB_BIN}" -unsigned -c "LOAD '${EXT_PATH}'; ${sql}" >"${out}" 2>"${err}"; then
+        cat "${out}" >&2
+        fail "expected ${name} to fail"
+    fi
+    if ! grep -q "${expected}" "${err}"; then
+        echo "Expected diagnostic substring: ${expected}" >&2
+        echo "Actual stderr:" >&2
+        cat "${err}" >&2
+        fail "diagnostic mismatch for ${name}"
+    fi
+    ok "${name}"
+}
+
 assert_query \
     "default-lmc2-project-filter" \
     "SELECT id, COALESCE(label, 'NULL') FROM loom_scan('${LMC2_PAYLOAD}') WHERE id >= 3 ORDER BY id" \
@@ -151,6 +178,15 @@ assert_query \
     "SELECT COUNT(*), SUM(id), COUNT(label) FROM loom_scan('${LMA1_PAYLOAD}')" \
     "5,15,3"
 
+assert_query_fails \
+    "logical-date32-unsupported" \
+    "SELECT * FROM loom_scan('${LOGICAL_PAYLOAD}');" \
+    "unsupported Arrow semantic schema format"
+
+assert_query_fails \
+    "nested-struct-unsupported" \
+    "SELECT * FROM loom_scan('${NESTED_PAYLOAD}');" \
+    "unsupported Arrow semantic schema format"
+
 echo ""
 echo "${GRN}=== DuckDB LMC2 SQL surface gate PASSED ===${RST}"
-
