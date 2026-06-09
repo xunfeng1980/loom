@@ -3499,6 +3499,7 @@ version = "0.1.0"
 dependencies = [
  "arrow",
  "arrow-array",
+ "arrow-buffer",
  "arrow-data",
  "arrow-ipc",
  "arrow-schema",
@@ -3577,6 +3578,7 @@ dependencies = [
 name = "loom-native-melior"
 version = "0.1.0"
 dependencies = [
+ "arrow-array",
  "arrow-schema",
  "loom-core",
  "melior",

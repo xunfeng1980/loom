@@ -1,4 +1,6 @@
 #[cfg(feature = "melior")]
+use arrow_schema::DataType;
+#[cfg(feature = "melior")]
 use loom_core::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
@@ -7,6 +9,15 @@ use loom_core::arrow_buffer_lowering::{
 };
 use loom_core::full_verifier::FullVerificationReport;
 use loom_core::l2_core::L2CoreProgram;
+#[cfg(feature = "melior")]
+use loom_core::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
+use loom_core::native_arrow_semantic::{
+    decide_validated_native_arrow_semantic_codegen_runtime,
+    native_arrow_semantic_codegen_replay_evidence,
+    prepare_native_arrow_semantic_codegen_support, validate_native_arrow_semantic_codegen_output,
+    NativeArrowSemanticCodegenExecutionReport, NativeArrowSemanticCodegenOutputColumn,
+    NativeArrowSemanticCodegenReplayEvidence, NativeArrowSemanticCodegenSupportReport,
+};
 use loom_core::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
@@ -18,11 +29,16 @@ use crate::backend::{
 use crate::builder::{build_melior_module, MeliorModuleArtifact};
 #[cfg(feature = "melior")]
 use crate::pipeline::LLVM_LOWERING_PIPELINE;
+use loom_core::runtime_abi::{
+    PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
+    RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
+};
 use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
 use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 use crate::toolchain::probe_toolchain;
 
 pub const PRODUCTION_JIT_ENTRY_SYMBOL: &str = "loom_decode_build_buffers";
+pub const ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL: &str = "loom_arrow_semantic_codegen_buffers";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProductionJitOptions {
@@ -36,6 +52,228 @@ pub struct ProductionJitOutput {
     pub row_count: u64,
     pub column_count: usize,
     pub value_buffers: Vec<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrowSemanticCodegenJitOutput {
+    pub entry_symbol: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub backend_identity: String,
+    pub columns: Vec<NativeArrowSemanticCodegenOutputColumn>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrowSemanticCodegenRouteStatus {
+    NativeCandidate,
+    InterpreterFallback,
+    FailClosed,
+    Cancelled,
+}
+
+impl ArrowSemanticCodegenRouteStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NativeCandidate => "native-candidate",
+            Self::InterpreterFallback => "interpreter-fallback",
+            Self::FailClosed => "fail-closed",
+            Self::Cancelled => "cancelled",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrowSemanticCodegenProductionRouteReport {
+    pub status: ArrowSemanticCodegenRouteStatus,
+    pub support: NativeArrowSemanticCodegenSupportReport,
+    pub jit_output: Option<ArrowSemanticCodegenJitOutput>,
+    pub execution: Option<NativeArrowSemanticCodegenExecutionReport>,
+    pub runtime_decision: Option<RuntimePlanDecisionReport>,
+    pub replay_evidence: Option<NativeArrowSemanticCodegenReplayEvidence>,
+    pub cacheable: bool,
+    pub diagnostics: Vec<NativeBackendDiagnostic>,
+}
+
+pub fn execute_arrow_semantic_codegen_jit(
+    support: &NativeArrowSemanticCodegenSupportReport,
+    cancellation: &NativeBackendCancellation,
+) -> Result<ArrowSemanticCodegenJitOutput, NativeBackendDiagnostic> {
+    if cancellation.cancelled {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::Cancelled,
+            "$.cancellation",
+            cancellation.reason.clone().unwrap_or_else(|| {
+                "production Arrow semantic codegen JIT was cancelled".to_string()
+            }),
+        ));
+    }
+
+    if !support.is_supported() {
+        let message = support
+            .first_error()
+            .map(|diagnostic| diagnostic.message.clone())
+            .unwrap_or_else(|| {
+                "production Arrow semantic codegen requires supported inputs".to_string()
+            });
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.codegen.support",
+            message,
+        ));
+    }
+
+    execute_arrow_semantic_codegen_jit_backend(support)
+}
+
+pub fn execute_arrow_semantic_codegen_production_route(
+    bytes: &[u8],
+    cancellation: &NativeBackendCancellation,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    if cancellation.cancelled {
+        return ArrowSemanticCodegenProductionRouteReport {
+            status: ArrowSemanticCodegenRouteStatus::Cancelled,
+            support: unsupported_route_support(),
+            jit_output: None,
+            execution: None,
+            runtime_decision: None,
+            replay_evidence: None,
+            cacheable: false,
+            diagnostics: vec![NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::Cancelled,
+                "$.cancellation",
+                cancellation.reason.clone().unwrap_or_else(|| {
+                    "production Arrow semantic codegen route was cancelled before support extraction"
+                        .to_string()
+                }),
+            )],
+        };
+    }
+
+    let support = prepare_native_arrow_semantic_codegen_support(bytes);
+    if !support.is_supported() {
+        let status = fallback_or_fail_closed(policy);
+        let message = support
+            .first_error()
+            .map(|diagnostic| diagnostic.message.clone())
+            .unwrap_or_else(|| {
+                "production Arrow semantic codegen route requires supported inputs".to_string()
+            });
+        return ArrowSemanticCodegenProductionRouteReport {
+            status,
+            support,
+            jit_output: None,
+            execution: None,
+            runtime_decision: None,
+            replay_evidence: None,
+            cacheable: false,
+            diagnostics: vec![NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                "$.codegen.support",
+                message,
+            )],
+        };
+    }
+
+    let jit = match execute_arrow_semantic_codegen_jit(&support, cancellation) {
+        Ok(output) => output,
+        Err(diagnostic) => {
+            let status = if diagnostic.code == NativeBackendDiagnosticCode::Cancelled {
+                ArrowSemanticCodegenRouteStatus::Cancelled
+            } else {
+                fallback_or_fail_closed(policy)
+            };
+            return ArrowSemanticCodegenProductionRouteReport {
+                status,
+                support,
+                jit_output: None,
+                execution: None,
+                runtime_decision: None,
+                replay_evidence: None,
+                cacheable: false,
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+
+    validate_arrow_semantic_codegen_production_route_output(
+        bytes, support, jit, projection, predicate, split, policy,
+    )
+}
+
+pub fn validate_arrow_semantic_codegen_production_route_output(
+    bytes: &[u8],
+    support: NativeArrowSemanticCodegenSupportReport,
+    jit_output: ArrowSemanticCodegenJitOutput,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    let execution = validate_native_arrow_semantic_codegen_output(
+        bytes,
+        &support,
+        jit_output.backend_identity.clone(),
+        jit_output.columns.clone(),
+    );
+    let runtime_decision =
+        decide_validated_native_arrow_semantic_codegen_runtime(&execution, policy);
+
+    let replay_evidence = native_arrow_semantic_codegen_replay_evidence(
+        bytes,
+        &support,
+        &execution,
+        projection,
+        predicate,
+        split,
+        policy,
+    )
+    .ok();
+
+    let cacheable = replay_evidence.is_some()
+        && runtime_decision.decision == RuntimeExecutionDecision::NativeCandidate;
+    let status = if cacheable {
+        ArrowSemanticCodegenRouteStatus::NativeCandidate
+    } else {
+        fallback_or_fail_closed(policy)
+    };
+    let diagnostics = execution
+        .diagnostics()
+        .iter()
+        .map(|diagnostic| {
+            NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::NativeOutputMismatch,
+                diagnostic.path.clone(),
+                diagnostic.message.clone(),
+            )
+        })
+        .collect();
+
+    ArrowSemanticCodegenProductionRouteReport {
+        status,
+        support,
+        jit_output: Some(jit_output),
+        execution: Some(execution),
+        runtime_decision: Some(runtime_decision),
+        replay_evidence,
+        cacheable,
+        diagnostics,
+    }
+}
+
+fn fallback_or_fail_closed(policy: RuntimeSafetyPolicy) -> ArrowSemanticCodegenRouteStatus {
+    if matches!(policy.fallback, RuntimeFallbackPolicy::AllowInterpreter) {
+        ArrowSemanticCodegenRouteStatus::InterpreterFallback
+    } else {
+        ArrowSemanticCodegenRouteStatus::FailClosed
+    }
+}
+
+fn unsupported_route_support() -> NativeArrowSemanticCodegenSupportReport {
+    prepare_native_arrow_semantic_codegen_support(b"")
 }
 
 pub fn execute_prepared_production_jit(
@@ -222,6 +460,122 @@ fn execute_raw_copy_mlir(
 }
 
 #[cfg(feature = "melior")]
+fn execute_arrow_semantic_codegen_jit_backend(
+    support: &NativeArrowSemanticCodegenSupportReport,
+) -> Result<ArrowSemanticCodegenJitOutput, NativeBackendDiagnostic> {
+    use melior::dialect::DialectRegistry;
+    use melior::ir::Module;
+    use melior::pass;
+    use melior::utility::{
+        parse_pass_pipeline, register_all_dialects, register_all_llvm_translations,
+        register_all_passes,
+    };
+    use melior::{Context, ExecutionEngine};
+
+    let slot_plans = arrow_semantic_slot_plans(support)?;
+    let mlir_text = lower_arrow_semantic_slots_to_standard_mlir(&slot_plans);
+
+    let context = Context::new();
+    let registry = DialectRegistry::new();
+    register_all_dialects(&registry);
+    context.append_dialect_registry(&registry);
+    context.load_all_available_dialects();
+    register_all_llvm_translations(&context);
+    register_all_passes();
+
+    let mut module = Module::parse(&context, &mlir_text).ok_or_else(|| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.arrow_semantic.mlir.parse",
+            "production Arrow semantic JIT failed to parse generated MLIR module",
+        )
+    })?;
+
+    let pass_manager = pass::PassManager::new(&context);
+    parse_pass_pipeline(
+        pass_manager.as_operation_pass_manager(),
+        LLVM_LOWERING_PIPELINE,
+    )
+    .map_err(|err| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.arrow_semantic.mlir.pass_pipeline",
+            format!(
+                "production Arrow semantic JIT failed to parse LLVM lowering pipeline: {err:?}"
+            ),
+        )
+    })?;
+    pass_manager.run(&mut module).map_err(|err| {
+        NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitUnavailable,
+            "$.jit.arrow_semantic.mlir.lower_to_llvm",
+            format!("production Arrow semantic JIT failed to lower MLIR module to LLVM: {err:?}"),
+        )
+    })?;
+
+    let engine = ExecutionEngine::new(&module, 2, &[], false, false);
+    if engine
+        .lookup(ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL)
+        .is_null()
+    {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitSymbolMissing,
+            "$.jit.arrow_semantic.symbol",
+            format!("JIT entry symbol '{ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL}' was not found"),
+        ));
+    }
+
+    let mut slots = slot_plans
+        .iter()
+        .map(ArrowSemanticJitSlotStorage::new)
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut args = Vec::with_capacity(slots.len() * 2);
+    for slot in slots.iter_mut() {
+        args.push(slot.input_descriptor_ptr());
+    }
+    for slot in slots.iter_mut() {
+        args.push(slot.output_descriptor_ptr());
+    }
+
+    unsafe {
+        engine
+            .invoke_packed(ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL, &mut args)
+            .map_err(|err| {
+                NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::JitUnavailable,
+                    "$.jit.arrow_semantic.invoke",
+                    format!(
+                        "production Arrow semantic JIT ExecutionEngine invocation failed: {err:?}"
+                    ),
+                )
+            })?;
+    }
+
+    let columns = arrow_semantic_output_columns_from_slots(support, slots)?;
+    Ok(ArrowSemanticCodegenJitOutput {
+        entry_symbol: ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL.to_string(),
+        row_count: support.row_count,
+        column_count: support.column_count,
+        backend_identity: format!(
+            "backend=loom-native-melior;entry={};pipeline={};feature=melior",
+            ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL, LLVM_LOWERING_PIPELINE
+        ),
+        columns,
+    })
+}
+
+#[cfg(not(feature = "melior"))]
+fn execute_arrow_semantic_codegen_jit_backend(
+    _support: &NativeArrowSemanticCodegenSupportReport,
+) -> Result<ArrowSemanticCodegenJitOutput, NativeBackendDiagnostic> {
+    Err(NativeBackendDiagnostic::new(
+        NativeBackendDiagnosticCode::JitUnavailable,
+        "$.jit.arrow_semantic",
+        "production Arrow semantic codegen JIT requires the loom-native-melior melior feature",
+    ))
+}
+
+#[cfg(feature = "melior")]
 fn execute_raw_copy_mlir_backend(
     table: &ArrowTableBufferPlan,
     input_value_buffers: &[Vec<u8>],
@@ -338,6 +692,139 @@ fn execute_raw_copy_mlir_backend(
 }
 
 #[cfg(feature = "melior")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ArrowSemanticSlotKind {
+    I32,
+    I64,
+    F32,
+    F64,
+    Bytes,
+}
+
+#[cfg(feature = "melior")]
+impl ArrowSemanticSlotKind {
+    fn mlir_type(self) -> &'static str {
+        match self {
+            Self::I32 => "i32",
+            Self::I64 => "i64",
+            Self::F32 => "f32",
+            Self::F64 => "f64",
+            Self::Bytes => "i8",
+        }
+    }
+}
+
+#[cfg(feature = "melior")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ArrowSemanticSlotRole {
+    Value,
+    Validity,
+}
+
+#[cfg(feature = "melior")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ArrowSemanticSlotPlan {
+    column_index: usize,
+    role: ArrowSemanticSlotRole,
+    symbol: String,
+    kind: ArrowSemanticSlotKind,
+    input_bytes: Vec<u8>,
+}
+
+#[cfg(feature = "melior")]
+fn arrow_semantic_slot_plans(
+    support: &NativeArrowSemanticCodegenSupportReport,
+) -> Result<Vec<ArrowSemanticSlotPlan>, NativeBackendDiagnostic> {
+    let mut slots = Vec::new();
+    for column in support.columns() {
+        let value_kind = match (&column.value_buffer_kind, &column.data_type) {
+            (NativeArrowSemanticCodegenBufferKind::BooleanValueBitmap, DataType::Boolean) => {
+                ArrowSemanticSlotKind::Bytes
+            }
+            (NativeArrowSemanticCodegenBufferKind::FixedWidthValue, DataType::Int32) => {
+                ArrowSemanticSlotKind::I32
+            }
+            (NativeArrowSemanticCodegenBufferKind::FixedWidthValue, DataType::Int64) => {
+                ArrowSemanticSlotKind::I64
+            }
+            (NativeArrowSemanticCodegenBufferKind::FixedWidthValue, DataType::Float32) => {
+                ArrowSemanticSlotKind::F32
+            }
+            (NativeArrowSemanticCodegenBufferKind::FixedWidthValue, DataType::Float64) => {
+                ArrowSemanticSlotKind::F64
+            }
+            _ => {
+                return Err(NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                    format!("$.codegen.columns[{}].value_buffer_kind", column.index),
+                    "production Arrow semantic JIT received an unsupported value buffer kind/type pair",
+                ));
+            }
+        };
+        slots.push(ArrowSemanticSlotPlan {
+            column_index: column.index,
+            role: ArrowSemanticSlotRole::Value,
+            symbol: format!("c{}_value", column.index),
+            kind: value_kind,
+            input_bytes: column.value_buffer.clone(),
+        });
+        if let Some(validity) = column.validity_buffer.as_ref() {
+            slots.push(ArrowSemanticSlotPlan {
+                column_index: column.index,
+                role: ArrowSemanticSlotRole::Validity,
+                symbol: format!("c{}_validity", column.index),
+                kind: ArrowSemanticSlotKind::Bytes,
+                input_bytes: validity.clone(),
+            });
+        }
+    }
+    Ok(slots)
+}
+
+#[cfg(feature = "melior")]
+fn lower_arrow_semantic_slots_to_standard_mlir(slots: &[ArrowSemanticSlotPlan]) -> String {
+    let input_args = slots
+        .iter()
+        .map(|slot| format!("%{}_in: memref<?x{}>", slot.symbol, slot.kind.mlir_type()));
+    let output_args = slots
+        .iter()
+        .map(|slot| format!("%{}_out: memref<?x{}>", slot.symbol, slot.kind.mlir_type()));
+    let args = input_args.chain(output_args).collect::<Vec<_>>().join(", ");
+
+    let mut text = String::new();
+    text.push_str("module {\n");
+    text.push_str(&format!(
+        "  func.func @{ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL}({args}) attributes {{ llvm.emit_c_interface }} {{\n"
+    ));
+    text.push_str("    %c0 = arith.constant 0 : index\n");
+    text.push_str("    %c1 = arith.constant 1 : index\n");
+    for slot in slots {
+        let ty = slot.kind.mlir_type();
+        text.push_str(&format!(
+            "    %len_{} = memref.dim %{}_in, %c0 : memref<?x{}>\n",
+            slot.symbol, slot.symbol, ty
+        ));
+        text.push_str(&format!(
+            "    scf.for %i_{} = %c0 to %len_{} step %c1 {{\n",
+            slot.symbol, slot.symbol
+        ));
+        text.push_str(&format!(
+            "      %value_{} = memref.load %{}_in[%i_{}] : memref<?x{}>\n",
+            slot.symbol, slot.symbol, slot.symbol, ty
+        ));
+        text.push_str(&format!(
+            "      memref.store %value_{}, %{}_out[%i_{}] : memref<?x{}>\n",
+            slot.symbol, slot.symbol, slot.symbol, ty
+        ));
+        text.push_str("    }\n");
+    }
+    text.push_str("    return\n");
+    text.push_str("  }\n");
+    text.push_str("}\n");
+    text
+}
+
+#[cfg(feature = "melior")]
 #[repr(C)]
 struct MemRef1D<T> {
     allocated: *mut T,
@@ -359,6 +846,307 @@ impl<T> MemRef1D<T> {
             stride0: 1,
         }
     }
+}
+
+#[cfg(feature = "melior")]
+struct ArrowSemanticJitSlotStorage {
+    column_index: usize,
+    role: ArrowSemanticSlotRole,
+    inner: ArrowSemanticJitSlotInner,
+}
+
+#[cfg(feature = "melior")]
+enum ArrowSemanticJitSlotInner {
+    I32 {
+        input: Vec<i32>,
+        output: Vec<i32>,
+        input_desc: MemRef1D<i32>,
+        output_desc: MemRef1D<i32>,
+        input_arg: *mut MemRef1D<i32>,
+        output_arg: *mut MemRef1D<i32>,
+    },
+    I64 {
+        input: Vec<i64>,
+        output: Vec<i64>,
+        input_desc: MemRef1D<i64>,
+        output_desc: MemRef1D<i64>,
+        input_arg: *mut MemRef1D<i64>,
+        output_arg: *mut MemRef1D<i64>,
+    },
+    F32 {
+        input: Vec<f32>,
+        output: Vec<f32>,
+        input_desc: MemRef1D<f32>,
+        output_desc: MemRef1D<f32>,
+        input_arg: *mut MemRef1D<f32>,
+        output_arg: *mut MemRef1D<f32>,
+    },
+    F64 {
+        input: Vec<f64>,
+        output: Vec<f64>,
+        input_desc: MemRef1D<f64>,
+        output_desc: MemRef1D<f64>,
+        input_arg: *mut MemRef1D<f64>,
+        output_arg: *mut MemRef1D<f64>,
+    },
+    Bytes {
+        input: Vec<u8>,
+        output: Vec<u8>,
+        input_desc: MemRef1D<u8>,
+        output_desc: MemRef1D<u8>,
+        input_arg: *mut MemRef1D<u8>,
+        output_arg: *mut MemRef1D<u8>,
+    },
+}
+
+#[cfg(feature = "melior")]
+impl ArrowSemanticJitSlotStorage {
+    fn new(plan: &ArrowSemanticSlotPlan) -> Result<Self, NativeBackendDiagnostic> {
+        let inner = match plan.kind {
+            ArrowSemanticSlotKind::I32 => {
+                let mut input = bytes_to_i32(&plan.input_bytes)?;
+                let mut output = vec![0i32; input.len()];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                ArrowSemanticJitSlotInner::I32 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                }
+            }
+            ArrowSemanticSlotKind::I64 => {
+                let mut input = bytes_to_i64(&plan.input_bytes)?;
+                let mut output = vec![0i64; input.len()];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                ArrowSemanticJitSlotInner::I64 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                }
+            }
+            ArrowSemanticSlotKind::F32 => {
+                let mut input = bytes_to_f32(&plan.input_bytes)?;
+                let mut output = vec![0f32; input.len()];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                ArrowSemanticJitSlotInner::F32 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                }
+            }
+            ArrowSemanticSlotKind::F64 => {
+                let mut input = bytes_to_f64(&plan.input_bytes)?;
+                let mut output = vec![0f64; input.len()];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                ArrowSemanticJitSlotInner::F64 {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                }
+            }
+            ArrowSemanticSlotKind::Bytes => {
+                let mut input = plan.input_bytes.clone();
+                let mut output = vec![0u8; input.len()];
+                let input_desc = MemRef1D::new(&mut input);
+                let output_desc = MemRef1D::new(&mut output);
+                ArrowSemanticJitSlotInner::Bytes {
+                    input,
+                    output,
+                    input_desc,
+                    output_desc,
+                    input_arg: std::ptr::null_mut(),
+                    output_arg: std::ptr::null_mut(),
+                }
+            }
+        };
+        Ok(Self {
+            column_index: plan.column_index,
+            role: plan.role,
+            inner,
+        })
+    }
+
+    fn input_descriptor_ptr(&mut self) -> *mut () {
+        match &mut self.inner {
+            ArrowSemanticJitSlotInner::I32 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<i32>;
+                input_arg as *mut *mut MemRef1D<i32> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::I64 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<i64>;
+                input_arg as *mut *mut MemRef1D<i64> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::F32 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<f32>;
+                input_arg as *mut *mut MemRef1D<f32> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::F64 {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<f64>;
+                input_arg as *mut *mut MemRef1D<f64> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::Bytes {
+                input_desc,
+                input_arg,
+                ..
+            } => {
+                *input_arg = input_desc as *mut MemRef1D<u8>;
+                input_arg as *mut *mut MemRef1D<u8> as *mut ()
+            }
+        }
+    }
+
+    fn output_descriptor_ptr(&mut self) -> *mut () {
+        match &mut self.inner {
+            ArrowSemanticJitSlotInner::I32 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<i32>;
+                output_arg as *mut *mut MemRef1D<i32> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::I64 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<i64>;
+                output_arg as *mut *mut MemRef1D<i64> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::F32 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<f32>;
+                output_arg as *mut *mut MemRef1D<f32> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::F64 {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<f64>;
+                output_arg as *mut *mut MemRef1D<f64> as *mut ()
+            }
+            ArrowSemanticJitSlotInner::Bytes {
+                output_desc,
+                output_arg,
+                ..
+            } => {
+                *output_arg = output_desc as *mut MemRef1D<u8>;
+                output_arg as *mut *mut MemRef1D<u8> as *mut ()
+            }
+        }
+    }
+
+    fn into_output_bytes(self) -> (usize, ArrowSemanticSlotRole, Vec<u8>) {
+        let bytes = match self.inner {
+            ArrowSemanticJitSlotInner::I32 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(i32::to_le_bytes).collect()
+            }
+            ArrowSemanticJitSlotInner::I64 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(i64::to_le_bytes).collect()
+            }
+            ArrowSemanticJitSlotInner::F32 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(f32::to_le_bytes).collect()
+            }
+            ArrowSemanticJitSlotInner::F64 { input, output, .. } => {
+                let _keepalive = input;
+                output.into_iter().flat_map(f64::to_le_bytes).collect()
+            }
+            ArrowSemanticJitSlotInner::Bytes { input, output, .. } => {
+                let _keepalive = input;
+                output
+            }
+        };
+        (self.column_index, self.role, bytes)
+    }
+}
+
+#[cfg(feature = "melior")]
+fn arrow_semantic_output_columns_from_slots(
+    support: &NativeArrowSemanticCodegenSupportReport,
+    slots: Vec<ArrowSemanticJitSlotStorage>,
+) -> Result<Vec<NativeArrowSemanticCodegenOutputColumn>, NativeBackendDiagnostic> {
+    let mut outputs = slots
+        .into_iter()
+        .map(ArrowSemanticJitSlotStorage::into_output_bytes)
+        .collect::<Vec<_>>();
+    let mut columns = Vec::with_capacity(support.column_count);
+    for column in support.columns() {
+        let value_pos = outputs
+            .iter()
+            .position(|(idx, role, _)| {
+                *idx == column.index && *role == ArrowSemanticSlotRole::Value
+            })
+            .ok_or_else(|| {
+                NativeBackendDiagnostic::new(
+                    NativeBackendDiagnosticCode::NativeOutputMismatch,
+                    format!("$.jit.arrow_semantic.columns[{}].value", column.index),
+                    "production Arrow semantic JIT did not return a value buffer",
+                )
+            })?;
+        let (_, _, value_buffer) = outputs.remove(value_pos);
+        let validity_buffer = if column.validity_buffer.is_some() {
+            let validity_pos = outputs
+                .iter()
+                .position(|(idx, role, _)| {
+                    *idx == column.index && *role == ArrowSemanticSlotRole::Validity
+                })
+                .ok_or_else(|| {
+                    NativeBackendDiagnostic::new(
+                        NativeBackendDiagnosticCode::NativeOutputMismatch,
+                        format!("$.jit.arrow_semantic.columns[{}].validity", column.index),
+                        "production Arrow semantic JIT did not return a validity buffer",
+                    )
+                })?;
+            let (_, _, validity) = outputs.remove(validity_pos);
+            Some(validity)
+        } else {
+            None
+        };
+        columns.push(NativeArrowSemanticCodegenOutputColumn {
+            index: column.index,
+            value_buffer,
+            validity_buffer,
+        });
+    }
+    Ok(columns)
 }
 
 #[cfg(feature = "melior")]

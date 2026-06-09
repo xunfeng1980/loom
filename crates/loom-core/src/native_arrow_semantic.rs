@@ -12,7 +12,9 @@ use arrow_array::{
     types::{Float32Type, Float64Type, Int32Type, Int64Type},
     Array, ArrayRef, BooleanArray, PrimitiveArray, RecordBatch,
 };
-use arrow_schema::DataType;
+use arrow_buffer::{Buffer, NullBuffer};
+use arrow_data::ArrayData;
+use arrow_schema::{DataType, Field};
 
 use crate::arrow_builder_output::OutputBuilder;
 use crate::arrow_semantic_codec::{
@@ -38,6 +40,8 @@ use crate::runtime_abi::{
 };
 
 pub const NATIVE_ARROW_SEMANTIC_BACKEND: &str = "loom-native-arrow-semantic";
+pub const PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND: &str =
+    "loom-production-native-arrow-semantic-codegen";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NativeArrowSemanticDiagnosticCode {
@@ -83,6 +87,180 @@ impl NativeArrowSemanticDiagnostic {
             message: message.into(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeArrowSemanticCodegenBufferKind {
+    FixedWidthValue,
+    BooleanValueBitmap,
+}
+
+impl NativeArrowSemanticCodegenBufferKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::FixedWidthValue => "fixed-width-value",
+            Self::BooleanValueBitmap => "boolean-value-bitmap",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeArrowSemanticCodegenColumnInput {
+    pub index: usize,
+    pub name: String,
+    pub data_type: DataType,
+    pub nullable: bool,
+    pub row_count: u64,
+    pub null_count: u64,
+    pub value_buffer_kind: NativeArrowSemanticCodegenBufferKind,
+    pub value_buffer: Vec<u8>,
+    pub validity_buffer: Option<Vec<u8>>,
+}
+
+impl NativeArrowSemanticCodegenColumnInput {
+    pub fn value_buffer_bytes(&self) -> usize {
+        self.value_buffer.len()
+    }
+
+    pub fn validity_buffer_bytes(&self) -> usize {
+        self.validity_buffer
+            .as_ref()
+            .map(|buffer| buffer.len())
+            .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeArrowSemanticCodegenSupportReport {
+    pub backend: String,
+    pub artifact_kind: String,
+    pub payload_kind: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub schema_fingerprint: String,
+    columns: Vec<NativeArrowSemanticCodegenColumnInput>,
+    diagnostics: Vec<NativeArrowSemanticDiagnostic>,
+}
+
+impl NativeArrowSemanticCodegenSupportReport {
+    pub fn is_supported(&self) -> bool {
+        self.diagnostics.is_empty() && !self.columns.is_empty()
+    }
+
+    pub fn columns(&self) -> &[NativeArrowSemanticCodegenColumnInput] {
+        &self.columns
+    }
+
+    pub fn diagnostics(&self) -> &[NativeArrowSemanticDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn first_error(&self) -> Option<&NativeArrowSemanticDiagnostic> {
+        self.diagnostics.first()
+    }
+
+    fn rejected(diagnostic: NativeArrowSemanticDiagnostic) -> Self {
+        Self {
+            backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+            artifact_kind: String::new(),
+            payload_kind: String::new(),
+            row_count: 0,
+            column_count: 0,
+            schema_fingerprint: String::new(),
+            columns: Vec::new(),
+            diagnostics: vec![diagnostic],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeArrowSemanticCodegenOutputColumn {
+    pub index: usize,
+    pub value_buffer: Vec<u8>,
+    pub validity_buffer: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeArrowSemanticCodegenExecutionReport {
+    pub backend: String,
+    pub backend_identity: String,
+    pub artifact_kind: String,
+    pub payload_kind: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub schema_fingerprint: String,
+    output: Option<RecordBatch>,
+    validation: Option<NativeArrowSemanticModelValidationReport>,
+    diagnostics: Vec<NativeArrowSemanticDiagnostic>,
+}
+
+impl NativeArrowSemanticCodegenExecutionReport {
+    pub fn is_supported(&self) -> bool {
+        self.diagnostics.is_empty()
+            && self.output.is_some()
+            && self
+                .validation
+                .as_ref()
+                .is_some_and(|report| report.is_validated())
+    }
+
+    pub fn output(&self) -> Option<&RecordBatch> {
+        self.output.as_ref()
+    }
+
+    pub fn validation(&self) -> Option<&NativeArrowSemanticModelValidationReport> {
+        self.validation.as_ref()
+    }
+
+    pub fn diagnostics(&self) -> &[NativeArrowSemanticDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn first_error(&self) -> Option<&NativeArrowSemanticDiagnostic> {
+        self.diagnostics.first()
+    }
+
+    fn rejected(
+        support: Option<&NativeArrowSemanticCodegenSupportReport>,
+        backend_identity: impl Into<String>,
+        diagnostic: NativeArrowSemanticDiagnostic,
+    ) -> Self {
+        Self {
+            backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+            backend_identity: backend_identity.into(),
+            artifact_kind: support
+                .map(|report| report.artifact_kind.clone())
+                .unwrap_or_default(),
+            payload_kind: support
+                .map(|report| report.payload_kind.clone())
+                .unwrap_or_default(),
+            row_count: support.map(|report| report.row_count).unwrap_or(0),
+            column_count: support.map(|report| report.column_count).unwrap_or(0),
+            schema_fingerprint: support
+                .map(|report| report.schema_fingerprint.clone())
+                .unwrap_or_default(),
+            output: None,
+            validation: None,
+            diagnostics: vec![diagnostic],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeArrowSemanticCodegenReplayEvidence {
+    pub backend: String,
+    pub artifact_digest: String,
+    pub artifact_kind: String,
+    pub payload_kind: String,
+    pub schema_fingerprint: String,
+    pub support_fingerprint: String,
+    pub output_buffer_fingerprint: String,
+    pub reference_trace_fingerprint: String,
+    pub native_trace_fingerprint: String,
+    pub validation_fingerprint: String,
+    pub runtime_cache_stable_id: String,
+    pub runtime_cache_canonical_input: String,
+    pub replay_fingerprint: String,
 }
 
 #[derive(Debug, Clone)]
@@ -270,6 +448,373 @@ pub fn execute_verified_native_arrow_semantic(
         output: Some(output),
         diagnostics: Vec::new(),
     }
+}
+
+pub fn prepare_native_arrow_semantic_codegen_support(
+    bytes: &[u8],
+) -> NativeArrowSemanticCodegenSupportReport {
+    prepare_native_arrow_semantic_codegen_support_with_options(
+        bytes,
+        &ArtifactVerificationOptions::default(),
+    )
+}
+
+pub fn prepare_native_arrow_semantic_codegen_support_with_options(
+    bytes: &[u8],
+    options: &ArtifactVerificationOptions,
+) -> NativeArrowSemanticCodegenSupportReport {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(bytes, &registry, options);
+    prepare_verified_native_arrow_semantic_codegen_support(bytes, &verification)
+}
+
+pub fn prepare_verified_native_arrow_semantic_codegen_support(
+    bytes: &[u8],
+    verification: &ArtifactVerificationReport,
+) -> NativeArrowSemanticCodegenSupportReport {
+    if verification.status() != ArtifactVerificationStatus::Accepted || !verification.is_ok() {
+        return NativeArrowSemanticCodegenSupportReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::VerifierRejected,
+                "$.verification",
+                "production native Arrow semantic codegen requires an accepted artifact verifier report",
+            ),
+        );
+    }
+
+    let Some(facts) = verification.facts() else {
+        return NativeArrowSemanticCodegenSupportReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::VerifierRejected,
+                "$.facts",
+                "accepted artifact verifier report did not expose facts",
+            ),
+        );
+    };
+
+    if !matches!(facts.artifact_kind.as_str(), "LMC2" | "LMA1") {
+        return NativeArrowSemanticCodegenSupportReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedArtifact,
+                "$.facts.artifact_kind",
+                format!(
+                    "unsupported artifact kind '{}'; expected LMC2 or LMA1",
+                    facts.artifact_kind
+                ),
+            ),
+        );
+    }
+
+    if facts.payload_kind.as_deref() != Some("Arrow semantic payload") {
+        return NativeArrowSemanticCodegenSupportReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+                "$.facts.payload_kind",
+                "production native Arrow semantic codegen requires an Arrow semantic payload",
+            ),
+        );
+    }
+
+    let reference = match decode_reference_batch(bytes) {
+        Ok(batch) => batch,
+        Err(diagnostic) => return NativeArrowSemanticCodegenSupportReport::rejected(diagnostic),
+    };
+
+    let mut columns = Vec::with_capacity(reference.num_columns());
+    for (idx, field) in reference.schema().fields().iter().enumerate() {
+        match extract_codegen_column_input(idx, field, reference.column(idx).as_ref()) {
+            Ok(column) => columns.push(column),
+            Err(diagnostic) => {
+                return NativeArrowSemanticCodegenSupportReport::rejected(diagnostic)
+            }
+        }
+    }
+
+    if columns.is_empty() {
+        return NativeArrowSemanticCodegenSupportReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+                "$.schema.fields",
+                "production native Arrow semantic codegen requires at least one supported column",
+            ),
+        );
+    }
+
+    NativeArrowSemanticCodegenSupportReport {
+        backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+        artifact_kind: facts.artifact_kind.clone(),
+        payload_kind: facts.payload_kind.clone().unwrap_or_default(),
+        row_count: reference.num_rows() as u64,
+        column_count: reference.num_columns(),
+        schema_fingerprint: schema_fingerprint(&reference),
+        columns,
+        diagnostics: Vec::new(),
+    }
+}
+
+pub fn validate_native_arrow_semantic_codegen_output(
+    bytes: &[u8],
+    support: &NativeArrowSemanticCodegenSupportReport,
+    backend_identity: impl Into<String>,
+    output_columns: Vec<NativeArrowSemanticCodegenOutputColumn>,
+) -> NativeArrowSemanticCodegenExecutionReport {
+    validate_native_arrow_semantic_codegen_output_inner(
+        bytes,
+        support,
+        backend_identity.into(),
+        output_columns,
+    )
+}
+
+fn validate_native_arrow_semantic_codegen_output_inner(
+    bytes: &[u8],
+    support: &NativeArrowSemanticCodegenSupportReport,
+    backend_identity: String,
+    output_columns: Vec<NativeArrowSemanticCodegenOutputColumn>,
+) -> NativeArrowSemanticCodegenExecutionReport {
+    if !support.is_supported() {
+        let diagnostic = support.first_error().cloned().unwrap_or_else(|| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+                "$.codegen.support",
+                "production native codegen output validation requires supported codegen inputs",
+            )
+        });
+        return NativeArrowSemanticCodegenExecutionReport::rejected(
+            Some(support),
+            backend_identity,
+            diagnostic,
+        );
+    }
+
+    let batch = match record_batch_from_codegen_output(support, output_columns) {
+        Ok(batch) => batch,
+        Err(diagnostic) => {
+            return NativeArrowSemanticCodegenExecutionReport::rejected(
+                Some(support),
+                backend_identity,
+                diagnostic,
+            );
+        }
+    };
+
+    let validation =
+        verify_native_arrow_semantic_model_for_output(bytes, support.artifact_kind.clone(), &batch);
+    let diagnostics = validation.diagnostics().to_vec();
+    NativeArrowSemanticCodegenExecutionReport {
+        backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+        backend_identity,
+        artifact_kind: support.artifact_kind.clone(),
+        payload_kind: support.payload_kind.clone(),
+        row_count: support.row_count,
+        column_count: support.column_count,
+        schema_fingerprint: support.schema_fingerprint.clone(),
+        output: Some(batch),
+        validation: Some(validation),
+        diagnostics,
+    }
+}
+
+pub fn decide_validated_native_arrow_semantic_codegen_runtime(
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+    policy: RuntimeSafetyPolicy,
+) -> RuntimePlanDecisionReport {
+    let verifier_rejected = execution.first_error().is_some_and(|diagnostic| {
+        diagnostic.code == NativeArrowSemanticDiagnosticCode::VerifierRejected
+    });
+    decide_runtime_execution(&crate::runtime_abi::RuntimeDecisionInput {
+        artifact_status: if verifier_rejected {
+            ArtifactVerificationStatus::Rejected
+        } else {
+            ArtifactVerificationStatus::Accepted
+        },
+        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        production_lowering_supported: execution.is_supported(),
+        reader_support: if verifier_rejected {
+            RuntimeReaderSupport::Rejected
+        } else {
+            RuntimeReaderSupport::Accepted
+        },
+        emission_disposition: RuntimeEmissionDisposition::SemanticArrow,
+        lowering_disposition: if execution.is_supported() {
+            RuntimeLoweringDisposition::ProductionLoweringSupported
+        } else {
+            RuntimeLoweringDisposition::InterpreterOnly
+        },
+        projection_supported: true,
+        predicate_supported: true,
+        split_supported: true,
+        concurrency_safe: true,
+        policy,
+    })
+}
+
+pub fn validated_native_arrow_semantic_codegen_runtime_cache_key(
+    bytes: &[u8],
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+    projection: ProjectionSet,
+    policy: RuntimeSafetyPolicy,
+) -> Result<RuntimeCacheKey, NativeArrowSemanticDiagnostic> {
+    validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
+        bytes,
+        execution,
+        projection,
+        PredicateEnvelope::None,
+        SplitDescriptor::FullScan {
+            row_count: execution.row_count,
+        },
+        policy,
+    )
+}
+
+pub fn validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
+    bytes: &[u8],
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> Result<RuntimeCacheKey, NativeArrowSemanticDiagnostic> {
+    let decision = decide_validated_native_arrow_semantic_codegen_runtime(execution, policy);
+    if decision.decision != RuntimeExecutionDecision::NativeCandidate || !execution.is_supported() {
+        let fallback_disabled = decision
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == RuntimeDiagnosticCode::FallbackDisabled);
+        let fallback_note = if fallback_disabled
+            && matches!(policy.fallback, RuntimeFallbackPolicy::FailClosedOnly)
+        {
+            " and interpreter fallback is disabled"
+        } else {
+            ""
+        };
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+            "$.cache.native_arrow_semantic_codegen",
+            format!(
+                "only Phase 40 validated production native codegen output may seed runtime cache keys{fallback_note}"
+            ),
+        ));
+    }
+
+    let validation = execution
+        .validation()
+        .expect("supported codegen execution must expose validation");
+    Ok(RuntimeCacheKey::build(&RuntimeCacheKeyInput {
+        abi_version: RuntimeAbiVersion::CURRENT,
+        artifact_digest: stable_digest("artifact", bytes),
+        facts_fingerprint: format!(
+            "artifact_kind={};payload_kind={};schema={};model_trace={};native_trace={}",
+            execution.artifact_kind,
+            execution.payload_kind,
+            execution.schema_fingerprint,
+            stable_digest_for_lines("reference-trace", validation.reference_trace()),
+            stable_digest_for_lines("native-trace", validation.native_trace())
+        ),
+        solver_identity: "not-required".to_string(),
+        production_lowering_fingerprint: format!(
+            "backend={};identity={};validation=native-model:phase40;rows={};columns={};output={}",
+            PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND,
+            execution.backend_identity,
+            execution.row_count,
+            execution.column_count,
+            output_buffer_fingerprint_for_execution(execution)
+                .unwrap_or_else(|_| "output=unavailable".to_string())
+        ),
+        backend_identity: RuntimeBackendIdentity {
+            backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+            backend_version: "phase43.1-production-codegen".to_string(),
+            toolchain: execution.backend_identity.clone(),
+            target_triple: "engine-neutral".to_string(),
+            cpu_features: Vec::new(),
+        },
+        projection,
+        predicate,
+        split,
+        policy,
+    }))
+}
+
+pub fn native_arrow_semantic_codegen_replay_evidence(
+    bytes: &[u8],
+    support: &NativeArrowSemanticCodegenSupportReport,
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> Result<NativeArrowSemanticCodegenReplayEvidence, NativeArrowSemanticDiagnostic> {
+    if !support.is_supported() {
+        let diagnostic = support.first_error().cloned().unwrap_or_else(|| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+                "$.codegen.replay.support",
+                "production native codegen replay evidence requires supported inputs",
+            )
+        });
+        return Err(diagnostic);
+    }
+    if !execution.is_supported() {
+        let diagnostic = execution.first_error().cloned().unwrap_or_else(|| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+                "$.codegen.replay.execution",
+                "production native codegen replay evidence requires Phase 40 validated execution",
+            )
+        });
+        return Err(diagnostic);
+    }
+
+    let validation = execution
+        .validation()
+        .expect("supported codegen execution must expose validation");
+    let cache_key = validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
+        bytes,
+        execution,
+        projection,
+        predicate,
+        split,
+        policy,
+    )?;
+    let artifact_digest = stable_digest("artifact", bytes);
+    let support_fingerprint = support_fingerprint(support);
+    let output_buffer_fingerprint = output_buffer_fingerprint_for_execution(execution)?;
+    let reference_trace_fingerprint =
+        stable_digest_for_lines("reference-trace", validation.reference_trace());
+    let native_trace_fingerprint =
+        stable_digest_for_lines("native-trace", validation.native_trace());
+    let validation_fingerprint = stable_digest(
+        "validation",
+        format!(
+            "model={};values={};reference={reference_trace_fingerprint};native={native_trace_fingerprint}",
+            validation.model_trace_matches, validation.value_equivalent,
+        )
+        .as_bytes(),
+    );
+    let replay_fingerprint = stable_digest(
+        "codegen-replay",
+        format!(
+            "artifact={artifact_digest};support={support_fingerprint};output={output_buffer_fingerprint};validation={validation_fingerprint};cache={}:{}",
+            cache_key.stable_id, cache_key.canonical_input
+        )
+        .as_bytes(),
+    );
+
+    Ok(NativeArrowSemanticCodegenReplayEvidence {
+        backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
+        artifact_digest,
+        artifact_kind: execution.artifact_kind.clone(),
+        payload_kind: execution.payload_kind.clone(),
+        schema_fingerprint: execution.schema_fingerprint.clone(),
+        support_fingerprint,
+        output_buffer_fingerprint,
+        reference_trace_fingerprint,
+        native_trace_fingerprint,
+        validation_fingerprint,
+        runtime_cache_stable_id: cache_key.stable_id,
+        runtime_cache_canonical_input: cache_key.canonical_input,
+        replay_fingerprint,
+    })
 }
 
 pub fn verify_native_arrow_semantic_equivalence(
@@ -696,6 +1241,337 @@ pub fn validated_native_arrow_semantic_runtime_cache_key(
         },
         policy,
     }))
+}
+
+fn extract_codegen_column_input(
+    column_index: usize,
+    field: &Field,
+    column: &dyn Array,
+) -> Result<NativeArrowSemanticCodegenColumnInput, NativeArrowSemanticDiagnostic> {
+    if field.data_type() != column.data_type() {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+            format!("$.schema.fields[{column_index}].type"),
+            format!(
+                "schema field type {:?} does not match column type {:?}",
+                field.data_type(),
+                column.data_type()
+            ),
+        ));
+    }
+
+    let data = column.to_data();
+    let row_count = data.len() as u64;
+    let null_count = data.null_count() as u64;
+    let validity_buffer = data
+        .nulls()
+        .map(|nulls| nulls.inner().sliced().as_slice().to_vec());
+
+    let (value_buffer_kind, value_buffer) = match field.data_type() {
+        DataType::Boolean => {
+            let Some(values) = column.as_any().downcast_ref::<BooleanArray>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            (
+                NativeArrowSemanticCodegenBufferKind::BooleanValueBitmap,
+                values.values().sliced().as_slice().to_vec(),
+            )
+        }
+        DataType::Int32 => (
+            NativeArrowSemanticCodegenBufferKind::FixedWidthValue,
+            fixed_width_value_bytes(&data, column_index, 4)?,
+        ),
+        DataType::Int64 => (
+            NativeArrowSemanticCodegenBufferKind::FixedWidthValue,
+            fixed_width_value_bytes(&data, column_index, 8)?,
+        ),
+        DataType::Float32 => (
+            NativeArrowSemanticCodegenBufferKind::FixedWidthValue,
+            fixed_width_value_bytes(&data, column_index, 4)?,
+        ),
+        DataType::Float64 => (
+            NativeArrowSemanticCodegenBufferKind::FixedWidthValue,
+            fixed_width_value_bytes(&data, column_index, 8)?,
+        ),
+        other => {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedType,
+                format!("$.schema.fields[{column_index}].type"),
+                format!(
+                    "unsupported production native codegen type {other:?}; expected Boolean, Int32, Int64, Float32, or Float64"
+                ),
+            ));
+        }
+    };
+
+    Ok(NativeArrowSemanticCodegenColumnInput {
+        index: column_index,
+        name: field.name().clone(),
+        data_type: field.data_type().clone(),
+        nullable: field.is_nullable(),
+        row_count,
+        null_count,
+        value_buffer_kind,
+        value_buffer,
+        validity_buffer,
+    })
+}
+
+fn record_batch_from_codegen_output(
+    support: &NativeArrowSemanticCodegenSupportReport,
+    output_columns: Vec<NativeArrowSemanticCodegenOutputColumn>,
+) -> Result<RecordBatch, NativeArrowSemanticDiagnostic> {
+    if output_columns.len() != support.columns.len() {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+            "$.codegen.output.columns",
+            format!(
+                "production native codegen returned {} column(s), expected {}",
+                output_columns.len(),
+                support.columns.len()
+            ),
+        ));
+    }
+
+    let mut arrays = Vec::with_capacity(support.columns.len());
+    for (expected, output) in support.columns.iter().zip(output_columns) {
+        if output.index != expected.index {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+                format!("$.codegen.output.columns[{}].index", expected.index),
+                format!(
+                    "production native codegen returned column index {}, expected {}",
+                    output.index, expected.index
+                ),
+            ));
+        }
+        arrays.push(array_from_codegen_column(expected, output)?);
+    }
+
+    let fields = support
+        .columns
+        .iter()
+        .map(|column| Field::new(&column.name, column.data_type.clone(), column.nullable))
+        .collect::<Vec<_>>();
+    RecordBatch::try_new(Arc::new(arrow_schema::Schema::new(fields)), arrays).map_err(|err| {
+        NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+            "$.codegen.output.record_batch",
+            format!("production native codegen output RecordBatch construction failed: {err}"),
+        )
+    })
+}
+
+fn array_from_codegen_column(
+    expected: &NativeArrowSemanticCodegenColumnInput,
+    output: NativeArrowSemanticCodegenOutputColumn,
+) -> Result<ArrayRef, NativeArrowSemanticDiagnostic> {
+    if output.value_buffer.len() != expected.value_buffer.len() {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+            format!("$.codegen.output.columns[{}].value_buffer", expected.index),
+            format!(
+                "production native codegen value buffer has {} bytes, expected {}",
+                output.value_buffer.len(),
+                expected.value_buffer.len()
+            ),
+        ));
+    }
+
+    let expected_validity_len = expected
+        .validity_buffer
+        .as_ref()
+        .map(|buffer| buffer.len())
+        .unwrap_or(0);
+    let output_validity_len = output
+        .validity_buffer
+        .as_ref()
+        .map(|buffer| buffer.len())
+        .unwrap_or(0);
+    if output_validity_len != expected_validity_len {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+            format!(
+                "$.codegen.output.columns[{}].validity_buffer",
+                expected.index
+            ),
+            format!(
+                "production native codegen validity buffer has {} bytes, expected {}",
+                output_validity_len, expected_validity_len
+            ),
+        ));
+    }
+
+    let nulls = null_buffer_from_codegen_column(expected, output.validity_buffer)?;
+    let data = ArrayData::builder(expected.data_type.clone())
+        .len(expected.row_count as usize)
+        .add_buffer(Buffer::from(output.value_buffer))
+        .nulls(nulls)
+        .build()
+        .map_err(|err| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+                format!("$.codegen.output.columns[{}]", expected.index),
+                format!("production native codegen Arrow array construction failed: {err}"),
+            )
+        })?;
+
+    match expected.data_type {
+        DataType::Boolean => Ok(Arc::new(BooleanArray::from(data)) as ArrayRef),
+        DataType::Int32 => Ok(Arc::new(PrimitiveArray::<Int32Type>::from(data)) as ArrayRef),
+        DataType::Int64 => Ok(Arc::new(PrimitiveArray::<Int64Type>::from(data)) as ArrayRef),
+        DataType::Float32 => Ok(Arc::new(PrimitiveArray::<Float32Type>::from(data)) as ArrayRef),
+        DataType::Float64 => Ok(Arc::new(PrimitiveArray::<Float64Type>::from(data)) as ArrayRef),
+        _ => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedType,
+            format!("$.schema.fields[{}].type", expected.index),
+            "unsupported production native codegen output type",
+        )),
+    }
+}
+
+fn null_buffer_from_codegen_column(
+    expected: &NativeArrowSemanticCodegenColumnInput,
+    validity_buffer: Option<Vec<u8>>,
+) -> Result<Option<NullBuffer>, NativeArrowSemanticDiagnostic> {
+    let Some(buffer) = validity_buffer else {
+        if expected.null_count == 0 {
+            return Ok(None);
+        }
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+            format!(
+                "$.codegen.output.columns[{}].validity_buffer",
+                expected.index
+            ),
+            "production native codegen omitted a required nullable validity buffer",
+        ));
+    };
+
+    let nulls = NullBuffer::from_unsliced_buffer(Buffer::from(buffer), expected.row_count as usize);
+    if expected.null_count > 0 && nulls.is_none() {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+            format!("$.codegen.output.columns[{}].validity_buffer", expected.index),
+            "production native codegen validity buffer reported all-valid for a nullable column with nulls",
+        ));
+    }
+    Ok(nulls)
+}
+
+fn fixed_width_value_bytes(
+    data: &arrow_data::ArrayData,
+    column_index: usize,
+    byte_width: usize,
+) -> Result<Vec<u8>, NativeArrowSemanticDiagnostic> {
+    let Some(buffer) = data.buffers().first() else {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+            format!("$.columns[{column_index}].buffers[0]"),
+            "fixed-width Arrow column did not expose a value buffer",
+        ));
+    };
+    let offset = data.offset().saturating_mul(byte_width);
+    let len = data.len().saturating_mul(byte_width);
+    if offset.saturating_add(len) > buffer.len() {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+            format!("$.columns[{column_index}].buffers[0]"),
+            format!(
+                "fixed-width value buffer has {} bytes but offset {} plus length {} was requested",
+                buffer.len(),
+                offset,
+                len
+            ),
+        ));
+    }
+    Ok(buffer.slice_with_length(offset, len).as_slice().to_vec())
+}
+
+fn schema_fingerprint(batch: &RecordBatch) -> String {
+    let mut text = format!("rows={};columns={}", batch.num_rows(), batch.num_columns());
+    for (idx, field) in batch.schema().fields().iter().enumerate() {
+        text.push_str(&format!(
+            ";field[{idx}]={}:{:?}:nullable={}",
+            field.name(),
+            field.data_type(),
+            field.is_nullable()
+        ));
+    }
+    stable_digest("schema", text.as_bytes())
+}
+
+fn support_fingerprint(support: &NativeArrowSemanticCodegenSupportReport) -> String {
+    if !support.is_supported() {
+        return stable_digest("codegen-support", b"unsupported");
+    }
+    let mut text = format!(
+        "backend={};artifact={};payload={};rows={};columns={};schema={}",
+        support.backend,
+        support.artifact_kind,
+        support.payload_kind,
+        support.row_count,
+        support.column_count,
+        support.schema_fingerprint
+    );
+    for column in support.columns() {
+        text.push_str(&format!(
+            ";column[{}]={}:{:?}:nullable={}:rows={}:nulls={}:kind={}:value={}:validity={}",
+            column.index,
+            column.name,
+            column.data_type,
+            column.nullable,
+            column.row_count,
+            column.null_count,
+            column.value_buffer_kind.as_str(),
+            stable_digest("value-buffer", &column.value_buffer),
+            column
+                .validity_buffer
+                .as_ref()
+                .map(|buffer| stable_digest("validity-buffer", buffer))
+                .unwrap_or_else(|| "none".to_string())
+        ));
+    }
+    stable_digest("codegen-support", text.as_bytes())
+}
+
+fn output_buffer_fingerprint_for_execution(
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+) -> Result<String, NativeArrowSemanticDiagnostic> {
+    let Some(output) = execution.output() else {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+            "$.codegen.replay.output",
+            "production native codegen replay evidence requires output buffers",
+        ));
+    };
+    output_buffer_fingerprint_for_batch(output)
+}
+
+fn output_buffer_fingerprint_for_batch(
+    batch: &RecordBatch,
+) -> Result<String, NativeArrowSemanticDiagnostic> {
+    let mut text = format!("rows={};columns={}", batch.num_rows(), batch.num_columns());
+    for (idx, field) in batch.schema().fields().iter().enumerate() {
+        let column = extract_codegen_column_input(idx, field, batch.column(idx).as_ref())?;
+        text.push_str(&format!(
+            ";column[{}]={}:{:?}:nullable={}:rows={}:nulls={}:kind={}:value={}:validity={}",
+            column.index,
+            column.name,
+            column.data_type,
+            column.nullable,
+            column.row_count,
+            column.null_count,
+            column.value_buffer_kind.as_str(),
+            stable_digest("value-buffer", &column.value_buffer),
+            column
+                .validity_buffer
+                .as_ref()
+                .map(|buffer| stable_digest("validity-buffer", buffer))
+                .unwrap_or_else(|| "none".to_string())
+        ));
+    }
+    Ok(stable_digest("codegen-output", text.as_bytes()))
 }
 
 fn decode_reference_batch(bytes: &[u8]) -> Result<RecordBatch, NativeArrowSemanticDiagnostic> {

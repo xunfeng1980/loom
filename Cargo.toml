@@ -25,6 +25,7 @@ members = [
 # arrow-* crate — verified by `cargo tree -d | grep arrow` returning zero lines.
 arrow        = { version = "=58.3.0", features = ["ffi"] }
 arrow-array  = { version = "=58.3.0" }
+arrow-buffer = { version = "=58.3.0" }
 arrow-schema = { version = "=58.3.0" }
 arrow-data   = { version = "=58.3.0" }
 arrow-ipc    = { version = "=58.3.0" }

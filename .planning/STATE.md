@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 43.1 inserted; ready for production native codegen realization planning
-last_updated: "2026-06-09T11:40:00.000Z"
-last_activity: 2026-06-09 -- Phase 43.1 inserted before ABI freeze for real MLIR/LLVM/JIT/native backend output
+stopped_at: Phase 43.2 in progress; 2/5 plans complete, next is 43.2-03 adversarial validation
+last_updated: "2026-06-09T12:40:00.000Z"
+last_activity: 2026-06-09 -- Phase 43.2-02 completed production native-codegen route closure with real JIT route evidence and fail-closed/fallback negatives
 progress:
-  total_phases: 48
-  completed_phases: 41
-  total_plans: 164
-  completed_plans: 164
-  percent: 85
+  total_phases: 49
+  completed_phases: 44
+  total_plans: 173
+  completed_plans: 170
+  percent: 91
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 43.1 — Production Native Codegen Realization
+**Current focus:** Phase 43.2 — Production Native Codegen Stabilization and Production Readiness
 
 ## Current Position
 
-Phase 43.1 READY: Production Native Codegen Realization
-Plan: 0 of 0
-Status: Phase 43 is suspended after 3/3 plans because live StarRocks runtime evidence is unavailable; Phase 43.1 is inserted before ABI freeze to realize true native codegen for the Phase 35 supported Arrow semantic matrix
-Last activity: 2026-06-09 -- Phase 43.1 inserted before Phase 44 so ABI freeze is shaped by real native-codegen output, validation admission, and cache/backend identity
+Phase 43.2 IN PROGRESS: Production Native Codegen Stabilization and Production Readiness
+Plan: 2 of 5 complete
+Status: Phase 43.2 is in progress. Plans 43.2-01 and 43.2-02 completed deterministic replay evidence, shape-aware cache identity, production route closure, real JIT route evidence, and fail-closed/fallback route negatives; remaining work covers adversarial validation, resource/performance behavior, and ABI-pressure handoff.
+Last activity: 2026-06-09 -- Phase 43.2-02 completed
 
-Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is the next active phase.
+Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is complete; Phase 43.2 has 2/5 plans complete; Phase 44 waits on 43.2.
 
 ## Progress Snapshot
 
-- Completed phases: 41 / 48
-- Completed executable plans: 164 / 164
+- Completed phases: 44 / 49
+- Completed executable plans: 170 / 173
 - Current milestone stage: MVP2 planned next / coverage expansion
-- Current position: Phase 43.1 should replace the bounded Rust/Arrow native-copy path with true MLIR/LLVM/JIT/native backend output for the Phase 35 supported Arrow semantic matrix before Phase 44 freezes the ABI
-- Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
+- Current position: Phase 43.2 must stabilize the real Phase 43.1 native-codegen path before Phase 44 freezes ABI fields and ownership rules
+- Last verified gate: `bash scripts/mvp2-verify.sh` passed before Phase 43.2 insertion, including the Phase 43.1 production native codegen realization gate
 
 **Completed phase plan counts:**
 
@@ -73,6 +73,8 @@ Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspen
 | 39 | Model Rust Interpreter Consistency | 2/2 complete |
 | 40 | Native Model Validation | 2/2 complete |
 | 41 | Verified-Lineage Closeout | 2/2 complete |
+| 43.1 | Production Native Codegen Realization | 4/4 complete |
+| 43.2 | Production Native Codegen Stabilization and Production Readiness | 2/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -280,8 +282,15 @@ None yet.
 - Phase 43 43-01 complete: added typed StarRocks runtime evidence/status structs, validation that accepts only identity-bound descriptor output matching oracle/DuckDB rows or scalars, explicit missing-runtime/unsupported non-acceptance evidence, and focused runtime contract tests. No live StarRocks query claim is made by 43-01.
 - Phase 43 43-02 complete: added `scripts/starrocks-live-runtime-test.sh` and `43-STARROCKS-RUNTIME-REPORT.md`. Default local contract mode passes while explicitly reporting missing live StarRocks runtime evidence as non-accepted; strict live mode fails closed without StarRocks env/client inputs. `ENGINE-03` is complete; `ENGINE-01` remains incomplete until actual live runtime rows are collected.
 - Phase 43 43-03 complete: added `43-ABI-FINDINGS.md`, wired `scripts/starrocks-live-runtime-test.sh` into `scripts/mvp2-verify.sh`, and preserved the blocker that actual live StarRocks rows are still required for `ENGINE-01`.
-- Phase 43 suspended: live StarRocks runtime/client availability is an external blocker, so `ENGINE-01` is deferred to a pre-GA reactivation gate instead of blocking Phase 44. Phase 44 may proceed with an explicit N=1/live-second-engine caveat; no accepted StarRocks runtime claim exists yet.
+- Phase 43 suspended: live StarRocks runtime/client availability is an external blocker, so `ENGINE-01` is deferred to a pre-GA reactivation gate instead of blocking Phase 43.2/44 planning. Phase 44 may proceed only after Phase 43.2, with an explicit N=1/live-second-engine caveat; no accepted StarRocks runtime claim exists yet.
 - Phase 43.1 inserted: Production Native Codegen Realization is a 44-pre/44A phase before ABI freeze. It must produce Phase 35 supported Arrow semantic output through real MLIR/LLVM/JIT/native backend codegen, require Phase 40 native/model validation before admission, and bind runtime/cache identity to backend/toolchain/pipeline/trace fingerprints.
+- [Phase 43.1 P01]: Production native codegen preparation is distinct from Phase 35 builder-copy execution: `prepare_native_arrow_semantic_codegen_support` extracts real Arrow value/validity buffers for verifier-accepted `LMC2(LMA1)` and direct `LMA1` artifacts, while MLIR/JIT output remains Plan 43.1-02 scope.
+- [Phase 43.1 P02]: Production Arrow semantic native codegen now uses a real melior ExecutionEngine entry, `loom_arrow_semantic_codegen_buffers`, with typed memrefs for Int32/Int64/Float32/Float64 values and byte memrefs for Boolean/value and nullable validity bitmaps.
+- [Phase 43.1 P03]: Production codegen output is admitted only after rebuilding Arrow arrays from JIT buffers and passing Phase 40 native/model validation; divergent output fails closed or takes explicit interpreter fallback and cannot seed native cache identity.
+- [Phase 43.1 P04]: `scripts/production-native-codegen-realization-test.sh` is the focused no-skip gate; it unsets `LOOM_ALLOW_NATIVE_TOOL_SKIP`, runs the real `--features melior` JIT test, and is wired into `scripts/mvp2-verify.sh`.
+- Phase 43.2 inserted: Production Native Codegen Stabilization and Production Readiness is a 44-pre phase after Phase 43.1 and before ABI freeze. It must harden the real native-codegen path for deterministic replay, production-route execution, adversarial output validation, resource/performance behavior, diagnostics/observability, and a Phase 44 ABI-freeze dossier before any ABI is frozen.
+- [Phase 43.2 P01]: Added deterministic replay evidence and shape-aware production native-codegen cache keys. Replay evidence now records support fingerprints, output buffer fingerprints, Phase 40 reference/native trace fingerprints, validation fingerprints, runtime cache canonical input, and a combined replay fingerprint. Projection, predicate, split, backend identity, and artifact drift alter replay/cache evidence, while unsupported or divergent executions cannot produce positive replay evidence.
+- [Phase 43.2 P02]: Added production native-codegen route reports in `loom-native-melior`. The route now composes support extraction, real JIT execution, Phase 40 validation, runtime decision, replay evidence, and cacheability; unsupported inputs, cancellation, default non-feature JIT unavailability, and divergent backend output fail closed or fallback explicitly without native cache admission.
 
 ### Quick Tasks Completed
 

@@ -9,6 +9,7 @@ description = "Pure-Rust decode library — zero FFI, zero vortex dependencies (
 [dependencies]
 arrow        = { workspace = true }
 arrow-array  = { workspace = true }
+arrow-buffer = { workspace = true }
 arrow-schema = { workspace = true }
 arrow-data   = { workspace = true }
 arrow-ipc    = { workspace = true }

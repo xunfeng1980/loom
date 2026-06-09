@@ -35,5 +35,9 @@ info "Running Phase 43 StarRocks live runtime integration gate..."
 bash scripts/starrocks-live-runtime-test.sh
 ok "scripts/starrocks-live-runtime-test.sh"
 
+info "Running Phase 43.1 production native codegen realization gate..."
+bash scripts/production-native-codegen-realization-test.sh
+ok "scripts/production-native-codegen-realization-test.sh"
+
 echo ""
 echo "${GRN}=== MVP2 release gate PASSED ===${RST}"

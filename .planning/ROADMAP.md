@@ -85,12 +85,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption (completed 2026-06-09)
 - [x] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety (completed 2026-06-09)
 
-**MVP2 — Coverage, Second Engine, Productization** *(active through Phase 43.1. Widen coverage, realize true native codegen before ABI freeze, track the suspended second-engine runtime proof, then freeze the ABI and build distribution/security on top of the MVP1.5 lineage record.)*
+**MVP2 — Coverage, Second Engine, Productization** *(active through Phase 43.2. Widen coverage, realize and stabilize true native codegen before ABI freeze, track the suspended second-engine runtime proof, then freeze the ABI and build distribution/security on top of the MVP1.5 lineage record.)*
 
 - [x] **Phase 42: Verified + Native Coverage Expansion** - Widen the accepted Vortex/Lance/Parquet encoding/layout/shape matrix, each new shape carrying a paired verified-lineage + native-execution + interpreter-fallback disposition
 - [ ] **Phase 43: StarRocks Live Runtime Integration** - Suspended pending live StarRocks runtime/client availability; completed contract/gate/ABI-findings work remains retained, while `ENGINE-01` moves to a pre-GA reactivation gate
-- [ ] **Phase 43.1: Production Native Codegen Realization** - 44-pre / 44A inserted phase: replace the current Rust/Arrow native-copy placeholder with true MLIR/LLVM/JIT/native backend output for the Phase 35 Arrow semantic matrix, validated by Phase 40 before any runtime/cache admission
-- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, and Phase 43.1's real native-codegen requirements; live second-engine runtime evidence is deferred to pre-GA reactivation
+- [x] **Phase 43.1: Production Native Codegen Realization** - 44-pre / 44A inserted phase: replace the current Rust/Arrow native-copy placeholder with true MLIR/LLVM/JIT/native backend output for the Phase 35 Arrow semantic matrix, validated by Phase 40 before any runtime/cache admission
+- [ ] **Phase 43.2: Production Native Codegen Stabilization and Production Readiness** - 44-pre stabilization phase: harden the real Phase 43.1 native-codegen path with deterministic replay, production-route evidence, adversarial validation, perf/soak/resource checks, and an ABI-freeze dossier
+- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, Phase 43.1's real native-codegen requirements, and Phase 43.2's production-readiness evidence; live second-engine runtime evidence is deferred to pre-GA reactivation
 - [ ] **Phase 45: Content-Addressed Distribution and Signing** - Content-hash artifact identity, signatures, and attestation that binds the MVP1.5 verified-lineage record to the artifact
 - [ ] **Phase 46: Remote Fetch and Encryption** - Remote/object-store ingress with fail-closed remote verification and encryption in transit/at rest
 - [ ] **Phase 47: Production Hardening and GA Gate** - Scale performance, fuzz/soak, security review, and the general-availability release gate
@@ -960,6 +961,7 @@ Plans:
 **Requirements:** PHASE-35
 **Ordering decision:** Native Arrow semantic execution should remain separate from DuckDB SQL broadening so the project does not confuse "queryable" with "natively executed." If native support starts before Phase 34 completes, it must stay engine-neutral and avoid DuckDB SQL claims. This phase must not count route scaffolding, zero/reference buffers, toolchain skip, or interpreter fallback as positive native semantic evidence.
 **Plans:**
+
 - [x] 35-01-PLAN.md - Engine-neutral native Arrow semantic executor for primitive nullable `LMC2(LMA1)` / direct `LMA1`
 - [x] 35-02-PLAN.md - Explicit native/reference equivalence report and mismatch diagnostics
 - [x] 35-03-PLAN.md - Runtime/cache identity evidence for native Arrow semantic execution
@@ -1078,11 +1080,11 @@ Plans:
 
 ## Milestone: MVP2 — Coverage, Second Engine, Productization
 
-> **Status: Phase 43.1 ready.** Phase 42 is complete. Phase 43 completed its contract/gate/ABI-findings work but is suspended until a live StarRocks runtime/client is available; `ENGINE-01` is deferred to a pre-GA reactivation gate rather than blocking ABI freeze planning. Phase 43.1 is inserted before ABI freeze so the runtime ABI is shaped by real native codegen needs, not by the current Rust/Arrow copy placeholder.
+> **Status: Phase 43.2 in progress.** Phase 42 is complete. Phase 43 completed its contract/gate/ABI-findings work but is suspended until a live StarRocks runtime/client is available; `ENGINE-01` is deferred to a pre-GA reactivation gate rather than blocking ABI freeze planning. Phase 43.1 realized real native codegen, and Phase 43.2 is now hardening that path before ABI freeze so the runtime ABI is shaped by stabilized production evidence, not only a newly green JIT slice.
 
-**Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) realize true native codegen for the supported Arrow semantic matrix before freezing ABI, (3) freeze and productize the ABI with every live-engine gap explicitly tracked, and (4) revalidate engine independence before GA once a genuine second consumer is available.
+**Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) realize and stabilize true native codegen for the supported Arrow semantic matrix before freezing ABI, (3) freeze and productize the ABI with every live-engine gap explicitly tracked, and (4) revalidate engine independence before GA once a genuine second consumer is available.
 
-**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widened coverage and attempted the second-engine runtime proof. Because the live StarRocks runtime is externally blocked, Phase 43's contract and ABI findings are retained. Before ABI freeze, Phase 43.1 must turn the bounded native Arrow semantic path into real MLIR/LLVM/JIT/native backend output so Phase 44 freezes an ABI shaped by the real native execution contract. `ENGINE-01` must still be reactivated before GA rather than silently waived.
+**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widened coverage and attempted the second-engine runtime proof. Because the live StarRocks runtime is externally blocked, Phase 43's contract and ABI findings are retained. Before ABI freeze, Phase 43.1 must turn the bounded native Arrow semantic path into real MLIR/LLVM/JIT/native backend output, and Phase 43.2 must harden that path enough that Phase 44 freezes an ABI shaped by stable production behavior rather than first-pass green tests. `ENGINE-01` must still be reactivated before GA rather than silently waived.
 
 ### Phase 42: Verified + Native Coverage Expansion
 
@@ -1118,7 +1120,7 @@ Plans:
 
 ### Phase 43.1: Production Native Codegen Realization (INSERTED)
 
-**Status:** Not started.
+**Status:** Complete as of 2026-06-09.
 **Goal:** 44-pre / 44A phase: for the full Phase 35 supported Arrow semantic matrix, produce Arrow buffers/RecordBatch through the real MLIR/LLVM/JIT/native backend path rather than the current Rust/Arrow copy placeholder; every execution must pass Phase 40 native/model validation, fail closed or fall back on divergence, and bind cache identity to backend/toolchain/pipeline/trace fingerprints.
 **Requirements:** CODEGEN-01, CODEGEN-02, CODEGEN-03
 **Depends on:** Phase 42 coverage, Phase 35 native Arrow semantic supported matrix, Phase 40 native/model validation, Phase 23 production backend/JIT seed, and Phase 43 ABI findings. Does not depend on closing suspended `ENGINE-01`.
@@ -1134,13 +1136,42 @@ Plans:
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 43.1 to break down)
+- [x] 43.1-01-PLAN.md - Arrow semantic native-codegen contract, verifier-gated support classification, and real value/validity buffer extraction (CODEGEN-01, CODEGEN-03)
+- [x] 43.1-02-PLAN.md - Production MLIR/LLVM/JIT output for typed primitive values, Boolean bitmaps, and nullable validity bitmaps (CODEGEN-01)
+- [x] 43.1-03-PLAN.md - Phase 40 validation admission, fail-closed/fallback routing, and production codegen cache identity (CODEGEN-01, CODEGEN-02, CODEGEN-03)
+- [x] 43.1-04-PLAN.md - Focused release gate, final native-codegen report, docs, and Phase 44 ABI-freeze handoff (CODEGEN-01, CODEGEN-02, CODEGEN-03)
+
+### Phase 43.2: Production Native Codegen Stabilization and Production Readiness (INSERTED)
+
+**Status:** In progress. Plans 43.2-01 and 43.2-02 completed deterministic replay, shape-aware cache identity, production route closure, real JIT route evidence, and fail-closed/fallback route negatives on 2026-06-09.
+**Goal:** 44-pre stabilization phase: take the real Phase 43.1 MLIR/LLVM/JIT/native Arrow semantic path from "implemented and validated on the focused matrix" to "stable enough to freeze around." The phase must harden deterministic replay, production runtime routing, adversarial validation, resource/performance behavior, diagnostics, and ABI-pressure evidence before Phase 44 freezes any host/runtime contract.
+**Requirements:** CODEGEN-STABLE-01, CODEGEN-STABLE-02, CODEGEN-STABLE-03, CODEGEN-STABLE-04, CODEGEN-STABLE-05
+**Depends on:** Phase 43.1 production native codegen realization, Phase 40 native/model validation, Phase 35 supported Arrow semantic matrix, Phase 42 coverage surface, Phase 43 ABI findings, and MVP1 Phase 22 runtime ABI. Does not depend on closing suspended `ENGINE-01`.
+**Success Criteria** (what must be TRUE):
+
+  1. Real native-codegen executions are deterministic and replayable across repeated runs: generated MLIR/LLVM pipeline identity, toolchain identity, support-report fingerprints, output buffer digests, validation traces, and runtime/cache keys remain stable for unchanged inputs, while any artifact/schema/toolchain/pipeline/projection/predicate/split drift is detected before cache admission.
+  2. The production runtime path, not only test-local helpers, exercises the Phase 43.1 JIT/native backend under the supported matrix with strict fail-closed behavior for unsupported shapes, cancellation, missing toolchains, validation divergence, cache mismatch, and output buffer corruption.
+  3. Adversarial and boundary coverage stress the real native output contract: nullable/non-null columns, Boolean bitmaps, sliced buffers, zero-row and one-row batches, multi-column primitive matrices, invalid buffer lengths, wrong null counts, offset/bitmap drift, schema mismatch, trace divergence, and malformed `LMC2`/direct `LMA1` bridge inputs.
+  4. Production readiness evidence records resource and performance behavior: repeated execution/soak, cache hit/miss/replay behavior, cancellation latency, memory ownership and release discipline, native-vs-interpreter timing on representative Phase 35 rows, and no accepted path that relies on `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
+  5. A Phase 44 handoff dossier names the exact ABI pressures discovered by real native codegen: buffer ownership, alignment, lifetime, error/status codes, backend/toolchain identity fields, trace fingerprints, validation/fallback statuses, cache-key schema, observability fields, concurrency/reentrancy assumptions, and remaining TCB/non-claims.
+
+**Non-goals:** No expansion beyond the Phase 35 supported Arrow semantic matrix except edge/boundary cases needed to stabilize that matrix. No ABI freeze; Phase 44 owns the frozen contract. No verified MLIR/LLVM compilation proof. No live StarRocks runtime claim. No performance promise beyond measured evidence for the bounded matrix.
+**Ordering decision:** Phase 43.1 proved the path can produce real native buffers; Phase 43.2 must prove the path is stable, diagnosable, replayable, and production-routable before ABI freeze. Freezing immediately after first-pass codegen risks locking an ABI that has not yet absorbed failure modes, cache replay, lifecycle, observability, and resource behavior.
+**Plans:** 2/5 complete. Five planned slices across 3 waves (Wave 1: determinism/replay + production route closure; Wave 2: adversarial validation + resource/performance hardening; Wave 3: production readiness gate + ABI-freeze dossier).
+
+Plans:
+
+- [x] 43.2-01-PLAN.md - Deterministic replay, toolchain/pipeline fingerprinting, and cache-key drift hardening (CODEGEN-STABLE-01, CODEGEN-STABLE-04)
+- [x] 43.2-02-PLAN.md - Production runtime route closure for real JIT/native backend execution, fallback, cancellation, and cache admission (CODEGEN-STABLE-02, CODEGEN-STABLE-04)
+- [ ] 43.2-03-PLAN.md - Adversarial native output validation matrix for buffers, bitmaps, offsets, schemas, traces, and malformed artifacts (CODEGEN-STABLE-02, CODEGEN-STABLE-03)
+- [ ] 43.2-04-PLAN.md - Soak, resource ownership, memory/lifetime checks, and bounded native-vs-interpreter performance evidence (CODEGEN-STABLE-04)
+- [ ] 43.2-05-PLAN.md - Production readiness gate, diagnostics/observability contract, and Phase 44 ABI-freeze dossier (CODEGEN-STABLE-01, CODEGEN-STABLE-02, CODEGEN-STABLE-03, CODEGEN-STABLE-04, CODEGEN-STABLE-05)
 
 ### Phase 44: ABI Freeze and Compatibility Contract
 
 **Status:** Not started.
 **Goal:** Freeze the host native runtime ABI with a versioned, documented compatibility policy.
-**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 44 entry blocker.
+**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), Phase 43.2 (production native codegen stabilization/readiness), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 44 entry blocker.
 **Requirements:** ABI2-01, ABI2-02, ABI2-03
 **Success Criteria** (what must be TRUE):
 
@@ -1149,7 +1180,7 @@ Plans:
   3. An ABI conformance gate passes against the frozen header using DuckDB plus the Phase 43 StarRocks descriptor/runtime-evidence contract where live runtime is unavailable; ABI-drift guard fails closed on any unversioned change, and the live StarRocks conformance gap remains a named pre-GA blocker.
 
 **Non-goals:** No new engines or formats. No distribution/security transport. The freeze does not claim toolchain verification (MLIR/LLVM stays in TCB).
-**Ordering decision:** Freeze after the coverage matrix, Phase 43.1 real native codegen, and Phase 43 ABI findings have shaped the contract, while preserving an explicit live-second-engine caveat. The freeze must not claim that StarRocks runtime evidence exists until `ENGINE-01` is reactivated and closed.
+**Ordering decision:** Freeze after the coverage matrix, Phase 43.1 real native codegen, Phase 43.2 production-readiness evidence, and Phase 43 ABI findings have shaped the contract, while preserving an explicit live-second-engine caveat. The freeze must not claim that StarRocks runtime evidence exists until `ENGINE-01` is reactivated and closed.
 **Plans:** 2 plans across 2 waves (Wave 1: freeze + version handshake; Wave 2: conformance + drift gate).
 
 ### Phase 45: Content-Addressed Distribution and Signing
@@ -1216,7 +1247,7 @@ MVP1.5 P36→37→38→39 (no P35 dep) ───────┘
 MVP1.5 P36–41 ──> verified-lineage record ─┐
                                             ├─> MVP2 P42 (coverage, lineage-backed)
                                             └─> MVP2 P45 (attestation binds record)
-MVP2: P42 coverage ──> P43.1 native codegen ──> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
+MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
       P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before P47
 ```
 
@@ -1272,7 +1303,8 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 3/3 | Complete (MVP2) | 42-03 complete |
 | 43. StarRocks Live Runtime Integration | 3/3 | Suspended pending live evidence (MVP2; reactivates before GA) | - |
-| 43.1. Production Native Codegen Realization | 0/0 | Inserted / Planned (MVP2 44-pre) | - |
+| 43.1. Production Native Codegen Realization | 4/4 | Complete (MVP2 44-pre) | 2026-06-09 |
+| 43.2. Production Native Codegen Stabilization and Production Readiness | 2/5 | In Progress (MVP2 44-pre) | 43.2-02 complete |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |

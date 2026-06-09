@@ -26,7 +26,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts over the Phase 34 primitive/nullable SQL surface |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
-| Native execution | Engine-neutral native Arrow semantic execution for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts, with explicit equivalence, runtime/cache identity, and fail-closed unsupported-shape diagnostics |
+| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts; every admitted output is Phase 40 native/model validated and cache identity binds backend/pipeline/trace fingerprints |
 | Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
