@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 36 complete; ready for Phase 37
-last_updated: "2026-06-09T09:01:28Z"
-last_activity: 2026-06-09 -- Phase 36 36-01 completed verified-lineage contract, TCB declaration, and obligation matrix
+status: completed
+stopped_at: Phase 37 context gathered
+last_updated: "2026-06-09T09:10:29.808Z"
+last_activity: 2026-06-09 -- 36-01 completed verified-lineage contract, TCB declaration, obligation matrix, requirements, roadmap/state closeout
 progress:
   total_phases: 47
-  completed_phases: 36
+  completed_phases: 31
   total_plans: 154
-  completed_plans: 154
-  percent: 76
+  completed_plans: 135
+  percent: 66
 ---
 
 # Project State
@@ -330,8 +330,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-09T09:01:28Z
-Stopped at: Phase 36 complete; ready for Phase 37
+Last session: 2026-06-09T09:10:29.792Z
+Stopped at: Phase 37 context gathered
 
 Phase 17 handoff:
 
@@ -378,7 +378,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/36-verified-lineage-contract-and-tcb-declaration/36-CONTEXT.md
+Resume file: .planning/phases/37-lean-stage-b-lean-rust-verifier-correspondence/37-CONTEXT.md
 
 ## Performance Metrics
 
