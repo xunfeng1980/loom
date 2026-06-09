@@ -21,10 +21,10 @@ tech-stack:
 
 key-files:
   created:
-    - crates/loom-vortex-ingress/tests/source_ingress_handoff.rs
+    - ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs
   modified:
-    - crates/loom-vortex-ingress/src/source_contract.rs
-    - crates/loom-vortex-ingress/src/lib.rs
+    - ingress/loom-vortex-ingress/src/source_contract.rs
+    - ingress/loom-vortex-ingress/src/lib.rs
 
 key-decisions:
   - "Accepted Vortex source handoff returns bytes only in SourceIngressAcceptedArtifact after verify_artifact accepts the emitted LMC1."
@@ -74,9 +74,9 @@ completed: 2026-06-08
 
 ## Files Created/Modified
 
-- `crates/loom-vortex-ingress/src/source_contract.rs` - Added verifier-routed source artifact handoff, artifact verification summary creation, source-native oracle evidence, and stable unsupported conversion diagnostics.
-- `crates/loom-vortex-ingress/src/lib.rs` - Re-exported the accepted artifact struct and handoff helper from the crate root.
-- `crates/loom-vortex-ingress/tests/source_ingress_handoff.rs` - Added accepted `LMP1`/`LMT1`, oracle evidence, unsupported valid, and rejected malformed contract tests.
+- `ingress/loom-vortex-ingress/src/source_contract.rs` - Added verifier-routed source artifact handoff, artifact verification summary creation, source-native oracle evidence, and stable unsupported conversion diagnostics.
+- `ingress/loom-vortex-ingress/src/lib.rs` - Re-exported the accepted artifact struct and handoff helper from the crate root.
+- `ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs` - Added accepted `LMP1`/`LMT1`, oracle evidence, unsupported valid, and rejected malformed contract tests.
 
 ## Decisions Made
 

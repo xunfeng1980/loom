@@ -26,7 +26,7 @@ project invariant: `loom-core` remains Vortex-free.
 Recommended implementation shape:
 
 - Add or isolate an ingress-only crate/module, preferably
-  `crates/loom-vortex-ingress`, as the only place where `vortex-file` is
+  `ingress/loom-vortex-ingress`, as the only place where `vortex-file` is
   allowed.
 - Keep `loom-core`, `loom-ffi`, and the existing verifier/lowering code free of
   `vortex-*` dependencies.
@@ -331,7 +331,7 @@ Verdict: Reject.
 
 ## Proposed Artifacts
 
-- `crates/loom-vortex-ingress/` or an equivalent isolated module.
+- `ingress/loom-vortex-ingress/` or an equivalent isolated module.
 - `VortexIngressReport`:
   - `status`,
   - `diagnostics`,

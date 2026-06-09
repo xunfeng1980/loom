@@ -27,7 +27,7 @@ slice.
 ### D-15-01: Isolate real Vortex file APIs
 
 `vortex-file` may be introduced only in an ingress layer, preferably
-`crates/loom-vortex-ingress`. `loom-core` and `loom-ffi` must remain free of
+`ingress/loom-vortex-ingress`. `loom-core` and `loom-ffi` must remain free of
 `vortex-*` dependencies. `loom-cli` may call the ingress crate but must not
 depend on `vortex-file` directly.
 
@@ -38,7 +38,7 @@ conflicts with Phase 15. Replace it with a scoped guard:
 
 - `loom-core` has no Vortex/FastLanes dependency.
 - `loom-ffi` has no Vortex/FastLanes dependency.
-- only `crates/loom-vortex-ingress/Cargo.toml` may directly name
+- only `ingress/loom-vortex-ingress/Cargo.toml` may directly name
   `vortex-file`.
 - file-backed Vortex API tokens are forbidden outside the ingress layer and
   CLI command wiring.

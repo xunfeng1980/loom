@@ -53,11 +53,11 @@ rg -q "Self-Check: PASSED" "${PHASE_DIR}/21-SUMMARY.md" \
 ok "Phase 21 docs are present"
 
 info "Checking coverage implementation markers..."
-rg -q "pub struct VortexEncodingCoverage" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub struct VortexEncodingCoverage" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexEncodingCoverage"
-rg -q "pub enum VortexLoweringDisposition" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub enum VortexLoweringDisposition" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexLoweringDisposition"
-rg -q "array_encoding" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "array_encoding" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing array encoding classifier"
 ok "implementation markers are present"
 

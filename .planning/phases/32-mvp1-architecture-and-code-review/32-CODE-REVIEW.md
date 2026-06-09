@@ -33,7 +33,7 @@ payload kinds, while `verify_arrow_semantic_artifact` records
 | ID | Severity | File | Finding | Disposition |
 |---|---|---|---|---|
 | CR-32-04-05 | Low | `scripts/mvp1-review-audit-test.sh:112` | Dependency guards use `cargo tree` plus broad regex markers. This is good enough for the Phase 32 marker gate but could false-positive if an unrelated package name contains a marker substring. | Accepted for marker gate. The main release gate already has more focused dependency checks for key historical constraints. |
-| CR-32-04-06 | Low | `crates/loom-vortex-ingress/src/bin/emit_duckdb_vortex_lma1_fixture.rs:55` | The Vortex DuckDB fixture helper uses `expect` inside `vortex_file_bytes`. It is a fixture binary, not library API, so failure still exits the gate, but diagnostics are less structured than the Parquet/Lance fixture emitters. | Deferred as fixture-only maintainability cleanup. |
+| CR-32-04-06 | Low | `ingress/loom-vortex-ingress/src/bin/emit_duckdb_vortex_lma1_fixture.rs:55` | The Vortex DuckDB fixture helper uses `expect` inside `vortex_file_bytes`. It is a fixture binary, not library API, so failure still exits the gate, but diagnostics are less structured than the Parquet/Lance fixture emitters. | Deferred as fixture-only maintainability cleanup. |
 | CR-32-04-07 | Low | `scripts/duckdb-source-e2e-test.sh:129` | DuckDB source e2e checks physical row order without `ORDER BY`. That is useful for detecting fixture order changes, but it means the gate is asserting this fixture's scan order rather than general SQL unordered semantics. | Accepted. The current fixture path is deterministic and order-sensitive by design. |
 
 ## Test Gaps

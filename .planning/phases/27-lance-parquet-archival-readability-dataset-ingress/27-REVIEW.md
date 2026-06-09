@@ -6,27 +6,27 @@ files_reviewed: 25
 files_reviewed_list:
   - Cargo.lock
   - Cargo.toml
-  - crates/loom-lance-ingress/Cargo.toml
-  - crates/loom-lance-ingress/src/lib.rs
-  - crates/loom-lance-ingress/src/source_contract.rs
-  - crates/loom-lance-ingress/tests/dependency_boundary.rs
-  - crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md
-  - crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom
-  - crates/loom-lance-ingress/tests/legacy_readability.rs
-  - crates/loom-lance-ingress/tests/source_ingress_contract.rs
-  - crates/loom-lance-ingress/tests/source_ingress_handoff.rs
-  - crates/loom-parquet-ingress/Cargo.toml
-  - crates/loom-parquet-ingress/src/lib.rs
-  - crates/loom-parquet-ingress/src/source_contract.rs
-  - crates/loom-parquet-ingress/tests/dependency_boundary.rs
-  - crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md
-  - crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom
-  - crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
-  - crates/loom-parquet-ingress/tests/legacy_readability.rs
-  - crates/loom-parquet-ingress/tests/source_ingress_contract.rs
-  - crates/loom-parquet-ingress/tests/source_ingress_handoff.rs
-  - crates/loom-source-ingress/src/lib.rs
-  - crates/loom-source-ingress/tests/source_ingress_contract.rs
+  - ingress/loom-lance-ingress/Cargo.toml
+  - ingress/loom-lance-ingress/src/lib.rs
+  - ingress/loom-lance-ingress/src/source_contract.rs
+  - ingress/loom-lance-ingress/tests/dependency_boundary.rs
+  - ingress/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md
+  - ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom
+  - ingress/loom-lance-ingress/tests/legacy_readability.rs
+  - ingress/loom-lance-ingress/tests/source_ingress_contract.rs
+  - ingress/loom-lance-ingress/tests/source_ingress_handoff.rs
+  - ingress/loom-parquet-ingress/Cargo.toml
+  - ingress/loom-parquet-ingress/src/lib.rs
+  - ingress/loom-parquet-ingress/src/source_contract.rs
+  - ingress/loom-parquet-ingress/tests/dependency_boundary.rs
+  - ingress/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md
+  - ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom
+  - ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
+  - ingress/loom-parquet-ingress/tests/legacy_readability.rs
+  - ingress/loom-parquet-ingress/tests/source_ingress_contract.rs
+  - ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs
+  - ingress/loom-source-ingress/src/lib.rs
+  - ingress/loom-source-ingress/tests/source_ingress_contract.rs
   - scripts/lance-parquet-ingress-test.sh
   - scripts/mvp0-verify.sh
 findings:
@@ -66,7 +66,7 @@ Tests run during review:
 
 #### CR-01 [BLOCKER]: Parquet accepts Arrow extension fields as primitive Loom artifacts
 
-**File:** `crates/loom-parquet-ingress/src/source_contract.rs:333`
+**File:** `ingress/loom-parquet-ingress/src/source_contract.rs:333`
 
 **Issue:** The Parquet adapter accepts any non-null `Int32`/`Int64`/`Float32`/`Float64` field solely by physical Arrow type. Unlike the Lance adapter, it never checks `ARROW:extension:name` metadata when building schema facts or coverage. A Parquet file carrying an Arrow extension field over `Int32` can therefore be classified as `Accepted`, emitted as raw Loom bytes, and reported as production-lowering-supported even though extension semantics are outside the Phase 27 primitive slice. The tests cover this rejection for Lance but not for Parquet.
 
@@ -102,7 +102,7 @@ Also update `field_schema_fact`, `unsupported_note`, `diagnostic_for_facts`, and
 
 #### WR-01 [WARNING]: Parquet rejected-path detail sanitizer can leak secret-bearing or remote-looking error text
 
-**File:** `crates/loom-parquet-ingress/src/source_contract.rs:720`
+**File:** `ingress/loom-parquet-ingress/src/source_contract.rs:720`
 
 **Issue:** The Parquet sanitizer returns the first error line verbatim, while Lance drops details containing credentials, tokens, access keys, or URI-like strings and avoids attaching an empty detail. Parquet rejected reports use this function for open/read/oracle failures, so a parser or IO error containing a credential-bearing path, URL, or metadata-derived text can be exposed through `source_detail` even though rejected inputs must not expose trusted source facts.
 

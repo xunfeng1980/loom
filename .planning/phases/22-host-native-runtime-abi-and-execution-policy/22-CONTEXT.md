@@ -22,7 +22,7 @@ The runtime contract should consume:
 - `.planning/phases/20-production-decode-dialect-and-native-kernel-expansion/20-LOWERING-CONTRACT.md`
 - `crates/loom-core/src/artifact_verifier.rs`
 - `crates/loom-core/src/production_native_lowering.rs`
-- `crates/loom-vortex-ingress/src/lib.rs`
+- `ingress/loom-vortex-ingress/src/lib.rs`
 
 ## Design Constraints
 

@@ -32,7 +32,7 @@ Loom emission target in one pass.
 ### D-18-02: Vortex APIs remain isolated
 
 Direct `vortex-file` / `vortex-layout` use remains isolated to
-`crates/loom-vortex-ingress`. `loom-core` and `loom-ffi` remain Vortex-free.
+`ingress/loom-vortex-ingress`. `loom-core` and `loom-ffi` remain Vortex-free.
 
 ### D-18-03: Vortex scan is oracle evidence
 

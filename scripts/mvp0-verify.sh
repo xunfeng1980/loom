@@ -46,9 +46,9 @@ ok "loom-ffi dependency guard printed 0"
 
 info "Checking vortex-file direct dependency is isolated to ingress crate..."
 vortex_file_refs="$(rg -n 'vortex-file' Cargo.toml crates/*/Cargo.toml || true)"
-unexpected_vortex_file_refs="$(printf '%s\n' "${vortex_file_refs}" | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)"
+unexpected_vortex_file_refs="$(printf '%s\n' "${vortex_file_refs}" | grep -v '^ingress/loom-vortex-ingress/Cargo.toml:' || true)"
 if [ -n "${unexpected_vortex_file_refs}" ]; then
-    fail "vortex-file direct dependency found outside crates/loom-vortex-ingress: ${unexpected_vortex_file_refs}"
+    fail "vortex-file direct dependency found outside ingress/loom-vortex-ingress: ${unexpected_vortex_file_refs}"
 fi
 ok "vortex-file direct dependency allowlist"
 

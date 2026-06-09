@@ -133,15 +133,15 @@ manifest embedding, public SQL/API expansion, or new native kernels.
   - verified Phase 26 must-haves and residual risks.
 
 ### Source Contract Code
-- `crates/loom-source-ingress/src/lib.rs` - generic source facts, diagnostics,
+- `ingress/loom-source-ingress/src/lib.rs` - generic source facts, diagnostics,
   support/emission/lowering/oracle/verifier report contract.
-- `crates/loom-source-ingress/tests/source_ingress_contract.rs` - stable
+- `ingress/loom-source-ingress/tests/source_ingress_contract.rs` - stable
   vocabulary and fail-closed report invariant tests.
-- `crates/loom-vortex-ingress/src/source_contract.rs` - reference source
+- `ingress/loom-vortex-ingress/src/source_contract.rs` - reference source
   adapter mapping and verifier-routed accepted handoff.
-- `crates/loom-vortex-ingress/tests/source_ingress_contract.rs` - reference
+- `ingress/loom-vortex-ingress/tests/source_ingress_contract.rs` - reference
   mapping tests.
-- `crates/loom-vortex-ingress/tests/source_ingress_handoff.rs` - accepted,
+- `ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs` - accepted,
   unsupported, rejected, verifier, and oracle evidence tests.
 
 ### Artifact Targets And Gates

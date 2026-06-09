@@ -4,7 +4,7 @@ source_family: lance
 source_fixture: legacy-v1.lance/
 generator_crate: lance
 generator_version: 6.0.0
-generator_command: cargo run --manifest-path /tmp/loom-legacy-writers.*/lance60/Cargo.toml -- crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance
+generator_command: cargo run --manifest-path /tmp/loom-legacy-writers.*/lance60/Cargo.toml -- ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance
 schema: id:Int32 non-null, score:Int64 non-null, ratio32:Float32 non-null, ratio64:Float64 non-null
 rows: [(1,10,1.25,1.5), (2,20,-2.5,2.5), (3,30,3.75,3.5)]
 source_fixture_tree_sha256: 33fa06145c8fd4e489db5dd0000c42b5644506b2aff571088908683a0b710c5e

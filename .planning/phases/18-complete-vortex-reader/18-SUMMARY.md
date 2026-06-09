@@ -12,12 +12,12 @@
 
 ## Files
 
-- `crates/loom-vortex-ingress/src/lib.rs`
-- `crates/loom-vortex-ingress/tests/reader_facts_contract.rs`
-- `crates/loom-vortex-ingress/tests/reader_recursive_facts.rs`
-- `crates/loom-vortex-ingress/tests/single_column_to_loom.rs`
-- `crates/loom-vortex-ingress/tests/table_to_loom.rs`
-- `crates/loom-vortex-ingress/tests/real_file_to_loom.rs`
+- `ingress/loom-vortex-ingress/src/lib.rs`
+- `ingress/loom-vortex-ingress/tests/reader_facts_contract.rs`
+- `ingress/loom-vortex-ingress/tests/reader_recursive_facts.rs`
+- `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs`
+- `ingress/loom-vortex-ingress/tests/table_to_loom.rs`
+- `ingress/loom-vortex-ingress/tests/real_file_to_loom.rs`
 - `crates/loom-cli/src/main.rs`
 - `scripts/complete-vortex-reader-test.sh`
 - `scripts/mvp0-verify.sh`

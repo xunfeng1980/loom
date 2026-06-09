@@ -142,12 +142,12 @@ rg -q "Phase 27 Handoff" "${PHASE_DIR}/26-SOURCE-INGRESS-REPORT.md" \
 ok "Phase 26 contract and report artifacts are present"
 
 info "Checking source-ingress implementation markers..."
-check_marker "pub struct SourceIngressReport" crates/loom-source-ingress/src/lib.rs "SourceIngressReport"
-check_marker "pub struct SourceFacts" crates/loom-source-ingress/src/lib.rs "SourceFacts"
-check_marker "pub struct SourceOracleEvidence" crates/loom-source-ingress/src/lib.rs "SourceOracleEvidence"
-check_marker "source_facts_from_vortex_reader_facts" crates/loom-vortex-ingress/src/source_contract.rs "Vortex facts mapping helper"
-check_marker "source_report_from_vortex_reader_facts" crates/loom-vortex-ingress/src/source_contract.rs "Vortex report mapping helper"
-check_marker "emit_source_ingress_lmc2_from_vortex_buffer" crates/loom-vortex-ingress/src/source_contract.rs "verifier-routed Vortex handoff helper"
+check_marker "pub struct SourceIngressReport" ingress/loom-source-ingress/src/lib.rs "SourceIngressReport"
+check_marker "pub struct SourceFacts" ingress/loom-source-ingress/src/lib.rs "SourceFacts"
+check_marker "pub struct SourceOracleEvidence" ingress/loom-source-ingress/src/lib.rs "SourceOracleEvidence"
+check_marker "source_facts_from_vortex_reader_facts" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex facts mapping helper"
+check_marker "source_report_from_vortex_reader_facts" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex report mapping helper"
+check_marker "emit_source_ingress_lmc2_from_vortex_buffer" ingress/loom-vortex-ingress/src/source_contract.rs "verifier-routed Vortex handoff helper"
 ok "implementation markers are present"
 
 info "Running focused Phase 26 contract tests..."
@@ -182,9 +182,9 @@ check_cargo_tree_clean loom-ffi "${source_dep_patterns[@]}"
 check_cargo_tree_clean loom-source-ingress "${source_dep_patterns[@]}"
 
 check_no_fixed_patterns "generic source-ingress crate" \
-    crates/loom-source-ingress/Cargo.toml \
-    crates/loom-source-ingress/src/lib.rs \
-    crates/loom-source-ingress/tests/source_ingress_contract.rs \
+    ingress/loom-source-ingress/Cargo.toml \
+    ingress/loom-source-ingress/src/lib.rs \
+    ingress/loom-source-ingress/tests/source_ingress_contract.rs \
     -- \
     "${source_dep_patterns[@]}" \
     "Duck""DB" \
@@ -193,7 +193,7 @@ check_no_fixed_patterns "generic source-ingress crate" \
 check_no_manifest_patterns "core/ffi/source-ingress manifests" \
     crates/loom-core/Cargo.toml \
     crates/loom-ffi/Cargo.toml \
-    crates/loom-source-ingress/Cargo.toml \
+    ingress/loom-source-ingress/Cargo.toml \
     -- \
     "${source_dep_patterns[@]}"
 ok "source dependency boundaries"

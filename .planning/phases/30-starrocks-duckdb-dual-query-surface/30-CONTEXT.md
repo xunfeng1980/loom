@@ -111,7 +111,7 @@ production StarRocks cluster.
 
 - `crates/loom-iceberg-binding` provides the accepted local Iceberg binding
   contract and evidence source from Phase 29.
-- `crates/loom-source-ingress` provides source-neutral accepted/unsupported/
+- `ingress/loom-source-ingress` provides source-neutral accepted/unsupported/
   rejected report vocabulary.
 - `loom-core::artifact_verifier::verify_artifact` remains the artifact trust
   gate.

@@ -52,17 +52,17 @@ rg -q "Self-Check" "${PHASE_DIR}/18-SUMMARY.md" \
 ok "Phase 18 docs are present"
 
 info "Checking complete-reader implementation markers..."
-rg -q "pub struct VortexReaderFacts" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub struct VortexReaderFacts" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderFacts"
-rg -q "pub enum VortexReaderEmissionKind" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub enum VortexReaderEmissionKind" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderEmissionKind"
-rg -q "fn scan_supported_table" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "fn scan_supported_table" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing supported table scan"
-rg -q "scan_i64_values_from_vortex_buffer" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "scan_i64_values_from_vortex_buffer" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing i64 scan oracle helper"
-rg -q "scan_f32_values_from_vortex_buffer" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "scan_f32_values_from_vortex_buffer" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing f32 scan oracle helper"
-rg -q "scan_f64_values_from_vortex_buffer" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "scan_f64_values_from_vortex_buffer" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing f64 scan oracle helper"
 ok "implementation markers are present"
 

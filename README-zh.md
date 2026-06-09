@@ -228,7 +228,7 @@ claim，不是 general Arrow shape support，也不是 GA performance promise。
 | `crates/loom-ffi` | C ABI 边界与 Arrow C Data Interface export |
 | `crates/loom-cli` | `loom inspect`、`decode`、`verify-artifact`、`verify-l2core`、`ingest-vortex` |
 | `crates/loom-fixtures` | DuckDB 与 Rust test 使用的确定性 fixture/oracle 生成 |
-| `crates/loom-vortex-ingress` | 隔离的真实 Vortex file ingress 边界 |
+| `ingress/loom-vortex-ingress` | 隔离的真实 Vortex file ingress 边界 |
 | `crates/loom-native-melior` | 可选 MLIR/melior/native-backend evidence path |
 | `crates/loom-solver-smt` | 可选 SMT solver 集成，目前以 Bitwuzla 为主 |
 | `duckdb-ext` | 暴露 `loom_scan(...)` 的 C++ DuckDB extension |

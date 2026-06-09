@@ -112,7 +112,7 @@
 
 ## Summary
 
-Phase 27 should implement two source-specific adapter crates, `loom-lance-ingress` and `loom-parquet-ingress`, that consume the Phase 26 `loom-source-ingress` contract and emit only verifier-accepted `LMC1(LMP1)` or `LMC1(LMT1)` artifacts for non-null Arrow primitive single-column/simple-table shapes. [VERIFIED: 27-CONTEXT.md; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: crates/loom-source-ingress/src/lib.rs] The adapters should canonicalize decoded Arrow rows into existing Loom raw/table payloads rather than representing Lance or Parquet physical encodings as new Loom semantics. [VERIFIED: 26-SOURCE-INGRESS-REPORT.md; VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: crates/loom-core/src/table_codec.rs]
+Phase 27 should implement two source-specific adapter crates, `loom-lance-ingress` and `loom-parquet-ingress`, that consume the Phase 26 `loom-source-ingress` contract and emit only verifier-accepted `LMC1(LMP1)` or `LMC1(LMT1)` artifacts for non-null Arrow primitive single-column/simple-table shapes. [VERIFIED: 27-CONTEXT.md; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: ingress/loom-source-ingress/src/lib.rs] The adapters should canonicalize decoded Arrow rows into existing Loom raw/table payloads rather than representing Lance or Parquet physical encodings as new Loom semantics. [VERIFIED: 26-SOURCE-INGRESS-REPORT.md; VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: crates/loom-core/src/table_codec.rs]
 
 The value proof should be archival readability: current-version source files/datasets can be read, converted, verified, decoded, and row-compared against source-native or Arrow-scan output; legacy source fixtures paired with Loom artifacts remain readable through Loom and can be rewritten to current source formats for the supported slice. [VERIFIED: 27-CONTEXT.md; CITED: https://docs.rs/lance/latest/lance/; CITED: https://docs.rs/parquet/58.3.0/parquet/] The phase should not embed Loom bytes in Lance manifests or Parquet footers, should not add remote IO, and should not add public SQL/API routes. [VERIFIED: 27-CONTEXT.md]
 
@@ -120,9 +120,9 @@ The value proof should be archival readability: current-version source files/dat
 
 ## Constraints
 
-- Accepted reports must require trusted facts, `LMP1` or `LMT1` emission, accepted artifact verification, non-empty artifact bytes, and accepted oracle evidence. [VERIFIED: crates/loom-source-ingress/src/lib.rs]
-- Unsupported valid sources may expose facts but must emit no bytes and no accepted oracle evidence. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: crates/loom-source-ingress/tests/source_ingress_contract.rs]
-- Rejected malformed sources must expose diagnostics only, with no trusted facts, no artifact bytes, and no oracle evidence. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: crates/loom-source-ingress/tests/source_ingress_contract.rs]
+- Accepted reports must require trusted facts, `LMP1` or `LMT1` emission, accepted artifact verification, non-empty artifact bytes, and accepted oracle evidence. [VERIFIED: ingress/loom-source-ingress/src/lib.rs]
+- Unsupported valid sources may expose facts but must emit no bytes and no accepted oracle evidence. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: ingress/loom-source-ingress/tests/source_ingress_contract.rs]
+- Rejected malformed sources must expose diagnostics only, with no trusted facts, no artifact bytes, and no oracle evidence. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: ingress/loom-source-ingress/tests/source_ingress_contract.rs]
 - Current Loom artifact targets are `LMC1` wrapping `LMP1` for single-column payloads or `LMT1` for table payloads. [VERIFIED: crates/loom-core/src/container_codec.rs; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md]
 - Existing `LMP1` supports Arrow `Boolean`, `Int32`, `Int64`, `Utf8`, `Float32`, and `Float64`, but Phase 27 should accept only non-null primitive `Int32`, `Int64`, `Float32`, and `Float64` to match the requested narrow slice. [VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: user request]
 - Nyquist validation is explicitly disabled, so the research does not add the full GSD Validation Architecture section. [VERIFIED: .planning/config.json]
@@ -161,16 +161,16 @@ tokio = { version = "=1.52.3", default-features = false, features = ["rt", "macr
 tempfile = { version = "=3.27.0" }
 ```
 
-- `lance` should be used only by `crates/loom-lance-ingress`; disabling default features avoids pulling provider feature flags into the direct dependency declaration. [VERIFIED: cargo info lance; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md]
-- `parquet` should be used only by `crates/loom-parquet-ingress`; `default-features = false, features = ["arrow"]` keeps the adapter on the RecordBatch API and avoids optional object-store/async/compression expansion. [VERIFIED: cargo info parquet; CITED: https://docs.rs/parquet/58.3.0/parquet/]
+- `lance` should be used only by `ingress/loom-lance-ingress`; disabling default features avoids pulling provider feature flags into the direct dependency declaration. [VERIFIED: cargo info lance; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md]
+- `parquet` should be used only by `ingress/loom-parquet-ingress`; `default-features = false, features = ["arrow"]` keeps the adapter on the RecordBatch API and avoids optional object-store/async/compression expansion. [VERIFIED: cargo info parquet; CITED: https://docs.rs/parquet/58.3.0/parquet/]
 - `futures` is needed in `loom-lance-ingress` for collecting Lance scanner streams, matching the Lance docs example that imports `futures::StreamExt`. [CITED: https://docs.rs/lance/latest/lance/; VERIFIED: cargo info futures]
 - `tokio` should be a dev-dependency for Lance adapter tests, with only `rt` and `macros` enabled for `#[tokio::test]` and local async execution. [CITED: https://docs.rs/tokio/latest/tokio/; VERIFIED: cargo info tokio]
 - `tempfile` should be a dev-dependency for local source fixture directories/files and should not become part of core/runtime artifact APIs. [VERIFIED: cargo info tempfile; CITED: https://docs.rs/tempfile/latest/tempfile/]
 
 ### Crate Layout
 
-- Add `crates/loom-lance-ingress` with dependencies on `loom-core`, `loom-source-ingress`, workspace Arrow crates, `lance`, and `futures`; keep `tokio` and `tempfile` as dev-dependencies. [VERIFIED: workspace Cargo.toml patterns; VERIFIED: docs.rs/lance]
-- Add `crates/loom-parquet-ingress` with dependencies on `loom-core`, `loom-source-ingress`, workspace Arrow crates, and `parquet`; keep `tempfile` as a dev-dependency. [VERIFIED: workspace Cargo.toml patterns; VERIFIED: docs.rs/parquet]
+- Add `ingress/loom-lance-ingress` with dependencies on `loom-core`, `loom-source-ingress`, workspace Arrow crates, `lance`, and `futures`; keep `tokio` and `tempfile` as dev-dependencies. [VERIFIED: workspace Cargo.toml patterns; VERIFIED: docs.rs/lance]
+- Add `ingress/loom-parquet-ingress` with dependencies on `loom-core`, `loom-source-ingress`, workspace Arrow crates, and `parquet`; keep `tempfile` as a dev-dependency. [VERIFIED: workspace Cargo.toml patterns; VERIFIED: docs.rs/parquet]
 - Do not add Lance or Parquet to `loom-core`, `loom-ffi`, `loom-source-ingress`, `loom-cli`, DuckDB extension code, or public headers. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md; VERIFIED: scripts/source-ingress-contract-test.sh]
 
 ### Package Legitimacy Audit
@@ -191,8 +191,8 @@ tempfile = { version = "=3.27.0" }
 
 ### Shared Shape
 
-- Each adapter should expose an inspect function returning `SourceIngressReport` and an emit function returning `Result<SourceIngressAcceptedArtifact, SourceIngressReport>`, matching the Vortex handoff pattern. [VERIFIED: crates/loom-vortex-ingress/src/source_contract.rs]
-- Each adapter should build `SourceIdentity`, `SourceFacts`, `SourceSchemaFact`, `SourceLayoutFact`, `SourceSegmentFact`, `SourceSplitFact`, and `SourceCoverage` using only strings, primitive counts, ranges, and booleans. [VERIFIED: crates/loom-source-ingress/src/lib.rs]
+- Each adapter should expose an inspect function returning `SourceIngressReport` and an emit function returning `Result<SourceIngressAcceptedArtifact, SourceIngressReport>`, matching the Vortex handoff pattern. [VERIFIED: ingress/loom-vortex-ingress/src/source_contract.rs]
+- Each adapter should build `SourceIdentity`, `SourceFacts`, `SourceSchemaFact`, `SourceLayoutFact`, `SourceSegmentFact`, `SourceSplitFact`, and `SourceCoverage` using only strings, primitive counts, ranges, and booleans. [VERIFIED: ingress/loom-source-ingress/src/lib.rs]
 - Each accepted adapter path should decode source rows into Arrow arrays, reject nullable arrays, reject non-primitive/nested/extension/dictionary/logical-only shapes for Phase 27, encode existing Loom `Raw` layouts, wrap them in `LMC1`, call `verify_artifact`, decode the verified Loom artifact, and compare rows against the oracle before returning bytes. [VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: crates/loom-core/src/table_codec.rs; VERIFIED: crates/loom-core/src/artifact_verifier.rs]
 - Single-column accepted output should use `encode_layout_payload` and `wrap_layout_payload`; simple table accepted output should use `encode_table_payload` and `wrap_table_payload`. [VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: crates/loom-core/src/table_codec.rs; VERIFIED: crates/loom-core/src/container_codec.rs]
 
@@ -222,15 +222,15 @@ tempfile = { version = "=3.27.0" }
 
 ## Oracle/Equivalence Strategy
 
-- Accepted Lance reports should use `SourceOracleStrategy::SourceNativeScan` because Lance owns the dataset scan path and returns Arrow `RecordBatch` values. [CITED: https://docs.rs/lance/latest/lance/; VERIFIED: crates/loom-source-ingress/src/lib.rs]
-- Accepted Parquet reports should use `SourceOracleStrategy::ArrowScan` because the official Parquet crate exposes Arrow `RecordBatch` reading through `ParquetRecordBatchReaderBuilder`. [CITED: https://docs.rs/parquet/58.3.0/parquet/arrow/arrow_reader/type.ParquetRecordBatchReaderBuilder.html; VERIFIED: crates/loom-source-ingress/src/lib.rs]
-- Equivalence should compare decoded Loom arrays/tables to oracle `RecordBatch` values by exact type, row count, field name, null count equal to zero, and element values. [VERIFIED: crates/loom-vortex-ingress/tests/source_ingress_handoff.rs; VERIFIED: crates/loom-core/src/container_codec.rs]
+- Accepted Lance reports should use `SourceOracleStrategy::SourceNativeScan` because Lance owns the dataset scan path and returns Arrow `RecordBatch` values. [CITED: https://docs.rs/lance/latest/lance/; VERIFIED: ingress/loom-source-ingress/src/lib.rs]
+- Accepted Parquet reports should use `SourceOracleStrategy::ArrowScan` because the official Parquet crate exposes Arrow `RecordBatch` reading through `ParquetRecordBatchReaderBuilder`. [CITED: https://docs.rs/parquet/58.3.0/parquet/arrow/arrow_reader/type.ParquetRecordBatchReaderBuilder.html; VERIFIED: ingress/loom-source-ingress/src/lib.rs]
+- Equivalence should compare decoded Loom arrays/tables to oracle `RecordBatch` values by exact type, row count, field name, null count equal to zero, and element values. [VERIFIED: ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs; VERIFIED: crates/loom-core/src/container_codec.rs]
 - Float comparisons should be exact for deterministic fixture values that have exact binary representation where possible; if non-exact decimal values are used, tests should switch to bitwise Arrow buffer comparison or documented epsilon comparison. [ASSUMED]
-- Oracle evidence should set `row_count_checked`, `nulls_checked = true`, and notes stating that source-native/Arrow scan is evidence only and not the Loom decode path. [VERIFIED: crates/loom-vortex-ingress/src/source_contract.rs]
+- Oracle evidence should set `row_count_checked`, `nulls_checked = true`, and notes stating that source-native/Arrow scan is evidence only and not the Loom decode path. [VERIFIED: ingress/loom-vortex-ingress/src/source_contract.rs]
 
 ## Testing/Gates
 
-- Add focused tests for `loom-lance-ingress`: accepted non-null primitive single column, accepted simple table, unsupported nullable primitive, unsupported string/nested shape, malformed/non-dataset rejected path, and legacy paired-artifact readability. [VERIFIED: 27-CONTEXT.md; VERIFIED: crates/loom-vortex-ingress/tests/source_ingress_handoff.rs]
+- Add focused tests for `loom-lance-ingress`: accepted non-null primitive single column, accepted simple table, unsupported nullable primitive, unsupported string/nested shape, malformed/non-dataset rejected path, and legacy paired-artifact readability. [VERIFIED: 27-CONTEXT.md; VERIFIED: ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs]
 - Add focused tests for `loom-parquet-ingress`: accepted non-null primitive single column, accepted simple table, unsupported nullable/nested/logical shape, malformed file rejected path, row-group fact extraction, and legacy paired-artifact readability. [VERIFIED: 27-CONTEXT.md; CITED: https://docs.rs/parquet/58.3.0/parquet/]
 - Add `scripts/lance-parquet-ingress-test.sh` that runs both adapter test suites, `loom-core --test artifact_verifier`, dependency-boundary guards, source-feature guards, public API creep guards, and final report marker checks. [VERIFIED: scripts/source-ingress-contract-test.sh; VERIFIED: 27-CONTEXT.md]
 - Wire the Phase 27 gate into `scripts/mvp0-verify.sh` after `scripts/source-ingress-contract-test.sh` and before `scripts/duckdb-smoke-test.sh`. [VERIFIED: scripts/mvp0-verify.sh; VERIFIED: 26-SOURCE-INGRESS-REPORT.md]
@@ -270,14 +270,14 @@ tempfile = { version = "=3.27.0" }
 | V2 Authentication | no | No auth or credentials should be introduced. [VERIFIED: 27-CONTEXT.md] |
 | V3 Session Management | no | No sessions should be introduced. [VERIFIED: 27-CONTEXT.md] |
 | V4 Access Control | no | Local test fixtures only; no user/tenant authorization model. [VERIFIED: 27-CONTEXT.md] |
-| V5 Input Validation | yes | Classify every source as accepted/unsupported/rejected and fail closed through `SourceIngressReport`. [VERIFIED: crates/loom-source-ingress/src/lib.rs] |
+| V5 Input Validation | yes | Classify every source as accepted/unsupported/rejected and fail closed through `SourceIngressReport`. [VERIFIED: ingress/loom-source-ingress/src/lib.rs] |
 | V6 Cryptography | no | No signatures, encryption, or credential handling in Phase 27. [VERIFIED: 27-CONTEXT.md] |
 
 ### Known Threat Patterns
 
 | Pattern | STRIDE | Standard Mitigation |
 |---|---|---|
-| Malformed source file causes trusted facts or partial bytes to escape. | Tampering | Rejected reports carry diagnostics only; bytes are returned only in `SourceIngressAcceptedArtifact` after verification and oracle evidence. [VERIFIED: crates/loom-source-ingress/src/lib.rs; VERIFIED: crates/loom-vortex-ingress/src/source_contract.rs] |
+| Malformed source file causes trusted facts or partial bytes to escape. | Tampering | Rejected reports carry diagnostics only; bytes are returned only in `SourceIngressAcceptedArtifact` after verification and oracle evidence. [VERIFIED: ingress/loom-source-ingress/src/lib.rs; VERIFIED: ingress/loom-vortex-ingress/src/source_contract.rs] |
 | Source SDK dependency leaks into core/FFI/public API. | Elevation of privilege / Tampering | Add cargo-tree and grep guards patterned after `source-ingress-contract-test.sh`. [VERIFIED: scripts/source-ingress-contract-test.sh] |
 | Remote IO or credential settings creep in through Lance provider features. | Information disclosure | Disable Lance default features and grep for credential/storage option markers outside adapter internals. [VERIFIED: cargo info lance; VERIFIED: 27-CONTEXT.md] |
 | Oracle path becomes the decode path. | Tampering | Keep oracle evidence separate from Loom artifact verification and decode. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md] |
@@ -287,7 +287,7 @@ tempfile = { version = "=3.27.0" }
 1. **Adapter crate scaffolding:** Add `loom-lance-ingress` and `loom-parquet-ingress` workspace crates with exact pins and dependency guards; no code outside adapters should gain Lance/Parquet dependencies. [VERIFIED: workspace Cargo.toml; VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md]
 2. **Fact extraction:** Implement source-neutral fact mapping for Lance schema/version/fragments and Parquet schema/row groups/page-adjacent metadata. [CITED: https://docs.rs/lance/latest/lance/dataset/struct.Dataset.html; CITED: https://docs.rs/parquet/58.3.0/parquet/file/metadata/struct.ParquetMetaData.html]
 3. **Accepted emission:** Convert non-null primitive source batches into `LayoutDescription`/`TableDescription`, encode/wrap as `LMC1`, run `verify_artifact`, decode, and compare rows before returning accepted bytes. [VERIFIED: crates/loom-core/src/layout_codec.rs; VERIFIED: crates/loom-core/src/table_codec.rs; VERIFIED: crates/loom-core/src/artifact_verifier.rs]
-4. **Unsupported/rejected matrices:** Add tests for nullable, nested/string/logical, malformed, verifier-failed, and oracle-failed cases with no emitted bytes. [VERIFIED: crates/loom-source-ingress/tests/source_ingress_contract.rs; VERIFIED: 27-CONTEXT.md]
+4. **Unsupported/rejected matrices:** Add tests for nullable, nested/string/logical, malformed, verifier-failed, and oracle-failed cases with no emitted bytes. [VERIFIED: ingress/loom-source-ingress/tests/source_ingress_contract.rs; VERIFIED: 27-CONTEXT.md]
 5. **Legacy readability:** Add checked-in tiny legacy fixture pairs and tests proving paired Loom artifacts remain verifier-readable and rewriteable to current Lance/Parquet output. [VERIFIED: 27-CONTEXT.md; ASSUMED]
 6. **Release gate/report:** Add `scripts/lance-parquet-ingress-test.sh`, wire it into `mvp0-verify.sh`, and write `27-ARCHIVAL-READABILITY-REPORT.md`. [VERIFIED: scripts/mvp0-verify.sh; VERIFIED: 27-CONTEXT.md]
 
@@ -309,7 +309,7 @@ tempfile = { version = "=3.27.0" }
 
 2. **Should Lance adapter APIs be async-only or expose a test-only sync wrapper?**  
    What we know: Lance `Dataset::open`, `Dataset::write`, scanner stream collection, and fragment row counts are async. [CITED: https://docs.rs/lance/latest/lance/; CITED: https://docs.rs/lance/latest/lance/dataset/fragment/struct.FileFragment.html]  
-   What's unclear: No existing generic source-ingress trait requires async or sync adapter functions. [VERIFIED: crates/loom-source-ingress/src/lib.rs]  
+   What's unclear: No existing generic source-ingress trait requires async or sync adapter functions. [VERIFIED: ingress/loom-source-ingress/src/lib.rs]  
    RESOLVED default: Keep Lance adapter functions async and use `#[tokio::test]` in tests; do not create a public blocking wrapper. [CITED: https://docs.rs/tokio/latest/tokio/; ASSUMED]
 
 ## Sources
@@ -320,8 +320,8 @@ tempfile = { version = "=3.27.0" }
 - `.planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-CONTEXT.md` - locked Phase 27 decisions, discretion, and deferred scope. [VERIFIED: codebase read]
 - `.planning/phases/26-external-source-ingress-contract/26-SOURCE-INGRESS-CONTRACT.md` - normative source-ingress contract. [VERIFIED: codebase read]
 - `.planning/phases/26-external-source-ingress-contract/26-SOURCE-INGRESS-REPORT.md` - Phase 26 handoff and gate evidence. [VERIFIED: codebase read]
-- `crates/loom-source-ingress/src/lib.rs` - source report vocabulary and invariants. [VERIFIED: codebase read]
-- `crates/loom-vortex-ingress/src/source_contract.rs` - reference adapter mapping and verifier/oracle handoff pattern. [VERIFIED: codebase read]
+- `ingress/loom-source-ingress/src/lib.rs` - source report vocabulary and invariants. [VERIFIED: codebase read]
+- `ingress/loom-vortex-ingress/src/source_contract.rs` - reference adapter mapping and verifier/oracle handoff pattern. [VERIFIED: codebase read]
 - `crates/loom-core/src/container_codec.rs`, `layout_codec.rs`, `table_codec.rs`, `artifact_verifier.rs` - artifact emission and verifier APIs. [VERIFIED: codebase read]
 - `https://docs.rs/lance/latest/lance/` - Lance crate version, dependencies, write/scan examples. [CITED]
 - `https://docs.rs/lance/latest/lance/dataset/struct.Dataset.html` - Lance dataset API facts. [CITED]

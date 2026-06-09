@@ -9,7 +9,7 @@
 Phase 27 should copy the Phase 26 adapter shape, not expand the generic contract. `loom-source-ingress` is dependency-light and owns only Loom vocabulary:
 
 ```rust
-// crates/loom-source-ingress/src/lib.rs:1-4
+// ingress/loom-source-ingress/src/lib.rs:1-4
 //! Source-neutral external-source ingress contract for Loom.
 //!
 //! This crate intentionally owns only Loom contract vocabulary. Source-specific
@@ -19,7 +19,7 @@ Phase 27 should copy the Phase 26 adapter shape, not expand the generic contract
 The workspace isolates source SDKs in source-specific crates. `loom-vortex-ingress` is the current example:
 
 ```toml
-# crates/loom-vortex-ingress/Cargo.toml:7-16
+# ingress/loom-vortex-ingress/Cargo.toml:7-16
 [dependencies]
 arrow-schema = { workspace = true }
 loom-core = { path = "../loom-core" }
@@ -37,7 +37,7 @@ Do the same for Lance and Parquet: adapter crate(s) own source SDK dependencies;
 The source contract has a hard accepted/unsupported/rejected split:
 
 ```rust
-// crates/loom-source-ingress/src/lib.rs:451-489
+// ingress/loom-source-ingress/src/lib.rs:451-489
 impl SourceIngressReport {
     pub fn accepted(
         facts: SourceFacts,
@@ -69,7 +69,7 @@ impl SourceIngressReport {
 Unsupported/rejected reports must be byte-free and oracle-free:
 
 ```rust
-// crates/loom-source-ingress/src/lib.rs:491-521
+// ingress/loom-source-ingress/src/lib.rs:491-521
 pub fn unsupported(facts: Option<SourceFacts>, diagnostic: SourceDiagnostic) -> Self {
     ...
     emission_kind: SourceEmissionKind::None,
@@ -93,18 +93,18 @@ pub fn rejected(identity: SourceIdentity, diagnostic: SourceDiagnostic) -> Self 
 
 | Likely Phase 27 Deliverable | Role | Data Flow | Closest Existing Analog | Match Quality |
 |---|---|---|---|---|
-| `crates/loom-lance-ingress/Cargo.toml` | config/crate | dependency isolation | `crates/loom-vortex-ingress/Cargo.toml` | exact role |
-| `crates/loom-parquet-ingress/Cargo.toml` | config/crate | dependency isolation | `crates/loom-vortex-ingress/Cargo.toml` | exact role |
+| `ingress/loom-lance-ingress/Cargo.toml` | config/crate | dependency isolation | `ingress/loom-vortex-ingress/Cargo.toml` | exact role |
+| `ingress/loom-parquet-ingress/Cargo.toml` | config/crate | dependency isolation | `ingress/loom-vortex-ingress/Cargo.toml` | exact role |
 | workspace `Cargo.toml` member additions | config | workspace registration | `Cargo.toml` lines 3-12 | exact role |
-| Lance adapter public module exports | adapter/module | request-response/file-I/O | `crates/loom-vortex-ingress/src/lib.rs` lines 1-16 | exact role |
-| Parquet adapter public module exports | adapter/module | request-response/file-I/O | `crates/loom-vortex-ingress/src/lib.rs` lines 1-16 | exact role |
-| Lance source contract mapping | adapter/service | file-I/O -> transform | `crates/loom-vortex-ingress/src/source_contract.rs` lines 37-132 | exact flow |
-| Parquet source contract mapping | adapter/service | file-I/O -> transform | `crates/loom-vortex-ingress/src/source_contract.rs` lines 37-132 | exact flow |
-| Lance facts extraction | adapter/service | source SDK metadata -> facts | `crates/loom-vortex-ingress/src/lib.rs` lines 481-537 and 656-895 | role match |
-| Parquet facts extraction | adapter/service | footer/schema/row-group facts -> facts | `crates/loom-vortex-ingress/src/lib.rs` lines 450-479 and 846-895 | role match |
-| Arrow-compatible row canonicalization | adapter/utility | Arrow rows -> LMP1/LMT1 | `crates/loom-vortex-ingress/src/lib.rs` lines 964-1251 | exact flow |
-| Artifact verifier handoff | adapter/service | candidate bytes -> accepted report | `crates/loom-vortex-ingress/src/source_contract.rs` lines 67-132 | exact flow |
-| Focused adapter tests | test | accepted/unsupported/rejected | `crates/loom-vortex-ingress/tests/source_ingress_handoff.rs` lines 123-315 | exact flow |
+| Lance adapter public module exports | adapter/module | request-response/file-I/O | `ingress/loom-vortex-ingress/src/lib.rs` lines 1-16 | exact role |
+| Parquet adapter public module exports | adapter/module | request-response/file-I/O | `ingress/loom-vortex-ingress/src/lib.rs` lines 1-16 | exact role |
+| Lance source contract mapping | adapter/service | file-I/O -> transform | `ingress/loom-vortex-ingress/src/source_contract.rs` lines 37-132 | exact flow |
+| Parquet source contract mapping | adapter/service | file-I/O -> transform | `ingress/loom-vortex-ingress/src/source_contract.rs` lines 37-132 | exact flow |
+| Lance facts extraction | adapter/service | source SDK metadata -> facts | `ingress/loom-vortex-ingress/src/lib.rs` lines 481-537 and 656-895 | role match |
+| Parquet facts extraction | adapter/service | footer/schema/row-group facts -> facts | `ingress/loom-vortex-ingress/src/lib.rs` lines 450-479 and 846-895 | role match |
+| Arrow-compatible row canonicalization | adapter/utility | Arrow rows -> LMP1/LMT1 | `ingress/loom-vortex-ingress/src/lib.rs` lines 964-1251 | exact flow |
+| Artifact verifier handoff | adapter/service | candidate bytes -> accepted report | `ingress/loom-vortex-ingress/src/source_contract.rs` lines 67-132 | exact flow |
+| Focused adapter tests | test | accepted/unsupported/rejected | `ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs` lines 123-315 | exact flow |
 | Phase gate script | script/config | batch gate | `scripts/source-ingress-contract-test.sh` lines 1-249 | exact role |
 
 ## Recommended File/Crate Map
@@ -113,23 +113,23 @@ Prefer two source-specific crates unless research finds a strong reason to share
 
 | File / Directory | Role | Data Flow | Pattern To Copy |
 |---|---|---|---|
-| `crates/loom-lance-ingress/` | adapter crate | file-I/O, transform | `crates/loom-vortex-ingress/` |
-| `crates/loom-lance-ingress/src/lib.rs` | adapter API | request-response | Export `source_contract` helpers like `loom-vortex-ingress/src/lib.rs:7-16`. |
-| `crates/loom-lance-ingress/src/source_contract.rs` | mapping/service | source facts -> report | Copy function family shape from `source_contract.rs:37-132`. |
-| `crates/loom-lance-ingress/tests/source_ingress_contract.rs` | test | contract mapping | Copy assertions from `loom-vortex-ingress/tests/source_ingress_contract.rs:75-158`, adjusted to Lance facts. |
-| `crates/loom-lance-ingress/tests/source_ingress_handoff.rs` | test | verifier/oracle handoff | Copy `source_ingress_handoff.rs:123-315`. |
-| `crates/loom-parquet-ingress/` | adapter crate | file-I/O, transform | Same crate isolation pattern as Vortex ingress. |
-| `crates/loom-parquet-ingress/src/lib.rs` | adapter API | request-response | Export source-neutral helper names, source-specific internally. |
-| `crates/loom-parquet-ingress/src/source_contract.rs` | mapping/service | source facts -> report | Copy Vortex report/facts/handoff structure. |
-| `crates/loom-parquet-ingress/tests/source_ingress_contract.rs` | test | contract mapping | Copy status/coverage/facts assertions. |
-| `crates/loom-parquet-ingress/tests/source_ingress_handoff.rs` | test | verifier/oracle handoff | Copy accepted LMP1/LMT1, unsupported, rejected tests. |
+| `ingress/loom-lance-ingress/` | adapter crate | file-I/O, transform | `ingress/loom-vortex-ingress/` |
+| `ingress/loom-lance-ingress/src/lib.rs` | adapter API | request-response | Export `source_contract` helpers like `loom-vortex-ingress/src/lib.rs:7-16`. |
+| `ingress/loom-lance-ingress/src/source_contract.rs` | mapping/service | source facts -> report | Copy function family shape from `source_contract.rs:37-132`. |
+| `ingress/loom-lance-ingress/tests/source_ingress_contract.rs` | test | contract mapping | Copy assertions from `loom-vortex-ingress/tests/source_ingress_contract.rs:75-158`, adjusted to Lance facts. |
+| `ingress/loom-lance-ingress/tests/source_ingress_handoff.rs` | test | verifier/oracle handoff | Copy `source_ingress_handoff.rs:123-315`. |
+| `ingress/loom-parquet-ingress/` | adapter crate | file-I/O, transform | Same crate isolation pattern as Vortex ingress. |
+| `ingress/loom-parquet-ingress/src/lib.rs` | adapter API | request-response | Export source-neutral helper names, source-specific internally. |
+| `ingress/loom-parquet-ingress/src/source_contract.rs` | mapping/service | source facts -> report | Copy Vortex report/facts/handoff structure. |
+| `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs` | test | contract mapping | Copy status/coverage/facts assertions. |
+| `ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs` | test | verifier/oracle handoff | Copy accepted LMP1/LMT1, unsupported, rejected tests. |
 | `scripts/lance-parquet-ingress-test.sh` | script | batch verification | Copy `scripts/source-ingress-contract-test.sh` structure and add Lance/Parquet guard markers. |
 | `.planning/phases/27-.../27-ARCHIVAL-READABILITY-REPORT.md` | docs/report | release evidence | Copy report sections from `26-SOURCE-INGRESS-REPORT.md:26-205`. |
 
 Do not add Lance/Parquet symbols to `loom-source-ingress`; its own tests intentionally forbid source-specific public vocabulary:
 
 ```rust
-// crates/loom-source-ingress/tests/source_ingress_contract.rs:95-112
+// ingress/loom-source-ingress/tests/source_ingress_contract.rs:95-112
 fn contract_sources_do_not_contain_source_specific_public_vocabulary() {
     ...
     for marker in forbidden_source_markers() {
@@ -144,7 +144,7 @@ fn contract_sources_do_not_contain_source_specific_public_vocabulary() {
 Accepted LMP1/LMT1 handoff should mirror the current Vortex tests:
 
 ```rust
-// crates/loom-vortex-ingress/tests/source_ingress_handoff.rs:123-157
+// ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs:123-157
 #[test]
 fn accepted_single_column_handoff_is_verifier_routed_lmp1() {
     let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
@@ -164,7 +164,7 @@ fn accepted_single_column_handoff_is_verifier_routed_lmp1() {
 For table emission, copy the `LMT1` equivalent:
 
 ```rust
-// crates/loom-vortex-ingress/tests/source_ingress_handoff.rs:160-193
+// ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs:160-193
 #[test]
 fn accepted_table_handoff_is_verifier_routed_lmt1() {
     let vortex = supported_table_bytes();
@@ -180,7 +180,7 @@ fn accepted_table_handoff_is_verifier_routed_lmt1() {
 Oracle evidence must be explicit and row-equivalent. For Lance/Parquet, use `SourceOracleStrategy::ArrowScan` if the source reader yields Arrow batches; use `SourceOracleStrategy::SourceNativeScan` only if the adapter really scans through the source SDK:
 
 ```rust
-// crates/loom-vortex-ingress/tests/source_ingress_handoff.rs:196-216
+// ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs:196-216
 let oracle = accepted
     .report
     .oracle_evidence
@@ -197,7 +197,7 @@ assert_eq!(decode_single_i32_values(&accepted.bytes), vec![7, -1, 42]);
 Unsupported valid cases must retain facts but emit no bytes:
 
 ```rust
-// crates/loom-vortex-ingress/tests/source_ingress_handoff.rs:244-270
+// ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs:244-270
 let report = emit_source_ingress_lmc1_from_vortex_buffer(&vortex)
     .expect_err("unsupported source report");
 
@@ -215,7 +215,7 @@ assert!(report.oracle_evidence.is_none());
 Malformed/rejected cases must expose diagnostics only:
 
 ```rust
-// crates/loom-vortex-ingress/tests/source_ingress_handoff.rs:299-315
+// ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs:299-315
 let report = emit_source_ingress_lmc1_from_vortex_buffer(b"not a vortex file")
     .expect_err("malformed source report");
 
@@ -229,7 +229,7 @@ assert!(report.oracle_evidence.is_none());
 Primitive/table equivalence should decode verified Loom output and compare to oracle rows. Copy the `single_column_to_loom` and `table_to_loom` pattern:
 
 ```rust
-// crates/loom-vortex-ingress/tests/single_column_to_loom.rs:57-65
+// ingress/loom-vortex-ingress/tests/single_column_to_loom.rs:57-65
 fn decode_lmc1(bytes: &[u8]) -> ArrayData {
     assert!(is_container_payload(bytes));
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -242,7 +242,7 @@ fn decode_lmc1(bytes: &[u8]) -> ArrayData {
 ```
 
 ```rust
-// crates/loom-vortex-ingress/tests/table_to_loom.rs:135-156
+// ingress/loom-vortex-ingress/tests/table_to_loom.rs:135-156
 let registry = L2KernelRegistry::default_for_mvp0();
 let report = verify_artifact(&loom, &registry, &Default::default());
 assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
@@ -329,7 +329,7 @@ Use source-specific names only inside source-specific crates and tests:
 Source identity should use plain strings. Copy `SourceIdentity::new(...).with_format_version(...).with_path_display(...)` from:
 
 ```rust
-// crates/loom-source-ingress/src/lib.rs:35-59
+// ingress/loom-source-ingress/src/lib.rs:35-59
 impl SourceIdentity {
     pub fn new(source_kind: impl Into<String>, format: impl Into<String>) -> Self { ... }
     pub fn with_format_version(mut self, format_version: impl Into<String>) -> Self { ... }
@@ -356,6 +356,6 @@ Shared helper premature abstraction: Lance and Parquet can duplicate small mappi
 
 ## Metadata
 
-**Analog search scope:** `Cargo.toml`, `crates/*/Cargo.toml`, `crates/loom-source-ingress`, `crates/loom-vortex-ingress`, `crates/loom-core`, `scripts`, Phase 26/27 planning docs.  
+**Analog search scope:** `Cargo.toml`, `crates/*/Cargo.toml`, `ingress/loom-source-ingress`, `ingress/loom-vortex-ingress`, `crates/loom-core`, `scripts`, Phase 26/27 planning docs.  
 **Files scanned:** 24 required files/directories plus targeted grep over `crates`, `scripts`, `Cargo.toml`, and Phase 27 planning directory.  
 **Pattern extraction date:** 2026-06-09.

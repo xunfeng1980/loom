@@ -225,7 +225,7 @@ general Arrow shape support, and not a GA performance promise.
 | `crates/loom-ffi` | C ABI boundary and Arrow C Data Interface export |
 | `crates/loom-cli` | `loom inspect`, `decode`, `verify-artifact`, `verify-l2core`, `ingest-vortex` |
 | `crates/loom-fixtures` | Deterministic fixture/oracle generation for DuckDB and Rust tests |
-| `crates/loom-vortex-ingress` | Isolated real Vortex file ingress boundary |
+| `ingress/loom-vortex-ingress` | Isolated real Vortex file ingress boundary |
 | `crates/loom-native-melior` | Optional MLIR/melior/native-backend evidence path |
 | `crates/loom-solver-smt` | Optional SMT solver integration, currently Bitwuzla-primary |
 | `contrib/duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |

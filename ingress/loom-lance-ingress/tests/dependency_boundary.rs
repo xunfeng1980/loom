@@ -66,7 +66,7 @@ fn direct_workspace_pin_has(text: &str, name: &str) -> bool {
 }
 
 #[test]
-fn parquet_dependency_is_direct_only_in_parquet_adapter_manifest() {
+fn lance_dependency_is_direct_only_in_lance_adapter_manifest() {
     let root = workspace_root();
     let lance_name = format!("{}{}", "lan", "ce");
     let parquet_name = format!("{}{}", "par", "quet");
@@ -77,7 +77,9 @@ fn parquet_dependency_is_direct_only_in_parquet_adapter_manifest() {
 
     let mut direct_lance_manifests = Vec::new();
     let mut direct_parquet_manifests = Vec::new();
-    for entry in std::fs::read_dir(root.join("crates")).expect("read crates dir") {
+    let crates_iter = std::fs::read_dir(root.join("crates")).expect("read crates dir");
+    let ingress_iter = std::fs::read_dir(root.join("ingress")).expect("read ingress dir");
+    for entry in crates_iter.chain(ingress_iter) {
         let manifest_path = entry.expect("crate entry").path().join("Cargo.toml");
         if !manifest_path.exists() {
             continue;
@@ -93,11 +95,11 @@ fn parquet_dependency_is_direct_only_in_parquet_adapter_manifest() {
 
     assert_eq!(
         direct_lance_manifests,
-        vec![root.join("crates/loom-lance-ingress/Cargo.toml")]
+        vec![root.join("ingress/loom-lance-ingress/Cargo.toml")]
     );
     assert_eq!(
         direct_parquet_manifests,
-        vec![root.join("crates/loom-parquet-ingress/Cargo.toml")]
+        vec![root.join("ingress/loom-parquet-ingress/Cargo.toml")]
     );
 }
 
@@ -105,9 +107,9 @@ fn parquet_dependency_is_direct_only_in_parquet_adapter_manifest() {
 fn generic_source_ingress_contract_has_no_source_sdk_vocabulary() {
     let root = workspace_root();
     let source_files = [
-        root.join("crates/loom-source-ingress/Cargo.toml"),
-        root.join("crates/loom-source-ingress/src/lib.rs"),
-        root.join("crates/loom-source-ingress/tests/source_ingress_contract.rs"),
+        root.join("ingress/loom-source-ingress/Cargo.toml"),
+        root.join("ingress/loom-source-ingress/src/lib.rs"),
+        root.join("ingress/loom-source-ingress/tests/source_ingress_contract.rs"),
     ];
     let forbidden = [
         format!("{}{}", "lan", "ce"),

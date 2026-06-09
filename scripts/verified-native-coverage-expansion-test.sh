@@ -33,9 +33,9 @@ for file in \
     "${MATRIX}" \
     ".planning/phases/42-verified-native-coverage-expansion/42-01-SUMMARY.md" \
     ".planning/phases/42-verified-native-coverage-expansion/42-02-SUMMARY.md" \
-    "crates/loom-vortex-ingress/tests/phase42_vortex_coverage_matrix.rs" \
-    "crates/loom-parquet-ingress/tests/phase42_source_schema_matrix.rs" \
-    "crates/loom-lance-ingress/tests/phase42_source_schema_matrix.rs"; do
+    "ingress/loom-vortex-ingress/tests/phase42_vortex_coverage_matrix.rs" \
+    "ingress/loom-parquet-ingress/tests/phase42_source_schema_matrix.rs" \
+    "ingress/loom-lance-ingress/tests/phase42_source_schema_matrix.rs"; do
     [ -f "${file}" ] || fail "missing Phase 42 artifact: ${file}"
 done
 for marker in \
@@ -44,7 +44,7 @@ for marker in \
     "SourceVerifiedNativeDisposition" \
     "native-evidence-missing" \
     "verified-lineage-evidence-missing"; do
-    rg -q -F "${marker}" crates/loom-vortex-ingress crates/loom-source-ingress \
+    rg -q -F "${marker}" ingress/loom-vortex-ingress ingress/loom-source-ingress \
         || fail "missing Phase 42 implementation marker: ${marker}"
 done
 for marker in \

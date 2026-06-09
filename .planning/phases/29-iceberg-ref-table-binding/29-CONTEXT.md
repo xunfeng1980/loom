@@ -68,9 +68,9 @@ Phase 29 defines and proves a narrow Iceberg ref/table binding for verifier-back
 
 ### Integration Points
 - Workspace manifests: root `Cargo.toml` and adapter crate manifests.
-- Source-neutral contract: `crates/loom-source-ingress/src/lib.rs`.
+- Source-neutral contract: `ingress/loom-source-ingress/src/lib.rs`.
 - Artifact verifier: `crates/loom-core/src/artifact_verifier.rs`.
-- Existing source adapter analogs: `crates/loom-parquet-ingress`, `crates/loom-lance-ingress`, and `crates/loom-vortex-ingress`.
+- Existing source adapter analogs: `ingress/loom-parquet-ingress`, `ingress/loom-lance-ingress`, and `ingress/loom-vortex-ingress`.
 - Main release gate: `scripts/mvp0-verify.sh`.
 
 </code_context>

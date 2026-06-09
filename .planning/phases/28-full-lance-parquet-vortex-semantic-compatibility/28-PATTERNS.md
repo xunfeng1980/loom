@@ -4,7 +4,7 @@
 
 | Phase 28 Need | Existing Pattern | How to Reuse |
 |---|---|---|
-| Compatibility matrix vocabulary | `crates/loom-vortex-ingress/src/lib.rs` `VortexEncodingCoverage` | Extend with semantic-compatibility rows instead of inventing a separate support taxonomy. |
+| Compatibility matrix vocabulary | `ingress/loom-vortex-ingress/src/lib.rs` `VortexEncodingCoverage` | Extend with semantic-compatibility rows instead of inventing a separate support taxonomy. |
 | Matrix/report documentation | `21-COVERAGE-MATRIX.md`, `21-COVERAGE-REPORT.md` | Use the same accepted/unsupported/rejected and disposition separation, but make rows executable and broader. |
 | Reader facts and fail-closed emission | `18-READER-REPORT.md`, `scripts/complete-vortex-reader-test.sh` | Keep valid unsupported files fact-bearing with no emitted bytes; malformed files rejected. |
 | Artifact verifier handoff | `crates/loom-core/src/artifact_verifier.rs` tests | Every emitted compatibility row must pass existing artifact verification. |
@@ -15,10 +15,10 @@
 
 | New/Modified File | Purpose | Pattern Source |
 |---|---|---|
-| `crates/loom-vortex-ingress/src/lib.rs` | Add semantic compatibility row/report types and mapping from existing coverage facts. | Existing coverage enums and report-style structs. |
-| `crates/loom-vortex-ingress/tests/semantic_compatibility_matrix.rs` | Positive and negative matrix tests for accepted/unsupported/canonicalized rows. | Existing `*_coverage.rs` tests. |
-| `crates/loom-vortex-ingress/tests/nullable_semantic_compatibility.rs` | Nullable primitive semantic gap closure or explicit unsupported proof. | `nullable_primitive_coverage.rs`, core buffer layout tests. |
-| `crates/loom-vortex-ingress/tests/structured_encoding_semantics.rs` | Dictionary/run-end/bitpack/FOR structured-vs-canonical evidence. | `dictionary_runend_coverage.rs`, `bitpack_for_coverage.rs`, core L1 tests. |
+| `ingress/loom-vortex-ingress/src/lib.rs` | Add semantic compatibility row/report types and mapping from existing coverage facts. | Existing coverage enums and report-style structs. |
+| `ingress/loom-vortex-ingress/tests/semantic_compatibility_matrix.rs` | Positive and negative matrix tests for accepted/unsupported/canonicalized rows. | Existing `*_coverage.rs` tests. |
+| `ingress/loom-vortex-ingress/tests/nullable_semantic_compatibility.rs` | Nullable primitive semantic gap closure or explicit unsupported proof. | `nullable_primitive_coverage.rs`, core buffer layout tests. |
+| `ingress/loom-vortex-ingress/tests/structured_encoding_semantics.rs` | Dictionary/run-end/bitpack/FOR structured-vs-canonical evidence. | `dictionary_runend_coverage.rs`, `bitpack_for_coverage.rs`, core L1 tests. |
 | `scripts/vortex-semantic-compatibility-test.sh` | Focused Phase 28 gate. | `scripts/vortex-encoding-coverage-test.sh`, `scripts/native-hardening-test.sh`. |
 | `.planning/phases/28-full-lance-parquet-vortex-semantic-compatibility/28-LANCE-PARQUET-VORTEX-SEMANTIC-COMPATIBILITY-REPORT.md` | Final accepted/unsupported/deferred matrix and tradeoff report. | `21-COVERAGE-REPORT.md`, `25-NATIVE-HARDENING-REPORT.md`. |
 

@@ -1,15 +1,17 @@
 [package]
-name = "loom-parquet-ingress"
+name = "loom-lance-ingress"
 version = "0.1.0"
 edition = "2021"
-description = "Isolated local Parquet file ingress adapter for Loom"
+description = "Isolated local Lance dataset ingress adapter for Loom"
 
 [dependencies]
 arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
-loom-core = { path = "../loom-core" }
+futures = { workspace = true }
+lance = { workspace = true }
+loom-core = { path = "../../crates/loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
-parquet = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -4,7 +4,7 @@ source_family: parquet
 source_fixture: legacy-v1.parquet
 generator_crate: parquet
 generator_version: 57.0.0
-generator_command: cargo run --manifest-path /tmp/loom-legacy-writers.*/parquet57/Cargo.toml -- crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
+generator_command: cargo run --manifest-path /tmp/loom-legacy-writers.*/parquet57/Cargo.toml -- ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
 schema: id:Int32 non-null, score:Int64 non-null, ratio32:Float32 non-null, ratio64:Float64 non-null
 rows: [(1,10,1.25,1.5), (2,20,-2.5,2.5), (3,30,3.75,3.5)]
 source_fixture_sha256: d45ed9f08ade6bd60336cff99ccca5572436e7cbb5524ed8ec84f0191b3ede69

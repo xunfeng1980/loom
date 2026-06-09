@@ -109,7 +109,7 @@ verifier evidence.
 
 ### Reusable Assets
 
-- `crates/loom-vortex-ingress` already owns Vortex APIs, reader facts, support
+- `ingress/loom-vortex-ingress` already owns Vortex APIs, reader facts, support
   classification, artifact emission, and oracle tests for primitive/table
   slices.
 - `.planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-MATRIX.md`
@@ -136,7 +136,7 @@ verifier evidence.
 
 ### Integration Points
 
-- `crates/loom-vortex-ingress/src/lib.rs` and its coverage tests are the likely
+- `ingress/loom-vortex-ingress/src/lib.rs` and its coverage tests are the likely
   implementation entry point for new Vortex semantic rows.
 - `crates/loom-core/src/table_codec.rs`, `layout_codec.rs`,
   `artifact_verifier.rs`, and `production_native_lowering.rs` are the core

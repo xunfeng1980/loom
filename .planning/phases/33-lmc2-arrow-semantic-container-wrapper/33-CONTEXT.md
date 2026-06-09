@@ -131,11 +131,11 @@ payload.
 
 ### Source and Gate Surfaces
 
-- `crates/loom-parquet-ingress/src/source_contract.rs` — Parquet source emission
+- `ingress/loom-parquet-ingress/src/source_contract.rs` — Parquet source emission
   currently emits direct `LMA1`.
-- `crates/loom-lance-ingress/src/source_contract.rs` — Lance source emission
+- `ingress/loom-lance-ingress/src/source_contract.rs` — Lance source emission
   currently emits direct `LMA1`.
-- `crates/loom-vortex-ingress/src/source_contract.rs` — Vortex source emission
+- `ingress/loom-vortex-ingress/src/source_contract.rs` — Vortex source emission
   currently emits direct `LMA1`.
 - `scripts/full-arrow-semantic-compatibility-test.sh` — Phase 31 focused gate
   that currently checks direct `LMA1` verifier routing.

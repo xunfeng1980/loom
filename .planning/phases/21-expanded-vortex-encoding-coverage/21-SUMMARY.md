@@ -8,11 +8,11 @@ Self-Check: PASSED
 
 ## Shipped Files
 
-- `crates/loom-vortex-ingress/src/lib.rs`
-- `crates/loom-vortex-ingress/tests/nullable_primitive_coverage.rs`
-- `crates/loom-vortex-ingress/tests/chunked_primitive_coverage.rs`
-- `crates/loom-vortex-ingress/tests/dictionary_runend_coverage.rs`
-- `crates/loom-vortex-ingress/tests/bitpack_for_coverage.rs`
+- `ingress/loom-vortex-ingress/src/lib.rs`
+- `ingress/loom-vortex-ingress/tests/nullable_primitive_coverage.rs`
+- `ingress/loom-vortex-ingress/tests/chunked_primitive_coverage.rs`
+- `ingress/loom-vortex-ingress/tests/dictionary_runend_coverage.rs`
+- `ingress/loom-vortex-ingress/tests/bitpack_for_coverage.rs`
 - `scripts/vortex-encoding-coverage-test.sh`
 - `.planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-MATRIX.md`
 - `.planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md`

@@ -21,11 +21,11 @@ Deferred scope:
 
 ## Dependency Boundary
 
-Direct `vortex-file` usage is allowed only in `crates/loom-vortex-ingress`. The release guards now check:
+Direct `vortex-file` usage is allowed only in `ingress/loom-vortex-ingress`. The release guards now check:
 
 - `cargo tree -p loom-core` has zero Vortex/FastLanes dependencies.
 - `cargo tree -p loom-ffi` has zero Vortex/FastLanes dependencies.
-- Direct `vortex-file` references are allowlisted to `crates/loom-vortex-ingress/Cargo.toml`.
+- Direct `vortex-file` references are allowlisted to `ingress/loom-vortex-ingress/Cargo.toml`.
 - `crates/loom-fixtures` still cannot use file-backed Vortex APIs.
 
 ## Report Fields
@@ -66,7 +66,7 @@ The generated real Vortex fixture currently reports:
 
 ## Oracle Comparison
 
-`crates/loom-vortex-ingress/tests/real_file_to_loom.rs` proves the supported slice:
+`ingress/loom-vortex-ingress/tests/real_file_to_loom.rs` proves the supported slice:
 
 1. Generate a real Vortex file in memory.
 2. Scan it through Vortex to Loom-owned `Vec<i32>` oracle rows.

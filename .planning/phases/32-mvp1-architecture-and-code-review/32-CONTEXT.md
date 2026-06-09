@@ -159,8 +159,8 @@ expand native MLIR execution scope.
   FFI decode and DuckDB runtime/fallback routing.
 - `duckdb-ext/loom_extension.cpp` — Public DuckDB `loom_scan(path)` table
   function, bind/scan behavior, and direct DataChunk output.
-- `crates/loom-parquet-ingress`, `crates/loom-lance-ingress`, and
-  `crates/loom-vortex-ingress` — Source adapter patterns and semantic emission
+- `ingress/loom-parquet-ingress`, `ingress/loom-lance-ingress`, and
+  `ingress/loom-vortex-ingress` — Source adapter patterns and semantic emission
   boundaries.
 - `crates/loom-native-melior` — Native backend/JIT seed, diagnostics, and
   toolchain-dependent evidence.

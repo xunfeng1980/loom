@@ -48,9 +48,9 @@
 
 **Target files:**
 
-- `crates/loom-parquet-ingress/src/source_contract.rs`
-- `crates/loom-lance-ingress/src/source_contract.rs`
-- `crates/loom-vortex-ingress/src/source_contract.rs`
+- `ingress/loom-parquet-ingress/src/source_contract.rs`
+- `ingress/loom-lance-ingress/src/source_contract.rs`
+- `ingress/loom-vortex-ingress/src/source_contract.rs`
 
 **Closest analogs:**
 

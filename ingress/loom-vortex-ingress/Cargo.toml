@@ -7,7 +7,7 @@ description = "Isolated real Vortex file ingress bridge for Loom"
 [dependencies]
 arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
-loom-core = { path = "../loom-core" }
+loom-core = { path = "../../crates/loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 vortex-array = { workspace = true }
 vortex-buffer = "=0.74.0"

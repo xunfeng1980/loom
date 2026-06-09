@@ -20,12 +20,12 @@ tech-stack:
   patterns: [async-only Lance adapter APIs, source SDK objects stay adapter-private]
 key-files:
   created:
-    - crates/loom-lance-ingress/src/source_contract.rs
-    - crates/loom-lance-ingress/tests/source_ingress_contract.rs
+    - ingress/loom-lance-ingress/src/source_contract.rs
+    - ingress/loom-lance-ingress/tests/source_ingress_contract.rs
   modified:
     - Cargo.lock
-    - crates/loom-lance-ingress/Cargo.toml
-    - crates/loom-lance-ingress/src/lib.rs
+    - ingress/loom-lance-ingress/Cargo.toml
+    - ingress/loom-lance-ingress/src/lib.rs
 key-decisions:
   - "Lance facts classify supported shapes in `SourceCoverage` only; accepted reports and artifact bytes remain deferred to Plan 27-04."
   - "Lance SDK objects and object-store state remain private to `loom-lance-ingress`; generic/core/ffi crates receive only source-neutral strings, counts, booleans, and diagnostics."
@@ -74,10 +74,10 @@ Additional cleanup:
 
 ## Files Created/Modified
 
-- `crates/loom-lance-ingress/src/source_contract.rs` - async Lance fact extraction, classification, report mapping, and sanitized diagnostics.
-- `crates/loom-lance-ingress/tests/source_ingress_contract.rs` - Lance schema/version/fragment facts, classification matrix, SDK-boundary guard, and rejection tests.
-- `crates/loom-lance-ingress/src/lib.rs` - exported the async source-contract helpers.
-- `crates/loom-lance-ingress/Cargo.toml` - added `arrow-array` as a dev-dependency for deterministic Lance fixture tests.
+- `ingress/loom-lance-ingress/src/source_contract.rs` - async Lance fact extraction, classification, report mapping, and sanitized diagnostics.
+- `ingress/loom-lance-ingress/tests/source_ingress_contract.rs` - Lance schema/version/fragment facts, classification matrix, SDK-boundary guard, and rejection tests.
+- `ingress/loom-lance-ingress/src/lib.rs` - exported the async source-contract helpers.
+- `ingress/loom-lance-ingress/Cargo.toml` - added `arrow-array` as a dev-dependency for deterministic Lance fixture tests.
 - `Cargo.lock` - recorded the new Lance adapter dev-dependency edge.
 
 ## Verification
@@ -89,7 +89,7 @@ Additional cleanup:
 - `cargo test -p loom-lance-ingress --test dependency_boundary` passed.
 - `cargo tree -p loom-core | awk '/lance|parquet|object_store/{found=1} END{exit found?1:0}'` passed.
 - `cargo tree -p loom-source-ingress | awk '/lance|parquet|object_store/{found=1} END{exit found?1:0}'` passed.
-- `rg -n "pub struct Lance|Dataset|FileFragment|object_store" crates/loom-source-ingress crates/loom-core crates/loom-ffi` returned no matches.
+- `rg -n "pub struct Lance|Dataset|FileFragment|object_store" ingress/loom-source-ingress crates/loom-core crates/loom-ffi` returned no matches.
 
 ## Decisions Made
 
@@ -105,21 +105,21 @@ Additional cleanup:
 - **Found during:** Task 1
 - **Issue:** Deterministic Lance dataset fixtures require Arrow arrays and `RecordBatchIterator`, but `loom-lance-ingress` did not expose `arrow-array` to integration tests.
 - **Fix:** Added `arrow-array = { workspace = true }` under `dev-dependencies` and committed the lockfile update.
-- **Files modified:** `crates/loom-lance-ingress/Cargo.toml`, `Cargo.lock`
+- **Files modified:** `ingress/loom-lance-ingress/Cargo.toml`, `Cargo.lock`
 - **Commit:** `ca6c789`, `941540e`
 
 **2. [Rule 2 - Missing Critical Functionality] Implemented fail-closed Lance rejection while mapping facts**
 - **Found during:** Task 1
 - **Issue:** Safe fact extraction needs open/read/schema failures to reject without trusted facts before later tasks can rely on the helper.
 - **Fix:** Added rejected report mapping for invalid UTF-8, non-local URI-like paths, open failures, empty schemas, and row-count read failures.
-- **Files modified:** `crates/loom-lance-ingress/src/source_contract.rs`
+- **Files modified:** `ingress/loom-lance-ingress/src/source_contract.rs`
 - **Commit:** `941540e`
 
 **3. [Rule 1 - Bug] Treated Arrow extension metadata as unsupported schema**
 - **Found during:** Task 2
 - **Issue:** Extension-style primitive fields were initially classified by physical storage type and could be marked supported.
 - **Fix:** Added field metadata detection for `ARROW:extension:name`, mapped those facts to logical kind `extension`, and returned unsupported schema diagnostics.
-- **Files modified:** `crates/loom-lance-ingress/src/source_contract.rs`
+- **Files modified:** `ingress/loom-lance-ingress/src/source_contract.rs`
 - **Commit:** `3e112d5`
 
 ## Issues Encountered
@@ -158,7 +158,7 @@ Plan 27-04 can consume these Lance facts and supported coverage classifications 
 ## Self-Check: PASSED
 
 - Summary file exists at `.planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-03-SUMMARY.md`.
-- Created files exist: `crates/loom-lance-ingress/src/source_contract.rs`, `crates/loom-lance-ingress/tests/source_ingress_contract.rs`.
+- Created files exist: `ingress/loom-lance-ingress/src/source_contract.rs`, `ingress/loom-lance-ingress/tests/source_ingress_contract.rs`.
 - Task commits exist: `ca6c789`, `941540e`, `1803f41`, `3e112d5`, `546aedb`, `aef7865`.
 
 ---

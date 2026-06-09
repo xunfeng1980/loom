@@ -9,7 +9,7 @@ requirements-completed: [PHASE-28]
 # Phase 28 Plan 01 Summary
 
 Implemented the semantic compatibility row contract in
-`crates/loom-vortex-ingress/src/lib.rs`.
+`ingress/loom-vortex-ingress/src/lib.rs`.
 
 ## Delivered
 

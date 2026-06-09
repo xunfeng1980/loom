@@ -125,8 +125,8 @@ check_direct_source_deps() {
         printf '%s\n' "${refs}" \
             | grep -v '^$' \
             | grep -v '^Cargo.toml:' \
-            | grep -v '^crates/loom-lance-ingress/Cargo.toml:' \
-            | grep -v '^crates/loom-parquet-ingress/Cargo.toml:' || true
+            | grep -v '^ingress/loom-lance-ingress/Cargo.toml:' \
+            | grep -v '^ingress/loom-parquet-ingress/Cargo.toml:' || true
     )"
     if [ -n "${unexpected}" ]; then
         printf '%s\n' "${unexpected}" >&2
@@ -195,16 +195,16 @@ check_legacy_report_language
 ok "Phase 27 planning/report evidence is present"
 
 info "Checking actual older-version fixtures and paired Loom artifacts..."
-check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet"
-check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom"
-check_file "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md"
-check_dir "crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance"
-check_file "crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom"
-check_file "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md"
-check_marker "generator_version: 57.0.0" "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "older Parquet generator version"
-check_marker "generator_version: 6.0.0" "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "older Lance generator version"
-check_marker "not a manifest-only record" "crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "Parquet actual fixture statement"
-check_marker "not a manifest-only record" "crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "Lance actual fixture statement"
+check_file "ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet"
+check_file "ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom"
+check_file "ingress/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md"
+check_dir "ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance"
+check_file "ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom"
+check_file "ingress/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md"
+check_marker "generator_version: 57.0.0" "ingress/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "older Parquet generator version"
+check_marker "generator_version: 6.0.0" "ingress/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "older Lance generator version"
+check_marker "not a manifest-only record" "ingress/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md" "Parquet actual fixture statement"
+check_marker "not a manifest-only record" "ingress/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md" "Lance actual fixture statement"
 ok "actual older-version fixtures and paired Loom artifacts"
 
 info "Running focused Phase 27 adapter and verifier tests..."
@@ -241,15 +241,15 @@ check_cargo_tree_clean loom-cli "${source_dep_patterns[@]}"
 check_no_manifest_patterns "core/ffi/source-ingress/cli manifests" \
     crates/loom-core/Cargo.toml \
     crates/loom-ffi/Cargo.toml \
-    crates/loom-source-ingress/Cargo.toml \
+    ingress/loom-source-ingress/Cargo.toml \
     crates/loom-cli/Cargo.toml \
     -- \
     "${source_dep_patterns[@]}"
 
 check_no_fixed_patterns "generic source-ingress crate" \
-    crates/loom-source-ingress/Cargo.toml \
-    crates/loom-source-ingress/src/lib.rs \
-    crates/loom-source-ingress/tests/source_ingress_contract.rs \
+    ingress/loom-source-ingress/Cargo.toml \
+    ingress/loom-source-ingress/src/lib.rs \
+    ingress/loom-source-ingress/tests/source_ingress_contract.rs \
     -- \
     "${source_dep_patterns[@]}" \
     "Duck""DB" \

@@ -12,7 +12,7 @@ presence, support status, and emission intent. It is not arbitrary native decode
 support and it is not a production native execution path.
 
 The public boundary is Loom-owned. Public reports and facts must not expose
-Vortex Rust types outside `crates/loom-vortex-ingress`.
+Vortex Rust types outside `ingress/loom-vortex-ingress`.
 
 ## Reader Pipeline
 
@@ -67,7 +67,7 @@ or engine execution is allowed.
 ## Dependency Boundary
 
 `vortex-file` and `vortex-layout` file-reader APIs are isolated to
-`crates/loom-vortex-ingress`. `loom-core` and `loom-ffi` must remain free of
+`ingress/loom-vortex-ingress`. `loom-core` and `loom-ffi` must remain free of
 `vortex` and `fastlanes` dependency-tree matches.
 
 The ingress crate may depend on `loom-core` to wrap/verify supported output

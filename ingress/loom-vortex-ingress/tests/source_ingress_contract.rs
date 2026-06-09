@@ -320,8 +320,8 @@ fn generic_contract_sources_remain_source_neutral() {
         .args([
             "-n",
             "Vortex|vortex",
-            "crates/loom-source-ingress/src",
-            "crates/loom-source-ingress/tests",
+            "ingress/loom-source-ingress/src",
+            "ingress/loom-source-ingress/tests",
         ])
         .current_dir(&workspace_root)
         .output()

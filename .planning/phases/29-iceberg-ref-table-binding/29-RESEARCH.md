@@ -62,12 +62,12 @@
 - `loom-core` and `loom-ffi` must remain free of source-format SDKs such as Vortex, Lance, Parquet, and Iceberg except where previous phases explicitly isolated adapters. [VERIFIED: AGENTS.md / PROJECT.md]
 - Rust decoder core uses arrow-rs, and the workspace currently pins `arrow`, `arrow-array`, `arrow-schema`, and `arrow-data` exactly to `=58.3.0`. [VERIFIED: Cargo.toml]
 - C++ DuckDB integration remains a thin host wrapper over the Rust core via direct DataChunk population and the existing public `loom_scan(path)` surface. [VERIFIED: AGENTS.md / .planning/STATE.md / scripts/mvp0-verify.sh]
-- The generic `loom-source-ingress` crate must remain source-neutral and free of source SDK vocabulary, host-engine handles, credentials, and Arrow stream ownership objects. [VERIFIED: crates/loom-source-ingress/src/lib.rs]
+- The generic `loom-source-ingress` crate must remain source-neutral and free of source SDK vocabulary, host-engine handles, credentials, and Arrow stream ownership objects. [VERIFIED: ingress/loom-source-ingress/src/lib.rs]
 - Before file-changing work, use a GSD workflow; this research artifact is being produced inside the GSD research workflow requested for Phase 29. [VERIFIED: AGENTS.md]
 
 ## Summary
 
-Phase 29 should implement a narrow adapter-local binding proof, not an Iceberg catalog implementation. The recommended surface is a new private crate such as `loom-iceberg-binding` that reads local Iceberg-style table metadata JSON plus a Loom sidecar/reference JSON, extracts bounded table/ref facts, verifies the referenced Loom artifact with `verify_artifact`, checks source-ingress/oracle evidence, and returns accepted/unsupported/rejected binding reports. [VERIFIED: .planning/phases/29-iceberg-ref-table-binding/29-CONTEXT.md] [VERIFIED: crates/loom-source-ingress/src/lib.rs] [VERIFIED: crates/loom-parquet-ingress/src/source_contract.rs]
+Phase 29 should implement a narrow adapter-local binding proof, not an Iceberg catalog implementation. The recommended surface is a new private crate such as `loom-iceberg-binding` that reads local Iceberg-style table metadata JSON plus a Loom sidecar/reference JSON, extracts bounded table/ref facts, verifies the referenced Loom artifact with `verify_artifact`, checks source-ingress/oracle evidence, and returns accepted/unsupported/rejected binding reports. [VERIFIED: .planning/phases/29-iceberg-ref-table-binding/29-CONTEXT.md] [VERIFIED: ingress/loom-source-ingress/src/lib.rs] [VERIFIED: ingress/loom-parquet-ingress/src/source_contract.rs]
 
 The default implementation should not depend on the `iceberg` crate in Phase 29. `iceberg` 0.9.1 is official and current, but docs.rs and `cargo info` show it depends on Arrow/Parquet `^57.1`, while this workspace pins Arrow/Parquet `=58.3.0`; adding it would introduce parallel Arrow families and weaken the workspace's version-unification invariant. [CITED: https://docs.rs/crate/iceberg/latest] [VERIFIED: cargo info iceberg@0.9.1] [VERIFIED: Cargo.toml]
 
@@ -78,8 +78,8 @@ The default implementation should not depend on the `iceberg` crate in Phase 29.
 | Capability | Primary Tier | Secondary Tier | Rationale |
 |------------|--------------|----------------|-----------|
 | Iceberg metadata/ref fact extraction | Adapter crate | Filesystem fixtures | The phase is local-file metadata proof only; no core, public FFI, DuckDB, or catalog surface owns Iceberg semantics. [VERIFIED: 29-CONTEXT.md] |
-| Loom artifact trust decision | `loom-core` artifact verifier | Adapter crate report model | Existing accepted paths call `verify_artifact` before constructing accepted source reports; Phase 29 should preserve that trust gate. [VERIFIED: crates/loom-parquet-ingress/src/source_contract.rs] |
-| Source-ingress evidence carry-forward | Adapter crate | `loom-source-ingress` plain-data types | Generic source facts are descriptive and source-neutral; Iceberg-specific vocabulary belongs only in the adapter/report boundary. [VERIFIED: crates/loom-source-ingress/src/lib.rs] |
+| Loom artifact trust decision | `loom-core` artifact verifier | Adapter crate report model | Existing accepted paths call `verify_artifact` before constructing accepted source reports; Phase 29 should preserve that trust gate. [VERIFIED: ingress/loom-parquet-ingress/src/source_contract.rs] |
+| Source-ingress evidence carry-forward | Adapter crate | `loom-source-ingress` plain-data types | Generic source facts are descriptive and source-neutral; Iceberg-specific vocabulary belongs only in the adapter/report boundary. [VERIFIED: ingress/loom-source-ingress/src/lib.rs] |
 | Public SQL / DuckDB / StarRocks query | Out of scope | Phase 29 | CONTEXT explicitly forbids public SQL, C ABI, DuckDB routes, and StarRocks work in Phase 29. [VERIFIED: 29-CONTEXT.md] |
 | Release gate ordering | Shell scripts | `scripts/mvp0-verify.sh` | Phase 27's gate is already ordered after Phase 26 and before DuckDB smoke; Phase 29 should insert after Phase 27 and before DuckDB smoke or before any future Phase 29 gate. [VERIFIED: scripts/mvp0-verify.sh] |
 
@@ -98,7 +98,7 @@ The default implementation should not depend on the `iceberg` crate in Phase 29.
 | Library/Tool | Version | Purpose | When to Use |
 |--------------|---------|---------|-------------|
 | `iceberg` | `0.9.1` | Official Rust implementation and optional metadata API cross-check | Do not add by default; use only in a quarantined test crate/feature if the planner accepts Arrow 57 duplicate dependencies. [CITED: https://docs.rs/crate/iceberg/latest] [VERIFIED: cargo info iceberg@0.9.1] |
-| `shasum` | system `/usr/bin/shasum` | Fixture hash verification in tests | Phase 27 already uses `shasum -a 256` in legacy readability tests; Phase 29 can reuse the pattern for sidecar/artifact hash checks. [VERIFIED: crates/loom-parquet-ingress/tests/legacy_readability.rs] [VERIFIED: command -v shasum] |
+| `shasum` | system `/usr/bin/shasum` | Fixture hash verification in tests | Phase 27 already uses `shasum -a 256` in legacy readability tests; Phase 29 can reuse the pattern for sidecar/artifact hash checks. [VERIFIED: ingress/loom-parquet-ingress/tests/legacy_readability.rs] [VERIFIED: command -v shasum] |
 | `jq` | `1.8.1` | Optional shell-gate JSON sanity checks | Available locally; Rust tests should remain authoritative. [VERIFIED: jq --version] |
 
 ### Alternatives Considered
@@ -232,14 +232,14 @@ struct LocalSnapshotRef {
 
 ### Pattern 2: Accepted Binding Requires Independent Loom Verification
 
-**What:** A sidecar claim such as `loom_artifact_sha256` or `loom_verifier_status=accepted` is descriptive until the adapter recomputes the artifact hash and runs `verify_artifact` on the referenced bytes. [VERIFIED: crates/loom-source-ingress/src/lib.rs] [VERIFIED: crates/loom-parquet-ingress/src/source_contract.rs]
+**What:** A sidecar claim such as `loom_artifact_sha256` or `loom_verifier_status=accepted` is descriptive until the adapter recomputes the artifact hash and runs `verify_artifact` on the referenced bytes. [VERIFIED: ingress/loom-source-ingress/src/lib.rs] [VERIFIED: ingress/loom-parquet-ingress/src/source_contract.rs]
 
 **When to use:** Always use this before constructing an accepted Iceberg binding report. [VERIFIED: 29-CONTEXT.md]
 
 **Example:**
 
 ```rust
-// Source: crates/loom-parquet-ingress/src/source_contract.rs accepted handoff pattern.
+// Source: ingress/loom-parquet-ingress/src/source_contract.rs accepted handoff pattern.
 let verification = verify_artifact(&loom_artifact_bytes, &registry, &Default::default());
 if verification.status() != ArtifactVerificationStatus::Accepted {
     return Err(binding_rejected("loom artifact verifier rejected referenced bytes"));
@@ -259,7 +259,7 @@ let verifier_summary = format!(
 
 - **Adding `iceberg` to the workspace default graph:** It would introduce Arrow/Parquet 57.1 dependencies into a workspace whose core invariant is Arrow/Parquet 58.3.0 unification. [CITED: https://docs.rs/crate/iceberg/latest] [VERIFIED: Cargo.toml]
 - **Manifest-only success:** Iceberg table metadata, manifest-list locations, or sidecar records must not be accepted without actual paired Loom artifact bytes and verifier/oracle evidence. [VERIFIED: 29-CONTEXT.md] [VERIFIED: 27-ARCHIVAL-READABILITY-REPORT.md]
-- **Generic contract vocabulary creep:** Do not add Iceberg-specific names to `loom-source-ingress`; keep them in the adapter/report. [VERIFIED: crates/loom-source-ingress/src/lib.rs] [VERIFIED: 29-CONTEXT.md]
+- **Generic contract vocabulary creep:** Do not add Iceberg-specific names to `loom-source-ingress`; keep them in the adapter/report. [VERIFIED: ingress/loom-source-ingress/src/lib.rs] [VERIFIED: 29-CONTEXT.md]
 - **Public route creep:** Do not add `loom_scan_iceberg`, C ABI symbols, DuckDB code, CLI public routes, StarRocks code, object-store controls, or catalog credential options. [VERIFIED: 29-CONTEXT.md] [VERIFIED: scripts/source-ingress-contract-test.sh]
 
 ## Iceberg Metadata Fields for Binding
@@ -283,7 +283,7 @@ let verifier_summary = format!(
 
 | Case | Disposition | Required Behavior |
 |------|-------------|-------------------|
-| Local metadata + sidecar + paired Loom artifact; table UUID, snapshot ID, schema ID, artifact hash, verifier status, source-ingress report, and oracle/equivalence evidence all match | accepted | Produce accepted binding report and handoff bytes only after recomputing hash and rerunning `verify_artifact`. [VERIFIED: 29-CONTEXT.md] [VERIFIED: crates/loom-source-ingress/src/lib.rs] |
+| Local metadata + sidecar + paired Loom artifact; table UUID, snapshot ID, schema ID, artifact hash, verifier status, source-ingress report, and oracle/equivalence evidence all match | accepted | Produce accepted binding report and handoff bytes only after recomputing hash and rerunning `verify_artifact`. [VERIFIED: 29-CONTEXT.md] [VERIFIED: ingress/loom-source-ingress/src/lib.rs] |
 | Valid Iceberg metadata with unsupported version, nested/nullable schema, missing sidecar, missing Loom artifact, remote location, or no oracle evidence | unsupported | Expose bounded facts and diagnostics; emit no artifact bytes and no accepted binding. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md] |
 | Malformed JSON, missing required identity, invalid sidecar schema, unreadable local artifact, stale schema/snapshot/hash mismatch, verifier rejection, or manifest-only accepted claim | rejected or fail-closed unsupported | Expose diagnostics only for malformed/untrusted inputs; never construct accepted report. [VERIFIED: 29-CONTEXT.md] |
 | Catalog/REST/object-store/credential/table commit/branch mutation request | out of scope / rejected | No implementation path or public control in Phase 29. [VERIFIED: 29-CONTEXT.md] |
@@ -293,8 +293,8 @@ let verifier_summary = format!(
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
 | JSON parsing | Ad hoc string scanning for metadata fields | `serde_json` typed structs | Official docs support typed deserialization and better error reporting than loose indexing. [CITED: https://docs.rs/serde_json/latest/serde_json/] |
-| Artifact trust | A custom verifier-status flag in sidecar | `loom_core::artifact_verifier::verify_artifact` | Existing accepted source adapters already rely on this gate before report acceptance. [VERIFIED: crates/loom-parquet-ingress/src/source_contract.rs] |
-| SHA-256 fixture checks | New crypto crate by default | Existing `shasum -a 256` test pattern or small adapter helper if needed | Phase 27 already uses system `shasum` for fixture hash evidence; avoid adding a crypto crate for a local proof. [VERIFIED: crates/loom-parquet-ingress/tests/legacy_readability.rs] |
+| Artifact trust | A custom verifier-status flag in sidecar | `loom_core::artifact_verifier::verify_artifact` | Existing accepted source adapters already rely on this gate before report acceptance. [VERIFIED: ingress/loom-parquet-ingress/src/source_contract.rs] |
+| SHA-256 fixture checks | New crypto crate by default | Existing `shasum -a 256` test pattern or small adapter helper if needed | Phase 27 already uses system `shasum` for fixture hash evidence; avoid adding a crypto crate for a local proof. [VERIFIED: ingress/loom-parquet-ingress/tests/legacy_readability.rs] |
 | Iceberg catalog/storage/scan | A custom catalog or object-store layer | No implementation in Phase 29 | Catalog, warehouse, remote IO, and table commits are out of scope. [VERIFIED: 29-CONTEXT.md] |
 | Manifest Avro decoding | Partial Iceberg manifest reader | Sidecar/reference fixture for Phase 29 | The useful proof is binding identity and Loom evidence, not full Iceberg manifest semantics. [VERIFIED: 29-CONTEXT.md] |
 
@@ -313,7 +313,7 @@ let verifier_summary = format!(
 
 **What goes wrong:** A sidecar or table property says a Loom artifact was accepted, and the adapter trusts that string. [VERIFIED: 29-CONTEXT.md]
 **Why it happens:** Metadata looks authoritative but can be stale, copied, or malformed. [VERIFIED: 26-SOURCE-INGRESS-CONTRACT.md]
-**How to avoid:** Recompute artifact hash, rerun `verify_artifact`, and check source/oracle evidence before acceptance. [VERIFIED: crates/loom-parquet-ingress/src/source_contract.rs]
+**How to avoid:** Recompute artifact hash, rerun `verify_artifact`, and check source/oracle evidence before acceptance. [VERIFIED: ingress/loom-parquet-ingress/src/source_contract.rs]
 **Warning signs:** Tests pass when the referenced `.loom` bytes are mutated or when `loom_verifier_status` is manually edited to `accepted`. [VERIFIED: 29-CONTEXT.md]
 
 ### Pitfall 3: Accidentally Building Phase 29
@@ -335,7 +335,7 @@ let verifier_summary = format!(
 ### Binding Report Invariant Sketch
 
 ```rust
-// Source: crates/loom-source-ingress/src/lib.rs accepted report invariants.
+// Source: ingress/loom-source-ingress/src/lib.rs accepted report invariants.
 pub enum IcebergBindingStatus {
     Accepted,
     Unsupported,
@@ -367,7 +367,7 @@ pub struct IcebergBindingReport {
 ### Dependency Boundary Test Pattern
 
 ```rust
-// Source: crates/loom-parquet-ingress/tests/dependency_boundary.rs.
+// Source: ingress/loom-parquet-ingress/tests/dependency_boundary.rs.
 #[test]
 fn iceberg_sdk_dependency_is_adapter_only_if_present() {
     let root = workspace_root();
@@ -430,7 +430,7 @@ fn iceberg_sdk_dependency_is_adapter_only_if_present() {
    - RESOLVED default: Do not include it in the first implementation plan; add a human checkpoint if a later plan wants SDK comparison. [VERIFIED: Cargo.toml]
 
 3. **Hash source for final sidecar**
-   - What we know: Phase 27 uses `shasum -a 256` for fixture hashes and existing runtime cache uses FNV-style internal digests for cache keys. [VERIFIED: crates/loom-parquet-ingress/tests/legacy_readability.rs] [VERIFIED: crates/loom-core/src/runtime_abi.rs]
+   - What we know: Phase 27 uses `shasum -a 256` for fixture hashes and existing runtime cache uses FNV-style internal digests for cache keys. [VERIFIED: ingress/loom-parquet-ingress/tests/legacy_readability.rs] [VERIFIED: crates/loom-core/src/runtime_abi.rs]
    - What's unclear: Whether Phase 29 should use only SHA-256 fixture hashes or also record Loom runtime artifact digests.
    - RESOLVED default: Use SHA-256 for sidecar integrity evidence and keep runtime cache digests out of the binding trust model. [VERIFIED: 27-ARCHIVAL-READABILITY-REPORT.md]
 
@@ -464,7 +464,7 @@ fn iceberg_sdk_dependency_is_adapter_only_if_present() {
 | V3 Session Management | no | No sessions or engine service surface. [VERIFIED: 29-CONTEXT.md] |
 | V4 Access Control | yes | Dependency and public-surface guards prevent accidental route/catalog/credential expansion. [VERIFIED: scripts/lance-parquet-ingress-test.sh] |
 | V5 Input Validation | yes | Use typed `serde_json` parsing, bounded field extraction, stable diagnostics, and fail-closed malformed metadata handling. [CITED: https://docs.rs/serde_json/latest/serde_json/] |
-| V6 Cryptography | yes | Recompute SHA-256 fixture/artifact hashes with existing `shasum` pattern; do not hand-roll crypto. [VERIFIED: crates/loom-parquet-ingress/tests/legacy_readability.rs] |
+| V6 Cryptography | yes | Recompute SHA-256 fixture/artifact hashes with existing `shasum` pattern; do not hand-roll crypto. [VERIFIED: ingress/loom-parquet-ingress/tests/legacy_readability.rs] |
 
 ### Known Threat Patterns for Phase 29
 
@@ -485,8 +485,8 @@ Skipped because `.planning/config.json` sets `workflow.nyquist_validation` to `f
 ### Primary (HIGH confidence)
 
 - Local phase context: `.planning/phases/29-iceberg-ref-table-binding/29-CONTEXT.md` - locked binding, trust, scope, and gate decisions.
-- Local source ingress contract: `crates/loom-source-ingress/src/lib.rs` and `26-SOURCE-INGRESS-CONTRACT.md` - accepted/unsupported/rejected invariants and plain-data verifier/oracle handoff.
-- Local Phase 27 handoff: `27-ARCHIVAL-READABILITY-REPORT.md`, `crates/loom-parquet-ingress/src/source_contract.rs`, `crates/loom-lance-ingress/src/source_contract.rs`, and `scripts/lance-parquet-ingress-test.sh` - adapter-local accepted emission and gate pattern.
+- Local source ingress contract: `ingress/loom-source-ingress/src/lib.rs` and `26-SOURCE-INGRESS-CONTRACT.md` - accepted/unsupported/rejected invariants and plain-data verifier/oracle handoff.
+- Local Phase 27 handoff: `27-ARCHIVAL-READABILITY-REPORT.md`, `ingress/loom-parquet-ingress/src/source_contract.rs`, `ingress/loom-lance-ingress/src/source_contract.rs`, and `scripts/lance-parquet-ingress-test.sh` - adapter-local accepted emission and gate pattern.
 - Apache Iceberg spec: https://iceberg.apache.org/spec/ - table metadata, snapshots, refs, properties, manifest-list fields.
 - docs.rs `iceberg` 0.9.1: https://docs.rs/iceberg/latest/iceberg/ and https://docs.rs/crate/iceberg/latest - official crate docs, dependencies, modules, TableMetadata/Snapshot/DataFile APIs.
 - Apache Iceberg Rust 0.9.0 release blog: https://iceberg.apache.org/blog/apache-iceberg-rust-0.9.0-release/ - trait-based storage architecture and storage crate split.

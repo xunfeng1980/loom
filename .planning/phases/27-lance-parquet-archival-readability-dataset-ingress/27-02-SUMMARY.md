@@ -20,13 +20,13 @@ tech-stack:
   patterns: [adapter-private SDK metadata mapping, byte-free classification reports, fail-closed local source diagnostics]
 key-files:
   created:
-    - crates/loom-parquet-ingress/src/source_contract.rs
-    - crates/loom-parquet-ingress/tests/source_ingress_contract.rs
+    - ingress/loom-parquet-ingress/src/source_contract.rs
+    - ingress/loom-parquet-ingress/tests/source_ingress_contract.rs
   modified:
     - Cargo.lock
-    - crates/loom-parquet-ingress/Cargo.toml
-    - crates/loom-parquet-ingress/src/lib.rs
-    - crates/loom-parquet-ingress/tests/dependency_boundary.rs
+    - ingress/loom-parquet-ingress/Cargo.toml
+    - ingress/loom-parquet-ingress/src/lib.rs
+    - ingress/loom-parquet-ingress/tests/dependency_boundary.rs
 key-decisions:
   - "Plan 27-02 classifies supported Parquet coverage but returns byte-free unsupported reports until artifact emission is implemented in Plan 27-04."
   - "Parquet metadata is summarized as strings, counts, booleans, and source facts; Parquet SDK types remain private to `loom-parquet-ingress`."
@@ -70,11 +70,11 @@ Each task was committed atomically, with TDD gate commits where applicable:
 ## Files Created/Modified
 
 - `Cargo.lock` - Recorded the direct `arrow-array` dev-dependency edge for Parquet adapter tests.
-- `crates/loom-parquet-ingress/Cargo.toml` - Added `arrow-array` as a dev-dependency for deterministic Arrow fixture arrays.
-- `crates/loom-parquet-ingress/src/lib.rs` - Exported Parquet source contract helpers.
-- `crates/loom-parquet-ingress/src/source_contract.rs` - Added local-file Parquet metadata extraction, coverage classification, byte-free reports, and rejected diagnostics.
-- `crates/loom-parquet-ingress/tests/source_ingress_contract.rs` - Added fact, classification, unsupported, rejected, and dependency-leak contract coverage.
-- `crates/loom-parquet-ingress/tests/dependency_boundary.rs` - Rustfmt-only formatting change.
+- `ingress/loom-parquet-ingress/Cargo.toml` - Added `arrow-array` as a dev-dependency for deterministic Arrow fixture arrays.
+- `ingress/loom-parquet-ingress/src/lib.rs` - Exported Parquet source contract helpers.
+- `ingress/loom-parquet-ingress/src/source_contract.rs` - Added local-file Parquet metadata extraction, coverage classification, byte-free reports, and rejected diagnostics.
+- `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs` - Added fact, classification, unsupported, rejected, and dependency-leak contract coverage.
+- `ingress/loom-parquet-ingress/tests/dependency_boundary.rs` - Rustfmt-only formatting change.
 
 ## Verification
 
@@ -85,7 +85,7 @@ Each task was committed atomically, with TDD gate commits where applicable:
 - `cargo test -p loom-parquet-ingress --test dependency_boundary` passed.
 - `cargo tree -p loom-core | awk '/lance|parquet|object_store/{found=1} END{exit found?1:0}'` passed.
 - `cargo tree -p loom-source-ingress | awk '/lance|parquet|object_store/{found=1} END{exit found?1:0}'` passed.
-- `rg -n "pub struct Parquet|ParquetMetaData|ParquetRecordBatchReader" crates/loom-source-ingress crates/loom-core crates/loom-ffi` returned no matches.
+- `rg -n "pub struct Parquet|ParquetMetaData|ParquetRecordBatchReader" ingress/loom-source-ingress crates/loom-core crates/loom-ffi` returned no matches.
 
 ## Decisions Made
 
@@ -101,7 +101,7 @@ Each task was committed atomically, with TDD gate commits where applicable:
 - **Found during:** Task 1 (Map Parquet metadata into SourceFacts)
 - **Issue:** Metadata extraction could not be correct or secure unless local open and Parquet metadata parse failures rejected before facts were trusted.
 - **Fix:** Implemented rejected reports for file-open and metadata-read failures in `parquet_source_facts_from_path`; Task 3 later added explicit regression coverage.
-- **Files modified:** `crates/loom-parquet-ingress/src/source_contract.rs`, `crates/loom-parquet-ingress/tests/source_ingress_contract.rs`
+- **Files modified:** `ingress/loom-parquet-ingress/src/source_contract.rs`, `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs`
 - **Verification:** `parquet_malformed_files_are_rejected_without_facts` passed.
 - **Committed in:** `a6dfaa8`, regression coverage in `bc0af38`
 
@@ -139,7 +139,7 @@ Plan 27-04 can consume `parquet_source_facts_from_path` and the supported covera
 ## Self-Check: PASSED
 
 - Summary file exists at `.planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-02-SUMMARY.md`.
-- Created files exist: `crates/loom-parquet-ingress/src/source_contract.rs` and `crates/loom-parquet-ingress/tests/source_ingress_contract.rs`.
+- Created files exist: `ingress/loom-parquet-ingress/src/source_contract.rs` and `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs`.
 - Task commits exist: `a8db424`, `a6dfaa8`, `aff8cf0`, `8dcbea3`, `bc0af38`.
 - Verification commands listed above passed.
 

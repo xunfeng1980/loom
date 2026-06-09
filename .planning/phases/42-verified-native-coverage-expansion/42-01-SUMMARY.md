@@ -7,7 +7,7 @@
 ## What Changed
 
 - Added `phase42_vortex_verified_native_coverage_report()` in
-  `crates/loom-vortex-ingress`.
+  `ingress/loom-vortex-ingress`.
 - Added stable Phase 42 Vortex rows for:
   - `LMC2(LMA1)` fixed-width primitive source semantic coverage with native
     execution/model evidence;
@@ -16,7 +16,7 @@
   - canonical dictionary, run-end/RLE, bitpack, and frame-of-reference rows as
     canonical raw bridges;
   - nullable validity as fail-closed/deferred.
-- Added `crates/loom-vortex-ingress/tests/phase42_vortex_coverage_matrix.rs`.
+- Added `ingress/loom-vortex-ingress/tests/phase42_vortex_coverage_matrix.rs`.
 - Started `42-COVERAGE-MATRIX.md` with Vortex rows.
 
 ## Boundary

@@ -24,13 +24,13 @@ status: all_fixed
 
 ### CR-01: Parquet accepts Arrow extension fields as primitive Loom artifacts
 
-**Files modified:** `crates/loom-parquet-ingress/src/source_contract.rs`, `crates/loom-parquet-ingress/tests/source_ingress_contract.rs`, `crates/loom-parquet-ingress/tests/source_ingress_handoff.rs`
+**Files modified:** `ingress/loom-parquet-ingress/src/source_contract.rs`, `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs`, `ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs`
 **Commit:** `1ff19da`
 **Applied fix:** Added Parquet extension metadata detection for `ARROW:extension:name`, classified those fields as `extension`, excluded them from accepted coverage, returned unsupported schema diagnostics, and blocked layout emission before Loom artifact bytes can be produced. Added Parquet contract and handoff regression coverage for extension-field rejection.
 
 ### WR-01: Parquet rejected-path detail sanitizer can leak secret-bearing or remote-looking error text
 
-**Files modified:** `crates/loom-parquet-ingress/src/source_contract.rs`
+**Files modified:** `ingress/loom-parquet-ingress/src/source_contract.rs`
 **Commit:** `d8d895c`
 **Applied fix:** Replaced direct source-detail attachment with a Lance-style helper that trims to the first line, redacts credential/secret/token/access_key/URI-looking details, and omits `source_detail` when sanitized detail is empty.
 

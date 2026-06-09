@@ -27,12 +27,12 @@ Vortex semantic compatibility.
 
 | Artifact | Role | Evidence |
 |---|---|---|
-| `crates/loom-source-ingress` | Generic source-neutral contract crate | Defines `SourceIngressReport`, `SourceFacts`, diagnostics, emission, lowering, oracle, and verifier summary data with no source SDK dependencies. |
-| `crates/loom-vortex-ingress/src/source_contract.rs` | Vortex reference adapter mapping layer | Converts `VortexReaderFacts`, coverage, diagnostics, and reports into generic `Source*` types while preserving existing Vortex APIs. |
+| `ingress/loom-source-ingress` | Generic source-neutral contract crate | Defines `SourceIngressReport`, `SourceFacts`, diagnostics, emission, lowering, oracle, and verifier summary data with no source SDK dependencies. |
+| `ingress/loom-vortex-ingress/src/source_contract.rs` | Vortex reference adapter mapping layer | Converts `VortexReaderFacts`, coverage, diagnostics, and reports into generic `Source*` types while preserving existing Vortex APIs. |
 | `emit_source_ingress_lmc1_from_vortex_buffer` | Accepted artifact handoff helper | Emits through the existing Vortex path, immediately verifies `LMC1`, records oracle evidence, and returns artifact bytes only on accepted reports. |
-| `crates/loom-source-ingress/tests/source_ingress_contract.rs` | Generic vocabulary and invariant tests | Locks stable strings, report invariants, and generic dependency hygiene. |
-| `crates/loom-vortex-ingress/tests/source_ingress_contract.rs` | Vortex mapping tests | Verifies supported primitive/table mappings, unsupported valid reports, rejected reports, and source-neutral public vocabulary. |
-| `crates/loom-vortex-ingress/tests/source_ingress_handoff.rs` | Verifier/oracle handoff tests | Verifies accepted `LMP1`/`LMT1` handoff, source-native oracle evidence, unsupported valid fail-closed behavior, and rejected malformed behavior. |
+| `ingress/loom-source-ingress/tests/source_ingress_contract.rs` | Generic vocabulary and invariant tests | Locks stable strings, report invariants, and generic dependency hygiene. |
+| `ingress/loom-vortex-ingress/tests/source_ingress_contract.rs` | Vortex mapping tests | Verifies supported primitive/table mappings, unsupported valid reports, rejected reports, and source-neutral public vocabulary. |
+| `ingress/loom-vortex-ingress/tests/source_ingress_handoff.rs` | Verifier/oracle handoff tests | Verifies accepted `LMP1`/`LMT1` handoff, source-native oracle evidence, unsupported valid fail-closed behavior, and rejected malformed behavior. |
 | `26-SOURCE-INGRESS-CONTRACT.md` | Normative reviewer contract | Records source-neutral model, trust boundaries, non-goals, adapter obligations, and Phase 27 handoff. |
 | `scripts/source-ingress-contract-test.sh` | Phase 26 release gate | Checks docs, implementation markers, focused tests, dependency boundaries, and API creep; Plan 26-05 wires it into the main gate. |
 

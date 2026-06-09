@@ -24,10 +24,10 @@ key-files:
   created:
     - .planning/phases/33-lmc2-arrow-semantic-container-wrapper/33-03-SUMMARY.md
   modified:
-    - crates/loom-parquet-ingress/src/source_contract.rs
-    - crates/loom-lance-ingress/src/source_contract.rs
-    - crates/loom-vortex-ingress/src/source_contract.rs
-    - crates/loom-source-ingress/src/lib.rs
+    - ingress/loom-parquet-ingress/src/source_contract.rs
+    - ingress/loom-lance-ingress/src/source_contract.rs
+    - ingress/loom-vortex-ingress/src/source_contract.rs
+    - ingress/loom-source-ingress/src/lib.rs
 
 key-decisions:
   - "Default source artifacts are LMC2(LMA1) for Parquet, Lance, and Vortex."
@@ -72,10 +72,10 @@ The planned adapter and test changes landed in one production commit:
 
 ## Files Created/Modified
 
-- `crates/loom-parquet-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
-- `crates/loom-lance-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
-- `crates/loom-vortex-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
-- `crates/loom-source-ingress/src/lib.rs` - Displays Arrow semantic emission as `LMC2(LMA1)`.
+- `ingress/loom-parquet-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
+- `ingress/loom-lance-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
+- `ingress/loom-vortex-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
+- `ingress/loom-source-ingress/src/lib.rs` - Displays Arrow semantic emission as `LMC2(LMA1)`.
 - Source handoff and full compatibility tests - Updated to decode wrapper artifacts and keep oracle equality.
 - Legacy readability tests - Kept old lma1-named entry points as direct LMA1 oracle equality evidence.
 

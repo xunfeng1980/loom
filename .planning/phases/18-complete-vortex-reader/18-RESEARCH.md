@@ -136,7 +136,7 @@ Sources:
 
 Phase 15 already shipped:
 
-- isolated `crates/loom-vortex-ingress`;
+- isolated `ingress/loom-vortex-ingress`;
 - scoped `vortex-file` allowlist;
 - `VortexIngressReport` and `VortexFileFacts`;
 - buffer/path inspection;

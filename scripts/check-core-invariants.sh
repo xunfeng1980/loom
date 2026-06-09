@@ -104,11 +104,11 @@ echo ""
 echo "--- CORE-01 (scope): vortex-file direct dependency allowlist ---"
 vortex_file_cargo=$(rg -n 'vortex-file' Cargo.toml crates/*/Cargo.toml || true)
 unexpected_vortex_file=$(printf '%s\n' "$vortex_file_cargo" \
-    | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)
+    | grep -v '^ingress/loom-vortex-ingress/Cargo.toml:' || true)
 if [ -z "$unexpected_vortex_file" ]; then
-    pass "vortex-file direct dependency is isolated to crates/loom-vortex-ingress"
+    pass "vortex-file direct dependency is isolated to ingress/loom-vortex-ingress"
 else
-    fail "vortex-file direct dependency appeared outside crates/loom-vortex-ingress:"
+    fail "vortex-file direct dependency appeared outside ingress/loom-vortex-ingress:"
     echo "$unexpected_vortex_file" >&2
 fi
 echo ""
@@ -119,11 +119,11 @@ echo ""
 echo "--- CORE-01 (scope): vortex-layout direct dependency allowlist ---"
 vortex_layout_cargo=$(rg -n 'vortex-layout' Cargo.toml crates/*/Cargo.toml || true)
 unexpected_vortex_layout=$(printf '%s\n' "$vortex_layout_cargo" \
-    | grep -v '^crates/loom-vortex-ingress/Cargo.toml:' || true)
+    | grep -v '^ingress/loom-vortex-ingress/Cargo.toml:' || true)
 if [ -z "$unexpected_vortex_layout" ]; then
-    pass "vortex-layout direct dependency is isolated to crates/loom-vortex-ingress"
+    pass "vortex-layout direct dependency is isolated to ingress/loom-vortex-ingress"
 else
-    fail "vortex-layout direct dependency appeared outside crates/loom-vortex-ingress:"
+    fail "vortex-layout direct dependency appeared outside ingress/loom-vortex-ingress:"
     echo "$unexpected_vortex_layout" >&2
 fi
 echo ""

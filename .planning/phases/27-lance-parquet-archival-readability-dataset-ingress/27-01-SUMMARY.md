@@ -18,18 +18,18 @@ tech-stack:
   patterns: [source-specific adapter crates own SDK dependencies, generic ingress APIs remain SDK-free]
 key-files:
   created:
-    - crates/loom-lance-ingress/Cargo.toml
-    - crates/loom-lance-ingress/src/lib.rs
-    - crates/loom-lance-ingress/tests/dependency_boundary.rs
-    - crates/loom-parquet-ingress/Cargo.toml
-    - crates/loom-parquet-ingress/src/lib.rs
-    - crates/loom-parquet-ingress/tests/dependency_boundary.rs
+    - ingress/loom-lance-ingress/Cargo.toml
+    - ingress/loom-lance-ingress/src/lib.rs
+    - ingress/loom-lance-ingress/tests/dependency_boundary.rs
+    - ingress/loom-parquet-ingress/Cargo.toml
+    - ingress/loom-parquet-ingress/src/lib.rs
+    - ingress/loom-parquet-ingress/tests/dependency_boundary.rs
     - scripts/lance-parquet-ingress-test.sh
   modified:
     - Cargo.toml
     - Cargo.lock
-    - crates/loom-source-ingress/src/lib.rs
-    - crates/loom-source-ingress/tests/source_ingress_contract.rs
+    - ingress/loom-source-ingress/src/lib.rs
+    - ingress/loom-source-ingress/tests/source_ingress_contract.rs
 key-decisions:
   - "Kept Lance and Parquet SDK dependencies isolated to adapter crates while using workspace-level exact pins for resolver consistency."
   - "Added the generic accepted-artifact handoff in `loom-source-ingress` without replacing the existing Vortex adapter-local handoff type."
@@ -73,14 +73,14 @@ Each task was committed atomically:
 
 - `Cargo.toml` - Registered adapter crates and exact workspace pins.
 - `Cargo.lock` - Resolved Lance, Parquet, and adapter-local dependency graph.
-- `crates/loom-lance-ingress/Cargo.toml` - Lance adapter dependency boundary.
-- `crates/loom-lance-ingress/src/lib.rs` - Lance local-file boundary documentation.
-- `crates/loom-lance-ingress/tests/dependency_boundary.rs` - Direct dependency placement and generic vocabulary guards.
-- `crates/loom-parquet-ingress/Cargo.toml` - Parquet adapter dependency boundary.
-- `crates/loom-parquet-ingress/src/lib.rs` - Parquet local-file boundary documentation.
-- `crates/loom-parquet-ingress/tests/dependency_boundary.rs` - Direct dependency placement and generic vocabulary guards.
-- `crates/loom-source-ingress/src/lib.rs` - Added source-neutral accepted-artifact handoff.
-- `crates/loom-source-ingress/tests/source_ingress_contract.rs` - Added handoff contract coverage.
+- `ingress/loom-lance-ingress/Cargo.toml` - Lance adapter dependency boundary.
+- `ingress/loom-lance-ingress/src/lib.rs` - Lance local-file boundary documentation.
+- `ingress/loom-lance-ingress/tests/dependency_boundary.rs` - Direct dependency placement and generic vocabulary guards.
+- `ingress/loom-parquet-ingress/Cargo.toml` - Parquet adapter dependency boundary.
+- `ingress/loom-parquet-ingress/src/lib.rs` - Parquet local-file boundary documentation.
+- `ingress/loom-parquet-ingress/tests/dependency_boundary.rs` - Direct dependency placement and generic vocabulary guards.
+- `ingress/loom-source-ingress/src/lib.rs` - Added source-neutral accepted-artifact handoff.
+- `ingress/loom-source-ingress/tests/source_ingress_contract.rs` - Added handoff contract coverage.
 - `scripts/lance-parquet-ingress-test.sh` - Initial Phase 27 scaffold and scope guard.
 
 ## Verification

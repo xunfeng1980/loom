@@ -76,7 +76,7 @@ Fallback hardening should preserve Phase 22 policy ownership in Rust. The C++ Du
 |------------|--------------|----------------|-----------|
 | Equivalence matrix | Rust helper/tests | DuckDB SQL adapter | Rust can inject mismatch/cancel/cache cases; SQL proves public `loom_scan(path)` row behavior through the host adapter. [VERIFIED: `scripts/duckdb-native-integration-test.sh`] |
 | Interpreter oracle | Rust core/FFI | DuckDB SQL | Interpreter output is the primary oracle for native DuckDB output because Phase 24 already compares native buffers to reference output before exposing native buffers. [VERIFIED: `crates/loom-ffi/src/duckdb_runtime.rs`] |
-| Vortex/fixture oracle | Fixture/ingress crates | Rust tests | `loom-fixtures` and `loom-vortex-ingress` own Vortex oracle evidence while `loom-core` and `loom-ffi` remain Vortex-free. [VERIFIED: `crates/loom-fixtures/src/oracle.rs`; VERIFIED: `crates/loom-vortex-ingress/tests/single_column_to_loom.rs`; VERIFIED: `scripts/mvp0-verify.sh`] |
+| Vortex/fixture oracle | Fixture/ingress crates | Rust tests | `loom-fixtures` and `loom-vortex-ingress` own Vortex oracle evidence while `loom-core` and `loom-ffi` remain Vortex-free. [VERIFIED: `crates/loom-fixtures/src/oracle.rs`; VERIFIED: `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs`; VERIFIED: `scripts/mvp0-verify.sh`] |
 | Native cache | Rust internal runtime/FFI | DuckDB C++ test report | Cache eligibility, identity, hit/miss, and invalidation belong beside `prepare_duckdb_runtime` and `RuntimeCacheKey`; C++ should only consume reports. [VERIFIED: `crates/loom-ffi/src/duckdb_runtime.rs`; VERIFIED: `duckdb-ext/loom_extension.cpp`] |
 | Fallback/strict policy | Rust runtime ABI | DuckDB C++ error surfacing | `RuntimeSafetyPolicy` owns fallback/concurrency/predicate policy, and DuckDB already reads route decisions instead of reimplementing policy. [VERIFIED: `crates/loom-core/src/runtime_abi.rs`; VERIFIED: `crates/loom-ffi/src/duckdb_runtime.rs`] |
 | Public query surface | DuckDB C++ extension | Rust FFI | The host-visible SQL surface remains `loom_scan(VARCHAR)` with projection pushdown enabled; no public native/interpreter mode flags should be added. [VERIFIED: `duckdb-ext/loom_extension.cpp`; CITED: https://duckdb.org/docs/stable/extensions/overview.html] |
@@ -107,7 +107,7 @@ Fallback hardening should preserve Phase 22 policy ownership in Rust. The C++ Du
 | Library/Tool | Version | Purpose | When to Use |
 |--------------|---------|---------|-------------|
 | `loom-fixtures` | workspace path | Deterministic `.loom` payload generation and in-memory Vortex oracle helpers. | Use for interpreter/native equivalence fixtures and Vortex-backed oracle rows where they already exist. [VERIFIED: `crates/loom-fixtures/src/oracle.rs`; VERIFIED: `crates/loom-fixtures/src/bin/emit_duckdb_payloads.rs`] |
-| `loom-vortex-ingress` | workspace path | Real Vortex reader facts, supported emission, and source-reader oracle tests. | Use only for Vortex evidence already in accepted ingress/coverage boundaries, not inside native runtime/cache code. [VERIFIED: `crates/loom-vortex-ingress/tests/single_column_to_loom.rs`; VERIFIED: `scripts/mvp0-verify.sh`] |
+| `loom-vortex-ingress` | workspace path | Real Vortex reader facts, supported emission, and source-reader oracle tests. | Use only for Vortex evidence already in accepted ingress/coverage boundaries, not inside native runtime/cache code. [VERIFIED: `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs`; VERIFIED: `scripts/mvp0-verify.sh`] |
 | CMake | local `4.1.1` | Build the DuckDB extension. | Existing DuckDB native gate builds `duckdb-ext/build/loom.duckdb_extension`. [VERIFIED: environment probe; VERIFIED: `scripts/duckdb-native-integration-test.sh`] |
 | Rust toolchain | local `rustc 1.92.0`, `cargo 1.92.0` | Build/test Rust workspace. | Existing gates run `cargo test`, `cargo build -p loom-ffi --release`, and focused crate tests. [VERIFIED: environment probe; VERIFIED: `scripts/mvp0-verify.sh`] |
 
@@ -214,7 +214,7 @@ This structure reuses existing module ownership and script style. [VERIFIED: rep
 | Cache invalidation by projection | Same payload, different projection | Key inequality | Rust helper and route report `cache-miss`/`cache-key-mismatch` | `loom-ffi` tests [VERIFIED: `runtime_cache_key.rs`] |
 | Cache invalidation by policy | Same payload, fallback allowed vs strict | Key inequality | Rust helper diagnostics | `loom-core`/`loom-ffi` tests [VERIFIED: `runtime_abi.rs`] |
 | Unsupported string payload | `fsst-utf8.loom` | Interpreter fallback | SQL aggregate and strict fail-closed error | `native-hardening-test.sh` [VERIFIED: `scripts/duckdb-native-integration-test.sh`] |
-| Nullable/compression native expansion | nullable, bitpack/FOR/dict/RLE | Vortex/fixture rows where available | Negative route: fallback or fail-closed, not native success | `native-hardening-test.sh` [VERIFIED: `25-CONTEXT.md`; VERIFIED: `crates/loom-vortex-ingress/tests/bitpack_for_coverage.rs`] |
+| Nullable/compression native expansion | nullable, bitpack/FOR/dict/RLE | Vortex/fixture rows where available | Negative route: fallback or fail-closed, not native success | `native-hardening-test.sh` [VERIFIED: `25-CONTEXT.md`; VERIFIED: `ingress/loom-vortex-ingress/tests/bitpack_for_coverage.rs`] |
 
 ### Pattern 2: Host-Neutral In-Process Cache
 
@@ -437,7 +437,7 @@ Security enforcement is enabled in `.planning/config.json`, and ASVS categories 
 - `crates/loom-ffi/src/duckdb_runtime.rs` and `crates/loom-ffi/tests/*` - DuckDB runtime bridge, native prepare/JIT comparison, internal C ABI, diagnostics. [VERIFIED: repo grep]
 - `duckdb-ext/loom_extension.cpp` and `scripts/duckdb-native-integration-test.sh` - Bind/init/scan adapter, route reports, direct DataChunk output, public SQL gate. [VERIFIED: repo grep]
 - `crates/loom-native-melior/src/backend.rs`, `pipeline.rs`, `jit.rs` and tests - backend identity, toolchain/cancel/mismatch diagnostics, accepted artifact reports. [VERIFIED: repo grep]
-- `crates/loom-fixtures/src/oracle.rs` and `crates/loom-vortex-ingress/tests/*` - existing Vortex/fixture oracle evidence. [VERIFIED: repo grep]
+- `crates/loom-fixtures/src/oracle.rs` and `ingress/loom-vortex-ingress/tests/*` - existing Vortex/fixture oracle evidence. [VERIFIED: repo grep]
 
 ### Secondary (MEDIUM confidence)
 - DuckDB extension overview - extension concepts and host extension boundary. [CITED: https://duckdb.org/docs/stable/extensions/overview.html]

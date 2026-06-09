@@ -48,23 +48,23 @@ done
 ok "Phase 28 planning artifacts are present"
 
 info "Checking semantic compatibility implementation markers..."
-rg -q "pub struct VortexSemanticCompatibilityRow" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub struct VortexSemanticCompatibilityRow" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexSemanticCompatibilityRow"
-rg -q "pub enum VortexSemanticNativeClass" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "pub enum VortexSemanticNativeClass" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexSemanticNativeClass"
-rg -q "canonical-raw-overclaim" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "canonical-raw-overclaim" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing canonical raw overclaim diagnostic"
-rg -q "native-evidence-missing" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "native-evidence-missing" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing native evidence diagnostic"
-rg -q "nullable-validity-emission-deferred" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "nullable-validity-emission-deferred" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing nullable deferral marker"
-rg -q "structured-dictionary-facts-deferred" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "structured-dictionary-facts-deferred" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing dictionary structured deferral marker"
-rg -q "structured-run-end-facts-deferred" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "structured-run-end-facts-deferred" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing run-end structured deferral marker"
-rg -q "structured-bitpack-facts-deferred" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "structured-bitpack-facts-deferred" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing bitpack structured deferral marker"
-rg -q "structured-for-facts-deferred" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "structured-for-facts-deferred" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing FOR structured deferral marker"
 ok "implementation markers are present"
 

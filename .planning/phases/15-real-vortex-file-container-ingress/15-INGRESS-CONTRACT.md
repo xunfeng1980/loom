@@ -12,7 +12,7 @@ inspectable enough to explain why they are unsupported.
 
 ## Dependency Boundary
 
-`vortex-file` is allowed only in `crates/loom-vortex-ingress`. The ingress crate
+`vortex-file` is allowed only in `ingress/loom-vortex-ingress`. The ingress crate
 is an adapter that translates Vortex APIs into Loom-owned data. It may depend on
 `loom-core`, but `loom-core` must never depend on it.
 
@@ -20,7 +20,7 @@ Required guard policy:
 
 - `loom-core` has zero `vortex-*` or `fastlanes` dependency entries.
 - `loom-ffi` has zero `vortex-*` or `fastlanes` dependency entries.
-- only `crates/loom-vortex-ingress/Cargo.toml` may directly name
+- only `ingress/loom-vortex-ingress/Cargo.toml` may directly name
   `vortex-file`.
 - file-backed Vortex APIs are forbidden outside the ingress crate, except for
   narrow CLI command wiring that calls the ingress crate.

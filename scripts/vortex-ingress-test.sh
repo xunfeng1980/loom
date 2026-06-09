@@ -79,13 +79,13 @@ rg -q "vortex-file direct dependency is isolated to ingress crate" scripts/mvp0-
 ok "dependency guard markers are present"
 
 info "Checking Phase 18 reader fact markers..."
-rg -q "VortexReaderFacts" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "VortexReaderFacts" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderFacts marker"
-rg -q "VortexReaderLayoutFact" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "VortexReaderLayoutFact" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderLayoutFact marker"
-rg -q "VortexReaderSegmentFact" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "VortexReaderSegmentFact" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderSegmentFact marker"
-rg -q "VortexReaderDTypeFact" crates/loom-vortex-ingress/src/lib.rs \
+rg -q "VortexReaderDTypeFact" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing VortexReaderDTypeFact marker"
 ok "reader fact markers are present"
 

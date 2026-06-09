@@ -14,19 +14,19 @@ The workspace keeps source SDK dependencies outside the core verifier and FFI cr
 - `Cargo.toml` lines 13-41 centralizes shared dependency versions and pins Arrow/Vortex versions.
 - `crates/loom-core/Cargo.toml` lines 5-16 states `loom-core` is pure Rust, zero FFI, zero Vortex dependencies, and depends only on Arrow/RON/Serde/FSST.
 - `crates/loom-ffi/Cargo.toml` lines 13-17 depends on `loom-core`, `loom-native-melior`, and Arrow only.
-- `crates/loom-vortex-ingress/Cargo.toml` lines 7-15 is the current source-specific crate that owns `vortex-file`, `vortex-io`, `vortex-layout`, and `vortex-session`.
+- `ingress/loom-vortex-ingress/Cargo.toml` lines 7-15 is the current source-specific crate that owns `vortex-file`, `vortex-io`, `vortex-layout`, and `vortex-session`.
 - `scripts/mvp0-verify.sh` lines 33-53 and `scripts/check-core-invariants.sh` search results enforce that Vortex/FastLanes do not leak into `loom-core`/`loom-ffi`, and that `vortex-file` is isolated to `loom-vortex-ingress`.
 
 **Pattern to copy:** generic contract types should live where they do not introduce new external source SDK dependencies. If Phase 26 creates a new crate, it should be dependency-light like `loom-solver-smt` rather than source-specific like `loom-vortex-ingress`. If it lives in `loom-core`, it must be pure Loom-owned data and must not add Lance/Parquet/Iceberg/MCAP/Zarr/object-store dependencies.
 
 ### Report, Facts, Diagnostic Triad
 
-`crates/loom-vortex-ingress/src/lib.rs` is the closest source-ingress analog.
+`ingress/loom-vortex-ingress/src/lib.rs` is the closest source-ingress analog.
 
 Copy the shape, but not the Vortex-specific public names:
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 45-66
+// ingress/loom-vortex-ingress/src/lib.rs lines 45-66
 pub enum VortexIngressStatus {
     Accepted,
     Unsupported,
@@ -45,7 +45,7 @@ impl VortexIngressStatus {
 ```
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 68-116
+// ingress/loom-vortex-ingress/src/lib.rs lines 68-116
 pub enum VortexIngressDiagnosticCode {
     NotYetInspected,
     OpenFailed,
@@ -62,7 +62,7 @@ pub struct VortexIngressDiagnostic {
 ```
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 365-405
+// ingress/loom-vortex-ingress/src/lib.rs lines 365-405
 pub struct VortexIngressReport {
     pub status: VortexIngressStatus,
     pub facts: Option<VortexFileFacts>,
@@ -83,7 +83,7 @@ Also copy the artifact-verifier report discipline from `crates/loom-core/src/art
 `VortexReaderFacts` already contains the contract dimensions Phase 26 needs. The generic contract should preserve these categories with source-neutral names.
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 345-363
+// ingress/loom-vortex-ingress/src/lib.rs lines 345-363
 pub struct VortexReaderFacts {
     pub source_kind: VortexIngressSourceKind,
     pub vortex_file_version: u16,
@@ -106,7 +106,7 @@ pub struct VortexReaderFacts {
 `VortexEncodingCoverage` is the analog for separating source support, emission, and native/lowering disposition:
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 230-246
+// ingress/loom-vortex-ingress/src/lib.rs lines 230-246
 pub struct VortexEncodingCoverage {
     pub dtype_kind: String,
     pub nullable: Option<bool>,
@@ -128,7 +128,7 @@ pub struct VortexEncodingCoverage {
 Supported emission flows through `LMC1` wrappers and then through the artifact verifier.
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 953-1004
+// ingress/loom-vortex-ingress/src/lib.rs lines 953-1004
 pub fn emit_supported_lmc1_from_vortex_buffer(
     bytes: &[u8],
 ) -> Result<Vec<u8>, VortexIngressReport> {
@@ -162,7 +162,7 @@ Phase 26 should describe emission as a contract obligation. It should not introd
 Vortex scan helpers are used as oracle evidence, not as the Loom decode path:
 
 ```rust
-// crates/loom-vortex-ingress/src/lib.rs lines 1006-1010
+// ingress/loom-vortex-ingress/src/lib.rs lines 1006-1010
 /// Scan the supported real Vortex slice through Vortex and return Loom-owned rows.
 ///
 /// This is oracle evidence for tests and diagnostics; it does not expose Vortex
@@ -170,15 +170,15 @@ Vortex scan helpers are used as oracle evidence, not as the Loom decode path:
 pub fn scan_i32_values_from_vortex_buffer(...)
 ```
 
-`crates/loom-vortex-ingress/tests/single_column_to_loom.rs` lines 57-65 verifies emitted bytes with `verify_artifact` before decoding. Lines 74-122 compare decoded rows against Vortex oracle rows.
+`ingress/loom-vortex-ingress/tests/single_column_to_loom.rs` lines 57-65 verifies emitted bytes with `verify_artifact` before decoding. Lines 74-122 compare decoded rows against Vortex oracle rows.
 
-`crates/loom-vortex-ingress/tests/table_to_loom.rs` lines 88-121 scans the source-native table oracle, and lines 132-156 compare the verified Loom table against the oracle.
+`ingress/loom-vortex-ingress/tests/table_to_loom.rs` lines 88-121 scans the source-native table oracle, and lines 132-156 compare the verified Loom table against the oracle.
 
 ## Closest Analogs
 
 | Likely Phase 26 Deliverable | Role | Data Flow | Closest Existing Analog | Match Quality | Copy Pattern |
 |---|---|---|---|---|---|
-| `crates/loom-source-ingress` or source-neutral module | model/service crate | request-response/transform | `crates/loom-vortex-ingress/Cargo.toml` lines 1-19 and `crates/loom-core/Cargo.toml` lines 5-16 | role-match | Isolate source SDK deps in source-specific crates; generic crate stays Loom-owned and dependency-light. |
+| `ingress/loom-source-ingress` or source-neutral module | model/service crate | request-response/transform | `ingress/loom-vortex-ingress/Cargo.toml` lines 1-19 and `crates/loom-core/Cargo.toml` lines 5-16 | role-match | Isolate source SDK deps in source-specific crates; generic crate stays Loom-owned and dependency-light. |
 | `SourceIngressStatus` / support enum | model | classification | `VortexIngressStatus` lines 45-66; `ArtifactVerificationStatus` lines 42-57 | exact | Keep `accepted`, `unsupported`, `rejected` stable strings. |
 | `SourceIngressDiagnosticCode` / diagnostic | model | diagnostics | `VortexIngressDiagnosticCode` lines 68-116; `ArtifactVerificationDiagnostic` lines 82-104 | exact | Stable code/path/message fields; source-neutral code families. |
 | `SourceFacts` / `SourceReaderFacts` | model | transform | `VortexReaderFacts` lines 345-363 | exact | Facts are Loom-owned strings/enums, not external SDK types. |
@@ -205,8 +205,8 @@ Create a small Loom-owned contract surface rather than expanding Vortex-specific
 
 Recommended option:
 
-- `crates/loom-source-ingress/Cargo.toml`
-- `crates/loom-source-ingress/src/lib.rs`
+- `ingress/loom-source-ingress/Cargo.toml`
+- `ingress/loom-source-ingress/src/lib.rs`
 - Add the crate to root `Cargo.toml` workspace members only if Phase 26 implementation chooses a new crate.
 
 Why: the generic contract is not artifact decoding itself, so keeping it out of the hot `loom-core` decode modules reduces churn. It also avoids making `loom-vortex-ingress` the owner of generic vocabulary.
@@ -222,12 +222,12 @@ Only choose this if the implementation stays pure data/traits with existing depe
 
 Likely files if implementing the adapter during Phase 26:
 
-- `crates/loom-vortex-ingress/src/lib.rs` or a narrow new module such as `crates/loom-vortex-ingress/src/source_contract.rs`
-- `crates/loom-vortex-ingress/tests/source_ingress_contract.rs`
+- `ingress/loom-vortex-ingress/src/lib.rs` or a narrow new module such as `ingress/loom-vortex-ingress/src/source_contract.rs`
+- `ingress/loom-vortex-ingress/tests/source_ingress_contract.rs`
 
 Copy from:
 
-- `reader_facts_from_vortex_buffer` in `crates/loom-vortex-ingress/src/lib.rs` lines 908-921.
+- `reader_facts_from_vortex_buffer` in `ingress/loom-vortex-ingress/src/lib.rs` lines 908-921.
 - `reader_facts_from_file` in lines 470-526.
 - `coverage_from_reader_shape` in lines 528-598.
 
@@ -257,7 +257,7 @@ Copy script structure from:
 
 ### Stable Vocabulary Tests
 
-Use a focused contract test like `crates/loom-vortex-ingress/tests/reader_facts_contract.rs` lines 51-88.
+Use a focused contract test like `ingress/loom-vortex-ingress/tests/reader_facts_contract.rs` lines 51-88.
 
 Required generic assertions:
 
@@ -394,6 +394,6 @@ No existing source-neutral ingress crate exists yet. Use the Vortex ingress crat
 
 ## Metadata
 
-**Analog search scope:** `Cargo.toml`, `crates/*/Cargo.toml`, `crates/loom-vortex-ingress/src/lib.rs`, required ingress/core tests, `crates/loom-core/src/*codec.rs`, `crates/loom-core/src/artifact_verifier.rs`, `scripts/*.sh`, Phase 18/21 planning artifacts.
-**Primary analogs:** `crates/loom-vortex-ingress/src/lib.rs`, `crates/loom-vortex-ingress/tests/reader_facts_contract.rs`, `crates/loom-vortex-ingress/tests/single_column_to_loom.rs`, `crates/loom-vortex-ingress/tests/table_to_loom.rs`, `crates/loom-core/src/artifact_verifier.rs`, `scripts/complete-vortex-reader-test.sh`, `scripts/vortex-encoding-coverage-test.sh`.
+**Analog search scope:** `Cargo.toml`, `crates/*/Cargo.toml`, `ingress/loom-vortex-ingress/src/lib.rs`, required ingress/core tests, `crates/loom-core/src/*codec.rs`, `crates/loom-core/src/artifact_verifier.rs`, `scripts/*.sh`, Phase 18/21 planning artifacts.
+**Primary analogs:** `ingress/loom-vortex-ingress/src/lib.rs`, `ingress/loom-vortex-ingress/tests/reader_facts_contract.rs`, `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs`, `ingress/loom-vortex-ingress/tests/table_to_loom.rs`, `crates/loom-core/src/artifact_verifier.rs`, `scripts/complete-vortex-reader-test.sh`, `scripts/vortex-encoding-coverage-test.sh`.
 **Pattern extraction date:** 2026-06-09

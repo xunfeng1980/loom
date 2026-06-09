@@ -4,9 +4,9 @@ reviewed: 2026-06-08T21:42:35Z
 depth: standard
 files_reviewed: 4
 files_reviewed_list:
-  - crates/loom-parquet-ingress/src/source_contract.rs
-  - crates/loom-parquet-ingress/tests/source_ingress_contract.rs
-  - crates/loom-parquet-ingress/tests/source_ingress_handoff.rs
+  - ingress/loom-parquet-ingress/src/source_contract.rs
+  - ingress/loom-parquet-ingress/tests/source_ingress_contract.rs
+  - ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs
   - scripts/lance-parquet-ingress-test.sh
 findings:
   critical: 0

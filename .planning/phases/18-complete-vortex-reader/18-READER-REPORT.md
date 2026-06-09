@@ -29,7 +29,7 @@ Phase 18 adds stable Loom-owned facts and diagnostics in `loom-vortex-ingress`:
 - `VortexReaderSplitFact` records discovered split ranges when available; split discovery failures are non-fatal diagnostics.
 - Stable diagnostic codes keep malformed/rejected and unsupported/fail-closed cases distinct.
 
-`vortex-file` and `vortex-layout` remain scoped to `crates/loom-vortex-ingress`; `loom-core` and `loom-ffi` remain Vortex-free.
+`vortex-file` and `vortex-layout` remain scoped to `ingress/loom-vortex-ingress`; `loom-core` and `loom-ffi` remain Vortex-free.
 
 ## Supported Emission Matrix
 

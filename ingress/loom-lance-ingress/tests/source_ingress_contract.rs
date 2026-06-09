@@ -1,65 +1,52 @@
-use std::fs::File;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
 use arrow_array::{
     ArrayRef, Date32Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch,
-    StringArray, StructArray,
+    RecordBatchIterator, StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_parquet_ingress::{
-    parquet_source_facts_from_path, source_ingress_report_from_parquet_path,
-};
+use lance::Dataset;
+use loom_lance_ingress::{lance_source_facts_from_path, source_ingress_report_from_lance_path};
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
     SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
 };
-use parquet::arrow::ArrowWriter;
 use tempfile::TempDir;
 
-fn write_record_batch(path: &Path, batch: RecordBatch) {
-    let file = File::create(path).expect("create parquet file");
-    let mut writer =
-        ArrowWriter::try_new(file, batch.schema(), None).expect("create parquet writer");
-    writer.write(&batch).expect("write parquet batch");
-    writer.close().expect("close parquet writer");
+async fn write_lance_dataset(path: &Path, batch: RecordBatch) {
+    let schema = batch.schema();
+    let reader = RecordBatchIterator::new(vec![Ok(batch)], schema);
+    Dataset::write(reader, path.to_str().expect("utf-8 temp path"), None)
+        .await
+        .expect("write Lance dataset");
 }
 
-fn supported_int32_path(temp: &TempDir) -> std::path::PathBuf {
-    let path = temp.path().join("supported-int32.parquet");
+async fn supported_int32_dataset(temp: &TempDir) -> std::path::PathBuf {
+    let path = temp.path().join("supported-int32.lance");
     let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, false)]));
     let batch = RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![7, -1, 42]))])
         .expect("record batch");
-    write_record_batch(&path, batch);
+    write_lance_dataset(&path, batch).await;
     path
 }
 
-fn parquet_path_for_column(
-    temp: &TempDir,
-    name: &str,
-    data_type: DataType,
-    nullable: bool,
-    array: ArrayRef,
-) -> std::path::PathBuf {
-    parquet_path_for_field(temp, name, Field::new(name, data_type, nullable), array)
-}
-
-fn parquet_path_for_field(
+async fn lance_path_for_column(
     temp: &TempDir,
     name: &str,
     field: Field,
     array: ArrayRef,
 ) -> std::path::PathBuf {
-    let path = temp.path().join(format!("{name}.parquet"));
+    let path = temp.path().join(format!("{name}.lance"));
     let schema = Arc::new(Schema::new(vec![field]));
     let batch = RecordBatch::try_new(schema, vec![array]).expect("record batch");
-    write_record_batch(&path, batch);
+    write_lance_dataset(&path, batch).await;
     path
 }
 
-fn supported_table_path(temp: &TempDir) -> std::path::PathBuf {
-    let path = temp.path().join("supported-table.parquet");
+async fn supported_table_path(temp: &TempDir) -> std::path::PathBuf {
+    let path = temp.path().join("supported-table.lance");
     let schema = Arc::new(Schema::new(vec![
         Field::new("id", DataType::Int32, false),
         Field::new("score", DataType::Int64, false),
@@ -72,21 +59,24 @@ fn supported_table_path(temp: &TempDir) -> std::path::PathBuf {
         ],
     )
     .expect("record batch");
-    write_record_batch(&path, batch);
+    write_lance_dataset(&path, batch).await;
     path
 }
 
-#[test]
-fn parquet_facts_include_schema_and_row_group_metadata() {
+#[tokio::test(flavor = "current_thread")]
+async fn lance_facts_include_schema_version_and_fragment_metadata() {
     let temp = TempDir::new().expect("tempdir");
-    let path = supported_int32_path(&temp);
+    let path = supported_int32_dataset(&temp).await;
 
-    let facts = parquet_source_facts_from_path(&path).expect("parquet facts");
+    let facts = lance_source_facts_from_path(&path)
+        .await
+        .expect("Lance source facts");
     let root = facts.root_schema.as_ref().expect("root schema fact");
     let coverage = facts.coverage.as_ref().expect("coverage");
 
-    assert_eq!(facts.identity.source_kind, "parquet");
+    assert_eq!(facts.identity.source_kind, "lance");
     assert_eq!(facts.identity.format, "external-source");
+    assert_eq!(facts.identity.format_version.as_deref(), Some("1"));
     assert_eq!(facts.row_count, 3);
     assert_eq!(root.path, "$.schema");
     assert_eq!(root.logical_kind, "struct");
@@ -113,22 +103,21 @@ fn parquet_facts_include_schema_and_row_group_metadata() {
         facts
             .layout_facts
             .iter()
-            .any(|fact| fact.path == "$.metadata" && fact.row_count == Some(3)),
-        "expected file metadata layout fact"
+            .any(|fact| fact.path == "$.manifest" && fact.row_count == Some(3)),
+        "expected manifest layout fact"
     );
     assert!(
         facts
             .layout_facts
             .iter()
-            .any(|fact| fact.path == "$.row_groups[0]" && fact.child_count == 1),
-        "expected row-group layout fact"
-    );
-    assert!(
-        facts.layout_facts.iter().any(|fact| fact
-            .physical_refs
-            .iter()
-            .any(|item| item.contains("statistics="))),
-        "expected column statistics presence to be summarized"
+            .any(|fact| fact.path == "$.fragments[0]"
+                && fact.row_count == Some(3)
+                && fact.physical_refs.iter().any(|item| item == "data_files=1")
+                && fact
+                    .physical_refs
+                    .iter()
+                    .any(|item| item == "validation=ok")),
+        "expected fragment metadata to be summarized"
     );
     assert_eq!(facts.split_facts.len(), 1);
     assert_eq!(facts.split_facts[0].index, 0);
@@ -136,12 +125,11 @@ fn parquet_facts_include_schema_and_row_group_metadata() {
     assert_eq!(facts.split_facts[0].end_row, 3);
     assert_eq!(facts.split_facts[0].row_count, 3);
     assert!(coverage.has_splits);
-    assert!(coverage.has_statistics);
     assert_eq!(coverage.support, SourceIngressStatus::Accepted);
 }
 
 #[test]
-fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
+fn lance_contract_does_not_leak_sdk_types_to_generic_crates() {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .canonicalize()
@@ -149,8 +137,8 @@ fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
     let output = Command::new("rg")
         .args([
             "-n",
-            "pub struct Parquet|ParquetMetaData|ParquetRecordBatchReader",
-            "crates/loom-source-ingress",
+            "pub struct Lance|Dataset|FileFragment|object_store",
+            "ingress/loom-source-ingress",
             "crates/loom-core",
             "crates/loom-ffi",
         ])
@@ -161,49 +149,51 @@ fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
     assert_eq!(
         output.status.code(),
         Some(1),
-        "Parquet SDK types must not leak into generic/core/ffi surfaces:\n{}{}",
+        "Lance SDK types must not leak into generic/core/ffi surfaces:\n{}{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
 }
 
-#[test]
-fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
+#[tokio::test(flavor = "current_thread")]
+async fn lance_classifies_materializable_shapes_as_arrow_semantic() {
     let temp = TempDir::new().expect("tempdir");
 
     let supported_cases = [
-        parquet_path_for_column(
+        lance_path_for_column(
             &temp,
             "i32",
-            DataType::Int32,
-            false,
+            Field::new("i32", DataType::Int32, false),
             Arc::new(Int32Array::from(vec![1, 2, 3])),
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "i64",
-            DataType::Int64,
-            false,
+            Field::new("i64", DataType::Int64, false),
             Arc::new(Int64Array::from(vec![1, 2, 3])),
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "f32",
-            DataType::Float32,
-            false,
+            Field::new("f32", DataType::Float32, false),
             Arc::new(Float32Array::from(vec![1.0, 2.0, 3.0])),
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "f64",
-            DataType::Float64,
-            false,
+            Field::new("f64", DataType::Float64, false),
             Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
-        ),
+        )
+        .await,
     ];
 
     for path in supported_cases {
-        let facts = parquet_source_facts_from_path(&path).expect("supported facts");
+        let facts = lance_source_facts_from_path(&path)
+            .await
+            .expect("supported facts");
         let coverage = facts.coverage.as_ref().expect("coverage");
         assert_eq!(coverage.support, SourceIngressStatus::Accepted);
         assert_eq!(coverage.emission_kind, SourceEmissionKind::ArrowSemantic);
@@ -217,8 +207,9 @@ fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
         );
     }
 
-    let table_facts =
-        parquet_source_facts_from_path(&supported_table_path(&temp)).expect("table facts");
+    let table_facts = lance_source_facts_from_path(&supported_table_path(&temp).await)
+        .await
+        .expect("table facts");
     let table_coverage = table_facts.coverage.as_ref().expect("table coverage");
     assert_eq!(table_coverage.support, SourceIngressStatus::Accepted);
     assert_eq!(
@@ -244,44 +235,45 @@ fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
         .collect(),
     );
     let semantic_cases = [
-        parquet_path_for_column(
+        lance_path_for_column(
             &temp,
             "nullable_i32",
-            DataType::Int32,
-            true,
+            Field::new("nullable_i32", DataType::Int32, true),
             Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "name",
-            DataType::Utf8,
-            false,
+            Field::new("name", DataType::Utf8, false),
             Arc::new(StringArray::from(vec!["a", "b", "c"])),
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "nested",
-            DataType::Struct(vec![nested_field].into()),
-            false,
+            Field::new("nested", DataType::Struct(vec![nested_field].into()), false),
             nested_array,
-        ),
-        parquet_path_for_column(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "day",
-            DataType::Date32,
-            false,
+            Field::new("day", DataType::Date32, false),
             Arc::new(Date32Array::from(vec![0, 1, 2])),
-        ),
-        parquet_path_for_field(
+        )
+        .await,
+        lance_path_for_column(
             &temp,
             "ext_i32",
             extension_field,
             Arc::new(Int32Array::from(vec![1, 2, 3])),
-        ),
+        )
+        .await,
     ];
 
     for path in semantic_cases {
-        let report = source_ingress_report_from_parquet_path(&path);
+        let report = source_ingress_report_from_lance_path(&path).await;
         assert_eq!(report.status, SourceIngressStatus::Accepted);
         assert!(report.facts.is_some());
         assert_eq!(report.emission_kind, SourceEmissionKind::ArrowSemantic);
@@ -300,34 +292,34 @@ fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
     }
 }
 
-#[test]
-fn parquet_malformed_files_are_rejected_without_facts() {
+#[tokio::test(flavor = "current_thread")]
+async fn lance_non_dataset_paths_are_rejected_without_facts() {
     let temp = TempDir::new().expect("tempdir");
-    let malformed = temp.path().join("malformed.parquet");
-    std::fs::write(&malformed, b"not a parquet file").expect("write malformed bytes");
+    let regular_file = temp.path().join("not-a-dataset.lance");
+    std::fs::write(&regular_file, b"not a Lance dataset").expect("write non-dataset file");
 
-    let malformed_report = source_ingress_report_from_parquet_path(&malformed);
-    assert_eq!(malformed_report.status, SourceIngressStatus::Rejected);
-    assert!(malformed_report.facts.is_none());
-    assert_eq!(malformed_report.emission_kind, SourceEmissionKind::None);
+    let regular_report = source_ingress_report_from_lance_path(&regular_file).await;
+    assert_eq!(regular_report.status, SourceIngressStatus::Rejected);
+    assert!(regular_report.facts.is_none());
+    assert_eq!(regular_report.emission_kind, SourceEmissionKind::None);
     assert_eq!(
-        malformed_report.emission_disposition,
+        regular_report.emission_disposition,
         SourceEmissionDisposition::None
     );
     assert_eq!(
-        malformed_report.artifact_verification,
+        regular_report.artifact_verification,
         SourceArtifactVerificationSummary::not_applicable()
     );
-    assert!(malformed_report.oracle_evidence.is_none());
-    assert_eq!(malformed_report.diagnostics.len(), 1);
+    assert!(regular_report.oracle_evidence.is_none());
+    assert_eq!(regular_report.diagnostics.len(), 1);
     assert_eq!(
-        malformed_report.diagnostics[0].code,
-        SourceDiagnosticCode::ReadFailed
+        regular_report.diagnostics[0].code,
+        SourceDiagnosticCode::OpenFailed
     );
-    assert_eq!(malformed_report.diagnostics[0].path, "$.metadata");
+    assert_eq!(regular_report.diagnostics[0].path, "$.open");
 
-    let missing = temp.path().join("missing.parquet");
-    let missing_report = source_ingress_report_from_parquet_path(&missing);
+    let missing = temp.path().join("missing.lance");
+    let missing_report = source_ingress_report_from_lance_path(&missing).await;
     assert_eq!(missing_report.status, SourceIngressStatus::Rejected);
     assert!(missing_report.facts.is_none());
     assert_eq!(missing_report.emission_kind, SourceEmissionKind::None);

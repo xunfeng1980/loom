@@ -129,14 +129,14 @@ contract tests that prove the generic shape.
   - covered source shapes and disposition vocabulary.
 
 ### Code
-- `crates/loom-vortex-ingress/src/lib.rs` - existing Vortex facts,
+- `ingress/loom-vortex-ingress/src/lib.rs` - existing Vortex facts,
   diagnostics, support, emission, coverage, oracle helpers, and artifact
   emission.
-- `crates/loom-vortex-ingress/tests/reader_facts_contract.rs` - stable reader
+- `ingress/loom-vortex-ingress/tests/reader_facts_contract.rs` - stable reader
   fact/status/emission/lowering contract tests.
-- `crates/loom-vortex-ingress/tests/single_column_to_loom.rs` - supported
+- `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs` - supported
   primitive source-to-`LMC1` evidence.
-- `crates/loom-vortex-ingress/tests/table_to_loom.rs` - supported struct/table
+- `ingress/loom-vortex-ingress/tests/table_to_loom.rs` - supported struct/table
   source-to-`LMT1` evidence and Vortex scan oracle comparison.
 - `crates/loom-core/src/artifact_verifier.rs` - artifact verifier that emitted
   source artifacts must pass.

@@ -199,7 +199,7 @@ Required negative classes:
 - `.planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-MATRIX.md`
 - `.planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md`
 - `.planning/debug/native-query-zero-buffer.md`
-- `crates/loom-vortex-ingress/src/lib.rs`
+- `ingress/loom-vortex-ingress/src/lib.rs`
 - `crates/loom-core/src/artifact_verifier.rs`
 - `crates/loom-core/src/production_native_lowering.rs`
 - `crates/loom-core/src/runtime_abi.rs`

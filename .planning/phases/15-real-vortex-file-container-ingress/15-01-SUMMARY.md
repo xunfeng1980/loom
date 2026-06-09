@@ -5,7 +5,7 @@ Implemented the Phase 15 ingress contract and crate boundary.
 Changed:
 
 - Added `15-INGRESS-CONTRACT.md`.
-- Added workspace crate `crates/loom-vortex-ingress`.
+- Added workspace crate `ingress/loom-vortex-ingress`.
 - Added stable report/diagnostic/fact types.
 - Updated dependency guards so direct `vortex-file` usage is scoped to the ingress crate.
 - Preserved zero Vortex/FastLanes dependency guarantees for `loom-core` and `loom-ffi`.

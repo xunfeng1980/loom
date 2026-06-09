@@ -46,10 +46,10 @@ completed: 2026-06-08T22:06:00Z
 
 - Expanded `scripts/lance-parquet-ingress-test.sh` from the scaffold guard into the final closeout gate.
 - Required actual older-version fixture paths:
-  - `crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet`
-  - `crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom`
-  - `crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/`
-  - `crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom`
+  - `ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet`
+  - `ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom`
+  - `ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/`
+  - `ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom`
 - Added report marker and language checks so manifest-only, record-only, or deterministic-record evidence cannot pass as legacy proof.
 - Wired `scripts/lance-parquet-ingress-test.sh` into `scripts/mvp0-verify.sh` after Phase 26 and before DuckDB smoke.
 - Wrote `27-ARCHIVAL-READABILITY-REPORT.md` with supported, unsupported, rejected, current-version, actual older-version, legacy, verifier, oracle, dependency, tradeoff, non-goal, release-gate, and Phase 28 handoff evidence.
@@ -73,7 +73,7 @@ Each task was committed atomically:
 - `bash -n scripts/lance-parquet-ingress-test.sh` passed.
 - `bash scripts/lance-parquet-ingress-test.sh` passed.
 - `bash -n scripts/mvp0-verify.sh` passed.
-- `test -f crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet && test -f crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom && test -d crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance && test -f crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom` passed.
+- `test -f ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet && test -f ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom && test -d ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance && test -f ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom` passed.
 - `rg -q "Actual Older-Version Fixtures" .planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-ARCHIVAL-READABILITY-REPORT.md` passed.
 - `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed after deleting ignored generated `target/` build artifacts to recover disk headroom from an initial `No space left on device` failure.
 

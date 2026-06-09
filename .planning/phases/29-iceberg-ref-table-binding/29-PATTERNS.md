@@ -9,13 +9,13 @@
 | New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
 |---|---|---|---|---|
 | `Cargo.toml` | config | dependency isolation | `Cargo.toml` + adapter manifests | role-match |
-| `crates/loom-iceberg-binding/Cargo.toml` | config | dependency isolation | `crates/loom-parquet-ingress/Cargo.toml` / `crates/loom-lance-ingress/Cargo.toml` | role-match |
-| `crates/loom-iceberg-binding/src/lib.rs` | service | request-response / transform | `crates/loom-parquet-ingress/src/source_contract.rs` | exact |
-| `crates/loom-iceberg-binding/src/binding_contract.rs` | service | request-response / transform | `crates/loom-lance-ingress/src/source_contract.rs` | exact |
-| `crates/loom-iceberg-binding/tests/binding_contract.rs` | test | request-response | `crates/loom-parquet-ingress/tests/source_ingress_contract.rs` | exact |
-| `crates/loom-iceberg-binding/tests/binding_handoff.rs` | test | verifier-routed transform | `crates/loom-parquet-ingress/tests/source_ingress_handoff.rs` | exact |
-| `crates/loom-iceberg-binding/tests/dependency_boundary.rs` | test | dependency isolation | `crates/loom-parquet-ingress/tests/dependency_boundary.rs` | exact |
-| `crates/loom-iceberg-binding/tests/fixtures/*` | test fixture | file-I/O | `crates/loom-parquet-ingress/tests/fixtures/legacy/*` + `crates/loom-lance-ingress/tests/fixtures/legacy/*` | role-match |
+| `crates/loom-iceberg-binding/Cargo.toml` | config | dependency isolation | `ingress/loom-parquet-ingress/Cargo.toml` / `ingress/loom-lance-ingress/Cargo.toml` | role-match |
+| `crates/loom-iceberg-binding/src/lib.rs` | service | request-response / transform | `ingress/loom-parquet-ingress/src/source_contract.rs` | exact |
+| `crates/loom-iceberg-binding/src/binding_contract.rs` | service | request-response / transform | `ingress/loom-lance-ingress/src/source_contract.rs` | exact |
+| `crates/loom-iceberg-binding/tests/binding_contract.rs` | test | request-response | `ingress/loom-parquet-ingress/tests/source_ingress_contract.rs` | exact |
+| `crates/loom-iceberg-binding/tests/binding_handoff.rs` | test | verifier-routed transform | `ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs` | exact |
+| `crates/loom-iceberg-binding/tests/dependency_boundary.rs` | test | dependency isolation | `ingress/loom-parquet-ingress/tests/dependency_boundary.rs` | exact |
+| `crates/loom-iceberg-binding/tests/fixtures/*` | test fixture | file-I/O | `ingress/loom-parquet-ingress/tests/fixtures/legacy/*` + `ingress/loom-lance-ingress/tests/fixtures/legacy/*` | role-match |
 | `.planning/phases/29-iceberg-ref-table-binding/29-ICEBERG-BINDING-REPORT.md` | report | batch / evidence | `.planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-ARCHIVAL-READABILITY-REPORT.md` | exact |
 | `scripts/iceberg-binding-test.sh` | test gate | batch | `scripts/lance-parquet-ingress-test.sh` | exact |
 | `scripts/mvp0-verify.sh` | release gate | batch | `scripts/mvp0-verify.sh` Phase 26/27 ordering block | exact |
@@ -24,7 +24,7 @@
 
 ### `crates/loom-iceberg-binding/src/lib.rs` / `src/binding_contract.rs` (service, request-response / transform)
 
-**Analog:** `crates/loom-parquet-ingress/src/source_contract.rs`
+**Analog:** `ingress/loom-parquet-ingress/src/source_contract.rs`
 
 **Ownership pattern** (lines 1-4):
 ```rust
@@ -162,7 +162,7 @@ Reuse for Iceberg fixture metadata: reject remote/catalog/object-store URIs and 
 
 ### `crates/loom-iceberg-binding/tests/binding_handoff.rs` (test, verifier-routed transform)
 
-**Analog:** `crates/loom-parquet-ingress/tests/source_ingress_handoff.rs`
+**Analog:** `ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs`
 
 **Verifier assertion pattern** (lines 68-72):
 ```rust
@@ -226,7 +226,7 @@ Iceberg oracle/equivalence can be local fixture evidence, decoded-row fixture ev
 
 ### `crates/loom-iceberg-binding/tests/binding_contract.rs` (test, request-response)
 
-**Analog:** `crates/loom-source-ingress/src/lib.rs`
+**Analog:** `ingress/loom-source-ingress/src/lib.rs`
 
 **Status and identity vocabulary** (lines 6-33):
 ```rust
@@ -277,7 +277,7 @@ Phase 29 should preserve accepted/unsupported/rejected semantics: accepted requi
 
 ### `crates/loom-iceberg-binding/tests/dependency_boundary.rs` (test, dependency isolation)
 
-**Analog:** `crates/loom-parquet-ingress/tests/dependency_boundary.rs`
+**Analog:** `ingress/loom-parquet-ingress/tests/dependency_boundary.rs`
 
 **Direct dependency allowlist pattern** (lines 68-102):
 ```rust
@@ -302,7 +302,7 @@ fn parquet_dependency_is_direct_only_in_parquet_adapter_manifest() {
 
     assert_eq!(
         direct_parquet_manifests,
-        vec![root.join("crates/loom-parquet-ingress/Cargo.toml")]
+        vec![root.join("ingress/loom-parquet-ingress/Cargo.toml")]
     );
 }
 ```
@@ -315,9 +315,9 @@ Create the Iceberg version so direct Iceberg SDK dependency appears only in work
 fn generic_source_ingress_contract_has_no_source_sdk_vocabulary() {
     let root = workspace_root();
     let source_files = [
-        root.join("crates/loom-source-ingress/Cargo.toml"),
-        root.join("crates/loom-source-ingress/src/lib.rs"),
-        root.join("crates/loom-source-ingress/tests/source_ingress_contract.rs"),
+        root.join("ingress/loom-source-ingress/Cargo.toml"),
+        root.join("ingress/loom-source-ingress/src/lib.rs"),
+        root.join("ingress/loom-source-ingress/tests/source_ingress_contract.rs"),
     ];
     let forbidden = [
         format!("{}{}", "par", "quet"),
@@ -473,7 +473,7 @@ ok "scripts/iceberg-binding-test.sh"
 
 ### Accepted / Unsupported / Rejected Semantics
 
-**Source:** `crates/loom-source-ingress/src/lib.rs` lines 6-21, 403-452
+**Source:** `ingress/loom-source-ingress/src/lib.rs` lines 6-21, 403-452
 
 Apply to all Phase 29 binding APIs and tests:
 
@@ -483,19 +483,19 @@ Apply to all Phase 29 binding APIs and tests:
 
 ### Verifier Handoff
 
-**Source:** `crates/loom-parquet-ingress/src/source_contract.rs` lines 151-173
+**Source:** `ingress/loom-parquet-ingress/src/source_contract.rs` lines 151-173
 
 Accepted binding must call `verify_artifact` on the referenced Loom artifact and copy a `SourceArtifactVerificationSummary::accepted(...)` style summary forward. The verifier summary is evidence, not a trust token; stale hash/schema/snapshot mismatches still fail closed.
 
 ### Oracle / Equivalence Evidence
 
-**Source:** `crates/loom-parquet-ingress/tests/source_ingress_handoff.rs` lines 202-220
+**Source:** `ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs` lines 202-220
 
 Accepted binding tests must check the selected oracle/equivalence evidence is present and accepted. If the first Iceberg fixture is hand-authored metadata plus paired Loom artifact, use decoded-row fixture evidence rather than claiming source-native query integration.
 
 ### Dependency Isolation
 
-**Source:** `crates/loom-parquet-ingress/tests/dependency_boundary.rs` lines 68-129 and `scripts/lance-parquet-ingress-test.sh` lines 223-257
+**Source:** `ingress/loom-parquet-ingress/tests/dependency_boundary.rs` lines 68-129 and `scripts/lance-parquet-ingress-test.sh` lines 223-257
 
 Iceberg dependencies belong only in `crates/loom-iceberg-binding` and workspace pins. `loom-core`, `loom-ffi`, `loom-source-ingress`, CLI, DuckDB host code, and public headers remain Iceberg-SDK-free.
 
@@ -526,6 +526,6 @@ No likely Phase 29 file lacks an analog. The Iceberg-specific metadata parser/bi
 
 ## Metadata
 
-**Analog search scope:** `crates/loom-source-ingress`, `crates/loom-parquet-ingress`, `crates/loom-lance-ingress`, `crates/loom-vortex-ingress`, `scripts`, `.planning/phases/26-*`, `.planning/phases/27-*`
+**Analog search scope:** `ingress/loom-source-ingress`, `ingress/loom-parquet-ingress`, `ingress/loom-lance-ingress`, `ingress/loom-vortex-ingress`, `scripts`, `.planning/phases/26-*`, `.planning/phases/27-*`
 **Files scanned:** 10 required files plus adapter test/gate analogs
 **Pattern extraction date:** 2026-06-09

@@ -27,13 +27,13 @@ tech-stack:
 
 key-files:
   created:
-    - crates/loom-vortex-ingress/src/source_contract.rs
-    - crates/loom-vortex-ingress/tests/source_ingress_contract.rs
+    - ingress/loom-vortex-ingress/src/source_contract.rs
+    - ingress/loom-vortex-ingress/tests/source_ingress_contract.rs
   modified:
     - Cargo.lock
-    - crates/loom-vortex-ingress/Cargo.toml
-    - crates/loom-vortex-ingress/src/lib.rs
-    - crates/loom-source-ingress/src/lib.rs
+    - ingress/loom-vortex-ingress/Cargo.toml
+    - ingress/loom-vortex-ingress/src/lib.rs
+    - ingress/loom-source-ingress/src/lib.rs
 
 key-decisions:
   - "Vortex remains the first adapter while source-neutral helpers live beside, not instead of, existing Vortex APIs."
@@ -64,7 +64,7 @@ completed: 2026-06-08
 
 ## Accomplishments
 
-- Added `crates/loom-vortex-ingress/src/source_contract.rs`, mapping `VortexReaderFacts`, `VortexEncodingCoverage`, reader diagnostics, and ingress reports into `loom-source-ingress` types.
+- Added `ingress/loom-vortex-ingress/src/source_contract.rs`, mapping `VortexReaderFacts`, `VortexEncodingCoverage`, reader diagnostics, and ingress reports into `loom-source-ingress` types.
 - Added source-neutral buffer/path helpers and conversion helper re-exports from `loom-vortex-ingress` while leaving `reader_facts_from_vortex_buffer`, `inspect_vortex_buffer`, and `emit_supported_lmc1_from_vortex_buffer` intact.
 - Added focused tests for accepted primitive/table facts, unsupported UTF-8 facts, rejected malformed buffers, diagnostic family mapping, old/new API compatibility, and generic-crate neutrality.
 
@@ -82,11 +82,11 @@ Each task was committed atomically:
 ## Files Created/Modified
 
 - `Cargo.lock` - Recorded the local `loom-source-ingress` dependency for `loom-vortex-ingress`.
-- `crates/loom-vortex-ingress/Cargo.toml` - Added the local source-ingress contract dependency.
-- `crates/loom-vortex-ingress/src/lib.rs` - Exported the source contract module and helper functions without changing existing Vortex APIs.
-- `crates/loom-vortex-ingress/src/source_contract.rs` - New adapter mapping Vortex reader facts, coverage, diagnostics, and reports into source-neutral contract types.
-- `crates/loom-vortex-ingress/tests/source_ingress_contract.rs` - New TDD contract coverage for supported, unsupported, rejected, compatibility, and generic-neutrality behavior.
-- `crates/loom-source-ingress/src/lib.rs` - Corrected `UnsupportedConversion` diagnostic family classification to `Conversion`.
+- `ingress/loom-vortex-ingress/Cargo.toml` - Added the local source-ingress contract dependency.
+- `ingress/loom-vortex-ingress/src/lib.rs` - Exported the source contract module and helper functions without changing existing Vortex APIs.
+- `ingress/loom-vortex-ingress/src/source_contract.rs` - New adapter mapping Vortex reader facts, coverage, diagnostics, and reports into source-neutral contract types.
+- `ingress/loom-vortex-ingress/tests/source_ingress_contract.rs` - New TDD contract coverage for supported, unsupported, rejected, compatibility, and generic-neutrality behavior.
+- `ingress/loom-source-ingress/src/lib.rs` - Corrected `UnsupportedConversion` diagnostic family classification to `Conversion`.
 
 ## Decisions Made
 
@@ -102,7 +102,7 @@ Each task was committed atomically:
 - **Found during:** Task 2 (Preserve diagnostics and rejected semantics)
 - **Issue:** `SourceDiagnosticCode::UnsupportedConversion` was classified as `SourceDiagnosticFamily::Support`, but Phase 26 requires conversion diagnostics to remain a source-neutral conversion family.
 - **Fix:** Updated the generic contract family mapping to `SourceDiagnosticFamily::Conversion`.
-- **Files modified:** `crates/loom-source-ingress/src/lib.rs`
+- **Files modified:** `ingress/loom-source-ingress/src/lib.rs`
 - **Verification:** `cargo test -p loom-vortex-ingress --test source_ingress_contract`
 - **Committed in:** `1afe1ec`
 
@@ -131,7 +131,7 @@ All required plan checks passed:
 - `cargo test -p loom-vortex-ingress --test source_ingress_contract`
 - `cargo test -p loom-vortex-ingress --test reader_facts_contract`
 - `cargo test -p loom-vortex-ingress --test single_column_to_loom --test table_to_loom`
-- `! rg -n "Vortex|vortex" crates/loom-source-ingress/src crates/loom-source-ingress/tests`
+- `! rg -n "Vortex|vortex" ingress/loom-source-ingress/src ingress/loom-source-ingress/tests`
 
 ## TDD Gate Compliance
 

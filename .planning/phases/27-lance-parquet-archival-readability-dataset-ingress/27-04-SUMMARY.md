@@ -23,23 +23,23 @@ tech-stack:
   patterns: [adapter-local Arrow batch canonicalization, verifier-before-accepted-report, paired legacy source plus Loom artifact manifests]
 key-files:
   created:
-    - crates/loom-parquet-ingress/tests/source_ingress_handoff.rs
-    - crates/loom-lance-ingress/tests/source_ingress_handoff.rs
-    - crates/loom-parquet-ingress/tests/legacy_readability.rs
-    - crates/loom-lance-ingress/tests/legacy_readability.rs
-    - crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
-    - crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom
-    - crates/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md
-    - crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/
-    - crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom
-    - crates/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md
+    - ingress/loom-parquet-ingress/tests/source_ingress_handoff.rs
+    - ingress/loom-lance-ingress/tests/source_ingress_handoff.rs
+    - ingress/loom-parquet-ingress/tests/legacy_readability.rs
+    - ingress/loom-lance-ingress/tests/legacy_readability.rs
+    - ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet
+    - ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom
+    - ingress/loom-parquet-ingress/tests/fixtures/legacy/MANIFEST.md
+    - ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/
+    - ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom
+    - ingress/loom-lance-ingress/tests/fixtures/legacy/MANIFEST.md
   modified:
-    - crates/loom-parquet-ingress/Cargo.toml
-    - crates/loom-parquet-ingress/src/lib.rs
-    - crates/loom-parquet-ingress/src/source_contract.rs
-    - crates/loom-lance-ingress/Cargo.toml
-    - crates/loom-lance-ingress/src/lib.rs
-    - crates/loom-lance-ingress/src/source_contract.rs
+    - ingress/loom-parquet-ingress/Cargo.toml
+    - ingress/loom-parquet-ingress/src/lib.rs
+    - ingress/loom-parquet-ingress/src/source_contract.rs
+    - ingress/loom-lance-ingress/Cargo.toml
+    - ingress/loom-lance-ingress/src/lib.rs
+    - ingress/loom-lance-ingress/src/source_contract.rs
 key-decisions:
   - "Accepted Lance and Parquet source reports are constructed only after `verify_artifact` accepts emitted `LMC1` bytes and source oracle evidence is accepted."
   - "Parquet uses `SourceOracleStrategy::ArrowScan`; Lance uses `SourceOracleStrategy::SourceNativeScan`; both are evidence paths, not Loom decode bypasses."
@@ -84,7 +84,7 @@ completed: 2026-06-08T21:02:24Z
 
 - `cargo test -p loom-parquet-ingress --test source_ingress_handoff` passed.
 - `cargo test -p loom-lance-ingress --test source_ingress_handoff` passed.
-- `test -f crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet && test -f crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom && test -d crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance && test -f crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom` passed.
+- `test -f ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet && test -f ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.loom && test -d ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance && test -f ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.loom` passed.
 - `cargo test -p loom-parquet-ingress --test legacy_readability` passed.
 - `cargo test -p loom-lance-ingress --test legacy_readability` passed.
 - `cargo test -p loom-core --test artifact_verifier` passed.
@@ -103,7 +103,7 @@ completed: 2026-06-08T21:02:24Z
 - **Found during:** Task 1 and Task 2
 - **Issue:** The emission helpers need production Arrow `RecordBatch`/array downcasts to canonicalize source rows into Loom Raw layouts.
 - **Fix:** Added `arrow-array = { workspace = true }` under both adapter crate dependencies.
-- **Files modified:** `crates/loom-parquet-ingress/Cargo.toml`, `crates/loom-lance-ingress/Cargo.toml`
+- **Files modified:** `ingress/loom-parquet-ingress/Cargo.toml`, `ingress/loom-lance-ingress/Cargo.toml`
 - **Commit:** `99b6046`, `1c8cb6e`
 
 ## Issues Encountered
@@ -140,8 +140,8 @@ Plan 27-05 can wire the Phase 27 gate and final archival readability report usin
 ## Self-Check: PASSED
 
 - Summary file exists at `.planning/phases/27-lance-parquet-archival-readability-dataset-ingress/27-04-SUMMARY.md`.
-- Actual older Parquet fixture exists at `crates/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet`.
-- Actual older Lance fixture directory exists at `crates/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/`.
+- Actual older Parquet fixture exists at `ingress/loom-parquet-ingress/tests/fixtures/legacy/legacy-v1.parquet`.
+- Actual older Lance fixture directory exists at `ingress/loom-lance-ingress/tests/fixtures/legacy/legacy-v1.lance/`.
 - Paired Loom artifacts exist for both source families.
 - Task commits exist: `aa49a35`, `99b6046`, `be3bcf8`, `1c8cb6e`, `b13ecf2`, `115bf45`.
 - Verification commands listed above passed.

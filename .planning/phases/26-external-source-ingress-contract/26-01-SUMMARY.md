@@ -23,9 +23,9 @@ tech-stack:
 
 key-files:
   created:
-    - crates/loom-source-ingress/Cargo.toml
-    - crates/loom-source-ingress/src/lib.rs
-    - crates/loom-source-ingress/tests/source_ingress_contract.rs
+    - ingress/loom-source-ingress/Cargo.toml
+    - ingress/loom-source-ingress/src/lib.rs
+    - ingress/loom-source-ingress/tests/source_ingress_contract.rs
   modified:
     - Cargo.toml
     - Cargo.lock
@@ -78,11 +78,11 @@ Each task was committed atomically with TDD red/green commits:
 
 ## Files Created/Modified
 
-- `Cargo.toml` - Adds `crates/loom-source-ingress` to workspace members.
+- `Cargo.toml` - Adds `ingress/loom-source-ingress` to workspace members.
 - `Cargo.lock` - Records the new internal workspace package.
-- `crates/loom-source-ingress/Cargo.toml` - Declares the dependency-light generic contract crate with no runtime dependencies.
-- `crates/loom-source-ingress/src/lib.rs` - Defines the source-neutral contract vocabulary and checked report constructors.
-- `crates/loom-source-ingress/tests/source_ingress_contract.rs` - Covers stable vocabulary, report invariants, dependency hygiene, and source-neutral public vocabulary.
+- `ingress/loom-source-ingress/Cargo.toml` - Declares the dependency-light generic contract crate with no runtime dependencies.
+- `ingress/loom-source-ingress/src/lib.rs` - Defines the source-neutral contract vocabulary and checked report constructors.
+- `ingress/loom-source-ingress/tests/source_ingress_contract.rs` - Covers stable vocabulary, report invariants, dependency hygiene, and source-neutral public vocabulary.
 
 ## Decisions Made
 
@@ -96,7 +96,7 @@ Passed:
 
 - `cargo test -p loom-source-ingress`
 - `cargo tree -p loom-source-ingress | awk '/vortex|fastlanes|lance|parquet|iceberg|mcap|zarr|object_store|duckdb|melior/{found=1} END{exit found?1:0}'`
-- `! rg -n "Vortex|vortex|Lance|Parquet|Iceberg|MCAP|Zarr|LeRobot" crates/loom-source-ingress/src crates/loom-source-ingress/tests`
+- `! rg -n "Vortex|vortex|Lance|Parquet|Iceberg|MCAP|Zarr|LeRobot" ingress/loom-source-ingress/src ingress/loom-source-ingress/tests`
 
 ## Deviations from Plan
 
@@ -132,7 +132,7 @@ Plan 26-02 can map the existing source-specific adapter facts into `loom-source-
 - Required verification re-ran successfully:
   - `cargo test -p loom-source-ingress`
   - `cargo tree -p loom-source-ingress | awk '/vortex|fastlanes|lance|parquet|iceberg|mcap|zarr|object_store|duckdb|melior/{found=1} END{exit found?1:0}'`
-  - `! rg -n "Vortex|vortex|Lance|Parquet|Iceberg|MCAP|Zarr|LeRobot" crates/loom-source-ingress/src crates/loom-source-ingress/tests`
+  - `! rg -n "Vortex|vortex|Lance|Parquet|Iceberg|MCAP|Zarr|LeRobot" ingress/loom-source-ingress/src ingress/loom-source-ingress/tests`
 
 ---
 *Phase: 26-external-source-ingress-contract*

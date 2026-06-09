@@ -82,12 +82,12 @@ LLVM/JIT execution are Phase 23.
 
 ### Code
 
-- `crates/loom-vortex-ingress/src/lib.rs` - isolated Vortex reader bridge.
-- `crates/loom-vortex-ingress/tests/reader_facts_contract.rs` - reader fact
+- `ingress/loom-vortex-ingress/src/lib.rs` - isolated Vortex reader bridge.
+- `ingress/loom-vortex-ingress/tests/reader_facts_contract.rs` - reader fact
   stability tests.
-- `crates/loom-vortex-ingress/tests/single_column_to_loom.rs` - current
+- `ingress/loom-vortex-ingress/tests/single_column_to_loom.rs` - current
   primitive matrix tests.
-- `crates/loom-vortex-ingress/tests/table_to_loom.rs` - current primitive table
+- `ingress/loom-vortex-ingress/tests/table_to_loom.rs` - current primitive table
   tests.
 - `crates/loom-core/src/l1_model.rs` - Loom layout model and decode semantics.
 - `crates/loom-core/src/layout_codec.rs` - `LMP1` layout codec.
