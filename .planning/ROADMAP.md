@@ -74,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 32: MVP1 Architecture and Code Review** - Audit the full MVP1 design and implementation for architectural consistency, true execution evidence, ABI/FFI safety, release-gate fidelity, dependency boundaries, code quality, and overclaim cleanup before further feature expansion (completed 2026-06-09)
 - [x] **Phase 33: LMC2 Arrow Semantic Container Wrapper** - Implement the `LMC2` distribution wrapper around verifier-backed `LMA1` Arrow semantic payloads before expanding query or native claims (completed 2026-06-09)
 - [x] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads (completed 2026-06-09)
-- [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback
+- [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback (in progress)
 
 **MVP1.5 — Verified Lineage** *(parked future milestone — placeholders only, not started, not on the MVP1 critical path; current load-bearing safety evidence remains the Rust verifier + Phase 19 Bitwuzla SMT discharge)*
 
@@ -940,12 +940,17 @@ Plans:
 
 ### Phase 35: Native Arrow Semantic Execution
 
-**Status:** Planned. Phase 32 classified native Arrow semantic execution as unsupported/fallback-only; this phase is the first point where that claim may change.
+**Status:** In Progress. Phase 32 classified native Arrow semantic execution as unsupported/fallback-only; this phase is the first point where that claim may change. Phase 35 is now planned as five engine-neutral execution/evidence slices.
 **Depends on:** Phase 33 and the native/runtime foundations from Phases 22-25. Consumes Phase 34 only for DuckDB integration evidence; native correctness remains engine-neutral.
 **Goal:** Add true verifier-gated native execution for Arrow semantic payloads, including support predicates, lowering facts, native buffer semantics, interpreter/native equivalence gates, fail-closed diagnostics, cache/fallback behavior, and release-gate evidence for representative Arrow semantic shapes.
 **Requirements:** PHASE-35
 **Ordering decision:** Native Arrow semantic execution should remain separate from DuckDB SQL broadening so the project does not confuse "queryable" with "natively executed." If native support starts before Phase 34 completes, it must stay engine-neutral and avoid DuckDB SQL claims. This phase must not count route scaffolding, zero/reference buffers, toolchain skip, or interpreter fallback as positive native semantic evidence.
-**Plans:** Planned during phase discussion.
+**Plans:**
+- [ ] 35-01-PLAN.md - Engine-neutral native Arrow semantic executor for primitive nullable `LMC2(LMA1)` / direct `LMA1`
+- [ ] 35-02-PLAN.md - Explicit native/reference equivalence report and mismatch diagnostics
+- [ ] 35-03-PLAN.md - Runtime/cache identity evidence for native Arrow semantic execution
+- [ ] 35-04-PLAN.md - Focused Phase 35 gate and broad MVP1 release-gate wiring
+- [ ] 35-05-PLAN.md - Documentation, requirements, roadmap/state closeout
 
 ## MVP1.5 — Verified Lineage (parked future milestone)
 
@@ -1008,6 +1013,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 32. MVP1 Architecture and Code Review | 5/5 | Complete | 2026-06-09 |
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
-| 35. Native Arrow Semantic Execution | 0/0 | Planned | - |
+| 35. Native Arrow Semantic Execution | 0/5 | In Progress | - |
 | 36. Lean Stage B — Close L2Core Abstraction Gap | 0/0 | Parked (MVP1.5) | - |
 | 37. Lean Stage C — Operational Semantics + Soundness | 0/0 | Parked (MVP1.5) | - |
