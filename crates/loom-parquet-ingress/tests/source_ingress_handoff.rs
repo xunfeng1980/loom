@@ -7,15 +7,11 @@ use arrow_array::{
     StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
+use loom_core::arrow_semantic_codec::decode_arrow_semantic_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
-use loom_core::container_codec::{
-    decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
-};
-use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_core::table_codec::decode_table_to_array_data;
 use loom_parquet_ingress::{
-    emit_source_ingress_lmc1_from_parquet_path, parquet_arrow_oracle_batches_from_path,
+    emit_source_ingress_lma1_from_parquet_path, parquet_arrow_oracle_batches_from_path,
 };
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
@@ -71,44 +67,6 @@ fn assert_emitted_artifact_is_verifier_accepted(bytes: &[u8]) {
     assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
 }
 
-fn decode_single_i32_values(bytes: &[u8]) -> Vec<i32> {
-    let registry = L2KernelRegistry::default_for_mvp0();
-    let desc = decode_layout_payload_maybe_container(bytes).expect("decode LMP1 container");
-    let data = decode_layout_to_array_data(&desc, &registry).expect("decode LMP1 rows");
-    let array = Int32Array::from(data);
-    assert_eq!(array.null_count(), 0);
-    (0..array.len()).map(|idx| array.value(idx)).collect()
-}
-
-fn decode_table_values(bytes: &[u8]) -> (Vec<i32>, Vec<i64>, Vec<f32>, Vec<f64>) {
-    let registry = L2KernelRegistry::default_for_mvp0();
-    let table = decode_table_payload_maybe_container(bytes).expect("decode LMT1 container");
-    assert_eq!(table.row_count, 3);
-    assert_eq!(
-        table
-            .columns
-            .iter()
-            .map(|column| column.name.as_str())
-            .collect::<Vec<_>>(),
-        vec!["id", "score", "ratio32", "ratio64"]
-    );
-    let arrays = decode_table_to_array_data(&table, &registry).expect("decode LMT1 rows");
-    let ids = Int32Array::from(arrays[0].clone());
-    let scores = Int64Array::from(arrays[1].clone());
-    let ratio32 = Float32Array::from(arrays[2].clone());
-    let ratio64 = Float64Array::from(arrays[3].clone());
-    assert_eq!(ids.null_count(), 0);
-    assert_eq!(scores.null_count(), 0);
-    assert_eq!(ratio32.null_count(), 0);
-    assert_eq!(ratio64.null_count(), 0);
-    (
-        (0..ids.len()).map(|idx| ids.value(idx)).collect(),
-        (0..scores.len()).map(|idx| scores.value(idx)).collect(),
-        (0..ratio32.len()).map(|idx| ratio32.value(idx)).collect(),
-        (0..ratio64.len()).map(|idx| ratio64.value(idx)).collect(),
-    )
-}
-
 fn assert_arrow_oracle_batch(path: &Path, expected_schema: &[(&str, DataType)]) {
     let batches = parquet_arrow_oracle_batches_from_path(path).expect("Arrow oracle batches");
     assert_eq!(batches.len(), 1);
@@ -125,24 +83,36 @@ fn assert_arrow_oracle_batch(path: &Path, expected_schema: &[(&str, DataType)]) 
     }
 }
 
+fn assert_lma1_matches_arrow_oracle(path: &Path, bytes: &[u8]) {
+    let source = parquet_arrow_oracle_batches_from_path(path).expect("Arrow oracle batches");
+    let decoded = decode_arrow_semantic_payload(bytes)
+        .expect("decode LMA1")
+        .to_record_batches()
+        .expect("LMA1 record batches");
+    assert_eq!(decoded, source);
+}
+
 #[test]
-fn accepted_single_column_handoff_is_verifier_routed_lmp1() {
+fn accepted_single_column_handoff_is_verifier_routed_lma1() {
     let temp = TempDir::new().expect("tempdir");
     let path = single_i32_path(&temp);
     let accepted =
-        emit_source_ingress_lmc1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     assert!(!accepted.bytes.is_empty());
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
-    assert_eq!(accepted.report.emission_kind, SourceEmissionKind::Lmp1);
+    assert_eq!(
+        accepted.report.emission_kind,
+        SourceEmissionKind::ArrowSemantic
+    );
     assert_eq!(
         accepted.report.emission_disposition,
-        SourceEmissionDisposition::CanonicalRaw
+        SourceEmissionDisposition::SemanticArrow
     );
     assert_eq!(
         accepted.report.lowering_disposition,
-        SourceLoweringDisposition::ProductionLoweringSupported
+        SourceLoweringDisposition::InterpreterOnly
     );
     assert!(accepted.report.artifact_verification.required);
     assert!(accepted.report.artifact_verification.accepted);
@@ -154,40 +124,35 @@ fn accepted_single_column_handoff_is_verifier_routed_lmp1() {
         .report
         .artifact_verification
         .summary
-        .contains("LMC1"));
+        .contains("LMA1"));
     assert!(accepted
         .report
         .artifact_verification
         .summary
-        .contains("LMP1 layout"));
-    assert_eq!(decode_single_i32_values(&accepted.bytes), vec![7, -1, 42]);
+        .contains("Arrow semantic payload"));
+    assert_lma1_matches_arrow_oracle(&path, &accepted.bytes);
     assert_arrow_oracle_batch(&path, &[("id", DataType::Int32)]);
 }
 
 #[test]
-fn accepted_table_handoff_is_verifier_routed_lmt1_and_arrow_equivalent() {
+fn accepted_table_handoff_is_verifier_routed_lma1_and_arrow_equivalent() {
     let temp = TempDir::new().expect("tempdir");
     let path = primitive_table_path(&temp);
     let accepted =
-        emit_source_ingress_lmc1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     assert!(!accepted.bytes.is_empty());
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
-    assert_eq!(accepted.report.emission_kind, SourceEmissionKind::Lmt1);
+    assert_eq!(
+        accepted.report.emission_kind,
+        SourceEmissionKind::ArrowSemantic
+    );
     assert_eq!(
         accepted.report.emission_disposition,
-        SourceEmissionDisposition::CanonicalTable
+        SourceEmissionDisposition::SemanticArrow
     );
-    assert_eq!(
-        decode_table_values(&accepted.bytes),
-        (
-            vec![1, 2, 3],
-            vec![10, 20, 30],
-            vec![1.25, -2.5, 3.75],
-            vec![1.5, 2.5, 3.5]
-        )
-    );
+    assert_lma1_matches_arrow_oracle(&path, &accepted.bytes);
     assert_arrow_oracle_batch(
         &path,
         &[
@@ -204,7 +169,7 @@ fn accepted_handoff_records_arrow_scan_oracle_evidence() {
     let temp = TempDir::new().expect("tempdir");
     let path = primitive_table_path(&temp);
     let accepted =
-        emit_source_ingress_lmc1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     let oracle = accepted
         .report
@@ -223,7 +188,7 @@ fn accepted_handoff_records_arrow_scan_oracle_evidence() {
 }
 
 #[test]
-fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
+fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
     let temp = TempDir::new().expect("tempdir");
     let nullable_schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, true)]));
     let nullable = RecordBatch::try_new(
@@ -233,17 +198,10 @@ fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
     .expect("nullable batch");
     let nullable_path = parquet_path_for_batch(&temp, "nullable", nullable);
 
-    let report = emit_source_ingress_lmc1_from_parquet_path(&nullable_path)
-        .expect_err("nullable Parquet is unsupported");
-    assert_eq!(report.status, SourceIngressStatus::Unsupported);
-    assert!(report.facts.is_some());
-    assert_eq!(report.emission_kind, SourceEmissionKind::None);
-    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
-    assert_eq!(
-        report.artifact_verification,
-        SourceArtifactVerificationSummary::not_applicable()
-    );
-    assert!(report.oracle_evidence.is_none());
+    let accepted = emit_source_ingress_lma1_from_parquet_path(&nullable_path)
+        .expect("nullable Parquet emits LMA1");
+    assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
+    assert_lma1_matches_arrow_oracle(&nullable_path, &accepted.bytes);
 
     let extension_field = Field::new("ext_i32", DataType::Int32, false).with_metadata(
         [(
@@ -260,11 +218,9 @@ fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
     )
     .expect("extension batch");
     let extension_path = parquet_path_for_batch(&temp, "extension", extension);
-    let report = emit_source_ingress_lmc1_from_parquet_path(&extension_path)
-        .expect_err("extension Parquet is unsupported");
-    assert_eq!(report.status, SourceIngressStatus::Unsupported);
-    assert!(report.facts.is_some());
-    assert!(report.oracle_evidence.is_none());
+    let accepted = emit_source_ingress_lma1_from_parquet_path(&extension_path)
+        .expect("extension Parquet emits LMA1");
+    assert_lma1_matches_arrow_oracle(&extension_path, &accepted.bytes);
 
     let nested_field = Arc::new(Field::new("nested_id", DataType::Int32, false));
     let nested_array: ArrayRef = Arc::new(StructArray::from(vec![(
@@ -278,11 +234,9 @@ fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
     )]));
     let nested = RecordBatch::try_new(nested_schema, vec![nested_array]).expect("nested batch");
     let nested_path = parquet_path_for_batch(&temp, "nested", nested);
-    let report = emit_source_ingress_lmc1_from_parquet_path(&nested_path)
-        .expect_err("nested Parquet is unsupported");
-    assert_eq!(report.status, SourceIngressStatus::Unsupported);
-    assert!(report.facts.is_some());
-    assert!(report.oracle_evidence.is_none());
+    let accepted = emit_source_ingress_lma1_from_parquet_path(&nested_path)
+        .expect("nested Parquet emits LMA1");
+    assert_lma1_matches_arrow_oracle(&nested_path, &accepted.bytes);
 
     let string_schema = Arc::new(Schema::new(vec![Field::new("name", DataType::Utf8, false)]));
     let string = RecordBatch::try_new(
@@ -291,15 +245,17 @@ fn unsupported_and_rejected_paths_return_reports_without_artifact_bytes() {
     )
     .expect("string batch");
     let string_path = parquet_path_for_batch(&temp, "string", string);
-    let report = emit_source_ingress_lmc1_from_parquet_path(&string_path)
-        .expect_err("string Parquet is unsupported");
-    assert_eq!(report.status, SourceIngressStatus::Unsupported);
-    assert!(report.facts.is_some());
-    assert!(report.oracle_evidence.is_none());
+    let accepted = emit_source_ingress_lma1_from_parquet_path(&string_path)
+        .expect("string Parquet emits LMA1");
+    assert_lma1_matches_arrow_oracle(&string_path, &accepted.bytes);
+}
 
+#[test]
+fn malformed_path_returns_rejected_report_without_artifact_bytes() {
+    let temp = TempDir::new().expect("tempdir");
     let malformed = temp.path().join("malformed.parquet");
     std::fs::write(&malformed, b"not a parquet file").expect("write malformed bytes");
-    let report = emit_source_ingress_lmc1_from_parquet_path(&malformed)
+    let report = emit_source_ingress_lma1_from_parquet_path(&malformed)
         .expect_err("malformed Parquet is rejected");
     assert_eq!(report.status, SourceIngressStatus::Rejected);
     assert!(report.facts.is_none());

@@ -4,11 +4,14 @@
 //! `loom-source-ingress` contract data.
 
 use std::path::Path;
+use std::sync::Arc;
 
 use arrow_array::{Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch};
-use arrow_schema::{DataType, Field, Schema};
+use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures::TryStreamExt;
 use lance::Dataset;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -102,8 +105,8 @@ pub async fn source_ingress_report_from_lance_path(path: &Path) -> SourceIngress
 
 /// Read a local Lance dataset through Lance's native scan path.
 ///
-/// This is source evidence only. Accepted Loom artifact bytes still come from
-/// canonical Loom payload emission plus artifact verification.
+/// This is source evidence only. Accepted Loom artifact bytes come from `LMA1`
+/// Arrow semantic emission plus artifact verification.
 pub async fn lance_native_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -133,8 +136,13 @@ pub async fn lance_native_oracle_batches_from_path(
     })
 }
 
+async fn lance_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngressReport> {
+    let dataset = open_local_dataset(path, "$.schema.open").await?;
+    Ok(Arc::new(Schema::from(dataset.schema())))
+}
+
 /// Emit verifier-accepted `LMC1` bytes for the supported Lance slice.
-pub async fn emit_source_ingress_lmc1_from_lance_path(
+pub async fn emit_source_ingress_lma1_from_lance_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let facts = lance_source_facts_from_path(path).await?;
@@ -147,10 +155,13 @@ pub async fn emit_source_ingress_lmc1_from_lance_path(
         return Err(SourceIngressReport::unsupported(Some(facts), diagnostic));
     }
 
+    let schema = lance_arrow_schema_from_path(path)
+        .await
+        .map_err(|report| source_oracle_failed_report(&facts, report))?;
     let batches = lance_native_oracle_batches_from_path(path)
         .await
         .map_err(|report| source_oracle_failed_report(&facts, report))?;
-    let artifact_bytes = loom_artifact_from_batches(&batches)
+    let artifact_bytes = loom_artifact_from_batches(schema, &batches)
         .map_err(|diagnostic| SourceIngressReport::unsupported(Some(facts.clone()), diagnostic))?;
 
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -338,12 +349,6 @@ async fn split_facts(dataset: &Dataset) -> Vec<SourceSplitFact> {
 fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverage {
     let field_count = schema.fields().len();
     let has_nullable = schema.fields().iter().any(|field| field.is_nullable());
-    let all_supported_primitives = field_count > 0
-        && schema.fields().iter().all(|field| {
-            !field.is_nullable()
-                && !field_has_extension_metadata(field)
-                && is_supported_primitive(field.data_type())
-        });
     let mut coverage = SourceCoverage::new(
         if field_count == 1 {
             logical_kind_for_field(&schema.fields()[0]).to_string()
@@ -357,22 +362,14 @@ fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverag
     coverage.has_splits = fragment_count > 0;
     coverage.has_statistics = false;
 
-    if all_supported_primitives {
+    if field_count > 0 {
         coverage.support = SourceIngressStatus::Accepted;
-        coverage.emission_kind = if field_count == 1 {
-            SourceEmissionKind::Lmp1
-        } else {
-            SourceEmissionKind::Lmt1
-        };
-        coverage.emission_disposition = if field_count == 1 {
-            SourceEmissionDisposition::CanonicalRaw
-        } else {
-            SourceEmissionDisposition::CanonicalTable
-        };
-        coverage.lowering_disposition = SourceLoweringDisposition::ProductionLoweringSupported;
-        coverage.notes.push(
-            "supported Lance shape is classified only; artifact emission is deferred".to_string(),
-        );
+        coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
+        coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
+        coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
+        coverage
+            .notes
+            .push("Lance scanner materializes this schema for LMA1 semantic emission".to_string());
     } else {
         coverage.support = SourceIngressStatus::Unsupported;
         coverage.notes.push(unsupported_note(schema));
@@ -502,13 +499,6 @@ fn child_field_names(data_type: &DataType) -> Vec<String> {
     }
 }
 
-fn is_supported_primitive(data_type: &DataType) -> bool {
-    matches!(
-        data_type,
-        DataType::Int32 | DataType::Int64 | DataType::Float32 | DataType::Float64
-    )
-}
-
 async fn open_local_dataset(
     path: &Path,
     diagnostic_path: &'static str,
@@ -548,7 +538,39 @@ async fn open_local_dataset(
     })
 }
 
-fn loom_artifact_from_batches(batches: &[RecordBatch]) -> Result<Vec<u8>, SourceDiagnostic> {
+fn loom_artifact_from_batches(
+    schema: SchemaRef,
+    batches: &[RecordBatch],
+) -> Result<Vec<u8>, SourceDiagnostic> {
+    let semantic_batches = batches
+        .iter()
+        .map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| {
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.payload",
+                format!("failed to build Lance Arrow semantic batches: {err}"),
+            )
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic_batches).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to build Lance Arrow semantic payload: {err}"),
+        )
+    })?;
+    encode_arrow_semantic_payload(&payload).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to encode Lance LMA1 payload: {err}"),
+        )
+    })
+}
+
+#[allow(dead_code)]
+fn legacy_lmc1_artifact_from_batches(batches: &[RecordBatch]) -> Result<Vec<u8>, SourceDiagnostic> {
     let first = batches.first().ok_or_else(|| {
         SourceDiagnostic::new(
             SourceDiagnosticCode::OracleUnavailable,
@@ -732,19 +754,17 @@ fn lance_oracle_evidence(
     batches: &[RecordBatch],
 ) -> Result<SourceOracleEvidence, SourceDiagnostic> {
     let row_count = total_row_count(batches)? as u64;
+    let mut evidence =
+        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
     if batches
         .iter()
         .flat_map(|batch| batch.columns())
         .any(|column| column.null_count() != 0)
     {
-        return Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::OracleUnavailable,
-            "$.oracle.nulls",
-            "Lance native oracle scan found null values in an accepted source",
-        ));
+        evidence
+            .notes
+            .push("Lance native scan preserved source null values".to_string());
     }
-    let mut evidence =
-        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
     evidence.nulls_checked = true;
     evidence.notes.push(
         "Lance native scan is evidence only; Loom artifact verification/decode remains the acceptance path"
@@ -759,7 +779,7 @@ fn source_verification_failed_report(facts: &SourceFacts, status: &str) -> Sourc
         SourceDiagnostic::new(
             SourceDiagnosticCode::VerificationFailed,
             "$.verification",
-            format!("emitted Lance LMC1 was not accepted by Loom artifact verifier: {status}"),
+            format!("emitted Lance LMA1 was not accepted by Loom artifact verifier: {status}"),
         ),
     )
 }

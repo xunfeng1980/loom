@@ -299,6 +299,7 @@ pub enum SourceEmissionKind {
     None,
     Lmp1,
     Lmt1,
+    ArrowSemantic,
 }
 
 impl SourceEmissionKind {
@@ -307,6 +308,7 @@ impl SourceEmissionKind {
             Self::None => "none",
             Self::Lmp1 => "LMP1",
             Self::Lmt1 => "LMT1",
+            Self::ArrowSemantic => "LMA1",
         }
     }
 }
@@ -317,6 +319,7 @@ pub enum SourceEmissionDisposition {
     CanonicalRaw,
     CanonicalTable,
     StructuredLayout,
+    SemanticArrow,
 }
 
 impl SourceEmissionDisposition {
@@ -326,6 +329,7 @@ impl SourceEmissionDisposition {
             Self::CanonicalRaw => "canonical-raw",
             Self::CanonicalTable => "canonical-table",
             Self::StructuredLayout => "structured-layout",
+            Self::SemanticArrow => "semantic-arrow",
         }
     }
 }
@@ -469,7 +473,7 @@ impl SourceIngressReport {
     ) -> Result<Self, SourceIngressReportError> {
         if !matches!(
             emission_kind,
-            SourceEmissionKind::Lmp1 | SourceEmissionKind::Lmt1
+            SourceEmissionKind::Lmp1 | SourceEmissionKind::Lmt1 | SourceEmissionKind::ArrowSemantic
         ) {
             return Err(SourceIngressReportError::MissingArtifactEmission);
         }

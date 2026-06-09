@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 use arrow_array::{Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -86,8 +88,8 @@ pub fn source_ingress_report_from_parquet_path(path: &Path) -> SourceIngressRepo
 
 /// Read a local Parquet file through the official Arrow scan path.
 ///
-/// This is source evidence only. Accepted Loom artifact bytes still come from
-/// canonical Loom payload emission plus artifact verification.
+/// This is source evidence only. Accepted Loom artifact bytes come from `LMA1`
+/// Arrow semantic emission plus artifact verification.
 pub fn parquet_arrow_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -129,8 +131,35 @@ pub fn parquet_arrow_oracle_batches_from_path(
     })
 }
 
+fn parquet_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngressReport> {
+    let file = File::open(path).map_err(|error| {
+        rejected_report(
+            path,
+            diagnostic_with_detail(
+                SourceDiagnosticCode::OpenFailed,
+                "$.schema.open",
+                "local Parquet file could not be opened for Arrow schema",
+                error.to_string(),
+            ),
+        )
+    })?;
+    ParquetRecordBatchReaderBuilder::try_new(file)
+        .map(|builder| Arc::clone(builder.schema()))
+        .map_err(|error| {
+            rejected_report(
+                path,
+                diagnostic_with_detail(
+                    SourceDiagnosticCode::ReadFailed,
+                    "$.schema",
+                    "local Parquet Arrow schema could not be read",
+                    error.to_string(),
+                ),
+            )
+        })
+}
+
 /// Emit verifier-accepted `LMC1` bytes for the supported Parquet slice.
-pub fn emit_source_ingress_lmc1_from_parquet_path(
+pub fn emit_source_ingress_lma1_from_parquet_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let facts = parquet_source_facts_from_path(path)?;
@@ -143,9 +172,11 @@ pub fn emit_source_ingress_lmc1_from_parquet_path(
         return Err(SourceIngressReport::unsupported(Some(facts), diagnostic));
     }
 
+    let schema = parquet_arrow_schema_from_path(path)
+        .map_err(|report| source_oracle_failed_report(&facts, report))?;
     let batches = parquet_arrow_oracle_batches_from_path(path)
         .map_err(|report| source_oracle_failed_report(&facts, report))?;
-    let artifact_bytes = loom_artifact_from_batches(&batches)
+    let artifact_bytes = loom_artifact_from_batches(schema, &batches)
         .map_err(|diagnostic| SourceIngressReport::unsupported(Some(facts.clone()), diagnostic))?;
 
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -330,12 +361,6 @@ fn split_facts(metadata: &ParquetMetaData) -> Vec<SourceSplitFact> {
 fn coverage_from_schema(schema: &Schema, metadata: &ParquetMetaData) -> SourceCoverage {
     let field_count = schema.fields().len();
     let has_nullable = schema.fields().iter().any(|field| field.is_nullable());
-    let all_supported_primitives = field_count > 0
-        && schema.fields().iter().all(|field| {
-            !field.is_nullable()
-                && !field_has_extension_metadata(field)
-                && is_supported_primitive(field.data_type())
-        });
     let mut coverage = SourceCoverage::new(
         if field_count == 1 {
             logical_kind_for_field(&schema.fields()[0]).to_string()
@@ -353,21 +378,13 @@ fn coverage_from_schema(schema: &Schema, metadata: &ParquetMetaData) -> SourceCo
         .flat_map(|row_group| row_group.columns())
         .any(|column| column.statistics().is_some());
 
-    if all_supported_primitives {
+    if field_count > 0 {
         coverage.support = SourceIngressStatus::Accepted;
-        coverage.emission_kind = if field_count == 1 {
-            SourceEmissionKind::Lmp1
-        } else {
-            SourceEmissionKind::Lmt1
-        };
-        coverage.emission_disposition = if field_count == 1 {
-            SourceEmissionDisposition::CanonicalRaw
-        } else {
-            SourceEmissionDisposition::CanonicalTable
-        };
-        coverage.lowering_disposition = SourceLoweringDisposition::ProductionLoweringSupported;
+        coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
+        coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
+        coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
         coverage.notes.push(
-            "supported Parquet shape is classified only; artifact emission is deferred".to_string(),
+            "Parquet Arrow reader materializes this schema for LMA1 semantic emission".to_string(),
         );
     } else {
         coverage.support = SourceIngressStatus::Unsupported;
@@ -498,14 +515,39 @@ fn child_field_names(data_type: &DataType) -> Vec<String> {
     }
 }
 
-fn is_supported_primitive(data_type: &DataType) -> bool {
-    matches!(
-        data_type,
-        DataType::Int32 | DataType::Int64 | DataType::Float32 | DataType::Float64
-    )
+fn loom_artifact_from_batches(
+    schema: SchemaRef,
+    batches: &[RecordBatch],
+) -> Result<Vec<u8>, SourceDiagnostic> {
+    let semantic_batches = batches
+        .iter()
+        .map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| {
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.payload",
+                format!("failed to build Parquet Arrow semantic batches: {err}"),
+            )
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic_batches).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to build Parquet Arrow semantic payload: {err}"),
+        )
+    })?;
+    encode_arrow_semantic_payload(&payload).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to encode Parquet LMA1 payload: {err}"),
+        )
+    })
 }
 
-fn loom_artifact_from_batches(batches: &[RecordBatch]) -> Result<Vec<u8>, SourceDiagnostic> {
+#[allow(dead_code)]
+fn legacy_lmc1_artifact_from_batches(batches: &[RecordBatch]) -> Result<Vec<u8>, SourceDiagnostic> {
     let first = batches.first().ok_or_else(|| {
         SourceDiagnostic::new(
             SourceDiagnosticCode::OracleUnavailable,
@@ -689,18 +731,16 @@ fn arrow_oracle_evidence(
     batches: &[RecordBatch],
 ) -> Result<SourceOracleEvidence, SourceDiagnostic> {
     let row_count = total_row_count(batches)? as u64;
+    let mut evidence = SourceOracleEvidence::accepted(SourceOracleStrategy::ArrowScan, row_count);
     if batches
         .iter()
         .flat_map(|batch| batch.columns())
         .any(|column| column.null_count() != 0)
     {
-        return Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::OracleUnavailable,
-            "$.oracle.nulls",
-            "Parquet Arrow oracle scan found null values in an accepted source",
-        ));
+        evidence
+            .notes
+            .push("Parquet Arrow scan preserved source null values".to_string());
     }
-    let mut evidence = SourceOracleEvidence::accepted(SourceOracleStrategy::ArrowScan, row_count);
     evidence.nulls_checked = true;
     evidence.notes.push(
         "Parquet Arrow scan is evidence only; Loom artifact verification/decode remains the acceptance path"
@@ -719,7 +759,7 @@ fn source_verification_failed_report(facts: &SourceFacts, status: &str) -> Sourc
         SourceDiagnostic::new(
             SourceDiagnosticCode::VerificationFailed,
             "$.verification",
-            format!("emitted Parquet LMC1 was not accepted by Loom artifact verifier: {status}"),
+            format!("emitted Parquet LMA1 was not accepted by Loom artifact verifier: {status}"),
         ),
     )
 }

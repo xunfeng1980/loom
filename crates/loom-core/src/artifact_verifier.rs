@@ -5,6 +5,7 @@
 
 use std::collections::BTreeSet;
 
+use crate::arrow_semantic_codec::{decode_arrow_semantic_payload, is_arrow_semantic_payload};
 use crate::container_codec::{decode_container, feature_names, ContainerDescription, SectionKind};
 use crate::full_verifier::verify_l2_core;
 use crate::l2_core::L2CoreProgram;
@@ -344,8 +345,12 @@ pub fn apply_solver_discharge(
 pub fn verify_artifact(
     bytes: &[u8],
     registry: &L2KernelRegistry,
-    _options: &ArtifactVerificationOptions,
+    options: &ArtifactVerificationOptions,
 ) -> ArtifactVerificationReport {
+    if is_arrow_semantic_payload(bytes) {
+        return verify_arrow_semantic_artifact(bytes, options);
+    }
+
     let container = match decode_container(bytes) {
         Ok(container) => container,
         Err(err) => {
@@ -401,13 +406,49 @@ pub fn verify_artifact(
     facts.schema_section_present = has_section(&container, SectionKind::Schema);
     facts.kernel_manifest_section_present = has_section(&container, SectionKind::KernelManifest);
     facts.stats_section_present = has_section(&container, SectionKind::Stats);
-    if _options.compute_lowering_readiness || _options.require_l2_core_for_lowering {
+    if options.compute_lowering_readiness || options.require_l2_core_for_lowering {
         facts.lowering_ready = ArtifactLoweringReadiness::with_diagnostic(
-            Some(lowering_backend(_options)),
+            Some(lowering_backend(options)),
             ArtifactLoweringDiagnostic::new(
                 "missing-l2core-facts",
                 "$.facts.l2_core",
                 "lowering readiness requires an associated accepted L2Core program",
+            ),
+        );
+    }
+
+    ArtifactVerificationReport::accepted(facts)
+}
+
+fn verify_arrow_semantic_artifact(
+    bytes: &[u8],
+    options: &ArtifactVerificationOptions,
+) -> ArtifactVerificationReport {
+    let payload = match decode_arrow_semantic_payload(bytes) {
+        Ok(payload) => payload,
+        Err(err) => {
+            return ArtifactVerificationReport::rejected(vec![
+                ArtifactVerificationDiagnostic::new(
+                    ArtifactVerificationStage::L1Structural,
+                    "arrow-semantic-payload",
+                    "$.payload",
+                    err.to_string(),
+                ),
+            ]);
+        }
+    };
+
+    let mut facts = ArtifactVerificationFacts::new("LMA1");
+    facts.payload_kind = Some("Arrow semantic payload".to_string());
+    facts.schema_section_present = true;
+    facts.row_count_bound = Some(payload.row_count() as u64);
+    if options.compute_lowering_readiness || options.require_l2_core_for_lowering {
+        facts.lowering_ready = ArtifactLoweringReadiness::with_diagnostic(
+            Some(lowering_backend(options)),
+            ArtifactLoweringDiagnostic::new(
+                "arrow-semantic-lowering-deferred",
+                "$.facts.lowering_ready",
+                "Arrow semantic artifacts are verifier-accepted but not native-lowering ready",
             ),
         );
     }
