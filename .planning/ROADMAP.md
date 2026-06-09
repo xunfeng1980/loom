@@ -79,7 +79,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **MVP1.5 — Verified Lineage** *(active as of Phase 36; supersedes the earlier parked Phase 36/37. Stages 0/B/C/D do not depend on Phase 35; only Phase 40 depends on Phase 35. Standing red line: Loom guarantees safety + well-formedness, never correctness — every "verified" claim maps to one named evidence layer or to the explicit TCB.)*
 
 - [x] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface) (completed 2026-06-09)
-- [ ] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
+- [x] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
 - [ ] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
 - [ ] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
 - [ ] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption
@@ -997,7 +997,7 @@ Plans:
 
 ### Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence
 
-**Status:** In Progress (1/2 plans complete). **Supersedes** parked Phase 36.
+**Status:** Complete. Phase 37 enriched `formal/lean/LoomCore.lean` with `ScalarExpr` / `LetScalar`, expression-derived append typing, scalar environment checks, and unknown-variable rejection, then wired a Lean/Rust correspondence gate that diffs accept/reject plus reject-code classifications over the current verifier matrix plus deterministic fuzz cases. **Supersedes** parked Phase 36.
 **Goal:** The Lean model's static checkers faithfully mirror the executable Rust verifier, and the two are continuously cross-checked.
 **Depends on:** Phase 36.
 **Requirements:** LINEAGE-03, LINEAGE-04
@@ -1009,7 +1009,7 @@ Plans:
 
 **Non-goals:** No operational semantics yet; no soundness theorem yet. Must not extend L2Core beyond what the Rust verifier already accepts.
 **Ordering decision:** Correspondence before soundness — a soundness theorem over a Lean model that does not match the real verifier proves nothing about the product.
-**Plans:** 2 plans. Wave 1: [x] `37-01-PLAN.md` AST enrichment + typing parity. Wave 2: [ ] `37-02-PLAN.md` differential harness + gate wiring.
+**Plans:** 2 plans complete. Wave 1: [x] `37-01-PLAN.md` AST enrichment + typing parity. Wave 2: [x] `37-02-PLAN.md` differential harness + gate wiring.
 
 ### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
 

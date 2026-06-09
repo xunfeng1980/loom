@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 37 37-01 complete; ready to execute 37-02
+stopped_at: Phase 37 complete; ready for Phase 38
 last_updated: "2026-06-09T09:12:33.828Z"
-last_activity: 2026-06-09 -- Phase 37 37-01 enriched Lean AST with ScalarExpr/LetScalar and expression-derived typing parity
+last_activity: 2026-06-09 -- Phase 37 complete with Lean/Rust verifier correspondence gate wired into full verifier path
 progress:
   total_phases: 47
-  completed_phases: 36
+  completed_phases: 37
   total_plans: 156
-  completed_plans: 155
-  percent: 76
+  completed_plans: 156
+  percent: 78
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 37 — Lean Stage B / Lean ↔ Rust Verifier Correspondence
+**Current focus:** Phase 38 — Lean Stage C / Operational Semantics and Soundness Theorem
 
 ## Current Position
 
-Phase 37 EXECUTING: Lean Stage B — Lean ↔ Rust Verifier Correspondence
-Plan: 1 of 2
-Status: 37-01 complete; ready to execute 37-02 differential harness + gate wiring
-Last activity: 2026-06-09 -- 37-01 enriched Lean with `ScalarExpr` / `LetScalar`, scalar typing environment, expression-derived append typing, and unknown-variable checks
+Phase 38 READY: Lean Stage C — Operational Semantics and Soundness Theorem
+Plan: 0 of 0
+Status: Phase 37 complete; ready to discuss/plan Phase 38
+Last activity: 2026-06-09 -- 37-02 wired Lean/Rust correspondence diff gate for current verifier matrix plus deterministic fuzz cases
 
-Progress: Phase 36 complete; Phase 37 is executing with 1 of 2 plans complete
+Progress: Phase 37 complete; Phase 38 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
-- Completed phases: 36 / 47
-- Completed executable plans: 155 / 156
+- Completed phases: 37 / 47
+- Completed executable plans: 156 / 156
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 37 should implement Lean ↔ Rust verifier correspondence against the Phase 36 verified-lineage contract
-- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 35 native Arrow semantic execution gate wired after DuckDB source e2e
+- Current position: Phase 38 should define modeled operational semantics and a scoped soundness theorem over the Lean model, consuming Phase 37 correspondence evidence
+- Last verified gate: `bash scripts/full-verifier-test.sh` passed with the Phase 37 Lean/Rust correspondence diff gate wired into the full verifier path
 
 **Completed phase plan counts:**
 
@@ -68,7 +68,7 @@ Progress: Phase 36 complete; Phase 37 is executing with 1 of 2 plans complete
 | 34 | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 complete |
 | 35 | Native Arrow Semantic Execution | 5/5 complete |
 | 36 | Verified-Lineage Contract and TCB Declaration | 1/1 complete |
-| 37 | Lean Stage B / Lean Rust Verifier Correspondence | 1/2 complete |
+| 37 | Lean Stage B / Lean Rust Verifier Correspondence | 2/2 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -332,7 +332,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-09T09:12:33.818Z
-Stopped at: Phase 37 37-01 complete; ready to execute 37-02
+Stopped at: Phase 37 complete; ready for Phase 38
 
 Phase 17 handoff:
 
@@ -379,7 +379,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/37-lean-stage-b-lean-rust-verifier-correspondence/37-02-PLAN.md
+Resume file: .planning/ROADMAP.md
 
 ## Performance Metrics
 

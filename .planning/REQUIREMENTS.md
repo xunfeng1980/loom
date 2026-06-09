@@ -166,8 +166,8 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Lean Rust Verifier Correspondence
 
-- [ ] **LINEAGE-03**: The Lean checker mirrors the executable Rust verifier's current static L2Core surface for `ScalarExpr` / `LetScalar`, scalar type environment threading, expression-derived append value typing, and `UnknownVariable` rejection without expanding Rust L2Core beyond what the verifier already accepts
-- [ ] **LINEAGE-04**: A deterministic Lean/Rust verifier differential harness runs the current full verifier fixture matrix plus bounded generated cases, compares accept/reject and stable reject classification, covers required reject codes, and is wired into the release gate as a fail-closed correspondence check
+- [x] **LINEAGE-03**: The Lean checker mirrors the executable Rust verifier's current static L2Core surface for `ScalarExpr` / `LetScalar`, scalar type environment threading, expression-derived append value typing, and `UnknownVariable` rejection without expanding Rust L2Core beyond what the verifier already accepts
+- [x] **LINEAGE-04**: A deterministic Lean/Rust verifier differential harness runs the current full verifier fixture matrix plus bounded generated cases, compares accept/reject and stable reject classification, covers required reject codes, and is wired into the release gate as a fail-closed correspondence check
 
 ## Out of Scope
 
@@ -272,8 +272,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PHASE-35 | Phase 35 | Complete |
 | LINEAGE-01 | Phase 36 | Complete |
 | LINEAGE-02 | Phase 36 | Complete |
-| LINEAGE-03 | Phase 37 | In Progress |
-| LINEAGE-04 | Phase 37 | Pending |
+| LINEAGE-03 | Phase 37 | Complete |
+| LINEAGE-04 | Phase 37 | Complete |
 
 **Coverage:**
 

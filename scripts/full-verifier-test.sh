@@ -91,6 +91,10 @@ info "Running Lean scaffold check..."
 lean "${LEAN_FILE}"
 ok "lean ${LEAN_FILE}"
 
+info "Running Lean/Rust verifier correspondence gate..."
+bash scripts/lean-rust-correspondence-test.sh
+ok "scripts/lean-rust-correspondence-test.sh"
+
 if ! command -v tlc >/dev/null 2>&1 && [ -f "${REPO_ROOT}/.tools/tla2tools.jar" ]; then
     info "Running TLC lifecycle model check..."
     if command -v mise >/dev/null 2>&1; then

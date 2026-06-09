@@ -372,6 +372,97 @@ theorem accepted_program_safe (p : Program) :
 def u64 (value : Nat) : ScalarExpr :=
   .const (.uint64 value)
 
+def firstRejectOfExpr? (env : ScalarEnv) : ScalarExpr -> Option RejectCode
+  | .const _ => none
+  | .var name => if (scalarLookup? env name).isSome then none else some .UnknownVariable
+  | .add lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .sub lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .mul lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .min lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .max lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .eq lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .lt lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+  | .le lhs rhs => firstRejectOfExpr? env lhs <|> firstRejectOfExpr? env rhs
+
+mutual
+  def classifyStmt? (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : Stmt -> Option RejectCode × ScalarEnv
+    | .forRange index start end_ body =>
+        match constNat? end_, constNat? start with
+        | some e, some s =>
+            if decide (e >= s) then
+              if decide (e - s <= maxRows) then
+                match classifyBody? caps maxRows (scalarInsert index .rowIndex env) body with
+                | (none, _) => (none, env)
+                | (some code, _) => (some code, env)
+              else (some .ResourceBudgetExceeded, env)
+            else (some .InvalidLoopBounds, env)
+        | _, _ => (some .InvalidLoopBounds, env)
+    | .cursorLoop cursor limit progress body =>
+        if !isMonotoneProgress cursor progress then
+          (some .NonMonotoneCursorLoop, env)
+        else
+          match constNat? limit with
+          | some n =>
+              if decide (n <= maxRows) then
+                match classifyBody? caps maxRows (scalarInsert cursor .rowIndex env) body with
+                | (none, _) => (none, env)
+                | (some code, _) => (some code, env)
+              else (some .ResourceBudgetExceeded, env)
+          | none => (some .InvalidLoopBounds, env)
+    | .readInput cap offset width bind =>
+        match firstRejectOfExpr? env offset with
+        | some code => (some code, env)
+        | none =>
+            match firstRejectOfExpr? env width with
+            | some code => (some code, env)
+            | none =>
+                match inputSlice? caps cap with
+                | some _ => (none, scalarInsert bind (scalarTypeForReadWidth width) env)
+                | none => (some .MissingInputCapability, env)
+    | .letScalar name expr =>
+        match firstRejectOfExpr? env expr with
+        | some code => (some code, env)
+        | none =>
+            match typeOfExpr? env expr with
+            | some ty => (none, scalarInsert name ty env)
+            | none => (some .UnknownVariable, env)
+    | .appendValue builder value =>
+        match firstRejectOfExpr? env value with
+        | some code => (some code, env)
+        | none =>
+            match builderInfo? caps builder with
+            | none => (some .MissingOutputBuilder, env)
+            | some (expected, _) =>
+                match typeOfExpr? env value with
+                | some actual =>
+                    if expected == actual then (none, env) else (some .OutputTypeMismatch, env)
+                | none => (some .UnknownVariable, env)
+    | .appendNull builder =>
+        match builderInfo? caps builder with
+        | none => (some .MissingOutputBuilder, env)
+        | some (_, nullable) =>
+            if nullable then (none, env) else (some .OutputNullabilityMismatch, env)
+    | .failClosed _ => (none, env)
+
+  def classifyBody? (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : List Stmt -> Option RejectCode × ScalarEnv
+    | [] => (none, env)
+    | s :: rest =>
+        match classifyStmt? caps maxRows env s with
+        | (some code, next) => (some code, next)
+        | (none, next) => classifyBody? caps maxRows next rest
+end
+
+def classifyProgram? (p : Program) : Option RejectCode :=
+  (classifyBody? p.capabilities p.maxRows [] p.body).fst
+
+def classificationString (code : Option RejectCode) : String :=
+  match code with
+  | some reject => reject.asString
+  | none => "accepted"
+
+def correspondenceLine (id : String) (program : Program) : String :=
+  "correspondence:" ++ id ++ ":" ++ classificationString (classifyProgram? program)
+
 def validLetScalarAppendProgram : Program :=
   {
     artifactVersion := 1,
@@ -411,6 +502,99 @@ def validCursorProgram : Program :=
     maxRows := 8
   }
 
+def sampleCopyProgram : Program :=
+  {
+    artifactVersion := 1,
+    capabilities := [
+      .inputSlice "input0" 0 16,
+      .outputBuilder "out0" .int32 true 4
+    ],
+    body := [
+      .forRange "i" (u64 0) (u64 4) [
+        .readInput "input0" (.add (.var "i") (u64 0)) (u64 4) "value",
+        .appendValue "out0" (.var "value")
+      ]
+    ],
+    maxRows := 4
+  }
+
+def missingInputProgram : Program :=
+  { sampleCopyProgram with capabilities := [ .outputBuilder "out0" .int32 true 4 ] }
+
+def missingOutputProgram : Program :=
+  { sampleCopyProgram with body := [ .appendNull "missing" ] }
+
+def invalidLoopBoundsProgram : Program :=
+  { sampleCopyProgram with body := [ .forRange "i" (u64 4) (u64 0) [] ] }
+
+def nonMonotoneCursorProgram : Program :=
+  { sampleCopyProgram with body := [ .cursorLoop "cursor" (u64 4) (.var "cursor") [] ] }
+
+def resourceBudgetProgram : Program :=
+  { sampleCopyProgram with body := [ .forRange "i" (u64 0) (u64 5) [] ] }
+
+def outputTypeMismatchProgram : Program :=
+  { sampleCopyProgram with body := [ .appendValue "out0" (.const (.bool true)) ] }
+
+def outputNullabilityMismatchProgram : Program :=
+  {
+    sampleCopyProgram with
+    capabilities := [
+      .inputSlice "input0" 0 16,
+      .outputBuilder "out0" .int32 false 4
+    ],
+    body := [ .appendNull "out0" ]
+  }
+
+def fuzz000LetAddProgram : Program :=
+  {
+    sampleCopyProgram with
+    body := [
+      .letScalar "x" (.const (.int32 7)),
+      .letScalar "y" (.add (.var "x") (.const (.int32 1))),
+      .appendValue "out0" (.var "y")
+    ]
+  }
+
+def fuzz001EqBoolProgram : Program :=
+  {
+    sampleCopyProgram with
+    capabilities := [
+      .inputSlice "input0" 0 16,
+      .outputBuilder "out0" .bool false 4
+    ],
+    body := [
+      .appendValue "out0" (.eq (.const (.int32 1)) (.const (.int32 1)))
+    ]
+  }
+
+def fuzz002ReadBytesMismatchProgram : Program :=
+  {
+    sampleCopyProgram with
+    body := [
+      .readInput "input0" (u64 0) (u64 3) "value",
+      .appendValue "out0" (.var "value")
+    ]
+  }
+
+def correspondenceReportLines : List String := [
+  correspondenceLine "matrix-accepted-copy" sampleCopyProgram,
+  correspondenceLine "matrix-missing-input-capability" missingInputProgram,
+  correspondenceLine "matrix-missing-output-builder" missingOutputProgram,
+  correspondenceLine "matrix-invalid-loop-bounds" invalidLoopBoundsProgram,
+  correspondenceLine "matrix-non-monotone-cursor-loop" nonMonotoneCursorProgram,
+  correspondenceLine "matrix-resource-budget-exceeded" resourceBudgetProgram,
+  correspondenceLine "matrix-unknown-variable" unknownVariableProgram,
+  correspondenceLine "matrix-output-type-mismatch" outputTypeMismatchProgram,
+  correspondenceLine "matrix-output-nullability-mismatch" outputNullabilityMismatchProgram,
+  correspondenceLine "fuzz-000-let-add-int32" fuzz000LetAddProgram,
+  correspondenceLine "fuzz-001-eq-bool" fuzz001EqBoolProgram,
+  correspondenceLine "fuzz-002-read-width-bytes-mismatch" fuzz002ReadBytesMismatchProgram
+]
+
+def correspondenceReport : String :=
+  String.intercalate "\n" correspondenceReportLines
+
 example : checkTyped validLetScalarAppendProgram.capabilities validLetScalarAppendProgram.body = true := by
   native_decide
 
@@ -419,3 +603,14 @@ example : checkTyped unknownVariableProgram.capabilities unknownVariableProgram.
 
 example : checkBounds validCursorProgram.capabilities validCursorProgram.maxRows validCursorProgram.body = true := by
   native_decide
+
+example : classifyProgram? sampleCopyProgram = none := by
+  native_decide
+
+example : classifyProgram? missingInputProgram = some .MissingInputCapability := by
+  native_decide
+
+example : classifyProgram? nonMonotoneCursorProgram = some .NonMonotoneCursorLoop := by
+  native_decide
+
+#eval IO.println correspondenceReport
