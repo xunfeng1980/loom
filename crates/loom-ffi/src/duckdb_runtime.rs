@@ -1576,6 +1576,7 @@ fn emission_disposition_for(report: &ArtifactVerificationReport) -> RuntimeEmiss
     {
         Some("LMP1 layout") => RuntimeEmissionDisposition::CanonicalRaw,
         Some("LMT1 table") => RuntimeEmissionDisposition::CanonicalTable,
+        Some("Arrow semantic payload") => RuntimeEmissionDisposition::SemanticArrow,
         _ => RuntimeEmissionDisposition::None,
     }
 }

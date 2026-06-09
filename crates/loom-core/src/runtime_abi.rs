@@ -284,6 +284,7 @@ pub enum RuntimeEmissionDisposition {
     None,
     CanonicalRaw,
     CanonicalTable,
+    SemanticArrow,
     StructuredLayout,
 }
 
@@ -293,6 +294,7 @@ impl RuntimeEmissionDisposition {
             Self::None => "none",
             Self::CanonicalRaw => "canonical-raw",
             Self::CanonicalTable => "canonical-table",
+            Self::SemanticArrow => "semantic-arrow",
             Self::StructuredLayout => "structured-layout",
         }
     }

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 31 complete; Phase 30 StarRocks/full dual-surface remains deferred
-last_updated: "2026-06-09T02:10:00Z"
-last_activity: 2026-06-09 -- Phase 31 completed with full Arrow semantic compatibility gate and report
+stopped_at: MVP1 verify gate includes MVP0 plus DuckDB Parquet/Lance/Vortex source e2e; Phase 30 StarRocks/full dual-surface remains deferred
+last_updated: "2026-06-09T02:40:00Z"
+last_activity: 2026-06-09 -- Added DuckDB source e2e gate for Parquet/Lance/Vortex LMA1 artifacts and mvp1-verify wrapper
 progress:
   total_phases: 31
   completed_phases: 30
@@ -20,7 +20,7 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-06-08)
 
-**Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
+**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and Parquet/Lance/Vortex source-backed `LMA1` semantic artifacts, and get expected row/aggregate results.
 **Current focus:** Phase 30 deferred closeout remains the only incomplete roadmap phase after Phase 31 completion
 
 ## Current Position
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 Phase: 31 complete
 Plan: Phase 30 deferred StarRocks/full dual-surface closeout remains
 Status: Phase 31 complete; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Phase 31 completed
+Last activity: 2026-06-09 -- DuckDB source e2e gate and MVP1 verify wrapper added
 
 Progress: 98%
 
@@ -38,7 +38,7 @@ Progress: 98%
 - Completed executable plans: 131 / 133
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 31 complete: Parquet, Lance, and Vortex now have verifier-accepted `LMA1` semantic emission; Phase 30 remains partial/deferred
-- Last verified gate: `RUSTC_WRAPPER= bash scripts/mvp0-verify.sh` passed with Phase 28 wired before Phase 29 Iceberg binding
+- Last verified gate: `RUSTC_WRAPPER= bash scripts/duckdb-source-e2e-test.sh` passed; `scripts/mvp1-verify.sh` now wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
 
 **Completed phase plan counts:**
 
@@ -143,6 +143,8 @@ Recent decisions affecting current work:
 - [Phase 31]: Current tradeoff: `LMA1` direct verifier acceptance is implemented; `LMC2` container wrapping remains a Phase 31 finalization item rather than a blocker for Parquet/Lance semantic e2e evidence.
 - [Phase 31]: 31-05 added Vortex Arrow executor materialization into verifier-accepted `LMA1` semantic artifacts; legacy Vortex `LMC1` helper remains for older narrow raw/table tests while the Phase 31 path uses `emit_source_ingress_lma1_from_vortex_buffer`.
 - [Phase 31]: 31-06 wired `scripts/full-arrow-semantic-compatibility-test.sh` into `scripts/mvp0-verify.sh` after Phase 28 and before Phase 29, added the final compatibility report, and updated public docs to avoid DuckDB/native overclaims.
+- [Quick 260609-eip]: MVP1 verify is the broad check entry point; it runs `scripts/mvp0-verify.sh` first, then DuckDB e2e over Parquet, Lance, and Vortex source-backed single-column `LMA1` artifacts.
+- [Quick 260609-eip]: DuckDB `loom_scan` may execute single-column `LMA1` through interpreter fallback; native lowering remains unsupported for `Arrow semantic payload` and continues to report lowering diagnostics.
 
 ### Pending Todos
 
@@ -232,6 +234,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260609-eip | Add DuckDB e2e tests for Lance, Parquet, and Vortex semantic sources; create mvp1-verify that includes mvp0-verify plus these e2e checks | 2026-06-09 | this commit | [260609-eip-add-duckdb-e2e-tests-for-lance-parquet-a](./quick/260609-eip-add-duckdb-e2e-tests-for-lance-parquet-a/) |
 | 260608-wy8 | Extend Phase 27 archival readability target to Lance and Parquet | 2026-06-08 | none | [260608-wy8-extend-phase-27-archival-readability-tar](./quick/260608-wy8-extend-phase-27-archival-readability-tar/) |
 | 260608-wwx | Refine Phase 27 Lance archival readability roadmap target | 2026-06-08 | none | [260608-wwx-refine-phase-27-lance-archival-readabili](./quick/260608-wwx-refine-phase-27-lance-archival-readabili/) |
 | 260608-waw | Add external source ingress and Lance phases to roadmap | 2026-06-08 | this commit | [260608-waw-add-external-source-ingress-and-lance-ph](./quick/260608-waw-add-external-source-ingress-and-lance-ph/) |

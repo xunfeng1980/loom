@@ -568,6 +568,10 @@ static bool IsTablePayload(const vector<uint8_t> &payload) {
     return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'T' && payload[3] == '1';
 }
 
+static bool IsArrowSemanticPayload(const vector<uint8_t> &payload) {
+    return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'A' && payload[3] == '1';
+}
+
 static bool IsContainerPayload(const vector<uint8_t> &payload) {
     return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'C' && payload[3] == '1';
 }
@@ -659,8 +663,76 @@ static vector<uint8_t> ExtractContainerPayload(const vector<uint8_t> &payload) {
     return wrapped;
 }
 
+static LoomValueKind PayloadKindFromArrowSchemaFormat(const char *format) {
+    if (format == nullptr) {
+        throw IOException("loom_scan: decoded LMA1 Arrow schema has null format");
+    }
+    if (std::strcmp(format, "b") == 0) {
+        return LoomValueKind::BOOL;
+    }
+    if (std::strcmp(format, "i") == 0) {
+        return LoomValueKind::I32;
+    }
+    if (std::strcmp(format, "l") == 0) {
+        return LoomValueKind::I64;
+    }
+    if (std::strcmp(format, "u") == 0) {
+        return LoomValueKind::UTF8;
+    }
+    if (std::strcmp(format, "f") == 0) {
+        return LoomValueKind::F32;
+    }
+    if (std::strcmp(format, "g") == 0) {
+        return LoomValueKind::F64;
+    }
+    throw IOException("loom_scan: unsupported LMA1 Arrow schema format '%s'", format);
+}
+
+static LoomValueKind PayloadKindFromLma1Decode(const vector<uint8_t> &payload) {
+    ArrowArray arrow_array {};
+    ArrowSchema arrow_schema {};
+    int32_t rc = loom_decode(payload.data(),
+                             payload.size(),
+                             reinterpret_cast<FFI_ArrowArray *>(&arrow_array),
+                             reinterpret_cast<FFI_ArrowSchema *>(&arrow_schema));
+    if (rc != 0) {
+        throw IOException("loom_scan: failed to decode LMA1 schema with code %d", static_cast<int>(rc));
+    }
+
+    try {
+        auto kind = PayloadKindFromArrowSchemaFormat(arrow_schema.format);
+        if (arrow_array.release) {
+            arrow_array.release(&arrow_array);
+            arrow_array.release = nullptr;
+        }
+        if (arrow_schema.release) {
+            arrow_schema.release(&arrow_schema);
+            arrow_schema.release = nullptr;
+        }
+        return kind;
+    } catch (...) {
+        if (arrow_array.release) {
+            arrow_array.release(&arrow_array);
+            arrow_array.release = nullptr;
+        }
+        if (arrow_schema.release) {
+            arrow_schema.release(&arrow_schema);
+            arrow_schema.release = nullptr;
+        }
+        throw;
+    }
+}
+
 static void PopulateColumnSpecs(LoomBindData &bind_data) {
     auto bind_payload = ExtractContainerPayload(bind_data.payload);
+    if (IsArrowSemanticPayload(bind_payload)) {
+        bind_data.column_names.push_back("value");
+        bind_data.column_kinds.push_back(PayloadKindFromLma1Decode(bind_payload));
+        bind_data.column_types.push_back(LogicalTypeForKind(bind_data.column_kinds.back()));
+        bind_data.column_payloads.push_back(bind_payload);
+        return;
+    }
+
     if (!IsTablePayload(bind_payload)) {
         bind_data.column_names.push_back("value");
         bind_data.column_kinds.push_back(PayloadKindFromHeader(bind_payload));

@@ -23,6 +23,7 @@ use std::panic::{self, AssertUnwindSafe};
 
 use arrow::array::Array;
 use arrow::ffi::{to_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::arrow_semantic_codec::{decode_arrow_semantic_payload, is_arrow_semantic_payload};
 use loom_core::container_codec::decode_layout_payload_maybe_container;
 use loom_core::l1_model::decode_layout_to_array_data;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
@@ -135,6 +136,16 @@ fn loom_decode_inner(
         builder.append_value(3);
         builder.append_null();
         builder.finish().into_data()
+    } else if is_arrow_semantic_payload(input) {
+        let payload = decode_arrow_semantic_payload(input).map_err(|_| LoomError::DecodeFailed)?;
+        let batches = payload
+            .to_record_batches()
+            .map_err(|_| LoomError::DecodeFailed)?;
+        let batch = batches.first().ok_or(LoomError::DecodeFailed)?;
+        if batches.len() != 1 || batch.num_columns() != 1 {
+            return Err(LoomError::DecodeFailed);
+        }
+        batch.column(0).clone().into_data()
     } else {
         let desc =
             decode_layout_payload_maybe_container(input).map_err(|_| LoomError::DecodeFailed)?;

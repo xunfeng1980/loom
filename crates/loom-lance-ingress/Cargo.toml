@@ -11,7 +11,7 @@ futures = { workspace = true }
 lance = { workspace = true }
 loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
+tokio = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
-tokio = { workspace = true }

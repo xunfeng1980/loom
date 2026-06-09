@@ -23,7 +23,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
 | Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
-| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage |
+| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, including source-backed `LMA1` e2e slices |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMA1` semantic artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
 | Native lowering | Verifier-gated textual MLIR / decode-dialect evidence and raw primitive lowering preparation |
@@ -145,6 +145,16 @@ and decoded `LMA1` batches compare equal to the source/oracle Arrow batches.
 This is a source compatibility claim, not a claim that DuckDB SQL or native
 lowering supports every Arrow nested or logical type.
 
+### 7. Run the DuckDB source e2e gate
+
+```bash
+bash scripts/duckdb-source-e2e-test.sh
+```
+
+This generates Parquet, Lance, and Vortex source fixtures, emits
+verifier-accepted single-column `LMA1` artifacts through the adapter crates, and
+queries each artifact with DuckDB `loom_scan(...)`.
+
 ## Repository Map
 
 | Path | Purpose |
@@ -199,13 +209,17 @@ bash scripts/complete-vortex-reader-test.sh
 bash scripts/solver-verifier-test.sh
 bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
+bash scripts/duckdb-source-e2e-test.sh
 ```
 
 The broad release-style gate is:
 
 ```bash
-bash scripts/mvp0-verify.sh
+bash scripts/mvp1-verify.sh
 ```
+
+`scripts/mvp1-verify.sh` runs the inherited `scripts/mvp0-verify.sh` gate first,
+then runs the DuckDB source e2e gate.
 
 Formal and external tooling is explicit. Missing Lean/TLC, LLVM/MLIR, or
 Bitwuzla is not treated as success unless the corresponding opt-out environment

@@ -1,6 +1,7 @@
 use loom_core::runtime_abi::{
-    ProjectionColumn, ProjectionSet, RuntimeAbiVersion, RuntimeExecutionDecision,
-    RuntimeFallbackPolicy, RuntimeHandleKind, RuntimeSafetyPolicy, SplitDescriptor,
+    ProjectionColumn, ProjectionSet, RuntimeAbiVersion, RuntimeEmissionDisposition,
+    RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimeHandleKind, RuntimeSafetyPolicy,
+    SplitDescriptor,
 };
 
 #[test]
@@ -19,6 +20,10 @@ fn runtime_abi_strings_are_stable() {
     assert_eq!(
         RuntimeFallbackPolicy::FailClosedOnly.as_str(),
         "fail-closed-only"
+    );
+    assert_eq!(
+        RuntimeEmissionDisposition::SemanticArrow.as_str(),
+        "semantic-arrow"
     );
 }
 

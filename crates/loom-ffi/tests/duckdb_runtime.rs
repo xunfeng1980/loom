@@ -1,4 +1,9 @@
-use arrow::datatypes::DataType;
+use std::sync::Arc;
+
+use arrow::array::{Int32Array, RecordBatch};
+use arrow::datatypes::{DataType, Field, Schema};
+use loom_core::arrow_semantic::ArrowSemanticPayload;
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
@@ -87,6 +92,19 @@ fn primitive_byte_width(data_type: &DataType) -> usize {
         DataType::Int64 | DataType::Float64 => 8,
         other => panic!("unsupported primitive fixture type {other:?}"),
     }
+}
+
+fn lma1_i32(row_count: usize) -> Vec<u8> {
+    let values = (0..row_count as i32).collect::<Vec<_>>();
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "value",
+        DataType::Int32,
+        false,
+    )]));
+    let batch = RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(values))])
+        .expect("record batch");
+    let payload = ArrowSemanticPayload::from_record_batches(&[batch]).expect("semantic payload");
+    encode_arrow_semantic_payload(&payload).expect("encode LMA1")
 }
 
 fn primitive_table_lmc1(row_count: usize, columns: Vec<(&str, DataType)>) -> Vec<u8> {
@@ -374,6 +392,36 @@ mod runtime_planning {
         let report = plan_duckdb_runtime(strict).expect("strict runtime plan");
         assert_eq!(report.decision, DuckDbRouteDecision::FailClosed);
         assert_eq!(report.decision.as_str(), "fail-closed");
+    }
+
+    #[test]
+    fn arrow_semantic_lma1_uses_interpreter_fallback() {
+        let input = DuckDbRuntimePlanInput {
+            artifact_bytes: lma1_i32(3),
+            projection: DuckDbProjection::All,
+            policy: DuckDbRuntimePolicy {
+                allow_interpreter_fallback: true,
+                test_native_facts: None,
+            },
+        };
+        let report = plan_duckdb_runtime(input).expect("LMA1 runtime plan");
+
+        assert_eq!(report.decision, DuckDbRouteDecision::InterpreterFallback);
+        assert_eq!(
+            report.runtime_plan.split,
+            SplitDescriptor::FullScan { row_count: 3 }
+        );
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "unsupported-payload"));
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "lowering-unsupported"));
+        let prepared = prepare_duckdb_runtime(&report, Default::default());
+        assert_eq!(prepared.decision, DuckDbRouteDecision::InterpreterFallback);
+        assert!(prepared.native_buffers.is_empty());
     }
 
     #[test]
