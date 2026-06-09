@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 35 35-03 complete; executing 35-04
-last_updated: "2026-06-09T08:17:09Z"
-last_activity: 2026-06-09 -- Phase 35 35-03 added runtime/cache identity evidence
+stopped_at: Phase 35 35-04 complete; executing 35-05
+last_updated: "2026-06-09T08:29:07Z"
+last_activity: 2026-06-09 -- Phase 35 35-04 wired focused and broad native Arrow semantic gates
 progress:
   total_phases: 35
   completed_phases: 34
   total_plans: 153
-  completed_plans: 151
+  completed_plans: 152
   percent: 97
 ---
 
@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 ## Current Position
 
 Phase: 35 (Native Arrow Semantic Execution) — EXECUTING
-Plan: 3 of 5
-Status: Executing 35-04 focused and broad gate wiring
-Last activity: 2026-06-09 -- 35-03 added runtime/cache identity evidence
+Plan: 4 of 5
+Status: Executing 35-05 docs and phase closeout
+Last activity: 2026-06-09 -- 35-04 wired focused and broad native Arrow semantic gates
 
-Progress: Phase 35 35-03 complete; focused/broad gate wiring is next
+Progress: Phase 35 35-04 complete; closeout docs are next
 
 ## Progress Snapshot
 
 - Completed phases: 34 / 35
-- Completed executable plans: 151 / 153
+- Completed executable plans: 152 / 153
 - Current milestone stage: MVP1 / v3 distribution and verification track
 - Current position: Phase 35 should add engine-neutral native execution evidence for Arrow semantic artifacts
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 34 DuckDB LMC2 SQL surface gate wired after Phase 33 and before Phase 29/30/DuckDB smoke
@@ -66,7 +66,7 @@ Progress: Phase 35 35-03 complete; focused/broad gate wiring is next
 | 32 | MVP1 Architecture and Code Review | 5/5 complete |
 | 33 | LMC2 Arrow Semantic Container Wrapper | 5/5 complete |
 | 34 | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 complete |
-| 35 | Native Arrow Semantic Execution | 3/5 executing |
+| 35 | Native Arrow Semantic Execution | 4/5 executing |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -258,6 +258,7 @@ None yet.
 - Phase 35 35-01 complete: `loom-core::native_arrow_semantic` now verifies accepted `LMC2(LMA1)` / direct `LMA1`, copies nullable fixed-width primitive Arrow columns through typed builders into a new `RecordBatch`, and fails closed for Utf8/logical/nested/multi-batch/malformed inputs.
 - Phase 35 35-02 complete: native/reference equivalence evidence is explicit, with `native-output-mismatch` diagnostics for injected divergent output rather than inferring correctness from execution alone.
 - Phase 35 35-03 complete: native Arrow semantic execution now has host-neutral backend identity/runtime decision/cache-key evidence; unsupported shapes may follow fallback policy but cannot seed native cache keys.
+- Phase 35 35-04 complete: `scripts/native-arrow-semantic-execution-test.sh` is wired into `scripts/mvp1-verify.sh`, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the new Phase 35 gate.
 
 ### Quick Tasks Completed
 
@@ -321,12 +322,12 @@ None yet.
 | v3 engine | StarRocks + DuckDB dual query surface | Complete as bounded DuckDB executable plus StarRocks-compatible offline descriptor proof; live runtime optional | Phase 30 |
 | v3 distribution | LMC2 Arrow semantic container wrapper | Complete; default source artifacts are `LMC2(LMA1)` and direct `LMA1` is a bounded DuckDB bridge only | Phase 33 |
 | v3 query | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | Complete; default `LMC2(LMA1)` primitive/nullable artifacts query directly, direct `LMA1` is regression-only, logical/nested SQL is fail-closed unsupported | Phase 34 |
-| v3 native | Native Arrow Semantic Execution | In progress; 35-01..35-03 added engine-neutral primitive nullable `LMC2(LMA1)` native execution, explicit equivalence, and runtime/cache identity, with gates still pending | Phase 35 |
+| v3 native | Native Arrow Semantic Execution | In progress; 35-01..35-04 added engine-neutral primitive nullable `LMC2(LMA1)` native execution, explicit equivalence, runtime/cache identity, and focused/broad gates | Phase 35 |
 
 ## Session Continuity
 
 Last session: 2026-06-09T07:36:09Z
-Stopped at: Phase 35 35-03 complete; executing 35-04
+Stopped at: Phase 35 35-04 complete; executing 35-05
 
 Phase 17 handoff:
 

@@ -1,6 +1,6 @@
 //! Engine-neutral native execution for Arrow semantic artifacts.
 //!
-//! Phase 35 deliberately keeps this backend out of DuckDB and FFI code. The
+//! Phase 35 deliberately keeps this backend out of host adapter and FFI code. The
 //! executor verifies `LMC2(LMA1)` or explicit direct `LMA1` bytes, decodes the
 //! Arrow semantic payload, copies supported fixed-width primitive columns
 //! through typed Arrow builders, and can compare the result with the decoded

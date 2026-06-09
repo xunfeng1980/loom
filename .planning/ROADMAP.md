@@ -949,7 +949,7 @@ Plans:
 - [x] 35-01-PLAN.md - Engine-neutral native Arrow semantic executor for primitive nullable `LMC2(LMA1)` / direct `LMA1`
 - [x] 35-02-PLAN.md - Explicit native/reference equivalence report and mismatch diagnostics
 - [x] 35-03-PLAN.md - Runtime/cache identity evidence for native Arrow semantic execution
-- [ ] 35-04-PLAN.md - Focused Phase 35 gate and broad MVP1 release-gate wiring
+- [x] 35-04-PLAN.md - Focused Phase 35 gate and broad MVP1 release-gate wiring
 - [ ] 35-05-PLAN.md - Documentation, requirements, roadmap/state closeout
 
 ## MVP1.5 — Verified Lineage (parked future milestone)
@@ -1013,6 +1013,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 32. MVP1 Architecture and Code Review | 5/5 | Complete | 2026-06-09 |
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
-| 35. Native Arrow Semantic Execution | 3/5 | In Progress | - |
+| 35. Native Arrow Semantic Execution | 4/5 | In Progress | - |
 | 36. Lean Stage B — Close L2Core Abstraction Gap | 0/0 | Parked (MVP1.5) | - |
 | 37. Lean Stage C — Operational Semantics + Soundness | 0/0 | Parked (MVP1.5) | - |
