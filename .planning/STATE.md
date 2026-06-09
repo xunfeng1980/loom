@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Phase 40 in progress; 40-01 complete
 last_updated: "2026-06-09T09:33:38.421Z"
-last_activity: 2026-06-09 -- Phase 40 40-01 complete with native/model trace validation across the full Phase 35 supported primitive matrix
+last_activity: 2026-06-09 -- Phase 38 modeled read safety remediated so out-of-bounds reads are representable and fail close
 progress:
   total_phases: 47
   completed_phases: 39
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase 40 IN PROGRESS: Native ↔ Model Validation
 Plan: 1 of 2
 Status: 40-01 complete; 40-02 fail-closed routing + TCB record pending
-Last activity: 2026-06-09 -- 40-01 added native/model trace validation across nullable Boolean/Int32/Int64/Float32/Float64 `LMC2(LMA1)` and direct `LMA1` supported shapes
+Last activity: 2026-06-09 -- Phase 38 modeled read safety remediated so out-of-bounds reads produce `inBounds := false` and fail close; Phase 40 remains 40-01 complete / 40-02 pending
 
 Progress: Phase 40 executing; 40-01 complete, 40-02 pending
 
@@ -265,7 +265,7 @@ None yet.
 - Phase 35 35-04 complete: `scripts/native-arrow-semantic-execution-test.sh` is wired into `scripts/mvp1-verify.sh`, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the new Phase 35 gate.
 - Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
 - Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
-- Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readsInBounds`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; `scripts/full-verifier-test.sh` rejects `_state : ModeledState` and discarded-premise regressions.
+- Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readSafety`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; `scripts/full-verifier-test.sh` rejects `_state : ModeledState`, discarded-premise, `readsInBounds`, and row-clamping regressions.
 - Phase 40 executing: 40-01 extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
 
 ### Quick Tasks Completed

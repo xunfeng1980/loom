@@ -515,7 +515,7 @@ structure ModeledState where
   events : List ModeledEvent
   rowsUsed : Nat
   status : ExecutionStatus
-  readsInBounds : reads.all (fun read => read.inBounds) = true
+  readSafety : status = .failClosed \/ reads.all (fun read => read.inBounds) = true
   eventsTyped : events.all (eventWellTyped caps) = true
   rowsWithinMax : rowsUsed <= maxRows
 
@@ -528,16 +528,35 @@ def initialModeledState (caps : List Capability) (maxRows : Nat) : ModeledState 
     events := [],
     rowsUsed := 0,
     status := .running,
-    readsInBounds := by simp,
+    readSafety := by
+      right
+      simp,
     eventsTyped := by simp,
     rowsWithinMax := Nat.zero_le maxRows
   }
 
 def modeledFailClosed (state : ModeledState) : ModeledState :=
-  { state with status := .failClosed }
+  {
+    state with
+    status := .failClosed,
+    readSafety := by
+      left
+      rfl
+  }
 
-def modeledFinished (state : ModeledState) : ModeledState :=
-  { state with status := .finished }
+def modeledFinished (state : ModeledState) (running : state.status = .running) : ModeledState :=
+  {
+    state with
+    status := .finished,
+    readSafety := by
+      cases state.readSafety with
+      | inl failed =>
+          rw [running] at failed
+          cases failed
+      | inr safe =>
+          right
+          exact safe
+  }
 
 def finalizeModeledState (state : ModeledState) : ModeledState :=
   if state.status == .running then modeledFailClosed state else state
@@ -557,8 +576,24 @@ def appendModeledReadInBounds (state : ModeledState) (cap : String) (offset widt
   {
     state with
     reads := state.reads ++ [{ capability := cap, offset := offset, width := width, inBounds := true }],
-    readsInBounds := by
-      simp [List.all_append, state.readsInBounds]
+    readSafety := by
+      cases state.readSafety with
+      | inl failed =>
+          left
+          exact failed
+      | inr safe =>
+          right
+          simp [List.all_append, safe]
+  }
+
+def appendModeledReadOutOfBoundsFailed (state : ModeledState) (cap : String) (offset width : ScalarExpr) : ModeledState :=
+  {
+    state with
+    reads := state.reads ++ [{ capability := cap, offset := offset, width := width, inBounds := false }],
+    status := .failClosed,
+    readSafety := by
+      left
+      rfl
   }
 
 def appendModeledEvent (state : ModeledState) (event : ModeledEvent)
@@ -599,7 +634,7 @@ def restoreScalars (before after : ModeledState) : ModeledState :=
   { after with scalars := before.scalars }
 
 def NoOutOfBoundsRead (p : Program) (state : ModeledState) : Prop :=
-  state.reads.all (fun read => read.inBounds) = true /\
+  (state.status = .failClosed \/ state.reads.all (fun read => read.inBounds) = true) /\
     no_ambient_authority p
 
 def BuilderEventsWellTyped (p : Program) (state : ModeledState) : Prop :=
@@ -640,7 +675,7 @@ mutual
                   if inBounds then
                     let next := appendModeledReadInBounds state cap offset width
                     { next with scalars := scalarInsert bind (scalarTypeForReadWidth width) state.scalars }
-                  else modeledFailClosed state
+                  else appendModeledReadOutOfBoundsFailed state cap offset width
                 else modeledFailClosed state
         | .letScalar name expr =>
             match typeOfExpr? state.scalars expr with
@@ -690,7 +725,11 @@ mutual
     | 0 => modeledFailClosed state
     | fuel' + 1 =>
         match body with
-        | [] => if state.status == .running then modeledFinished state else state
+        | [] =>
+            match h : state.status with
+            | .running => modeledFinished state h
+            | .finished => state
+            | .failClosed => state
         | stmt :: rest =>
             let next := execStmtFuel fuel' stmt state
             if next.status == .running then execBodyFuel fuel' rest next else next
@@ -714,7 +753,7 @@ theorem accepted_program_safe (p : Program) :
     Verified p -> ModeledExecutionSafe p := by
   intro h
   unfold ModeledExecutionSafe ModeledRunSafe
-  exact And.intro (And.intro (execProgram p).readsInBounds h.right.right)
+  exact And.intro (And.intro (execProgram p).readSafety h.right.right)
     (And.intro (And.intro (execProgram p).eventsTyped h.right.left)
       (And.intro
         (And.intro (execProgram p).rowsWithinMax
@@ -907,6 +946,20 @@ example : (execProgram sampleCopyProgram).status = .finished := by
   native_decide
 
 example : (execProgram sampleCopyProgram).reads.all (fun read => read.inBounds) = true := by
+  native_decide
+
+def outOfBoundsReadProgram : Program :=
+  {
+    sampleCopyProgram with
+    body := [
+      .readInput "input0" (u64 32) (u64 4) "value"
+    ]
+  }
+
+example : (execProgram outOfBoundsReadProgram).status = .failClosed := by
+  native_decide
+
+example : (execProgram outOfBoundsReadProgram).reads.all (fun read => read.inBounds) = false := by
   native_decide
 
 example : (execProgram sampleCopyProgram).events.all (eventWellTyped sampleCopyProgram.capabilities) = true := by

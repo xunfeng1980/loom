@@ -172,7 +172,7 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 ### Lean Modeled Operational Semantics
 
 - [x] **LINEAGE-05**: Lean defines a proof-friendly modeled operational semantics for the current L2Core checker slice, including abstract input assumptions, typed builder events, bounded loop/cursor execution, fail-closed terminal behavior, and modeled safety predicates for safe reads, well-typed events, maxRows termination, and Arrow well-formedness by construction
-- [x] **LINEAGE-06**: Lean proves `accepted_program_safe` as a no-`sorry` semantic theorem over the modeled executor, using `execProgram p` state evidence for reads/events/rows/status plus the `Verified p` static premises, with explicit modeled-only scope and handoff notes that Rust interpreter consistency remains Phase 39 and native/model validation remains Phase 40
+- [x] **LINEAGE-06**: Lean proves `accepted_program_safe` as a no-`sorry` semantic theorem over the modeled executor, using `execProgram p` state evidence for read safety (fail-closed or all recorded reads in bounds), events, rows, and terminal status plus the `Verified p` static premises; out-of-bounds reads are representable as `inBounds := false` and fail close the modeled run, with explicit modeled-only scope and handoff notes that Rust interpreter consistency remains Phase 39 and native/model validation remains Phase 40
 
 ### Model Rust Interpreter Consistency
 

@@ -75,15 +75,21 @@ fi
 if rg -n "rowsUsed := min" "${LEAN_FILE}"; then
     fail "Lean modeled executor must fail closed on row-budget overflow, not clamp rowsUsed"
 fi
+if rg -n "readsInBounds" "${LEAN_FILE}"; then
+    fail "Lean modeled reads must allow fail-closed out-of-bounds traces, not carry all-reads-in-bounds as a state invariant"
+fi
 for marker in \
-    "state.reads.all (fun read => read.inBounds)" \
+    "state.status = .failClosed \\/ state.reads.all (fun read => read.inBounds)" \
+    "inBounds := false" \
+    "appendModeledReadOutOfBoundsFailed" \
+    "(execProgram outOfBoundsReadProgram).reads.all (fun read => read.inBounds) = false" \
     "state.events.all (eventWellTyped state.caps)" \
     "state.rowsUsed <= state.maxRows" \
     "no_ambient_authority p" \
     "builder_events_typed p" \
     "finite_bounds p" \
     "finalized_status_terminal" \
-    "(execProgram p).readsInBounds" \
+    "(execProgram p).readSafety" \
     "(execProgram p).eventsTyped" \
     "(execProgram p).rowsWithinMax"; do
     rg -q -F "${marker}" "${LEAN_FILE}" \
