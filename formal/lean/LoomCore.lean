@@ -53,6 +53,89 @@ structure Program where
   maxRows : Nat
 deriving Repr
 
+/-- Lookup the declared output builder's resolved scalar type and nullability.
+    Mirrors the Rust `MissingOutputBuilder` / nullability lookup. -/
+def builderInfo? (caps : List Capability) (name : String) : Option (L2Ty × Bool) :=
+  caps.findSome? fun c => match c with
+    | .outputBuilder id ty nullable _ => if id == name then some (ty, nullable) else none
+    | _ => none
+
+/-- Lookup the declared input slice's (offset, length).
+    Mirrors the Rust `input_capabilities` lookup / `MissingInputCapability`. -/
+def inputSlice? (caps : List Capability) (name : String) : Option (Nat × Nat) :=
+  caps.findSome? fun c => match c with
+    | .inputSlice id offset length => if id == name then some (offset, length) else none
+    | _ => none
+
+/- builder_events_typed checker: output type match + nullability + declared builder.
+   Reject codes mirrored: OutputTypeMismatch, OutputNullabilityMismatch,
+   MissingOutputBuilder. -/
+mutual
+  def checkTypedStmt (caps : List Capability) : Stmt → Bool
+    | .appendValue builder ty =>
+        match builderInfo? caps builder with
+        | some (bty, _) => bty == ty                 -- OutputTypeMismatch + MissingOutputBuilder
+        | none          => false
+    | .appendNull builder =>
+        match builderInfo? caps builder with
+        | some (_, nullable) => nullable             -- OutputNullabilityMismatch + MissingOutputBuilder
+        | none               => false
+    | .readInput _ _ _ _ => true
+    | .forRange _ _ _ body => checkTypedBody caps body
+    | .cursorLoop _ _ _ body => checkTypedBody caps body
+    | .failClosed _ => true
+  def checkTypedBody (caps : List Capability) : List Stmt → Bool
+    | []        => true
+    | s :: rest => checkTypedStmt caps s && checkTypedBody caps rest
+end
+
+/- no_ambient_authority checker: declared input capability + read spatial bounds +
+   declared output builder. Reject codes mirrored: MissingInputCapability,
+   MissingOutputBuilder, plus the read in-range obligation (faithful here because
+   Lean offset/width are concrete `Nat`). -/
+mutual
+  def checkAuthorityStmt (caps : List Capability) : Stmt → Bool
+    | .readInput cap offset width _ =>
+        match inputSlice? caps cap with             -- MissingInputCapability
+        | some (sOff, sLen) =>
+            decide (offset >= sOff) && decide (offset + width <= sOff + sLen)  -- read in-range
+        | none => false
+    | .appendValue builder _ =>
+        match builderInfo? caps builder with        -- shared MissingOutputBuilder
+        | some _ => true
+        | none   => false
+    | .appendNull builder =>
+        match builderInfo? caps builder with        -- shared MissingOutputBuilder
+        | some _ => true
+        | none   => false
+    | .forRange _ _ _ body => checkAuthorityBody caps body
+    | .cursorLoop _ _ _ body => checkAuthorityBody caps body
+    | .failClosed _ => true
+  def checkAuthorityBody (caps : List Capability) : List Stmt → Bool
+    | []        => true
+    | s :: rest => checkAuthorityStmt caps s && checkAuthorityBody caps rest
+end
+
+/- finite_bounds checker: ForRange `stop>=start` + `(stop-start)<=maxRows`;
+   CursorLoop `progress>0` + `limit<=maxRows`. Reject codes mirrored:
+   InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded (row budget). -/
+mutual
+  def checkBoundsStmt (caps : List Capability) (maxRows : Nat) : Stmt → Bool
+    | .forRange _ start stop body =>
+        decide (stop >= start) && decide (stop - start <= maxRows)   -- InvalidLoopBounds + budget
+          && checkBoundsBody caps maxRows body
+    | .cursorLoop _ limit progress body =>
+        decide (progress > 0) && decide (limit <= maxRows)           -- NonMonotone + budget
+          && checkBoundsBody caps maxRows body
+    | .readInput _ _ _ _ => true
+    | .appendValue _ _ => true
+    | .appendNull _ => true
+    | .failClosed _ => true
+  def checkBoundsBody (caps : List Capability) (maxRows : Nat) : List Stmt → Bool
+    | []        => true
+    | s :: rest => checkBoundsStmt caps maxRows s && checkBoundsBody caps maxRows rest
+end
+
 def finite_bounds (p : Program) : Prop :=
   p.maxRows >= 0
 
