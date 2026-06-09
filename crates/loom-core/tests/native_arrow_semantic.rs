@@ -10,8 +10,9 @@ use loom_core::arrow_semantic_codec::{
     encode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
 };
 use loom_core::native_arrow_semantic::{
-    decide_native_arrow_semantic_runtime, execute_native_arrow_semantic,
-    native_arrow_semantic_backend_identity, native_arrow_semantic_runtime_cache_key,
+    decide_native_arrow_semantic_runtime, decide_validated_native_arrow_semantic_runtime,
+    execute_native_arrow_semantic, native_arrow_semantic_backend_identity,
+    native_arrow_semantic_runtime_cache_key, validated_native_arrow_semantic_runtime_cache_key,
     verify_native_arrow_semantic_equivalence, verify_native_arrow_semantic_model,
     verify_native_arrow_semantic_model_output, verify_native_arrow_semantic_output_equivalence,
     NativeArrowSemanticDiagnosticCode, NATIVE_ARROW_SEMANTIC_BACKEND,
@@ -203,6 +204,74 @@ fn injected_native_model_trace_divergence_fails_validation() {
     assert!(validation.diagnostics().iter().any(|diagnostic| {
         diagnostic.code == NativeArrowSemanticDiagnosticCode::NativeOutputMismatch
     }));
+}
+
+#[test]
+fn validated_native_model_runtime_and_cache_require_successful_validation() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let validation = verify_native_arrow_semantic_model(&bytes);
+    assert!(validation.is_validated(), "{validation:?}");
+
+    let decision =
+        decide_validated_native_arrow_semantic_runtime(&validation, RuntimeSafetyPolicy::default());
+    assert_eq!(decision.decision, RuntimeExecutionDecision::NativeCandidate);
+    assert!(decision.diagnostics.is_empty());
+
+    let key = validated_native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &validation,
+        ProjectionSet::All,
+        RuntimeSafetyPolicy::default(),
+    )
+    .expect("validated native/model cache key");
+    assert!(key
+        .canonical_input
+        .contains("backend=loom-native-arrow-semantic:phase40-native-model-validation"));
+    assert!(key
+        .canonical_input
+        .contains("validation=native-model:phase40"));
+    assert!(key.canonical_input.contains("reference-trace"));
+    assert!(key.canonical_input.contains("native-trace"));
+}
+
+#[test]
+fn divergent_native_model_validation_fails_closed_and_is_not_cacheable() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let wrong_batch = RecordBatch::try_new(
+        batch.schema(),
+        vec![
+            Arc::new(BooleanArray::from(vec![Some(true), Some(true), Some(false)])) as ArrayRef,
+            batch.column(1).clone(),
+            batch.column(2).clone(),
+            batch.column(3).clone(),
+            batch.column(4).clone(),
+        ],
+    )
+    .expect("wrong batch");
+    let validation = verify_native_arrow_semantic_model_output(&bytes, "LMC2", &wrong_batch);
+    assert!(!validation.is_validated());
+
+    let decision =
+        decide_validated_native_arrow_semantic_runtime(&validation, RuntimeSafetyPolicy::default());
+    assert_eq!(decision.decision, RuntimeExecutionDecision::FailClosed);
+
+    let err = validated_native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &validation,
+        ProjectionSet::All,
+        RuntimeSafetyPolicy::default(),
+    )
+    .expect_err("divergent native/model validation must not be cacheable");
+    assert_eq!(
+        err.code,
+        NativeArrowSemanticDiagnosticCode::UnsupportedPayload
+    );
+    assert_eq!(err.path, "$.cache.native_arrow_semantic_model");
+    assert!(err
+        .message
+        .contains("only successful native/model validation may seed runtime cache keys"));
 }
 
 #[test]

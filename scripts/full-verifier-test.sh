@@ -135,6 +135,10 @@ info "Running model/Rust interpreter consistency gate..."
 bash scripts/model-rust-interpreter-consistency-test.sh
 ok "scripts/model-rust-interpreter-consistency-test.sh"
 
+info "Running native/model validation gate..."
+bash scripts/native-model-validation-test.sh
+ok "scripts/native-model-validation-test.sh"
+
 if ! command -v tlc >/dev/null 2>&1 && [ -f "${REPO_ROOT}/.tools/tla2tools.jar" ]; then
     info "Running TLC lifecycle model check..."
     if command -v mise >/dev/null 2>&1; then

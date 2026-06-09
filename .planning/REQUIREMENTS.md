@@ -182,7 +182,7 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 ### Native Model Validation
 
 - [x] **LINEAGE-09**: Native Arrow semantic output for every Phase 35 supported shape (`LMC2(LMA1)` and explicit direct `LMA1`, nullable Boolean/Int32/Int64/Float32/Float64 one-batch primitives) is validated against a Phase 39 reference-executor builder-event trace, with injected native/model trace divergence producing stable fail-closed diagnostics
-- [ ] **LINEAGE-10**: Runtime route/cache eligibility requires successful native/model validation, divergent or unsupported validation cannot seed native cache identity, and Phase 40 records MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation
+- [x] **LINEAGE-10**: Runtime route/cache eligibility requires successful native/model validation, divergent or unsupported validation cannot seed native cache identity, and Phase 40 records MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation
 
 ## Out of Scope
 

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 40 in progress; 40-01 complete
+stopped_at: Phase 40 complete; ready for Phase 41
 last_updated: "2026-06-09T09:33:38.421Z"
-last_activity: 2026-06-09 -- Phase 38 modeled read safety remediated so out-of-bounds reads are representable and fail close
+last_activity: 2026-06-09 -- Phase 40 complete with native/model validation gate, fail-closed validated runtime/cache routing, and TCB record
 progress:
   total_phases: 47
   completed_phases: 39
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 40 — Native ↔ Model Validation
+**Current focus:** Phase 41 — Verified-Lineage Closeout
 
 ## Current Position
 
-Phase 40 IN PROGRESS: Native ↔ Model Validation
-Plan: 1 of 2
-Status: 40-01 complete; 40-02 fail-closed routing + TCB record pending
-Last activity: 2026-06-09 -- Phase 38 modeled read safety remediated so out-of-bounds reads produce `inBounds := false` and fail close; Phase 40 remains 40-01 complete / 40-02 pending
+Phase 41 READY: Verified-Lineage Closeout
+Plan: 0 of 0
+Status: Phase 40 complete; ready to discuss/plan Phase 41
+Last activity: 2026-06-09 -- Phase 40 wired native/model validation into the verified-lineage gate and recorded permanent TCB/non-claims
 
-Progress: Phase 40 executing; 40-01 complete, 40-02 pending
+Progress: Phase 40 complete; Phase 41 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
-- Completed phases: 39 / 47
-- Completed executable plans: 161 / 162
+- Completed phases: 40 / 47
+- Completed executable plans: 162 / 162
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 40 should finish validation-aware runtime/cache routing and TCB closeout after 40-01 native/model trace validation
-- Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, and the strengthened modeled soundness bridge checks
+- Current position: Phase 41 should compose verified-lineage evidence into one gate and artifact lineage record
+- Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
 
@@ -267,6 +267,7 @@ None yet.
 - Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
 - Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readSafety`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; `scripts/full-verifier-test.sh` rejects `_state : ModeledState`, discarded-premise, `readsInBounds`, and row-clamping regressions.
 - Phase 40 executing: 40-01 extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
+- Phase 40 complete: 40-02 added validation-aware native Arrow semantic runtime/cache helpers, wired `scripts/native-model-validation-test.sh` into `scripts/full-verifier-test.sh`, closed LINEAGE-10, and recorded MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation.
 
 ### Quick Tasks Completed
 
@@ -336,7 +337,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-09T09:33:38.412Z
-Stopped at: Phase 39 complete; ready for Phase 40
+Stopped at: Phase 40 complete; ready for Phase 41
 
 Phase 17 handoff:
 

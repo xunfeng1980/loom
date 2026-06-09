@@ -551,6 +551,40 @@ pub fn decide_native_arrow_semantic_runtime(
     })
 }
 
+pub fn decide_validated_native_arrow_semantic_runtime(
+    validation: &NativeArrowSemanticModelValidationReport,
+    policy: RuntimeSafetyPolicy,
+) -> RuntimePlanDecisionReport {
+    let verifier_rejected = validation.first_error().is_some_and(|diagnostic| {
+        diagnostic.code == NativeArrowSemanticDiagnosticCode::VerifierRejected
+    });
+    decide_runtime_execution(&crate::runtime_abi::RuntimeDecisionInput {
+        artifact_status: if verifier_rejected {
+            ArtifactVerificationStatus::Rejected
+        } else {
+            ArtifactVerificationStatus::Accepted
+        },
+        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        production_lowering_supported: validation.is_validated(),
+        reader_support: if verifier_rejected {
+            RuntimeReaderSupport::Rejected
+        } else {
+            RuntimeReaderSupport::Accepted
+        },
+        emission_disposition: RuntimeEmissionDisposition::SemanticArrow,
+        lowering_disposition: if validation.is_validated() {
+            RuntimeLoweringDisposition::ProductionLoweringSupported
+        } else {
+            RuntimeLoweringDisposition::InterpreterOnly
+        },
+        projection_supported: true,
+        predicate_supported: true,
+        split_supported: true,
+        concurrency_safe: true,
+        policy,
+    })
+}
+
 pub fn native_arrow_semantic_runtime_cache_key(
     bytes: &[u8],
     execution: &NativeArrowSemanticExecutionReport,
@@ -596,6 +630,67 @@ pub fn native_arrow_semantic_runtime_cache_key(
         predicate: PredicateEnvelope::None,
         split: SplitDescriptor::FullScan {
             row_count: execution.row_count,
+        },
+        policy,
+    }))
+}
+
+pub fn validated_native_arrow_semantic_runtime_cache_key(
+    bytes: &[u8],
+    validation: &NativeArrowSemanticModelValidationReport,
+    projection: ProjectionSet,
+    policy: RuntimeSafetyPolicy,
+) -> Result<RuntimeCacheKey, NativeArrowSemanticDiagnostic> {
+    let decision = decide_validated_native_arrow_semantic_runtime(validation, policy);
+    if decision.decision != RuntimeExecutionDecision::NativeCandidate || !validation.is_validated()
+    {
+        let fallback_disabled = decision
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == RuntimeDiagnosticCode::FallbackDisabled);
+        let fallback_note = if fallback_disabled
+            && matches!(policy.fallback, RuntimeFallbackPolicy::FailClosedOnly)
+        {
+            " and interpreter fallback is disabled"
+        } else {
+            ""
+        };
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+            "$.cache.native_arrow_semantic_model",
+            format!(
+                "only successful native/model validation may seed runtime cache keys{fallback_note}"
+            ),
+        ));
+    }
+
+    Ok(RuntimeCacheKey::build(&RuntimeCacheKeyInput {
+        abi_version: RuntimeAbiVersion::CURRENT,
+        artifact_digest: stable_digest("artifact", bytes),
+        facts_fingerprint: format!(
+            "artifact_kind={};rows={};columns={};model_trace={};native_trace={}",
+            validation.artifact_kind,
+            validation.row_count,
+            validation.column_count,
+            stable_digest_for_lines("reference-trace", validation.reference_trace()),
+            stable_digest_for_lines("native-trace", validation.native_trace())
+        ),
+        solver_identity: "not-required".to_string(),
+        production_lowering_fingerprint: format!(
+            "backend={};validation=native-model:phase40;rows={};columns={}",
+            NATIVE_ARROW_SEMANTIC_BACKEND, validation.row_count, validation.column_count
+        ),
+        backend_identity: RuntimeBackendIdentity {
+            backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+            backend_version: "phase40-native-model-validation".to_string(),
+            toolchain: "per-run-validation;mlir-llvm-native-lowering-tcb".to_string(),
+            target_triple: "engine-neutral".to_string(),
+            cpu_features: Vec::new(),
+        },
+        projection,
+        predicate: PredicateEnvelope::None,
+        split: SplitDescriptor::FullScan {
+            row_count: validation.row_count,
         },
         policy,
     }))
@@ -937,6 +1032,15 @@ fn stable_digest(label: &str, bytes: &[u8]) -> String {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("{label}:{hash:016x}")
+}
+
+fn stable_digest_for_lines(label: &str, lines: &[String]) -> String {
+    let mut bytes = Vec::new();
+    for line in lines {
+        bytes.extend_from_slice(line.as_bytes());
+        bytes.push(b'\n');
+    }
+    stable_digest(label, &bytes)
 }
 
 #[allow(dead_code)]

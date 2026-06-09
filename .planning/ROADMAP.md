@@ -82,7 +82,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
 - [x] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
 - [x] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
-- [ ] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption
+- [x] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption (completed 2026-06-09)
 - [ ] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety
 
 **MVP2 — Coverage, Second Engine, Productization** *(future milestone — planned, not active. Widen coverage and add a real second engine — the two forces that should shape the ABI — then freeze the ABI, then build distribution/security on top and bind the MVP1.5 lineage record.)*
@@ -1045,7 +1045,7 @@ Plans:
 
 ### Phase 40: Native ↔ Model Validation
 
-**Status:** In Progress. 40-01 completed native/model trace validation for the full Phase 35 supported primitive matrix, including Float32/Float64 model tags and injected trace-divergence diagnostics. 40-02 remains: validation-aware runtime/cache routing, gate wiring, TCB record, and closeout.
+**Status:** Complete. Phase 40 validates native Arrow semantic output against Phase 39 reference-executor builder-event traces and decoded Arrow value equivalence for the full Phase 35 supported primitive matrix, requires successful validation for Phase 40 native route/cache eligibility, fails closed on divergence, and records MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation.
 **Goal:** Anchor native execution equivalence against the faithful model reference, not merely against the (itself-only-validated) interpreter.
 **Depends on:** **MVP1 Phase 35** and Phase 39.
 **Requirements:** LINEAGE-09, LINEAGE-10
@@ -1057,7 +1057,7 @@ Plans:
 
 **Non-goals:** No verified compilation of MLIR/LLVM (stays in TCB forever). No new encodings or formats.
 **Ordering decision:** Native equivalence is only meaningful once there is a model to be equivalent *to*; hence after Phase 38/39 and after Phase 35 ships native.
-**Plans:** 2 plans. Wave 1: [x] `40-01-PLAN.md` native↔model trace check. Wave 2: [ ] `40-02-PLAN.md` fail-closed routing + TCB record.
+**Plans:** 2 plans complete. Wave 1: [x] `40-01-PLAN.md` native↔model trace check. Wave 2: [x] `40-02-PLAN.md` fail-closed routing + TCB record.
 
 ### Phase 41: Verified-Lineage Closeout
 
@@ -1247,7 +1247,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 0/0 | Planned (MVP1.5) | - |
 | 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |
 | 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |
-| 40. Native↔Model Validation | 0/0 | Planned (MVP1.5) | - |
+| 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 0/0 | Planned (MVP1.5) | - |
 | 42. Verified + Native Coverage Expansion | 0/0 | Planned (MVP2) | - |
 | 43. StarRocks Live Runtime Integration | 0/0 | Planned (MVP2) | - |
