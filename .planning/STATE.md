@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 44 ready; Phase 43 suspended pending live StarRocks runtime evidence
-last_updated: "2026-06-09T10:45:00.000Z"
-last_activity: 2026-06-09 -- Phase 43 suspended after contract/gate/ABI findings; ENGINE-01 deferred to pre-GA reactivation
+stopped_at: Phase 43.1 inserted; ready for production native codegen realization planning
+last_updated: "2026-06-09T11:40:00.000Z"
+last_activity: 2026-06-09 -- Phase 43.1 inserted before ABI freeze for real MLIR/LLVM/JIT/native backend output
 progress:
-  total_phases: 47
+  total_phases: 48
   completed_phases: 41
   total_plans: 164
   completed_plans: 164
-  percent: 88
+  percent: 85
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 44 — ABI Freeze and Compatibility Contract
+**Current focus:** Phase 43.1 — Production Native Codegen Realization
 
 ## Current Position
 
-Phase 44 READY: ABI Freeze and Compatibility Contract
+Phase 43.1 READY: Production Native Codegen Realization
 Plan: 0 of 0
-Status: Phase 43 is suspended after 3/3 plans because live StarRocks runtime evidence is unavailable; Phase 44 may proceed with an explicit N=1/live-second-engine caveat
-Last activity: 2026-06-09 -- Phase 43 suspension recorded, preserving ENGINE-01 as a pre-GA reactivation blocker
+Status: Phase 43 is suspended after 3/3 plans because live StarRocks runtime evidence is unavailable; Phase 43.1 is inserted before ABI freeze to realize true native codegen for the Phase 35 supported Arrow semantic matrix
+Last activity: 2026-06-09 -- Phase 43.1 inserted before Phase 44 so ABI freeze is shaped by real native-codegen output, validation admission, and cache/backend identity
 
-Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 44 is the next active phase.
+Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is the next active phase.
 
 ## Progress Snapshot
 
-- Completed phases: 41 / 47
+- Completed phases: 41 / 48
 - Completed executable plans: 164 / 164
 - Current milestone stage: MVP2 planned next / coverage expansion
-- Current position: Phase 44 should freeze the ABI using Phase 42 coverage and Phase 43 ABI findings, while preserving live StarRocks runtime evidence as a pre-GA reactivation requirement rather than an accepted claim
+- Current position: Phase 43.1 should replace the bounded Rust/Arrow native-copy path with true MLIR/LLVM/JIT/native backend output for the Phase 35 supported Arrow semantic matrix before Phase 44 freezes the ABI
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
@@ -281,6 +281,7 @@ None yet.
 - Phase 43 43-02 complete: added `scripts/starrocks-live-runtime-test.sh` and `43-STARROCKS-RUNTIME-REPORT.md`. Default local contract mode passes while explicitly reporting missing live StarRocks runtime evidence as non-accepted; strict live mode fails closed without StarRocks env/client inputs. `ENGINE-03` is complete; `ENGINE-01` remains incomplete until actual live runtime rows are collected.
 - Phase 43 43-03 complete: added `43-ABI-FINDINGS.md`, wired `scripts/starrocks-live-runtime-test.sh` into `scripts/mvp2-verify.sh`, and preserved the blocker that actual live StarRocks rows are still required for `ENGINE-01`.
 - Phase 43 suspended: live StarRocks runtime/client availability is an external blocker, so `ENGINE-01` is deferred to a pre-GA reactivation gate instead of blocking Phase 44. Phase 44 may proceed with an explicit N=1/live-second-engine caveat; no accepted StarRocks runtime claim exists yet.
+- Phase 43.1 inserted: Production Native Codegen Realization is a 44-pre/44A phase before ABI freeze. It must produce Phase 35 supported Arrow semantic output through real MLIR/LLVM/JIT/native backend codegen, require Phase 40 native/model validation before admission, and bind runtime/cache identity to backend/toolchain/pipeline/trace fingerprints.
 
 ### Quick Tasks Completed
 

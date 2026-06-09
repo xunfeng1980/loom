@@ -201,6 +201,12 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **ENGINE-02**: Phase 43 records every observed DuckDB-shaped ABI assumption exposed by the StarRocks consumer and classifies each as fixed-now, accepted asymmetry, or Phase 44 freeze input
 - [x] **ENGINE-03**: Unsupported StarRocks runtime shapes, descriptor drift, missing runtime configuration, and output mismatches fail closed with typed diagnostics and cannot produce accepted runtime evidence
 
+### Production Native Codegen Realization
+
+- [ ] **CODEGEN-01**: Phase 35 supported `LMC2(LMA1)` and explicit direct `LMA1` one-batch nullable fixed-width primitive Arrow semantic artifacts produce Arrow buffers/RecordBatch output through the real MLIR/LLVM/JIT/native backend path, not through `reference_zeroed_value_bytes` or Rust/Arrow builder-copy stand-ins
+- [ ] **CODEGEN-02**: Every real native-codegen execution is admitted only after Phase 40 native/model validation succeeds against reference executor trace and decoded Arrow value equivalence; validation failure, unsupported shape, toolchain mismatch, or output divergence fails closed or takes an explicit interpreter fallback path according to runtime policy
+- [ ] **CODEGEN-03**: Native codegen runtime/cache identity binds artifact digest, verifier facts, backend identity, MLIR/LLVM toolchain identity, pass/pipeline identity, target/layout facts where available, and model/native trace fingerprints before Phase 44 ABI freeze
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
