@@ -29,7 +29,8 @@ dual-query surface proof: DuckDB executable SQL plus StarRocks-compatible offlin
 compatibility reset around full Arrow semantic artifacts (`LMA1`, with `LMC2` still documented as the future wrapper) so arbitrary Lance/Parquet schemas and materialized Vortex dtypes
 can be accepted by verifier-backed Arrow schema/value/null roundtrip evidence rather than narrow canonical raw layouts. Phase 32 pauses feature expansion for an end-to-end
 architecture and code review across the completed MVP1 path, with explicit attention to true execution evidence, overclaim boundaries, ABI/FFI safety, dependency isolation,
-release-gate fidelity, and cleanup recommendations.
+release-gate fidelity, and cleanup recommendations. Phases 33-35 are the post-MVP1 claim-expansion track: first implementing the deferred `LMC2` wrapper around Arrow semantic payloads,
+then broadening DuckDB SQL over `LMC2(LMA1)` Arrow semantic artifacts beyond the current single-column slice, and only then adding engine-neutral native execution for Arrow semantic payloads.
 
 ## Phases
 
@@ -72,6 +73,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 30: StarRocks + DuckDB Dual Query Surface** - Bounded dual query-surface proof: DuckDB executable `loom_scan(path)` SQL and StarRocks-compatible offline descriptor evidence over Phase 29 accepted bytes, with optional non-canonical runtime smoke (completed 2026-06-09)
 - [x] **Phase 31: Full Arrow Semantic Source Compatibility** - Replace the bounded source-ingress raw/table slice with verifier-backed Arrow semantic artifacts for arbitrary Lance/Parquet schemas and materialized Vortex dtypes (completed 2026-06-09)
 - [x] **Phase 32: MVP1 Architecture and Code Review** - Audit the full MVP1 design and implementation for architectural consistency, true execution evidence, ABI/FFI safety, release-gate fidelity, dependency boundaries, code quality, and overclaim cleanup before further feature expansion (completed 2026-06-09)
+- [ ] **Phase 33: LMC2 Arrow Semantic Container Wrapper** - Implement the deferred `LMC2` distribution wrapper around verifier-backed `LMA1` Arrow semantic payloads before expanding query or native claims
+- [ ] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads
+- [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback
 
 ## Phase Details
 
@@ -903,10 +907,38 @@ Plans:
 - [x] 32-04-PLAN.md - Code-quality review and narrow remediation (PHASE-32)
 - [x] 32-05-PLAN.md - MVP1 go/no-go readiness report, audit gate finalization, and closeout (PHASE-32)
 
+### Phase 33: LMC2 Arrow Semantic Container Wrapper
+
+**Status:** In Progress. Phase 32 identified implemented direct `LMA1` Arrow semantic artifacts and deferred `LMC2` wrapping as a boundary that must be resolved before stronger distribution claims.
+**Depends on:** Phase 31 and Phase 32.
+**Goal:** Implement a versioned `LMC2` distribution wrapper for Arrow semantic `LMA1` payloads, with verifier routing, feature flags/section metadata as needed, CLI/report visibility, source-ingress emission updates, and release-gate coverage that preserves direct `LMA1` compatibility as an explicit legacy/current bridge.
+**Requirements:** PHASE-33
+**Ordering decision:** Resolve the artifact contract before broadening query-engine or native-execution claims. This phase should make `LMC2` a real verifier-accepted wrapper around Arrow semantic payloads, not a documentation-only future direction. It must not broaden DuckDB SQL shape support, claim native `LMA1` execution, or add live StarRocks runtime integration.
+**Plans:** 2/5 plans executed
+
+### Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)
+
+**Status:** Planned. Phase 32 classified arbitrary DuckDB Arrow semantic SQL as a non-claim because the current direct FFI/DuckDB path is intentionally bounded to one batch, one column, and a small Arrow format set.
+**Depends on:** Phase 33, plus Phase 31 and Phase 32 evidence.
+**Goal:** Broaden DuckDB `loom_scan(path)` over default `LMC2(LMA1)` Arrow semantic artifacts: recognize the `LMC2` distribution wrapper, unwrap to the inner verifier-accepted `LMA1` payload, and scan Arrow semantic data through a staged surface.
+**Requirements:** PHASE-34
+**Ordering decision:** Query semantics should expand after the artifact wrapper decision is settled. This phase should redesign or extend the FFI/DuckDB adapter surface as needed instead of stretching the current one-column bind path. It must not claim native execution; interpreter-backed DuckDB correctness is sufficient unless Phase 35 has already supplied native Arrow semantic evidence.
+**Scope split:** Start with multi-column primitive and nullable Arrow semantic payloads, then add logical types, then nested/list/struct coverage as explicit tasks or follow-up sub-phases if the DuckDB adapter, Arrow C FFI schema mapping, or negative-diagnostic surface becomes too large for one phase.
+**Plans:** Planned during phase discussion.
+
+### Phase 35: Native Arrow Semantic Execution
+
+**Status:** Planned. Phase 32 classified native Arrow semantic execution as unsupported/fallback-only; this phase is the first point where that claim may change.
+**Depends on:** Phase 33 and the native/runtime foundations from Phases 22-25. Consumes Phase 34 only for DuckDB integration evidence; native correctness remains engine-neutral.
+**Goal:** Add true verifier-gated native execution for Arrow semantic payloads, including support predicates, lowering facts, native buffer semantics, interpreter/native equivalence gates, fail-closed diagnostics, cache/fallback behavior, and release-gate evidence for representative Arrow semantic shapes.
+**Requirements:** PHASE-35
+**Ordering decision:** Native Arrow semantic execution should remain separate from DuckDB SQL broadening so the project does not confuse "queryable" with "natively executed." If native support starts before Phase 34 completes, it must stay engine-neutral and avoid DuckDB SQL claims. This phase must not count route scaffolding, zero/reference buffers, toolchain skip, or interpreter fallback as positive native semantic evidence.
+**Plans:** Planned during phase discussion.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -942,3 +974,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 30. StarRocks + DuckDB Dual Query Surface | 5/5 | Complete | 2026-06-09 |
 | 31. Full Arrow Semantic Source Compatibility | 6/6 | Complete | 2026-06-09 |
 | 32. MVP1 Architecture and Code Review | 5/5 | Complete | 2026-06-09 |
+| 33. LMC2 Arrow Semantic Container Wrapper | 2/5 | In Progress|  |
+| 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 0/0 | Planned | - |
+| 35. Native Arrow Semantic Execution | 0/0 | Planned | - |
