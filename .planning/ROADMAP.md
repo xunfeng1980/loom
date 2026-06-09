@@ -839,9 +839,18 @@ Tradeoff recorded for Phase 30:
 
 ### Phase 30: Full Vortex Semantic Compatibility
 
-**Status:** Active by user override after Phase 29 skip/defer. Begin with an explicit dependency-gap tradeoff: Phase 29 dual-query surface evidence is missing and cannot be used as proof.
+**Status:** Planned. Active by user override after Phase 29 skip/defer. Begin with an explicit dependency-gap tradeoff: Phase 29 dual-query surface evidence is missing and cannot be used as proof.
 **Depends on:** Phase 21, Phase 23, Phase 25, and Phase 26. Phase 29 is skipped/deferred and therefore unavailable as evidence.
 **Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 30-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-30)
+- [ ] 30-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-30)
+- [ ] 30-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-30)
+- [ ] 30-04-PLAN.md - Structured encoding semantics versus canonical raw evidence (PHASE-30)
+- [ ] 30-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-30)
 
 ## Progress
 
