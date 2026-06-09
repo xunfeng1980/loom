@@ -22,10 +22,10 @@ in-process cache, fallback, and strict fail-closed hardening while keeping publi
 `loom_scan(path)` and cache controls internal. Phase 26 abstracts the Vortex ingress facts,
 diagnostics, support classification, and emission disposition pattern into a generic external-source ingress contract before more source
 formats are added. Phase 27 applies that contract to Lance and Parquet archival readability: generating verifier-backed, long-lived Loom
-artifacts so describable dataset/file metadata and column data remain readable and rewritable across source-reader version drift. Phases 28 and 29 reserve the
-table-format and multi-engine query surface that should follow: Iceberg ref/table binding first, then StarRocks + DuckDB dual query surface.
-Full arbitrary Vortex semantic compatibility remains a later dedicated compatibility phase, not part of the finite Phase 21 coverage matrix
-or the Phase 23 production backend.
+artifacts so describable dataset/file metadata and column data remain readable and rewritable across source-reader version drift. Phase 28
+now closes a bounded Lance, Parquet, and Vortex semantic compatibility matrix before table/ref binding or query-surface evidence consumes
+source-family claims. Phase 29 binds Loom artifacts to local Iceberg table/ref metadata, and Phase 30 is the partial StarRocks + DuckDB
+dual-query surface, with DuckDB executable evidence complete and StarRocks/full dual-surface closeout deferred.
 
 ## Phases
 
@@ -63,7 +63,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Bounded oracle/equivalence gates, in-process native preparation cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (completed 2026-06-09)
 - [x] **Phase 26: External Source Ingress Contract** - Next active focus for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (completed 2026-06-09)
 - [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and actual older-version fixture compatibility as the value proof (completed 2026-06-09)
-- [ ] **Phase 28: Full Lance + Parquet + Vortex Semantic Compatibility** - Active compatibility gate after source ingress/readability evidence and before Iceberg/query-surface work; records accepted, unsupported, rejected, canonicalized, and native-disposition rows without overclaiming full structured support
+- [x] **Phase 28: Full Lance + Parquet + Vortex Semantic Compatibility** - Bounded compatibility gate after source ingress/readability evidence and before Iceberg/query-surface work; records accepted, unsupported, rejected, canonicalized, and native-disposition rows without overclaiming full structured support (completed 2026-06-09)
 - [x] **Phase 29: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
 - [ ] **Phase 30: StarRocks + DuckDB Dual Query Surface** - In progress; DuckDB executable evidence slice is complete through real `loom_scan(path)` SQL over Phase 29 accepted bytes, while StarRocks/full dual-surface closeout remains deferred
 
@@ -797,18 +797,18 @@ Plans:
 
 ### Phase 28: Full Lance + Parquet + Vortex Semantic Compatibility
 
-**Status:** Active. Reordered ahead of Iceberg and dual-query work so source-family semantic claims are bounded before table/ref binding and query-surface evidence consume them.
+**Status:** Complete. Reordered ahead of Iceberg and dual-query work so source-family semantic claims are bounded before table/ref binding and query-surface evidence consume them.
 **Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 27.
 **Ordering decision:** Semantic compatibility across Lance, Parquet, and Vortex should be explicit before Iceberg binding or multi-engine query claims. This phase records accepted, unsupported, rejected, canonicalized, and native-disposition rows across the existing source-ingress/readability evidence. It must distinguish original structured semantics from canonical raw/table emission, require oracle/verifier/native evidence before accepted claims, and fail closed on unsupported nullability, nested/logical/string/encoding cases. It must not become an Iceberg binding phase, StarRocks/DuckDB query-surface phase, or a second ABI design phase.
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 28-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-28)
-- [ ] 28-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-28)
-- [ ] 28-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-28)
-- [ ] 28-04-PLAN.md - Structured encoding semantics versus canonical raw evidence (PHASE-28)
-- [ ] 28-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-28)
+- [x] 28-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-28)
+- [x] 28-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-28)
+- [x] 28-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-28)
+- [x] 28-04-PLAN.md - Structured encoding semantics versus canonical raw evidence (PHASE-28)
+- [x] 28-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-28)
 
 ### Phase 29: Iceberg Ref/Table Binding
 
@@ -893,6 +893,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Full Lance + Parquet + Vortex Semantic Compatibility | 0/5 | Active | - |
+| 28. Full Lance + Parquet + Vortex Semantic Compatibility | 5/5 | Complete | 2026-06-09 |
 | 29. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
 | 30. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |

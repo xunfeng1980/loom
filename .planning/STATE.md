@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 28 semantic compatibility reorder and gate work
-last_updated: "2026-06-08T23:47:05Z"
-last_activity: 2026-06-09 -- Phase 28 reordered to Full Lance + Parquet + Vortex Semantic Compatibility; former Phase 28/29 moved to Phase 29/30
+stopped_at: Phase 28 semantic compatibility complete; Phase 30 remains partial
+last_updated: "2026-06-09T01:11:17Z"
+last_activity: 2026-06-09 -- Phase 28 semantic compatibility completed with bounded matrix, focused gate, final report, and release-gate wiring
 progress:
   total_phases: 30
-  completed_phases: 28
-  total_plans: 117
-  completed_plans: 115
-  percent: 96
+  completed_phases: 29
+  total_plans: 127
+  completed_plans: 125
+  percent: 98
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 28 — Full Lance + Parquet + Vortex semantic compatibility before Iceberg/query-surface work
+**Current focus:** Phase 30 — StarRocks + DuckDB dual query surface remains partial after Phase 28 completion
 
 ## Current Position
 
-Phase: 28
-Plan: 28-01..28-05 active
-Status: Semantic compatibility matrix/gate work is active; Phase 29 Iceberg remains complete after reorder, and Phase 30 dual-query remains partial
-Last activity: 2026-06-09 -- Phase 28 semantic compatibility reorder applied
+Phase: 30
+Plan: 30-04..30-05 pending/deferred
+Status: Phase 28 semantic compatibility is complete; Phase 29 Iceberg remains complete after reorder; Phase 30 dual-query remains partial
+Last activity: 2026-06-09 -- Phase 28 semantic compatibility completed
 
-Progress: 96%
+Progress: 98%
 
 ## Progress Snapshot
 
-- Completed phases: 28 / 30
-- Completed executable plans: 115 / 117
+- Completed phases: 29 / 30
+- Completed executable plans: 125 / 127
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 28 active: semantic compatibility must be bounded before Phase 29 Iceberg binding and Phase 30 dual-query claims
-- Last verified gate: Phase 28 `bash scripts/iceberg-binding-test.sh` passed after final review fixes; native DuckDB raw-copy gates also pass with non-zero artifact values
+- Current position: Phase 30 partial: DuckDB executable evidence exists; StarRocks/full dual-query closeout remains deferred
+- Last verified gate: `RUSTC_WRAPPER= bash scripts/mvp0-verify.sh` passed with Phase 28 wired before Phase 29 Iceberg binding
 
 **Completed phase plan counts:**
 
@@ -59,7 +59,7 @@ Progress: 96%
 | 25 | Native equivalence, cache, and fallback hardening | 5/5 complete |
 | 26 | External source ingress contract | 5/5 complete |
 | 27 | Lance + Parquet archival readability / dataset ingress | 5/5 complete |
-| 28 | Full Lance + Parquet + Vortex semantic compatibility | 0/5 active |
+| 28 | Full Lance + Parquet + Vortex semantic compatibility | 5/5 complete |
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 
@@ -210,7 +210,7 @@ None yet.
 - Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
 - Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
 - Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
-- Phase 28 active: Full Lance + Parquet + Vortex semantic compatibility now precedes Iceberg binding and dual-query work; focused semantic matrix/gate implementation is in progress.
+- Phase 28 complete: Full Lance + Parquet + Vortex semantic compatibility now has a bounded matrix, focused no-overclaim gate, nullable and structured encoding deferral tests, final report, and main release-gate wiring before Iceberg binding.
 - Phase 29 executing: 29-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
 - Phase 29 executing: 29-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
 - Phase 29 executing: 29-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
