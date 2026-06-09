@@ -1029,7 +1029,7 @@ Plans:
 
 ### Phase 39: Model ↔ Rust Interpreter Consistency
 
-**Status:** Not started. **(Highest-leverage new phase.)**
+**Status:** In Progress (1/2 plans complete). **(Highest-leverage new phase.)**
 **Goal:** Continuously validate that the real Rust interpreter — the actual safety path users run — matches a faithful transcription of the Lean operational semantics.
 **Depends on:** Phase 38.
 **Requirements:** LINEAGE-07, LINEAGE-08
@@ -1041,7 +1041,7 @@ Plans:
 
 **Non-goals:** Does not *prove* interpreter = model (that would be verified compilation); it *validates* the correspondence per-run. Must not modify the production interpreter to match the model — divergence is a finding, not a fixup.
 **Ordering decision:** This is the step the parked 36/37 lacked. Without it the soundness theorem holds over a model nobody runs. It reuses the project's existing differential/oracle infrastructure, so cost is low relative to value.
-**Plans:** 2 plans. Wave 1: 39-01 reference executor. Wave 2: 39-02 trace-level differential gate.
+**Plans:** 2 plans. Wave 1: [x] `39-01-PLAN.md` reference executor. Wave 2: [ ] `39-02-PLAN.md` trace-level differential gate.
 
 ### Phase 40: Native ↔ Model Validation
 

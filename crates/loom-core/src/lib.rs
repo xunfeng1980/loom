@@ -37,6 +37,9 @@ pub mod l2_core;
 /// Executable verifier MVP for the Phase 13 `L2Core` slice.
 pub mod full_verifier;
 
+/// Reference-only modeled executor for Phase 39 differential validation.
+pub mod l2_core_reference_executor;
+
 /// Verifier-gated native-lowering support checks for the Phase 14 spike.
 pub mod native_lowering;
 
