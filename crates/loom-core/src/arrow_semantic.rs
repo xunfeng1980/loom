@@ -1,0 +1,104 @@
+//! Arrow semantic artifact model for Phase 31.
+//!
+//! This module is the source-compatibility substrate for `LMA1`/`LMC2`.
+//! It intentionally models Arrow `ArrayData` trees instead of adding one
+//! Loom-specific layout node per Arrow type.
+
+use std::sync::Arc;
+
+use arrow_data::ArrayData;
+use arrow_schema::{Schema, SchemaRef};
+
+use crate::error::LoomDecodeError;
+
+/// Loom container magic for Arrow semantic artifacts.
+pub const LMC2_MAGIC: &[u8; 4] = b"LMC2";
+
+/// Loom Arrow semantic payload magic.
+pub const LMA1_MAGIC: &[u8; 4] = b"LMA1";
+
+/// A verifier-visible Arrow record batch payload.
+#[derive(Debug, Clone)]
+pub struct ArrowSemanticBatch {
+    schema: SchemaRef,
+    columns: Vec<ArrayData>,
+    row_count: usize,
+}
+
+impl ArrowSemanticBatch {
+    /// Construct a semantic batch after checking field/column count and row
+    /// count consistency. Full Arrow tree validation is performed by
+    /// `arrow_semantic_verifier`.
+    pub fn try_new(schema: SchemaRef, columns: Vec<ArrayData>) -> Result<Self, LoomDecodeError> {
+        if schema.fields().len() != columns.len() {
+            return Err(LoomDecodeError::MalformedLayoutPayload(
+                "arrow semantic field/column count mismatch",
+            ));
+        }
+
+        let row_count = columns.first().map(ArrayData::len).unwrap_or(0);
+        if columns.iter().any(|column| column.len() != row_count) {
+            return Err(LoomDecodeError::MalformedLayoutPayload(
+                "arrow semantic column row count mismatch",
+            ));
+        }
+
+        Ok(Self {
+            schema,
+            columns,
+            row_count,
+        })
+    }
+
+    pub fn empty(schema: Schema) -> Result<Self, LoomDecodeError> {
+        Self::try_new(Arc::new(schema), Vec::new())
+    }
+
+    pub fn schema(&self) -> &SchemaRef {
+        &self.schema
+    }
+
+    pub fn columns(&self) -> &[ArrayData] {
+        &self.columns
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.row_count
+    }
+}
+
+/// A multi-batch Arrow semantic payload.
+#[derive(Debug, Clone)]
+pub struct ArrowSemanticPayload {
+    schema: SchemaRef,
+    batches: Vec<ArrowSemanticBatch>,
+}
+
+impl ArrowSemanticPayload {
+    pub fn try_new(
+        schema: SchemaRef,
+        batches: Vec<ArrowSemanticBatch>,
+    ) -> Result<Self, LoomDecodeError> {
+        if batches
+            .iter()
+            .any(|batch| batch.schema().as_ref() != schema.as_ref())
+        {
+            return Err(LoomDecodeError::MalformedLayoutPayload(
+                "arrow semantic batch schema mismatch",
+            ));
+        }
+        Ok(Self { schema, batches })
+    }
+
+    pub fn schema(&self) -> &SchemaRef {
+        &self.schema
+    }
+
+    pub fn batches(&self) -> &[ArrowSemanticBatch] {
+        &self.batches
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.batches.iter().map(ArrowSemanticBatch::row_count).sum()
+    }
+}

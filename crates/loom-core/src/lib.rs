@@ -49,6 +49,15 @@ pub mod decode_dialect;
 /// Primitive Arrow/raw-buffer builder plans for Phase 20+.
 pub mod arrow_buffer_lowering;
 
+/// Arrow semantic artifact substrate for Phase 31+ full source compatibility.
+pub mod arrow_semantic;
+
+/// Deterministic `LMA1` / `LMC2` Arrow semantic payload markers and codec.
+pub mod arrow_semantic_codec;
+
+/// Verifier scaffold for Arrow semantic artifacts.
+pub mod arrow_semantic_verifier;
+
 /// Unified artifact-facing verifier report model for Phase 17+.
 pub mod artifact_verifier;
 

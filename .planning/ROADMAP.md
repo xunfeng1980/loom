@@ -869,10 +869,10 @@ Current tradeoff:
 **Goal:** Any Lance or Parquet source that the upstream reader can materialize as Arrow, and any Vortex source/dtype that Vortex can materialize as Arrow, can be encoded into a verifier-backed Loom artifact, decoded back to Arrow, and compared for schema/value/null/metadata equality without relying on narrow `LMP1`/`LMT1` raw-layout coverage.
 **Requirements:** PHASE-31
 **Ordering decision:** Full source compatibility should be solved at the Arrow semantic layer before further query-engine or native-lowering claims. This phase introduces new `LMC2`/`LMA1` Arrow semantic artifacts and treats old `LMC1(LMP1/LMT1)` artifacts as legacy narrow payloads. It must not become a native-compiler phase, StarRocks runtime phase, direct Parquet Dremel decoder, direct Lance page decoder, or direct all-encoding Vortex physical decoder inside `loom-core`.
-**Plans:** 0/6 planned for execution.
+**Plans:** 1/6 plans complete.
 
 Plans:
-- [ ] 31-01-PLAN.md - Contract reset, abandoned `NullableRaw` WIP cleanup, and Arrow semantic module scaffolding (PHASE-31)
+- [x] 31-01-PLAN.md - Contract reset, abandoned `NullableRaw` WIP cleanup, and Arrow semantic module scaffolding (PHASE-31)
 - [ ] 31-02-PLAN.md - `LMA1` Arrow semantic payload model, codec, verifier, and core roundtrip matrix (PHASE-31)
 - [ ] 31-03-PLAN.md - Parquet arbitrary Arrow schema semantic emission and equality tests (PHASE-31)
 - [ ] 31-04-PLAN.md - Lance arbitrary Arrow schema semantic emission, field metadata preservation, and equality tests (PHASE-31)
@@ -916,4 +916,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 28. Full Lance + Parquet + Vortex Semantic Compatibility | 5/5 | Complete | 2026-06-09 |
 | 29. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
 | 30. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |
-| 31. Full Arrow Semantic Source Compatibility | 0/6 | Planned | - |
+| 31. Full Arrow Semantic Source Compatibility | 1/6 | In Progress | - |
