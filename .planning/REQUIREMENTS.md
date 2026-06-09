@@ -143,6 +143,10 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **INGEST-04**: At least one generated real `.vortex` fixture emits an existing `LMC1` payload, passes the existing verifier/decode path, and matches Vortex oracle rows
 - [x] **INGEST-05**: CLI, documentation, and release gates expose the narrow real-ingress behavior without claiming arbitrary Vortex layout support, remote/object-store ingress, native lowering, or production speed
 
+### Full Arrow Semantic Source Compatibility
+
+- [ ] **PHASE-31**: Any Lance or Parquet source that the upstream reader can materialize as Arrow, and any Vortex source/dtype that Vortex can materialize as Arrow, can be encoded into a verifier-backed Loom Arrow semantic artifact, decoded back to Arrow, and compared for schema/value/null/metadata equality without relying on narrow `LMP1`/`LMT1` raw-layout coverage
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -240,6 +244,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | INGEST-03 | Phase 15 | Complete |
 | INGEST-04 | Phase 15 | Complete |
 | INGEST-05 | Phase 15 | Complete |
+| PHASE-31 | Phase 31 | Planned |
 
 **Coverage:**
 
@@ -254,9 +259,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 full-loom-verifier requirements: 10 total
 - v3 mlir-native-lowering-spike requirements: 5 total
 - v3 real-vortex-ingress requirements: 5 total
-- Mapped to phases: 77
+- v3 full-arrow-semantic-source-compatibility requirements: 1 total
+- Mapped to phases: 78
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-08 — Phase 15 Real Vortex File/Container Ingress complete*
+*Last updated: 2026-06-09 — Phase 31 Full Arrow Semantic Source Compatibility planned*

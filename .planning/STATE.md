@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 28 semantic compatibility complete; Phase 30 remains partial
-last_updated: "2026-06-09T01:11:17Z"
-last_activity: 2026-06-09 -- Phase 28 semantic compatibility completed with bounded matrix, focused gate, final report, and release-gate wiring
+stopped_at: Phase 31 planned for full Arrow semantic source compatibility; Phase 30 remains partial/deferred
+last_updated: "2026-06-09T01:45:00Z"
+last_activity: 2026-06-09 -- Phase 31 replanned source compatibility around LMC2/LMA1 Arrow semantic artifacts
 progress:
-  total_phases: 30
+  total_phases: 31
   completed_phases: 29
-  total_plans: 127
+  total_plans: 133
   completed_plans: 125
-  percent: 98
+  percent: 94
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 30 — StarRocks + DuckDB dual query surface remains partial after Phase 28 completion
+**Current focus:** Phase 31 — Full Arrow semantic source compatibility for arbitrary Lance/Parquet schemas and materialized Vortex dtypes
 
 ## Current Position
 
-Phase: 30
-Plan: 30-04..30-05 pending/deferred
-Status: Phase 28 semantic compatibility is complete; Phase 29 Iceberg remains complete after reorder; Phase 30 dual-query remains partial
-Last activity: 2026-06-09 -- Phase 28 semantic compatibility completed
+Phase: 31
+Plan: 31-01..31-06 planned
+Status: Phase 31 planned; Phase 30 dual-query remains partial/deferred and is not blocking the source-compatibility reset
+Last activity: 2026-06-09 -- Phase 31 replanned around Arrow semantic artifacts
 
-Progress: 98%
+Progress: 94%
 
 ## Progress Snapshot
 
-- Completed phases: 29 / 30
-- Completed executable plans: 125 / 127
+- Completed phases: 29 / 31
+- Completed executable plans: 125 / 133
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 30 partial: DuckDB executable evidence exists; StarRocks/full dual-query closeout remains deferred
+- Current position: Phase 31 planned: full Arrow semantic source compatibility replaces the bounded raw/table source-compatibility path for new claims
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/mvp0-verify.sh` passed with Phase 28 wired before Phase 29 Iceberg binding
 
 **Completed phase plan counts:**
@@ -62,6 +62,7 @@ Progress: 98%
 | 28 | Full Lance + Parquet + Vortex semantic compatibility | 5/5 complete |
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
+| 31 | Full Arrow Semantic Source Compatibility | 0/6 planned |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -133,6 +134,9 @@ Recent decisions affecting current work:
 - [Phase 29]: 29-04: Manifest-only sidecars fail before binding facts are considered complete; no official iceberg crate is added by default.
 - [Phase 29]: 29-05: The focused Iceberg binding gate is wired into `scripts/mvp0-verify.sh` after Phase 28 semantic compatibility and before DuckDB smoke.
 - [Phase 29]: 29-05: Phase 29 remains binding evidence only; no DuckDB/CLI SQL route, StarRocks route, public C ABI, catalog, credential, branch/tag mutation, or default `iceberg` SDK scope was added.
+- [Phase 31]: Source compatibility target reset from bounded/core-80 coverage to full Arrow semantic compatibility for arbitrary Lance/Parquet schemas and materialized Vortex dtypes.
+- [Phase 31]: New source compatibility artifacts should use `LMC2`/`LMA1`; old `LMC1(LMP1/LMT1)` remains legacy narrow evidence and must not carry new full-schema claims.
+- [Phase 31]: Native MLIR and query-engine coverage are optimization/surface layers, not prerequisites for full source semantic compatibility.
 
 ### Pending Todos
 
