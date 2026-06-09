@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 Phase: 33 (LMC2 Arrow Semantic Container Wrapper) — EXECUTING
 Plan: 5 of 5
 Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 33 execution started
+Last activity: 2026-06-09 -- Completed quick task 260609-lb2: real L2Core Lean predicates
 
 Progress: 100%
 
@@ -247,6 +247,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260609-lb2 | Replace placeholder True predicates in formal/lean/LoomCore.lean with real definitions mirroring the Rust L2Core verifier | 2026-06-09 | 27b0a45 | [260609-lb2-replace-placeholder-true-predicates-in-f](./quick/260609-lb2-replace-placeholder-true-predicates-in-f/) |
 | 260609-eip | Add DuckDB e2e tests for Lance, Parquet, and Vortex semantic sources; create mvp1-verify that includes mvp0-verify plus these e2e checks | 2026-06-09 | 6bc4638 | [260609-eip-add-duckdb-e2e-tests-for-lance-parquet-a](./quick/260609-eip-add-duckdb-e2e-tests-for-lance-parquet-a/) |
 | 260608-wy8 | Extend Phase 27 archival readability target to Lance and Parquet | 2026-06-08 | none | [260608-wy8-extend-phase-27-archival-readability-tar](./quick/260608-wy8-extend-phase-27-archival-readability-tar/) |
 | 260608-wwx | Refine Phase 27 Lance archival readability roadmap target | 2026-06-08 | none | [260608-wwx-refine-phase-27-lance-archival-readabili](./quick/260608-wwx-refine-phase-27-lance-archival-readabili/) |
