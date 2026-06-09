@@ -47,6 +47,8 @@ inductive L2Ty where
   | bool
   | int32
   | int64
+  | float32
+  | float64
   | uint32
   | uint64
   | bytes
@@ -80,6 +82,8 @@ inductive ScalarValue where
   | bool (value : Bool)
   | int32 (value : Int)
   | int64 (value : Int)
+  | float32Bits (value : Nat)
+  | float64Bits (value : Nat)
   | uint32 (value : Nat)
   | uint64 (value : Nat)
   | bytes (value : List Nat)
@@ -153,6 +157,8 @@ def typeOfConst : ScalarValue -> L2Ty
   | .bool _ => .bool
   | .int32 _ => .int32
   | .int64 _ => .int64
+  | .float32Bits _ => .float32
+  | .float64Bits _ => .float64
   | .uint32 _ => .uint32
   | .uint64 _ => .uint64
   | .bytes _ => .bytes
@@ -833,6 +839,29 @@ def fuzz002ReadBytesMismatchProgram : Program :=
     ]
   }
 
+def fuzz003Float32Program : Program :=
+  {
+    sampleCopyProgram with
+    capabilities := [
+      .outputBuilder "score32" .float32 false 4
+    ],
+    body := [
+      .appendValue "score32" (.const (.float32Bits 1069547520))
+    ]
+  }
+
+def fuzz004Float64NullableProgram : Program :=
+  {
+    sampleCopyProgram with
+    capabilities := [
+      .outputBuilder "score64" .float64 true 4
+    ],
+    body := [
+      .appendValue "score64" (.const (.float64Bits 13835621005235585024)),
+      .appendNull "score64"
+    ]
+  }
+
 def failClosedProgram : Program :=
   { sampleCopyProgram with body := [ .failClosed "test-fail-closed" ] }
 
@@ -848,7 +877,9 @@ def correspondenceReportLines : List String := [
   correspondenceLine "matrix-output-nullability-mismatch" outputNullabilityMismatchProgram,
   correspondenceLine "fuzz-000-let-add-int32" fuzz000LetAddProgram,
   correspondenceLine "fuzz-001-eq-bool" fuzz001EqBoolProgram,
-  correspondenceLine "fuzz-002-read-width-bytes-mismatch" fuzz002ReadBytesMismatchProgram
+  correspondenceLine "fuzz-002-read-width-bytes-mismatch" fuzz002ReadBytesMismatchProgram,
+  correspondenceLine "fuzz-003-float32-builder" fuzz003Float32Program,
+  correspondenceLine "fuzz-004-float64-nullable-builder" fuzz004Float64NullableProgram
 ]
 
 def correspondenceReport : String :=

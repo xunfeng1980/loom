@@ -202,6 +202,35 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
         },
     ];
 
+    let mut fuzz_003 = sample_program();
+    fuzz_003.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
+        id: "score32".to_string(),
+        arrow_type: DataType::Float32,
+        nullable: false,
+        max_events: 4,
+    })];
+    fuzz_003.body = vec![L2CoreStmt::AppendValue {
+        builder: "score32".to_string(),
+        value: ScalarExpr::Const(ScalarValue::Float32Bits(1.5f32.to_bits())),
+    }];
+
+    let mut fuzz_004 = sample_program();
+    fuzz_004.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
+        id: "score64".to_string(),
+        arrow_type: DataType::Float64,
+        nullable: true,
+        max_events: 4,
+    })];
+    fuzz_004.body = vec![
+        L2CoreStmt::AppendValue {
+            builder: "score64".to_string(),
+            value: ScalarExpr::Const(ScalarValue::Float64Bits((-2.25f64).to_bits())),
+        },
+        L2CoreStmt::AppendNull {
+            builder: "score64".to_string(),
+        },
+    ];
+
     vec![
         CorrespondenceCase {
             id: "matrix-accepted-copy",
@@ -262,6 +291,16 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
             id: "fuzz-002-read-width-bytes-mismatch",
             program: fuzz_002,
             expected: Some(FullVerificationCode::OutputTypeMismatch),
+        },
+        CorrespondenceCase {
+            id: "fuzz-003-float32-builder",
+            program: fuzz_003,
+            expected: None,
+        },
+        CorrespondenceCase {
+            id: "fuzz-004-float64-nullable-builder",
+            program: fuzz_004,
+            expected: None,
         },
     ]
 }

@@ -1045,7 +1045,7 @@ Plans:
 
 ### Phase 40: Native ↔ Model Validation
 
-**Status:** Not started.
+**Status:** In Progress. 40-01 completed native/model trace validation for the full Phase 35 supported primitive matrix, including Float32/Float64 model tags and injected trace-divergence diagnostics. 40-02 remains: validation-aware runtime/cache routing, gate wiring, TCB record, and closeout.
 **Goal:** Anchor native execution equivalence against the faithful model reference, not merely against the (itself-only-validated) interpreter.
 **Depends on:** **MVP1 Phase 35** and Phase 39.
 **Requirements:** LINEAGE-09, LINEAGE-10
@@ -1057,7 +1057,7 @@ Plans:
 
 **Non-goals:** No verified compilation of MLIR/LLVM (stays in TCB forever). No new encodings or formats.
 **Ordering decision:** Native equivalence is only meaningful once there is a model to be equivalent *to*; hence after Phase 38/39 and after Phase 35 ships native.
-**Plans:** 2 plans. Wave 1: 40-01 native↔model trace check. Wave 2: 40-02 fail-closed routing + TCB record.
+**Plans:** 2 plans. Wave 1: [x] `40-01-PLAN.md` native↔model trace check. Wave 2: [ ] `40-02-PLAN.md` fail-closed routing + TCB record.
 
 ### Phase 41: Verified-Lineage Closeout
 

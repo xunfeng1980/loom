@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, BooleanArray, Date32Array, Float64Array, Int32Array, Int64Array, RecordBatch,
-    StringArray, StructArray,
+    Array, ArrayRef, BooleanArray, Date32Array, Float32Array, Float64Array, Int32Array, Int64Array,
+    RecordBatch, StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
 use loom_core::arrow_semantic::ArrowSemanticPayload;
@@ -12,7 +12,8 @@ use loom_core::arrow_semantic_codec::{
 use loom_core::native_arrow_semantic::{
     decide_native_arrow_semantic_runtime, execute_native_arrow_semantic,
     native_arrow_semantic_backend_identity, native_arrow_semantic_runtime_cache_key,
-    verify_native_arrow_semantic_equivalence, verify_native_arrow_semantic_output_equivalence,
+    verify_native_arrow_semantic_equivalence, verify_native_arrow_semantic_model,
+    verify_native_arrow_semantic_model_output, verify_native_arrow_semantic_output_equivalence,
     NativeArrowSemanticDiagnosticCode, NATIVE_ARROW_SEMANTIC_BACKEND,
 };
 use loom_core::runtime_abi::{
@@ -136,6 +137,75 @@ fn injected_native_output_mismatch_is_explicit_equivalence_failure() {
 }
 
 #[test]
+fn native_model_validation_matches_reference_trace_for_lmc2_supported_matrix() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let validation = verify_native_arrow_semantic_model(&bytes);
+
+    assert!(
+        validation.is_validated(),
+        "unexpected diagnostics: {:?}",
+        validation.diagnostics()
+    );
+    assert_eq!(validation.backend, NATIVE_ARROW_SEMANTIC_BACKEND);
+    assert_eq!(validation.artifact_kind, "LMC2");
+    assert_eq!(validation.row_count, 3);
+    assert_eq!(validation.column_count, 5);
+    assert!(validation.model_trace_matches);
+    assert!(validation.value_equivalent);
+    assert_eq!(validation.reference_trace(), validation.native_trace());
+    assert!(validation
+        .reference_trace()
+        .iter()
+        .any(|line| line == "append-value:col3:ratio:float32"));
+    assert!(validation
+        .reference_trace()
+        .iter()
+        .any(|line| line == "append-value:col4:score:float64"));
+}
+
+#[test]
+fn native_model_validation_covers_direct_lma1_bridge() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lma1(&batch);
+    let validation = verify_native_arrow_semantic_model(&bytes);
+
+    assert!(validation.is_validated(), "{validation:?}");
+    assert_eq!(validation.artifact_kind, "LMA1");
+    assert_eq!(validation.reference_trace(), validation.native_trace());
+}
+
+#[test]
+fn injected_native_model_trace_divergence_fails_validation() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let wrong_batch = RecordBatch::try_new(
+        batch.schema(),
+        vec![
+            Arc::new(BooleanArray::from(vec![Some(true), Some(true), Some(false)])) as ArrayRef,
+            batch.column(1).clone(),
+            batch.column(2).clone(),
+            batch.column(3).clone(),
+            batch.column(4).clone(),
+        ],
+    )
+    .expect("wrong batch");
+    let validation = verify_native_arrow_semantic_model_output(&bytes, "LMC2", &wrong_batch);
+
+    assert!(!validation.is_validated());
+    assert!(!validation.model_trace_matches);
+    assert!(!validation.value_equivalent);
+    assert_ne!(validation.reference_trace(), validation.native_trace());
+    assert!(validation.diagnostics().iter().any(|diagnostic| {
+        diagnostic.code == NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch
+            && diagnostic.path == "$.native.model_trace"
+    }));
+    assert!(validation.diagnostics().iter().any(|diagnostic| {
+        diagnostic.code == NativeArrowSemanticDiagnosticCode::NativeOutputMismatch
+    }));
+}
+
+#[test]
 fn native_arrow_semantic_runtime_cache_identity_is_engine_neutral() {
     let batch = primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
@@ -229,6 +299,27 @@ fn primitive_nullable_batch() -> RecordBatch {
         ],
     )
     .expect("primitive nullable batch")
+}
+
+fn full_primitive_nullable_batch() -> RecordBatch {
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("ok", DataType::Boolean, true),
+        Field::new("id", DataType::Int32, true),
+        Field::new("count", DataType::Int64, true),
+        Field::new("ratio", DataType::Float32, true),
+        Field::new("score", DataType::Float64, true),
+    ]));
+    RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(BooleanArray::from(vec![Some(true), None, Some(false)])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![Some(7), None, Some(-1)])) as ArrayRef,
+            Arc::new(Int64Array::from(vec![Some(70), None, Some(-10)])) as ArrayRef,
+            Arc::new(Float32Array::from(vec![Some(0.25), None, Some(-1.5)])) as ArrayRef,
+            Arc::new(Float64Array::from(vec![Some(1.5), None, Some(-2.25)])) as ArrayRef,
+        ],
+    )
+    .expect("full primitive nullable batch")
 }
 
 fn utf8_batch() -> RecordBatch {

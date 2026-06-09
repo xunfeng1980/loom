@@ -23,6 +23,11 @@ use crate::artifact_verifier::{
     verify_artifact, ArtifactVerificationOptions, ArtifactVerificationReport,
     ArtifactVerificationStatus,
 };
+use crate::l2_core::{
+    Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
+    ScalarValue,
+};
+use crate::l2_core_reference_executor::{execute_reference, ReferenceStatus};
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::runtime_abi::{
     decide_runtime_execution, PredicateEnvelope, ProjectionSet, RuntimeAbiVersion,
@@ -42,6 +47,7 @@ pub enum NativeArrowSemanticDiagnosticCode {
     UnsupportedBatchShape,
     UnsupportedType,
     NativeOutputMismatch,
+    NativeModelTraceMismatch,
 }
 
 impl NativeArrowSemanticDiagnosticCode {
@@ -53,6 +59,7 @@ impl NativeArrowSemanticDiagnosticCode {
             Self::UnsupportedBatchShape => "unsupported-batch-shape",
             Self::UnsupportedType => "unsupported-type",
             Self::NativeOutputMismatch => "native-output-mismatch",
+            Self::NativeModelTraceMismatch => "native-model-trace-mismatch",
         }
     }
 }
@@ -137,6 +144,41 @@ impl NativeArrowSemanticEquivalenceReport {
 
     pub fn diagnostics(&self) -> &[NativeArrowSemanticDiagnostic] {
         &self.diagnostics
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeArrowSemanticModelValidationReport {
+    pub backend: String,
+    pub artifact_kind: String,
+    pub row_count: u64,
+    pub column_count: usize,
+    pub model_trace_matches: bool,
+    pub value_equivalent: bool,
+    reference_trace: Vec<String>,
+    native_trace: Vec<String>,
+    diagnostics: Vec<NativeArrowSemanticDiagnostic>,
+}
+
+impl NativeArrowSemanticModelValidationReport {
+    pub fn is_validated(&self) -> bool {
+        self.model_trace_matches && self.value_equivalent && self.diagnostics.is_empty()
+    }
+
+    pub fn reference_trace(&self) -> &[String] {
+        &self.reference_trace
+    }
+
+    pub fn native_trace(&self) -> &[String] {
+        &self.native_trace
+    }
+
+    pub fn diagnostics(&self) -> &[NativeArrowSemanticDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn first_error(&self) -> Option<&NativeArrowSemanticDiagnostic> {
+        self.diagnostics.first()
     }
 }
 
@@ -299,6 +341,45 @@ pub fn verify_native_arrow_semantic_output_equivalence(
     verify_native_arrow_semantic_equivalence_for_output(bytes, artifact_kind.into(), output)
 }
 
+pub fn verify_native_arrow_semantic_model(
+    bytes: &[u8],
+) -> NativeArrowSemanticModelValidationReport {
+    let execution = execute_native_arrow_semantic(bytes);
+    verify_native_arrow_semantic_model_from_execution(bytes, &execution)
+}
+
+pub fn verify_native_arrow_semantic_model_from_execution(
+    bytes: &[u8],
+    execution: &NativeArrowSemanticExecutionReport,
+) -> NativeArrowSemanticModelValidationReport {
+    if !execution.is_supported() {
+        return NativeArrowSemanticModelValidationReport {
+            backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+            artifact_kind: execution.artifact_kind.clone(),
+            row_count: execution.row_count,
+            column_count: execution.column_count,
+            model_trace_matches: false,
+            value_equivalent: false,
+            reference_trace: Vec::new(),
+            native_trace: Vec::new(),
+            diagnostics: execution.diagnostics.clone(),
+        };
+    }
+
+    let output = execution
+        .output()
+        .expect("supported execution report must expose output");
+    verify_native_arrow_semantic_model_for_output(bytes, execution.artifact_kind.clone(), output)
+}
+
+pub fn verify_native_arrow_semantic_model_output(
+    bytes: &[u8],
+    artifact_kind: impl Into<String>,
+    output: &RecordBatch,
+) -> NativeArrowSemanticModelValidationReport {
+    verify_native_arrow_semantic_model_for_output(bytes, artifact_kind.into(), output)
+}
+
 fn verify_native_arrow_semantic_equivalence_for_output(
     bytes: &[u8],
     artifact_kind: String,
@@ -335,6 +416,93 @@ fn verify_native_arrow_semantic_equivalence_for_output(
         row_count: output.num_rows() as u64,
         column_count: output.num_columns(),
         equivalent,
+        diagnostics,
+    }
+}
+
+fn verify_native_arrow_semantic_model_for_output(
+    bytes: &[u8],
+    artifact_kind: String,
+    output: &RecordBatch,
+) -> NativeArrowSemanticModelValidationReport {
+    let reference = match decode_reference_batch(bytes) {
+        Ok(batch) => batch,
+        Err(diagnostic) => {
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind,
+                row_count: output.num_rows() as u64,
+                column_count: output.num_columns(),
+                model_trace_matches: false,
+                value_equivalent: false,
+                reference_trace: Vec::new(),
+                native_trace: Vec::new(),
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+
+    let reference_trace = match reference_model_trace_for_batch(&reference) {
+        Ok(trace) => trace,
+        Err(diagnostic) => {
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind,
+                row_count: output.num_rows() as u64,
+                column_count: output.num_columns(),
+                model_trace_matches: false,
+                value_equivalent: false,
+                reference_trace: Vec::new(),
+                native_trace: Vec::new(),
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+
+    let native_trace = match native_model_trace_for_batch(output) {
+        Ok(trace) => trace,
+        Err(diagnostic) => {
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind,
+                row_count: output.num_rows() as u64,
+                column_count: output.num_columns(),
+                model_trace_matches: false,
+                value_equivalent: false,
+                reference_trace,
+                native_trace: Vec::new(),
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+
+    let model_trace_matches = reference_trace == native_trace;
+    let value_equivalent = output == &reference;
+    let mut diagnostics = Vec::new();
+    if !model_trace_matches {
+        diagnostics.push(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+            "$.native.model_trace",
+            "native Arrow semantic output trace does not match reference executor trace",
+        ));
+    }
+    if !value_equivalent {
+        diagnostics.push(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+            "$.native.output",
+            "native Arrow semantic output does not match decoded reference batch",
+        ));
+    }
+
+    NativeArrowSemanticModelValidationReport {
+        backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+        artifact_kind,
+        row_count: output.num_rows() as u64,
+        column_count: output.num_columns(),
+        model_trace_matches,
+        value_equivalent,
+        reference_trace,
+        native_trace,
         diagnostics,
     }
 }
@@ -471,6 +639,174 @@ fn decode_reference_batch(bytes: &[u8]) -> Result<RecordBatch, NativeArrowSemant
         ));
     }
     Ok(batches.into_iter().next().expect("one batch checked"))
+}
+
+fn reference_model_trace_for_batch(
+    batch: &RecordBatch,
+) -> Result<Vec<String>, NativeArrowSemanticDiagnostic> {
+    let program = reference_program_for_batch(batch)?;
+    let report = execute_reference(&program);
+    if report.status != ReferenceStatus::Finished {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+            "$.reference.trace",
+            "reference executor failed closed while building native/model trace",
+        ));
+    }
+    Ok(report.trace_lines())
+}
+
+fn reference_program_for_batch(
+    batch: &RecordBatch,
+) -> Result<L2CoreProgram, NativeArrowSemanticDiagnostic> {
+    let row_count = batch.num_rows() as u64;
+    let column_count = batch.num_columns() as u64;
+    let total_events = row_count.saturating_mul(column_count);
+    let mut capabilities = Vec::with_capacity(batch.num_columns());
+    let mut body = Vec::with_capacity(total_events as usize);
+
+    for (column_index, field) in batch.schema().fields().iter().enumerate() {
+        ensure_model_supported_type(field.data_type(), column_index)?;
+        let builder = model_builder_id(column_index, field.name());
+        capabilities.push(Capability::OutputBuilder(OutputBuilderCapability {
+            id: builder.clone(),
+            arrow_type: field.data_type().clone(),
+            nullable: field.is_nullable(),
+            max_events: row_count,
+        }));
+
+        let column = batch.column(column_index);
+        for row_index in 0..batch.num_rows() {
+            if column.is_null(row_index) {
+                body.push(L2CoreStmt::AppendNull {
+                    builder: builder.clone(),
+                });
+            } else {
+                body.push(L2CoreStmt::AppendValue {
+                    builder: builder.clone(),
+                    value: scalar_expr_for_array_value(column.as_ref(), column_index, row_index)?,
+                });
+            }
+        }
+    }
+
+    Ok(L2CoreProgram {
+        artifact_version: 1,
+        required_features: vec!["native-model-validation.v0".to_string()],
+        optional_features: vec![],
+        capabilities,
+        resource_budget: ResourceBudget {
+            max_steps: total_events.saturating_add(16),
+            max_input_bytes_read: 0,
+            max_scratch_bytes: 0,
+            max_builder_events: total_events,
+            max_rows: row_count,
+            max_constraint_count: 0,
+        },
+        body,
+    })
+}
+
+fn native_model_trace_for_batch(
+    batch: &RecordBatch,
+) -> Result<Vec<String>, NativeArrowSemanticDiagnostic> {
+    let mut trace = Vec::new();
+    for (column_index, field) in batch.schema().fields().iter().enumerate() {
+        ensure_model_supported_type(field.data_type(), column_index)?;
+        let builder = model_builder_id(column_index, field.name());
+        let type_name = model_type_name(field.data_type(), column_index)?;
+        let column = batch.column(column_index);
+        for row_index in 0..batch.num_rows() {
+            if column.is_null(row_index) {
+                trace.push(format!("append-null:{builder}:{type_name}"));
+            } else {
+                trace.push(format!("append-value:{builder}:{type_name}"));
+            }
+        }
+    }
+    trace.push("terminal:finished".to_string());
+    Ok(trace)
+}
+
+fn model_builder_id(column_index: usize, name: &str) -> String {
+    format!("col{column_index}:{name}")
+}
+
+fn ensure_model_supported_type(
+    data_type: &DataType,
+    column_index: usize,
+) -> Result<(), NativeArrowSemanticDiagnostic> {
+    model_type_name(data_type, column_index).map(|_| ())
+}
+
+fn model_type_name(
+    data_type: &DataType,
+    column_index: usize,
+) -> Result<&'static str, NativeArrowSemanticDiagnostic> {
+    match data_type {
+        DataType::Boolean => Ok("bool"),
+        DataType::Int32 => Ok("int32"),
+        DataType::Int64 => Ok("int64"),
+        DataType::Float32 => Ok("float32"),
+        DataType::Float64 => Ok("float64"),
+        other => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedType,
+            format!("$.schema.fields[{column_index}].type"),
+            format!(
+                "unsupported native/model validation type {other:?}; expected Boolean, Int32, Int64, Float32, or Float64"
+            ),
+        )),
+    }
+}
+
+fn scalar_expr_for_array_value(
+    column: &dyn Array,
+    column_index: usize,
+    row_index: usize,
+) -> Result<ScalarExpr, NativeArrowSemanticDiagnostic> {
+    match column.data_type() {
+        DataType::Boolean => {
+            let Some(values) = column.as_any().downcast_ref::<BooleanArray>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            Ok(ScalarExpr::Const(ScalarValue::Bool(values.value(row_index))))
+        }
+        DataType::Int32 => {
+            let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<Int32Type>>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            Ok(ScalarExpr::Const(ScalarValue::Int32(values.value(row_index))))
+        }
+        DataType::Int64 => {
+            let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<Int64Type>>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            Ok(ScalarExpr::Const(ScalarValue::Int64(values.value(row_index))))
+        }
+        DataType::Float32 => {
+            let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<Float32Type>>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            Ok(ScalarExpr::Const(ScalarValue::Float32Bits(
+                values.value(row_index).to_bits(),
+            )))
+        }
+        DataType::Float64 => {
+            let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<Float64Type>>() else {
+                return Err(downcast_diagnostic(column, column_index));
+            };
+            Ok(ScalarExpr::Const(ScalarValue::Float64Bits(
+                values.value(row_index).to_bits(),
+            )))
+        }
+        other => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedType,
+            format!("$.schema.fields[{column_index}].type"),
+            format!(
+                "unsupported native/model validation value type {other:?}; expected Boolean, Int32, Int64, Float32, or Float64"
+            ),
+        )),
+    }
 }
 
 fn copy_supported_column(

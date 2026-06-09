@@ -179,6 +179,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **LINEAGE-07**: A Rust reference executor transcribes the Phase 38 Lean modeled operational semantics as a separate differential oracle, emits stable read/append/fail-closed/terminal trace records, and is not used as a production fallback or behavior fixup
 - [x] **LINEAGE-08**: A deterministic trace-level differential gate compares the production Rust interpreter surface against the reference executor over the supported matrix plus generated cases, fails closed on builder-event/fail-closed divergence, and records that this is per-run validation rather than all-program proof
 
+### Native Model Validation
+
+- [x] **LINEAGE-09**: Native Arrow semantic output for every Phase 35 supported shape (`LMC2(LMA1)` and explicit direct `LMA1`, nullable Boolean/Int32/Int64/Float32/Float64 one-batch primitives) is validated against a Phase 39 reference-executor builder-event trace, with injected native/model trace divergence producing stable fail-closed diagnostics
+- [ ] **LINEAGE-10**: Runtime route/cache eligibility requires successful native/model validation, divergent or unsupported validation cannot seed native cache identity, and Phase 40 records MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.

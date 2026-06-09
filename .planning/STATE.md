@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 39 complete; ready for Phase 40
+stopped_at: Phase 40 in progress; 40-01 complete
 last_updated: "2026-06-09T09:33:38.421Z"
-last_activity: 2026-06-09 -- Phase 38 soundness bridge remediated; accepted_program_safe now consumes execProgram state evidence and Verified premises
+last_activity: 2026-06-09 -- Phase 40 40-01 complete with native/model trace validation across the full Phase 35 supported primitive matrix
 progress:
   total_phases: 47
   completed_phases: 39
@@ -25,19 +25,19 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase 40 READY: Native ↔ Model Validation
-Plan: 0 of 0
-Status: Phase 39 complete; ready to discuss/plan Phase 40
-Last activity: 2026-06-09 -- Phase 38 soundness bridge remediated so `accepted_program_safe` consumes `(execProgram p)` read/event/row/status evidence plus the `Verified p` premises
+Phase 40 IN PROGRESS: Native ↔ Model Validation
+Plan: 1 of 2
+Status: 40-01 complete; 40-02 fail-closed routing + TCB record pending
+Last activity: 2026-06-09 -- 40-01 added native/model trace validation across nullable Boolean/Int32/Int64/Float32/Float64 `LMC2(LMA1)` and direct `LMA1` supported shapes
 
-Progress: Phase 39 complete; Phase 40 is the first incomplete roadmap phase after the Phase 38 bridge remediation
+Progress: Phase 40 executing; 40-01 complete, 40-02 pending
 
 ## Progress Snapshot
 
 - Completed phases: 39 / 47
-- Completed executable plans: 160 / 160
+- Completed executable plans: 161 / 162
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 40 should validate native Arrow semantic execution against the faithful model/reference path
+- Current position: Phase 40 should finish validation-aware runtime/cache routing and TCB closeout after 40-01 native/model trace validation
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, and the strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
@@ -266,6 +266,7 @@ None yet.
 - Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
 - Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
 - Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readsInBounds`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; `scripts/full-verifier-test.sh` rejects `_state : ModeledState` and discarded-premise regressions.
+- Phase 40 executing: 40-01 extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
 
 ### Quick Tasks Completed
 

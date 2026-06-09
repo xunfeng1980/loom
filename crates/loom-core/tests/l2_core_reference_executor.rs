@@ -174,4 +174,45 @@ fn reference_oracle_emits_trace_for_fuzz_cases() {
         trace_lines(&fuzz_001),
         vec!["append-value:out0:bool", "terminal:finished"]
     );
+
+    let mut fuzz_002 = sample_program();
+    fuzz_002.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
+        id: "score32".to_string(),
+        arrow_type: DataType::Float32,
+        nullable: false,
+        max_events: 4,
+    })];
+    fuzz_002.body = vec![L2CoreStmt::AppendValue {
+        builder: "score32".to_string(),
+        value: ScalarExpr::Const(ScalarValue::Float32Bits(1.5f32.to_bits())),
+    }];
+    assert_eq!(
+        trace_lines(&fuzz_002),
+        vec!["append-value:score32:float32", "terminal:finished"]
+    );
+
+    let mut fuzz_003 = sample_program();
+    fuzz_003.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
+        id: "score64".to_string(),
+        arrow_type: DataType::Float64,
+        nullable: true,
+        max_events: 4,
+    })];
+    fuzz_003.body = vec![
+        L2CoreStmt::AppendValue {
+            builder: "score64".to_string(),
+            value: ScalarExpr::Const(ScalarValue::Float64Bits((-2.25f64).to_bits())),
+        },
+        L2CoreStmt::AppendNull {
+            builder: "score64".to_string(),
+        },
+    ];
+    assert_eq!(
+        trace_lines(&fuzz_003),
+        vec![
+            "append-value:score64:float64",
+            "append-null:score64:float64",
+            "terminal:finished"
+        ]
+    );
 }

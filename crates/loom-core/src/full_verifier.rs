@@ -573,8 +573,9 @@ fn scalar_type_for_arrow(data_type: &DataType) -> Option<ScalarType> {
         DataType::Boolean => Some(ScalarType::Bool),
         DataType::Int32 => Some(ScalarType::Int32),
         DataType::Int64 => Some(ScalarType::Int64),
+        DataType::Float32 => Some(ScalarType::Float32),
+        DataType::Float64 => Some(ScalarType::Float64),
         DataType::Utf8 => Some(ScalarType::Bytes),
-        DataType::Float32 | DataType::Float64 => None,
         _ => None,
     }
 }
@@ -584,6 +585,8 @@ fn type_of_const(value: &ScalarValue) -> ScalarType {
         ScalarValue::Bool(_) => ScalarType::Bool,
         ScalarValue::Int32(_) => ScalarType::Int32,
         ScalarValue::Int64(_) => ScalarType::Int64,
+        ScalarValue::Float32Bits(_) => ScalarType::Float32,
+        ScalarValue::Float64Bits(_) => ScalarType::Float64,
         ScalarValue::UInt32(_) => ScalarType::UInt32,
         ScalarValue::UInt64(_) => ScalarType::UInt64,
         ScalarValue::Bytes(_) => ScalarType::Bytes,
@@ -618,6 +621,12 @@ fn constraint_term(expr: &ScalarExpr) -> ConstraintTerm {
         ScalarExpr::Const(ScalarValue::Int32(value)) => ConstraintTerm::int((*value).into()),
         ScalarExpr::Const(ScalarValue::Bool(value)) => {
             ConstraintTerm::int(if *value { 1 } else { 0 })
+        }
+        ScalarExpr::Const(ScalarValue::Float32Bits(value)) => {
+            ConstraintTerm::int((*value).into())
+        }
+        ScalarExpr::Const(ScalarValue::Float64Bits(value)) => {
+            ConstraintTerm::int((*value).into())
         }
         ScalarExpr::Const(ScalarValue::Bytes(_)) => ConstraintTerm::var("<bytes>"),
         ScalarExpr::Var(name) => ConstraintTerm::var(name),
