@@ -430,22 +430,19 @@ PY
 | A2 | Optional StarRocks smoke should be env-gated by conventional endpoint/user/password variables. | API Best Practices | Planner may choose different variable names; gate semantics remain the same. |
 | A3 | Deterministic typed row digests are more stable than display CSV for cross-engine comparison. | Common Pitfalls | If implementation only covers non-null Int32, CSV may work initially but will not scale to null/string cases. |
 
-## Open Questions
+## Resolved Questions For Current DuckDB Slice
 
 1. **Should Phase 29 be reactivated despite `.planning/STATE.md` marking it skipped/deferred?**
    - What we know: The user explicitly requested Phase 29 research now; state says Phase 29 was skipped/deferred on 2026-06-09. [VERIFIED: grep]
-   - What's unclear: Whether the planner should update roadmap/state before implementation planning. [ASSUMED]
-   - Recommendation: Planner should treat this research as a reactivation input and avoid citing Phase 29 as implemented until execution completes. [ASSUMED]
+   - Resolution: Reactivated only for the DuckDB executable evidence slice after the user cancelled full autonomous execution and asked to finish DuckDB real execution first. Roadmap/state now distinguish DuckDB evidence from incomplete full dual-surface evidence. [VERIFIED: implementation]
 
 2. **Should the descriptor be fixture-only or a new crate?**
    - What we know: Context allows a Rust crate, fixture generator, or test-only module. [VERIFIED: grep]
-   - What's unclear: How much reuse later phases need. [ASSUMED]
-   - Recommendation: Use a small crate if more than one test/report needs descriptor construction; otherwise start test-only and promote later. [ASSUMED]
+   - Resolution: Use a small adapter-local crate, `loom-dual-query-surface`, because fixture generation, canonical query evidence, StarRocks-compatible descriptors, DuckDB SQL evidence, and focused shell gates all reuse the same typed contract. [VERIFIED: implementation]
 
 3. **Which optional StarRocks version should runtime smoke allow?**
    - What we know: Latest StarRocks docs are `Latest-4.1`, and release notes warn against 4.1.0 containers while showing 4.1.1 on 2026-05-29. [CITED: https://docs.starrocks.io/releasenotes/release-4.1/]
-   - What's unclear: Whether the user's environment has a stable StarRocks cluster. [VERIFIED: command]
-   - Recommendation: Default skip; if enabled, require explicit version capture in the report. [ASSUMED]
+   - Resolution for current slice: Not implemented. Live StarRocks runtime smoke remains pending/deferred to Plan 29-04/29-05 and is not required for DuckDB executable evidence. [VERIFIED: implementation]
 
 ## Environment Availability
 

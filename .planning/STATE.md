@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 30 planning start
+stopped_at: Phase 29 DuckDB executable evidence slice complete
 last_updated: "2026-06-08T23:47:05Z"
-last_activity: 2026-06-09 -- Phase 29 skipped/deferred by user request; Phase 30 starts with dependency-gap tradeoff
+last_activity: 2026-06-09 -- Phase 29 DuckDB executable evidence completed; StarRocks/full dual-surface work remains deferred
 progress:
   total_phases: 30
   completed_phases: 28
   total_plans: 117
-  completed_plans: 112
-  percent: 93
+  completed_plans: 115
+  percent: 96
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 30 — Full Vortex Semantic Compatibility
+**Current focus:** Phase 29 — DuckDB executable evidence slice complete; remaining dual-surface work pending
 
 ## Current Position
 
-Phase: 30
-Plan: Not started
-Status: Phase 29 skipped/deferred by user request; Phase 30 starts without dual-query-surface evidence
-Last activity: 2026-06-09 -- Phase 29 skipped/deferred; Phase 30 dependency-gap tradeoff recorded
+Phase: 29
+Plan: 29-03 complete; 29-04/29-05 pending or deferred
+Status: DuckDB real execution is complete through `scripts/dual-query-surface-test.sh`; StarRocks runtime smoke, negative matrix expansion, main release wiring, and final report are not complete
+Last activity: 2026-06-09 -- Phase 29 DuckDB executable evidence completed
 
-Progress: 93%
+Progress: 96%
 
 ## Progress Snapshot
 
 - Completed phases: 28 / 30
-- Completed executable plans: 112 / 117
+- Completed executable plans: 115 / 117
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 30 planning for full Vortex semantic compatibility with Phase 29 dual-query evidence missing/deferred
+- Current position: Phase 29 partial completion: DuckDB executable evidence is complete, but full StarRocks + DuckDB dual-query proof remains incomplete
 - Last verified gate: Phase 28 `bash scripts/iceberg-binding-test.sh` passed after final review fixes; native DuckDB raw-copy gates also pass with non-zero artifact values
 
 **Completed phase plan counts:**
@@ -60,6 +60,7 @@ Progress: 93%
 | 26 | External source ingress contract | 5/5 complete |
 | 27 | Lance + Parquet archival readability / dataset ingress | 5/5 complete |
 | 28 | Iceberg Ref/Table Binding | 5/5 complete |
+| 29 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -210,8 +211,8 @@ None yet.
 - Phase 28 executing: 28-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
 - Phase 28 executing: 28-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
 - Phase 28 complete: 28-05 finalized and wired `scripts/iceberg-binding-test.sh` into the main release verifier after Phase 27 and before DuckDB smoke, recorded closeout evidence, and kept Iceberg binding out of public query/API/catalog/credential surfaces.
-- Phase 29 skipped/deferred by user request on 2026-06-09: StarRocks + DuckDB dual query surface is not implemented and must not be cited as evidence.
-- Phase 30 started by user override: full arbitrary Vortex semantic compatibility proceeds without Phase 29 dual-query-surface evidence; this dependency gap must be recorded in Phase 30 context and tradeoffs.
+- Phase 29 partial completion on 2026-06-09: DuckDB executable evidence over Phase 28 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
+- Phase 29 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 
 ### Quick Tasks Completed
 
@@ -269,8 +270,8 @@ None yet.
 | v3 ingress | External source ingress contract | Complete | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Complete | Phase 27 |
 | v3 table | Iceberg ref/table binding | Complete | Phase 28 |
-| v3 engine | StarRocks + DuckDB dual query surface | Skipped/deferred by user request | Phase 29 |
-| v3 compatibility | Full Vortex semantic compatibility | Starting by user override | Phase 30 |
+| v3 engine | StarRocks + DuckDB dual query surface | DuckDB executable slice complete; full dual-surface pending/deferred | Phase 29 |
+| v3 compatibility | Full Vortex semantic compatibility | Waiting on Phase 29 completion or explicit bypass | Phase 30 |
 
 ## Session Continuity
 

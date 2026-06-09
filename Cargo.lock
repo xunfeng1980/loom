@@ -3507,6 +3507,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-dual-query-surface"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "loom-core",
+ "loom-iceberg-binding",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "loom-ffi"
 version = "0.1.0"
 dependencies = [

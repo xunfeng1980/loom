@@ -1,9 +1,9 @@
-# Phase 29: StarRocks + DuckDB Dual Query Surface - Skipped/Deferred
+# Phase 29: StarRocks + DuckDB Dual Query Surface - Superseded Skip Note
 
 **Date:** 2026-06-09
-**Status:** Active skip/defer decision
+**Status:** Superseded by DuckDB executable slice restart
 
-## Decision
+## Historical Decision
 
 The user explicitly requested to skip StarRocks integration and proceed directly
 to Phase 30.
@@ -12,22 +12,34 @@ Phase 29 therefore does not implement a StarRocks query surface, does not add a
 dual-engine equivalence gate, and does not claim StarRocks + DuckDB query-surface
 proof.
 
+## Superseded State
+
+The later user request cancelled full `$gsd-autonomous` but explicitly asked to
+complete DuckDB real execution first. As of 2026-06-09, Phase 29 is no longer a
+full skip:
+
+- DuckDB executable evidence is implemented through
+  `scripts/dual-query-surface-test.sh`.
+- The evidence uses Phase 28 accepted binding bytes and existing public
+  `loom_scan(path)` SQL.
+- Full StarRocks + DuckDB dual-surface completion remains pending/deferred until
+  `29-04` and `29-05` are completed or explicitly bypassed.
+
 ## Artifacts Kept
 
 - `29-CONTEXT.md` records the bounded recommended approach for a future restart.
 - `29-RESEARCH.md` records the offline StarRocks-compatible descriptor research.
 - `29-PATTERNS.md` records existing code patterns and the recommended gate shape.
+- `29-01-SUMMARY.md`, `29-02-SUMMARY.md`, and `29-03-SUMMARY.md` record the
+  completed DuckDB executable slice.
 
-These are planning/research artifacts only, not implementation evidence.
+The completed DuckDB slice is implementation evidence only for DuckDB execution;
+it is not complete StarRocks runtime or full dual-engine evidence.
 
 ## Current-Phase Tradeoff
 
-Phase 30 starts without the originally planned Phase 29 dual-query evidence.
-Downstream planning and verification must treat engine-independent query-surface
-proof as missing and must avoid citing Phase 29 as support for arbitrary Vortex
-semantic compatibility.
-
-The practical tradeoff is accepted for momentum: Phase 30 may focus on Vortex
-semantic compatibility over existing reader/verifier/native/DuckDB evidence, but
-any second-host or StarRocks compatibility claim remains deferred until Phase 29
-or an equivalent second-consumer phase is restarted and completed.
+Phase 29 now has strong DuckDB evidence and weaker dual-surface evidence. The
+practical tradeoff is accepted for momentum: DuckDB real execution was completed
+first, while StarRocks runtime smoke, negative-scope hardening, main release-gate
+wiring, and final report closeout remain to be finished before Phase 29 can be
+cited as a complete dual-query-surface proof.

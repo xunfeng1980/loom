@@ -1,0 +1,16 @@
+[package]
+name = "loom-dual-query-surface"
+version = "0.1.0"
+edition = "2021"
+description = "Adapter-local Phase 29 DuckDB/StarRocks-compatible query-surface evidence"
+
+[dependencies]
+arrow-array.workspace = true
+arrow-schema.workspace = true
+loom-core = { path = "../loom-core" }
+loom-iceberg-binding = { path = "../loom-iceberg-binding" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

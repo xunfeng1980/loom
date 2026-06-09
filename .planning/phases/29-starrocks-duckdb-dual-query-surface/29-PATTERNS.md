@@ -20,7 +20,7 @@
 | `crates/loom-dual-query-surface/src/query_surface.rs` | Loom-owned query evidence model, canonical result rows, StarRocks/DuckDB disposition, and mismatch reports. | `binding_contract.rs`, `runtime_abi.rs` report modeling |
 | `crates/loom-dual-query-surface/tests/query_surface_contract.rs` | Contract tests for same binding identity, canonical result comparison, unsupported runtime, and no accepted evidence on mismatch. | `binding_contract.rs` tests |
 | `scripts/dual-query-surface-test.sh` | Focused Phase 29 gate, dependency/API boundary checks, DuckDB query check, optional StarRocks runtime smoke. | `iceberg-binding-test.sh`, `duckdb-smoke-test.sh` |
-| `.planning/phases/29-starrocks-duckdb-dual-query-surface/29-DUAL-QUERY-REPORT.md` | Final evidence report with engine comparison, current-phase tradeoffs, release gate evidence, Phase 30 handoff. | `28-ICEBERG-BINDING-REPORT.md` |
+| `.planning/phases/29-starrocks-duckdb-dual-query-surface/29-DUAL-QUERY-SURFACE-REPORT.md` | Final evidence report with engine comparison, current-phase tradeoffs, release gate evidence, Phase 30 handoff. | `28-ICEBERG-BINDING-REPORT.md` |
 
 ## Dependency Boundary Pattern
 
