@@ -64,8 +64,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 26: External Source Ingress Contract** - Next active focus for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (completed 2026-06-09)
 - [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and actual older-version fixture compatibility as the value proof (completed 2026-06-09)
 - [x] **Phase 28: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
-- [ ] **Phase 29: StarRocks + DuckDB Dual Query Surface** - In progress; planning reactivated with offline StarRocks-compatible descriptor evidence plus executable DuckDB `loom_scan(path)` evidence
-- [ ] **Phase 30: Full Vortex Semantic Compatibility** - Placeholder for arbitrary Vortex encoding/layout/storage-mode compatibility after host ABI, production backend, native hardening, table binding, and dual-query evidence exist (not expanded)
+- [x] **Phase 29: StarRocks + DuckDB Dual Query Surface** - Skipped/deferred by user request on 2026-06-09; no StarRocks/DuckDB dual-query implementation or evidence is claimed
+- [ ] **Phase 30: Full Vortex Semantic Compatibility** - Active by user override; must proceed without Phase 29 dual-query evidence and record that dependency gap/tradeoff explicitly
 
 ## Phase Details
 
@@ -827,22 +827,20 @@ Plans:
 
 ### Phase 29: StarRocks + DuckDB Dual Query Surface
 
-**Status:** In progress. Context, research, and pattern artifacts are captured; planning should proceed with an offline deterministic StarRocks-compatible query contract, executable DuckDB evidence via existing `loom_scan(path)`, and explicit current-phase tradeoffs.
+**Status:** Skipped/deferred by user request on 2026-06-09. Context, research, and pattern artifacts are retained for a future restart, but Phase 29 does not implement a StarRocks query surface, does not add a dual-engine equivalence gate, and must not be cited as evidence.
 **Depends on:** Phase 28.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
-**Plans:** 5 plans
+**Plans:** Deferred. No execution plans are active under the current user override.
 
-Plans:
-- [ ] 29-01-PLAN.md - Adapter-local dual query-surface crate and boundary contract (PHASE-29)
-- [ ] 29-02-PLAN.md - Accepted binding query matrix and StarRocks-compatible descriptor validation (PHASE-29)
-- [ ] 29-03-PLAN.md - Executable DuckDB `loom_scan(path)` evidence and focused gate seed (PHASE-29)
-- [ ] 29-04-PLAN.md - Mismatch fail-closed matrix, scope guards, and optional StarRocks runtime-smoke handling (PHASE-29)
-- [ ] 29-05-PLAN.md - Focused gate wiring, final report, release evidence, and Phase 30 handoff (PHASE-29)
+Tradeoff recorded for Phase 30:
+- Full Vortex semantic compatibility starts without the originally planned dual-query-surface proof.
+- Phase 30 must not use StarRocks compatibility, dual-engine query equivalence, or a second host-engine consumer as supporting evidence.
+- Any engine-independence claim remains weaker until Phase 29 or an equivalent second-consumer phase is restarted and completed.
 
 ### Phase 30: Full Vortex Semantic Compatibility
 
-**Status:** Placeholder. Do not begin until Phase 29 dual-query surface evidence is complete.
-**Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 29.
+**Status:** Active by user override after Phase 29 skip/defer. Begin with an explicit dependency-gap tradeoff: Phase 29 dual-query surface evidence is missing and cannot be used as proof.
+**Depends on:** Phase 21, Phase 23, Phase 25, and Phase 26. Phase 29 is skipped/deferred and therefore unavailable as evidence.
 **Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
 
 ## Progress

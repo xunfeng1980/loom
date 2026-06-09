@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 29 planning in progress
+stopped_at: Phase 30 planning start
 last_updated: "2026-06-08T23:47:05Z"
-last_activity: 2026-06-09 -- Phase 29 reactivated after Phase 28 verification
+last_activity: 2026-06-09 -- Phase 29 skipped/deferred by user request; Phase 30 starts with dependency-gap tradeoff
 progress:
   total_phases: 30
   completed_phases: 28
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 29 — StarRocks + DuckDB Dual Query Surface
+**Current focus:** Phase 30 — Full Vortex Semantic Compatibility
 
 ## Current Position
 
-Phase: 29
+Phase: 30
 Plan: Not started
-Status: Phase 28 complete and verified; Phase 29 context/research/pattern map captured; planning next
-Last activity: 2026-06-09 -- Phase 29 reactivated after Phase 28 verification
+Status: Phase 29 skipped/deferred by user request; Phase 30 starts without dual-query-surface evidence
+Last activity: 2026-06-09 -- Phase 29 skipped/deferred; Phase 30 dependency-gap tradeoff recorded
 
 Progress: 93%
 
@@ -37,7 +37,7 @@ Progress: 93%
 - Completed phases: 28 / 30
 - Completed executable plans: 112 / 117
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 29 planning for StarRocks-compatible contract plus executable DuckDB query evidence
+- Current position: Phase 30 planning for full Vortex semantic compatibility with Phase 29 dual-query evidence missing/deferred
 - Last verified gate: Phase 28 `bash scripts/iceberg-binding-test.sh` passed after final review fixes; native DuckDB raw-copy gates also pass with non-zero artifact values
 
 **Completed phase plan counts:**
