@@ -76,10 +76,23 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads (completed 2026-06-09)
 - [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback (in progress)
 
-**MVP1.5 — Verified Lineage** *(parked future milestone — placeholders only, not started, not on the MVP1 critical path; current load-bearing safety evidence remains the Rust verifier + Phase 19 Bitwuzla SMT discharge)*
+**MVP1.5 — Verified Lineage** *(future milestone — planned, not active; supersedes the earlier parked Phase 36/37. Stages 0/B/C/D do not depend on Phase 35 and may start while Phase 35 is in flight; only Phase 40 depends on Phase 35. Standing red line: Loom guarantees safety + well-formedness, never correctness — every "verified" claim maps to one named evidence layer or to the explicit TCB.)*
 
-- [ ] **Phase 36: Lean Stage B — Close L2Core Abstraction Gap (ScalarExpr/LetScalar)** — PARKED. Enrich the Lean AST so `builder_events_typed` derives value types from expressions like the Rust verifier, making the Lean model faithfully correspond to the executable verifier and unlocking Lean↔Rust differential testing
-- [ ] **Phase 37: Lean Stage C — Operational Semantics + Soundness Theorem** — PARKED. Define an operational semantics over L2Core and prove load-bearing soundness so `accepted_program_safe` becomes a semantic theorem rather than a structural projection
+- [ ] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface)
+- [ ] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
+- [ ] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
+- [ ] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
+- [ ] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption
+- [ ] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety
+
+**MVP2 — Coverage, Second Engine, Productization** *(future milestone — planned, not active. Widen coverage and add a real second engine — the two forces that should shape the ABI — then freeze the ABI, then build distribution/security on top and bind the MVP1.5 lineage record.)*
+
+- [ ] **Phase 42: Verified + Native Coverage Expansion** - Widen the accepted Vortex/Lance/Parquet encoding/layout/shape matrix, each new shape carrying a paired verified-lineage + native-execution + interpreter-fallback disposition
+- [ ] **Phase 43: StarRocks Live Runtime Integration** - The genuine second consumer that turns "engine-independent ABI" from a design claim into evidence, querying the same accepted artifacts through a live StarRocks runtime
+- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by two real engines and the full coverage matrix
+- [ ] **Phase 45: Content-Addressed Distribution and Signing** - Content-hash artifact identity, signatures, and attestation that binds the MVP1.5 verified-lineage record to the artifact
+- [ ] **Phase 46: Remote Fetch and Encryption** - Remote/object-store ingress with fail-closed remote verification and encryption in transit/at rest
+- [ ] **Phase 47: Production Hardening and GA Gate** - Scale performance, fuzz/soak, security review, and the general-availability release gate
 
 ## Phase Details
 
@@ -952,30 +965,242 @@ Plans:
 - [x] 35-04-PLAN.md - Focused Phase 35 gate and broad MVP1 release-gate wiring
 - [ ] 35-05-PLAN.md - Documentation, requirements, roadmap/state closeout
 
-## MVP1.5 — Verified Lineage (parked future milestone)
+## Milestone: MVP1.5 — Verified Lineage
 
-*Placeholder milestone, deliberately not started and not expanded into plans. Both phases are future-IR formal-methods deepening that the project has explicitly deferred (PROJECT.md decision "Defer full future-IR formal proof"). The Lean layer is a theorem-target scaffold; quick task 260609-lb2 already upgraded its predicates from `True` to real decidable checkers mirroring the Rust verifier. Current load-bearing safety evidence remains the Rust executable verifier + Phase 19 Bitwuzla SMT discharge — neither phase below blocks MVP1 (Phases 34–35).*
+> **Status: planned, not active.** Supersedes the earlier parked Phase 36/37 by wrapping Lean Stage B/C as the middle stages of a six-phase lineage milestone. Requirement IDs below (`LINEAGE-*`) are placeholders to be defined when the milestone is formally started via `/gsd-new-milestone`.
 
-### Phase 36: Lean Stage B — Close L2Core Abstraction Gap (ScalarExpr/LetScalar)
+**Thesis:** Turn the current Lean *structural projection* into a load-bearing, machine-checked soundness story that is *connected to the executor users actually run*. This milestone does **not** add features, formats, engines, or speed; it makes "verifier accepts ⟹ safe" true about the running system within a stated TCB, and makes each artifact carry an inspectable record of *why* it is trusted.
 
-**Status:** PARKED (placeholder — not planned, not started).
-**Depends on:** Phase 13 Lean scaffold (and quick task 260609-lb2).
-**Goal:** Enrich `formal/lean/LoomCore.lean` with `ScalarExpr` + `LetScalar` + a typing judgment so `builder_events_typed` derives value types from expressions exactly like the Rust verifier (`verify_expr` / `UnknownVariable` in `crates/loom-core/src/full_verifier.rs`), closing the lossy `Nat`-grounded AST projection and making the Lean model faithfully correspond to the executable verifier. Unlocks differential testing of the decidable Lean checkers against the Rust verifier on shared sample programs.
-**Trigger to activate:** the L2Core IR has stabilized AND faithful Lean↔Rust correspondence / differential testing is wanted (natural to do adjacent to Phase 35 native execution).
-**Plans:** None — do not expand until activated.
+**Standing red line:** Loom guarantees *safety + well-formedness*, never *correctness*. Every "verified" claim must map to one named evidence layer (Rust verifier / Bitwuzla SMT / Lean soundness / differential validation / explicit TCB trust assumption). The Rust+C+++MLIR/LLVM toolchain gap stays in the TCB permanently and must never be silently closed by a productization claim.
 
-### Phase 37: Lean Stage C — Operational Semantics + Soundness Theorem
+**Critical-path coupling:** Phases 36/37/38/39 do **not** depend on MVP1 Phase 35 and may start while Phase 35 is in flight. Only **Phase 40** depends on Phase 35.
 
-**Status:** PARKED (placeholder — not planned, not started).
+### Phase 36: Verified-Lineage Contract and TCB Declaration
+
+**Status:** Not started.
+**Goal:** A normative document that fixes the meaning of "verified" at MVP1.5 exit, an obligation matrix, and a TCB clause that lists every component trusted but not proven.
+**Depends on:** MVP1 Phase 32 (review audit), Phase 19 (solver), current Lean scaffold (quick task 260609-lb2).
+**Requirements:** LINEAGE-01, LINEAGE-02
+**Success Criteria** (what must be TRUE):
+
+  1. Each safety claim in scope maps to exactly one backing evidence layer: Rust verifier structural check, Bitwuzla discharge, Lean soundness theorem, differential validation, or named TCB trust assumption.
+  2. The TCB clause explicitly lists: Rust compiler/std, LLVM + MLIR toolchain, the Rust↔C ABI seam, the DuckDB host process, and the Arrow C Data Interface — each with a one-line statement of *what is assumed* and *why it is not proven here*.
+  3. The obligation matrix enumerates the three trust seams (Lean↔Rust verifier, static↔dynamic, modeled-executor↔real-executor) and assigns each to a later MVP1.5 phase or to the TCB.
+
+**Non-goals:** No proofs, no code; defines boundaries only. Must not redefine the MVP1 safety story or weaken the "never correctness" red line.
+**Ordering decision:** The word "verified" must be pinned before any proof work, or MVP1.5 risks the exact overclaim Phase 32 was created to police.
+**Plans:** 1 plan. Wave 1: 36-01 contract + obligation matrix + TCB clause.
+
+### Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence
+
+**Status:** Not started. **Supersedes** parked Phase 36.
+**Goal:** The Lean model's static checkers faithfully mirror the executable Rust verifier, and the two are continuously cross-checked.
 **Depends on:** Phase 36.
-**Goal:** Define a big-step / fueled operational semantics over L2Core that produces `ArrowEvent`s, and prove load-bearing soundness lemmas — type preservation of emitted append events, spatial safety of reads, and termination from bounded loops + positive cursor progress — so `accepted_program_safe` becomes a semantic theorem about execution rather than a structural projection over the `Verified` conjunction.
-**Trigger to activate:** a milestone mandates extraction or verified-checker lineage (matches the `formal/lean/LoomCore.lean` header note and the Rocq fallback). Research-grade scope.
-**Plans:** None — do not expand until activated.
+**Requirements:** LINEAGE-03, LINEAGE-04
+**Success Criteria** (what must be TRUE):
+
+  1. The Lean AST gains `ScalarExpr`/`LetScalar` so `builder_events_typed` derives value types from expressions exactly as the Rust verifier does, not from a flattened approximation.
+  2. A Lean↔Rust differential harness runs the *current full fixture matrix plus a generated fuzz corpus* and reports **zero** accept/reject divergence, including matching reject codes (MissingInputCapability, MissingOutputBuilder, InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded).
+  3. The differential harness is wired into the release gate and fails closed on any divergence or on any input the two checkers classify differently.
+
+**Non-goals:** No operational semantics yet; no soundness theorem yet. Must not extend L2Core beyond what the Rust verifier already accepts.
+**Ordering decision:** Correspondence before soundness — a soundness theorem over a Lean model that does not match the real verifier proves nothing about the product.
+**Plans:** 2 plans. Wave 1: 37-01 AST enrichment + typing parity. Wave 2: 37-02 differential harness + gate wiring.
+
+### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
+
+**Status:** Not started. **Supersedes** parked Phase 37.
+**Goal:** A small-step operational semantics over L2Core and a machine-checked theorem that verifier acceptance implies execution safety, scoped to the modeled executor.
+**Depends on:** Phase 37.
+**Requirements:** LINEAGE-05, LINEAGE-06
+**Success Criteria** (what must be TRUE):
+
+  1. A small-step operational semantics for L2Core is defined in Lean (read-input, append-value/null, bounded loops, fail-closed), 0 `sorry`.
+  2. `accepted_program_safe` is re-proved as a *semantic* theorem: `Verified p` implies, for every input satisfying declared capabilities, that execution (a) never reads outside a declared input slice, (b) emits only builder events well-typed for their builder, (c) terminates within the `maxRows` budget, and (d) yields well-formed Arrow by construction.
+  3. The theorem statement carries an explicit scope note: it holds over the *modeled* executor; the modeled↔real gap is delegated to Phase 39/40 and the TCB.
+
+**Non-goals:** Not a proof about the Rust interpreter or native codegen (that is Phase 39/40 validation, not Lean proof). No correctness theorem.
+**Ordering decision:** This is the phase that retires the "structural projection" finding — but only as far as the model; the model↔executor seam is the next phase.
+**Plans:** 2 plans. Wave 1: 38-01 operational semantics. Wave 2: 38-02 soundness theorem + scope note.
+
+### Phase 39: Model ↔ Rust Interpreter Consistency
+
+**Status:** Not started. **(Highest-leverage new phase.)**
+**Goal:** Continuously validate that the real Rust interpreter — the actual safety path users run — matches a faithful transcription of the Lean operational semantics.
+**Depends on:** Phase 38.
+**Requirements:** LINEAGE-07, LINEAGE-08
+**Success Criteria** (what must be TRUE):
+
+  1. A Rust *reference executor* transcribes the Lean operational semantics one-to-one and is documented as the differential oracle (transcription, not the production interpreter).
+  2. Across the supported matrix plus a fuzz corpus, the production Rust interpreter and the reference executor agree on the **full builder-event trace** (not only final values) and on fail-closed behavior; divergences fail the gate.
+  3. (Optional, additive) Lean code extraction is evaluated as a stronger oracle path and either adopted or recorded as deferred with reason.
+
+**Non-goals:** Does not *prove* interpreter = model (that would be verified compilation); it *validates* the correspondence per-run. Must not modify the production interpreter to match the model — divergence is a finding, not a fixup.
+**Ordering decision:** This is the step the parked 36/37 lacked. Without it the soundness theorem holds over a model nobody runs. It reuses the project's existing differential/oracle infrastructure, so cost is low relative to value.
+**Plans:** 2 plans. Wave 1: 39-01 reference executor. Wave 2: 39-02 trace-level differential gate.
+
+### Phase 40: Native ↔ Model Validation
+
+**Status:** Not started.
+**Goal:** Anchor native execution equivalence against the faithful model reference, not merely against the (itself-only-validated) interpreter.
+**Depends on:** **MVP1 Phase 35** and Phase 39.
+**Requirements:** LINEAGE-09, LINEAGE-10
+**Success Criteria** (what must be TRUE):
+
+  1. For every supported shape, native output matches the **reference executor's builder-event trace** (native ↔ model), upgrading Phase 35's native ↔ interpreter ↔ oracle value equivalence.
+  2. The MLIR/LLVM lowering pipeline is recorded in the TCB as a permanent trust assumption: this phase is per-run translation validation, explicitly **not** verified compilation.
+  3. Any native/model divergence fails closed and disables the native route for that shape until resolved.
+
+**Non-goals:** No verified compilation of MLIR/LLVM (stays in TCB forever). No new encodings or formats.
+**Ordering decision:** Native equivalence is only meaningful once there is a model to be equivalent *to*; hence after Phase 38/39 and after Phase 35 ships native.
+**Plans:** 2 plans. Wave 1: 40-01 native↔model trace check. Wave 2: 40-02 fail-closed routing + TCB record.
+
+### Phase 41: Verified-Lineage Closeout
+
+**Status:** Not started.
+**Goal:** One combined gate over all lineage evidence, and a per-artifact record that makes each artifact's safety provenance inspectable.
+**Depends on:** Phases 36–40.
+**Requirements:** LINEAGE-11, LINEAGE-12
+**Success Criteria** (what must be TRUE):
+
+  1. `scripts/verified-lineage-test.sh` runs, over the full matrix: Lean build (0 `sorry`), Lean↔Rust differential, model↔interpreter trace consistency, and native↔model validation — all fail-closed.
+  2. Each emitted artifact can carry/produce a **verified-lineage record** naming the evidence layers establishing its safety (structural verifier, Bitwuzla discharge, Lean soundness, differential validation) and the TCB assumptions it relies on.
+  3. Public/planning docs state precisely what "Verified Lineage" does and does not assert; no claim of end-to-end toolchain verification or of correctness.
+
+**Non-goals:** Not signing/attestation transport (that is MVP2 Phase 45, which *consumes* this record). Not productization.
+**Ordering decision:** Closeout last; the lineage record is the deliverable the milestone name promises and the input MVP2 attestation will bind to.
+**Plans:** 2 plans. Wave 1: 41-01 combined gate. Wave 2: 41-02 lineage record + docs.
+
+## Milestone: MVP2 — Coverage, Second Engine, Productization
+
+> **Status: planned, not active.** Requirement IDs below (`COV2-*`, `ENGINE-*`, `ABI2-*`, `DIST2-*`, `HARDEN-*`) are placeholders to be defined when the milestone is formally started via `/gsd-new-milestone`.
+
+**Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) prove engine-independence with a genuine second consumer, and (3) become a distributable, signed, fetchable artifact — in that order, because each later phase depends on the contract the earlier one stabilizes.
+
+**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widens coverage and adds a real second engine — the two forces that should *shape* the ABI — and only then freezes it. Distribution/security is built last, on top of the frozen ABI, and binds the MVP1.5 lineage record.
+
+### Phase 42: Verified + Native Coverage Expansion
+
+**Status:** Not started.
+**Goal:** Widen the accepted matrix well beyond the MVP1 slice, with every new encoding/layout/format shape carrying an explicit paired disposition.
+**Depends on:** MVP1.5 Phase 41 (so each new shape's safety is lineage-backed), MVP1 Phase 21/31.
+**Requirements:** COV2-01, COV2-02, COV2-03
+**Success Criteria** (what must be TRUE):
+
+  1. The accepted matrix is widened with a target set of additional Vortex encodings/layouts and additional Lance/Parquet schema shapes; each addition records a paired disposition: verified-lineage-backed + native-supported, verified + interpreter-only, canonicalized, or fail-closed/deferred.
+  2. Every newly accepted shape passes the MVP1.5 `verified-lineage` gate and the oracle row/aggregate equivalence gate; unsupported shapes still fail closed with typed diagnostics.
+  3. Coverage growth is recorded as a living matrix with per-shape evidence, so the ABI freeze (Phase 44) can be taken against a known surface.
+
+**Non-goals:** Not arbitrary "decode every Vortex encoding"; not engine work; not ABI freeze. New shapes that cannot be lineage-backed remain interpreter-only or deferred — never silently native.
+**Ordering decision:** Coverage before ABI freeze, because new shapes stress ABI surface; a freeze taken before the matrix is known would freeze the wrong contract.
+**Plans:** 3 plans across 2 waves (Wave 1: Vortex coverage; Wave 2: Lance/Parquet coverage + matrix closeout).
+
+### Phase 43: StarRocks Live Runtime Integration
+
+**Status:** Not started.
+**Goal:** Prove engine-independence empirically: a live, different query engine consumes the same accepted artifacts and returns equivalent results.
+**Depends on:** Phase 42, MVP1 Phase 22 (ABI) and Phase 30 (StarRocks descriptor evidence).
+**Requirements:** ENGINE-01, ENGINE-02, ENGINE-03
+**Success Criteria** (what must be TRUE):
+
+  1. A live StarRocks runtime queries Loom-bound/accepted artifacts (not just an offline descriptor) and returns row/aggregate results matching DuckDB and the oracle across the supported matrix.
+  2. The integration surfaces every place the "engine-independent" ABI turned out to be DuckDB-shaped; each such finding is documented and either fixed in the still-unfrozen ABI or recorded as an accepted asymmetry before freeze.
+  3. Fail-closed behavior holds in StarRocks: unsupported shapes are rejected, not silently mis-decoded.
+
+**Non-goals:** Not freezing the ABI yet (this phase exists to *inform* the freeze). Not a third engine. Not productization.
+**Ordering decision:** The second consumer must exist before the ABI is frozen, because it is the only thing that can falsify the engine-independence claim — the N=1 gap flagged since MVP1.
+**Plans:** 3 plans across 2 waves (Wave 1: StarRocks runtime path; Wave 2: equivalence matrix + ABI-shape findings).
+
+### Phase 44: ABI Freeze and Compatibility Contract
+
+**Status:** Not started.
+**Goal:** Freeze the host native runtime ABI with a versioned, documented compatibility policy.
+**Depends on:** Phase 42 (coverage surface) and Phase 43 (second engine).
+**Requirements:** ABI2-01, ABI2-02, ABI2-03
+**Success Criteria** (what must be TRUE):
+
+  1. `loom_runtime.h` / the C ABI is frozen at a v1: every symbol, struct, ownership rule, cache-key shape, projection/predicate contract, and concurrency/reentrancy guarantee is documented and versioned.
+  2. A compatibility policy defines what changes are allowed within a major version (additive only) vs. require a major bump, with an ABI-version negotiation handshake at load time.
+  3. A cross-engine ABI conformance gate (DuckDB + StarRocks) passes against the frozen header, and an ABI-drift guard fails closed on any unversioned change.
+
+**Non-goals:** No new engines or formats. No distribution/security transport. The freeze does not claim toolchain verification (MLIR/LLVM stays in TCB).
+**Ordering decision:** Freeze only after two real engines and the coverage matrix have shaped the contract; freezing earlier would lock in DuckDB-shaped assumptions.
+**Plans:** 2 plans across 2 waves (Wave 1: freeze + version handshake; Wave 2: conformance + drift gate).
+
+### Phase 45: Content-Addressed Distribution and Signing
+
+**Status:** Not started.
+**Goal:** Give artifacts a content-addressed identity, signatures, and an attestation that binds the MVP1.5 verified-lineage record.
+**Depends on:** Phase 44 (frozen ABI), MVP1.5 Phase 41 (lineage record).
+**Requirements:** DIST2-01, DIST2-02, DIST2-03
+**Success Criteria** (what must be TRUE):
+
+  1. Artifacts carry a content-hash URI as stable identity; tampering invalidates the hash and fails closed before decode.
+  2. Artifacts can be signed and verified; the attestation binds the verified-lineage record (which evidence layers established safety) to the artifact identity and ABI version.
+  3. Attestation language is precise: it attests "this artifact passed the verified-lineage gate under TCB assumptions X," never "execution is proven correct end-to-end."
+
+**Non-goals:** Not remote transport (Phase 46). Not a key-management/PKI product; integrate with an existing trust root. No correctness attestation.
+**Ordering decision:** Identity/signing on top of a frozen ABI and a real lineage record; both must exist first or the attestation has nothing stable to bind.
+**Plans:** 2 plans across 2 waves (Wave 1: content-hash identity; Wave 2: signing + lineage-bound attestation).
+
+### Phase 46: Remote Fetch and Encryption
+
+**Status:** Not started.
+**Goal:** Fetch artifacts from remote/object stores with fail-closed remote verification and encryption.
+**Depends on:** Phase 45.
+**Requirements:** DIST2-04, DIST2-05
+**Success Criteria** (what must be TRUE):
+
+  1. Remote/object-store ingress fetches artifacts by content-hash URI and verifies hash + signature + lineage attestation **before** any decode; a failed check aborts fail-closed with diagnostics.
+  2. Encryption in transit and at rest is supported; decryption failure or integrity failure never produces partial output.
+  3. Remote ingress reuses the same verifier/lineage path as local ingress — no privileged remote shortcut.
+
+**Non-goals:** No CDN/cache service, no multi-tenant cloud product. No new decode semantics.
+**Ordering decision:** Remote comes after signing/identity so that what is fetched can be verified before trust; fetching unverifiable bytes first would be unsafe.
+**Plans:** 2 plans across 2 waves (Wave 1: verified remote fetch; Wave 2: encryption + parity with local path).
+
+### Phase 47: Production Hardening and GA Gate
+
+**Status:** Not started.
+**Goal:** Make the verified, covered, distributable system production-grade and declare GA.
+**Depends on:** Phases 42–46.
+**Requirements:** HARDEN-01, HARDEN-02, HARDEN-03
+**Success Criteria** (what must be TRUE):
+
+  1. Performance at scale is measured on representative datasets (native vs interpreter vs reference engines) with published numbers; the native path demonstrates a real, repeatable speed advantage on the supported matrix.
+  2. Continuous fuzzing and a soak test run against ingress, verifier, decode, ABI, and remote paths with no fail-open findings; a third-party-style security review of the FFI/ABI/crypto surface is recorded.
+  3. A single `scripts/ga-verify.sh` gate composes mvp0/mvp1/verified-lineage/coverage/engine-conformance/distribution gates and is green from a clean checkout; docs state the supported matrix, the TCB, and the explicit non-claims.
+
+**Non-goals:** Not new features. GA covers the supported matrix and stated TCB only — not arbitrary shapes, not toolchain verification, not correctness.
+**Ordering decision:** Hardening last; it composes every prior gate and is the honest GA boundary.
+**Plans:** 3 plans across 2 waves (Wave 1: perf + fuzz/soak; Wave 2: security review + GA gate).
+
+## Out of Scope (deferred beyond MVP2 / permanent TCB)
+
+- **Verified compilation of the MLIR/LLVM toolchain** — the modeled-executor ↔ real-native-codegen seam stays in the TCB permanently; MVP1.5/MVP2 use per-run translation validation, never a toolchain correctness proof. Closing it is CompCert-scale research, a future milestone at most.
+- **Formal correctness** (values are the correct decoding of the input) — Loom proves safety + well-formedness only; correctness remains oracle-validated forever.
+- **Third+ query engines, GUI, managed cloud service, multi-tenant SaaS** — adoption surface, not core proof; defer to MVP3+.
+- **PKI / key-management product** — integrate an existing trust root; do not build one.
+
+## Milestone dependency summary
+
+```text
+MVP1 (P1–35) ──> P35 native execution ─┐
+                                        ├─> MVP1.5 P40 (native↔model)
+MVP1.5 P36→37→38→39 (no P35 dep) ───────┘
+MVP1.5 P36–41 ──> verified-lineage record ─┐
+                                            ├─> MVP2 P42 (coverage, lineage-backed)
+                                            └─> MVP2 P45 (attestation binds record)
+MVP2: P42 coverage ─┐
+      P43 StarRocks ─┴─> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
+```
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
+MVP1 phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
+
+MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear dependency graph rather than a single numeric chain — see the "Milestone dependency summary" above. They are planned, not active; activate via `/gsd-new-milestone` (which also defines their `LINEAGE-*`/`COV2-*`/`ENGINE-*`/`ABI2-*`/`DIST2-*`/`HARDEN-*` requirements).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -1014,5 +1239,15 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
 | 35. Native Arrow Semantic Execution | 4/5 | In Progress | - |
-| 36. Lean Stage B — Close L2Core Abstraction Gap | 0/0 | Parked (MVP1.5) | - |
-| 37. Lean Stage C — Operational Semantics + Soundness | 0/0 | Parked (MVP1.5) | - |
+| 36. Verified-Lineage Contract and TCB Declaration | 0/0 | Planned (MVP1.5) | - |
+| 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 0/0 | Planned (MVP1.5) | - |
+| 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |
+| 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |
+| 40. Native↔Model Validation | 0/0 | Planned (MVP1.5) | - |
+| 41. Verified-Lineage Closeout | 0/0 | Planned (MVP1.5) | - |
+| 42. Verified + Native Coverage Expansion | 0/0 | Planned (MVP2) | - |
+| 43. StarRocks Live Runtime Integration | 0/0 | Planned (MVP2) | - |
+| 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
+| 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
+| 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
+| 47. Production Hardening and GA Gate | 0/0 | Planned (MVP2) | - |
