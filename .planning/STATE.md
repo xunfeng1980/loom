@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 36 context gathered
-last_updated: "2026-06-09T08:59:35.022Z"
-last_activity: 2026-06-09 -- 35-05 completed docs, requirements, roadmap/state closeout
+stopped_at: Phase 36 complete; ready for Phase 37
+last_updated: "2026-06-09T09:01:28Z"
+last_activity: 2026-06-09 -- Phase 36 36-01 completed verified-lineage contract, TCB declaration, and obligation matrix
 progress:
   total_phases: 47
-  completed_phases: 30
-  total_plans: 153
-  completed_plans: 134
-  percent: 64
+  completed_phases: 36
+  total_plans: 154
+  completed_plans: 154
+  percent: 76
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 36 — Verified-Lineage Contract and TCB Declaration
+**Current focus:** Phase 37 — Lean Stage B / Lean ↔ Rust Verifier Correspondence
 
 ## Current Position
 
-Phase: 36 (Verified-Lineage Contract and TCB Declaration) — READY
-Plan: 0 of 1
-Status: Ready to execute
-Last activity: 2026-06-09 -- 35-05 completed docs, requirements, roadmap/state closeout
+Phase 37 READY: Lean Stage B — Lean ↔ Rust Verifier Correspondence
+Plan: 0 of 2
+Status: Phase 36 complete; ready to discuss/plan Phase 37
+Last activity: 2026-06-09 -- 36-01 completed verified-lineage contract, TCB declaration, obligation matrix, requirements, roadmap/state closeout
 
-Progress: Phase 35 complete; Phase 36 is the first incomplete roadmap phase
+Progress: Phase 36 complete; Phase 37 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
-- Completed phases: 35 / 47
-- Completed executable plans: 153 / 153
+- Completed phases: 36 / 47
+- Completed executable plans: 154 / 154
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 36 should define verified-lineage contract, obligation matrix, and TCB declaration
+- Current position: Phase 37 should implement Lean ↔ Rust verifier correspondence against the Phase 36 verified-lineage contract
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 35 native Arrow semantic execution gate wired after DuckDB source e2e
 
 **Completed phase plan counts:**
@@ -67,6 +67,7 @@ Progress: Phase 35 complete; Phase 36 is the first incomplete roadmap phase
 | 33 | LMC2 Arrow Semantic Container Wrapper | 5/5 complete |
 | 34 | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 complete |
 | 35 | Native Arrow Semantic Execution | 5/5 complete |
+| 36 | Verified-Lineage Contract and TCB Declaration | 1/1 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -260,6 +261,7 @@ None yet.
 - Phase 35 35-03 complete: native Arrow semantic execution now has host-neutral backend identity/runtime decision/cache-key evidence; unsupported shapes may follow fallback policy but cannot seed native cache keys.
 - Phase 35 35-04 complete: `scripts/native-arrow-semantic-execution-test.sh` is wired into `scripts/mvp1-verify.sh`, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the new Phase 35 gate.
 - Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
+- Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
 
 ### Quick Tasks Completed
 
@@ -324,11 +326,12 @@ None yet.
 | v3 distribution | LMC2 Arrow semantic container wrapper | Complete; default source artifacts are `LMC2(LMA1)` and direct `LMA1` is a bounded DuckDB bridge only | Phase 33 |
 | v3 query | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | Complete; default `LMC2(LMA1)` primitive/nullable artifacts query directly, direct `LMA1` is regression-only, logical/nested SQL is fail-closed unsupported | Phase 34 |
 | v3 native | Native Arrow Semantic Execution | Complete; engine-neutral primitive nullable `LMC2(LMA1)` / direct `LMA1` native execution, explicit equivalence, runtime/cache identity, fail-closed unsupported shapes, and focused/broad gates | Phase 35 |
+| v3 lineage | Verified-Lineage Contract and TCB Declaration | Complete; "verified" now means safety + Arrow well-formedness evidence lineage only, with explicit TCB and seam ownership for Phase 37-40 | Phase 36 |
 
 ## Session Continuity
 
-Last session: 2026-06-09T08:57:45.602Z
-Stopped at: Phase 36 context gathered
+Last session: 2026-06-09T09:01:28Z
+Stopped at: Phase 36 complete; ready for Phase 37
 
 Phase 17 handoff:
 

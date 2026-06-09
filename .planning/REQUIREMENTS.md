@@ -159,6 +159,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 - [x] **PHASE-35**: Verifier-accepted default `LMC2(LMA1)` and explicit direct `LMA1` Arrow semantic artifacts can execute through an engine-neutral native backend for one-batch nullable fixed-width primitive Boolean/Int32/Int64/Float32/Float64 columns, producing a new Arrow `RecordBatch` with explicit native/reference equivalence, runtime/cache identity, fail-closed unsupported Utf8/logical/nested/multi-batch diagnostics, focused/broad gate coverage, and no claim that DuckDB consumes the native route
 
+### Verified Lineage Contract
+
+- [x] **LINEAGE-01**: The MVP1.5 verified-lineage contract defines "verified" as safety + Arrow well-formedness evidence lineage only, keeps source correctness/performance/production readiness as non-claims, and maps each in-scope safety claim to exactly one backing evidence layer: Rust verifier structural check, Bitwuzla SMT discharge, Lean soundness theorem, differential validation, or explicit TCB trust assumption
+- [x] **LINEAGE-02**: The MVP1.5 verified-lineage contract declares the TCB for Rust compiler/std, LLVM + MLIR toolchain, Rust↔C ABI, DuckDB host process, and Arrow C Data Interface, and assigns the Lean↔Rust verifier, static↔dynamic, modeled-executor↔real-executor, and native↔model seams to later MVP1.5 phases or to the TCB
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -260,6 +265,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PHASE-33 | Phase 33 | Complete |
 | PHASE-34 | Phase 34 | Complete |
 | PHASE-35 | Phase 35 | Complete |
+| LINEAGE-01 | Phase 36 | Complete |
+| LINEAGE-02 | Phase 36 | Complete |
 
 **Coverage:**
 
@@ -278,9 +285,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 lmc2-arrow-semantic-container-wrapper requirements: 1 total
 - v3 duckdb-arrow-semantic-sql-surface requirements: 1 total
 - v3 native-arrow-semantic-execution requirements: 1 total
-- Mapped to phases: 81
+- v3 verified-lineage requirements: 2 total
+- Mapped to phases: 83
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-09 — Phase 35 Native Arrow Semantic Execution complete*
+*Last updated: 2026-06-09 — Phase 36 Verified-Lineage Contract complete*

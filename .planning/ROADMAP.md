@@ -76,9 +76,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads (completed 2026-06-09)
 - [x] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback (completed 2026-06-09)
 
-**MVP1.5 — Verified Lineage** *(future milestone — planned, not active; supersedes the earlier parked Phase 36/37. Stages 0/B/C/D do not depend on Phase 35 and may start while Phase 35 is in flight; only Phase 40 depends on Phase 35. Standing red line: Loom guarantees safety + well-formedness, never correctness — every "verified" claim maps to one named evidence layer or to the explicit TCB.)*
+**MVP1.5 — Verified Lineage** *(active as of Phase 36; supersedes the earlier parked Phase 36/37. Stages 0/B/C/D do not depend on Phase 35; only Phase 40 depends on Phase 35. Standing red line: Loom guarantees safety + well-formedness, never correctness — every "verified" claim maps to one named evidence layer or to the explicit TCB.)*
 
-- [ ] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface)
+- [x] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface) (completed 2026-06-09)
 - [ ] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
 - [ ] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
 - [ ] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
@@ -967,17 +967,17 @@ Plans:
 
 ## Milestone: MVP1.5 — Verified Lineage
 
-> **Status: planned, not active.** Supersedes the earlier parked Phase 36/37 by wrapping Lean Stage B/C as the middle stages of a six-phase lineage milestone. Requirement IDs below (`LINEAGE-*`) are placeholders to be defined when the milestone is formally started via `/gsd-new-milestone`.
+> **Status: active.** Supersedes the earlier parked Phase 36/37 by wrapping Lean Stage B/C as the middle stages of a six-phase lineage milestone. Phase 36 has now defined the `LINEAGE-01`/`LINEAGE-02` contract requirements; later `LINEAGE-*` IDs remain placeholders until their phases start.
 
 **Thesis:** Turn the current Lean *structural projection* into a load-bearing, machine-checked soundness story that is *connected to the executor users actually run*. This milestone does **not** add features, formats, engines, or speed; it makes "verifier accepts ⟹ safe" true about the running system within a stated TCB, and makes each artifact carry an inspectable record of *why* it is trusted.
 
 **Standing red line:** Loom guarantees *safety + well-formedness*, never *correctness*. Every "verified" claim must map to one named evidence layer (Rust verifier / Bitwuzla SMT / Lean soundness / differential validation / explicit TCB trust assumption). The Rust+C+++MLIR/LLVM toolchain gap stays in the TCB permanently and must never be silently closed by a productization claim.
 
-**Critical-path coupling:** Phases 36/37/38/39 do **not** depend on MVP1 Phase 35 and may start while Phase 35 is in flight. Only **Phase 40** depends on Phase 35.
+**Critical-path coupling:** Phases 36/37/38/39 do **not** depend on MVP1 Phase 35. Only **Phase 40** depends on Phase 35.
 
 ### Phase 36: Verified-Lineage Contract and TCB Declaration
 
-**Status:** Not started.
+**Status:** Complete. Phase 36 created `36-VERIFIED-LINEAGE-CONTRACT.md`, defining "verified" as safety + Arrow well-formedness evidence lineage only, mapping each safety claim to exactly one evidence layer, declaring the TCB, assigning trust seams to Phase 37-40 or TCB, and closing LINEAGE-01/LINEAGE-02 without adding proofs or code.
 **Goal:** A normative document that fixes the meaning of "verified" at MVP1.5 exit, an obligation matrix, and a TCB clause that lists every component trusted but not proven.
 **Depends on:** MVP1 Phase 32 (review audit), Phase 19 (solver), current Lean scaffold (quick task 260609-lb2).
 **Requirements:** LINEAGE-01, LINEAGE-02
@@ -989,7 +989,11 @@ Plans:
 
 **Non-goals:** No proofs, no code; defines boundaries only. Must not redefine the MVP1 safety story or weaken the "never correctness" red line.
 **Ordering decision:** The word "verified" must be pinned before any proof work, or MVP1.5 risks the exact overclaim Phase 32 was created to police.
-**Plans:** 1 plan. Wave 1: 36-01 contract + obligation matrix + TCB clause.
+**Plans:** 1/1 plan executed.
+
+Plans:
+
+- [x] 36-01-PLAN.md - Verified-lineage contract, obligation matrix, TCB clause, requirements, and closeout
 
 ### Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence
 
@@ -1239,7 +1243,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
 | 35. Native Arrow Semantic Execution | 5/5 | Complete | 2026-06-09 |
-| 36. Verified-Lineage Contract and TCB Declaration | 0/0 | Planned (MVP1.5) | - |
+| 36. Verified-Lineage Contract and TCB Declaration | 1/1 | Complete | 2026-06-09 |
 | 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 0/0 | Planned (MVP1.5) | - |
 | 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |
 | 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |

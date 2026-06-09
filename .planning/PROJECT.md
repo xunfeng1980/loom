@@ -61,12 +61,13 @@ host integration.
 - ✓ Native equivalence, cache, and fallback hardening: public `loom_scan(path)` now has release-gated evidence for supported non-null primitive native equivalence, same-process in-process cache miss/insert/hit smoke behavior, key-driven invalidation, unsupported-route fallback/strict fail-closed diagnostics, malformed/cancel/mismatch recovery, and a final bounded report at `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md` — Phase 25
 - ✓ DuckDB Arrow semantic SQL surface for `LMC2(LMA1)`: public `loom_scan(path)` now binds and scans default wrapped Arrow semantic artifacts directly, supports one-batch multi-column primitive/Utf8/Boolean nullable SQL with projection/filter/aggregate/null evidence, keeps direct `LMA1` as regression-only bridge input, and fails closed with explicit unsupported diagnostics for Date32 logical and Struct nested fixtures — Phase 34
 - ✓ Native Arrow semantic execution: `loom_core::native_arrow_semantic` verifier-gates default `LMC2(LMA1)` and explicit direct `LMA1`, copies one-batch nullable fixed-width primitive Boolean/Int32/Int64/Float32/Float64 columns through typed builders into a new Arrow `RecordBatch`, exposes explicit native/reference equivalence and mismatch diagnostics, records engine-neutral runtime/cache identity, and gates fail-closed unsupported Utf8/logical/nested/multi-batch behavior through `scripts/native-arrow-semantic-execution-test.sh` and `scripts/mvp1-verify.sh` — Phase 35
+- ✓ Verified-lineage contract: MVP1.5 now has a normative contract that defines "verified" as safety + Arrow well-formedness evidence lineage only, maps each safety claim to exactly one layer (Rust verifier structural check, Bitwuzla SMT discharge, Lean soundness theorem, differential validation, or explicit TCB trust assumption), declares the Rust/std, LLVM/MLIR, Rust↔C ABI, DuckDB host, and Arrow C Data Interface TCB, and assigns Lean↔Rust verifier, static↔dynamic, modeled-executor↔real-executor, and native↔model seams to Phase 37-40 or TCB — Phase 36
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] MVP1.5 Phase 36 is the next planned phase: verified-lineage contract and TCB declaration. This is a future milestone planning item, not part of the completed MVP1 native Arrow semantic execution claim.
+- [ ] MVP1.5 Phase 37 is the next planned phase: Lean ↔ Rust verifier correspondence. It consumes the Phase 36 verified-lineage contract and must not claim operational soundness, real-executor consistency, or native/model validation.
 
 ### Out of Scope
 
@@ -122,7 +123,7 @@ host integration.
 | Phase 11 should introduce a distribution container before formal proof or lowering | The final Loom goal needs a stable artifact/trust boundary; formal verification, MLIR lowering, and real Vortex file ingress should target that boundary rather than raw MVP0 fixture payloads | Complete — Phase 11 |
 | Phase 12 should use obligation matrix + executable gates, not a theorem prover | Current code already has verifier diagnostics, fail-closed decode helpers, `LMC1`, negative gates, and FFI panic containment; a theorem prover would expand scope before the future IR exists | Complete — Phase 12 |
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
-| Phase 13 Lean evidence is scaffold-only | `formal/lean/LoomCore.lean` currently defines key semantic predicates as `True`; no-`sorry` Lean compilation is useful as a theorem-target scaffold but does not carry safety evidence. Treat Rust verifier checks plus Phase 19 Bitwuzla discharge as the current load-bearing evidence. | Complete — Phase 13 / Phase 19 |
+| Phase 13/quick-task Lean evidence is bounded projection evidence | `formal/lean/LoomCore.lean` now has real decidable checker predicates for the current projected AST, but the AST is still lossy and omits SMT-only overflow, variable-environment, and full resource-budget obligations. Treat Rust verifier checks plus Phase 19 Bitwuzla discharge as the current load-bearing evidence until Phase 37/38 close the verifier-correspondence and modeled-soundness gaps. | Complete — Phase 13 / Phase 19 / Phase 36 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Complete — Phase 16 |
@@ -143,6 +144,7 @@ host integration.
 | Phase 33 should settle `LMC2(LMA1)` before broader query/native claims | The distribution contract must be explicit before DuckDB and native backends decide whether they consume direct `LMA1` or wrapped artifacts. | Complete — Phase 33 |
 | Phase 34 should make DuckDB consume default `LMC2(LMA1)` before native Arrow semantic claims | Queryability and native execution are different evidence layers; DuckDB now unwraps/scans default artifacts through interpreter-backed Arrow C Data while Phase 35 remains engine-neutral native execution. | Complete — Phase 34 |
 | Phase 35 should remain engine-neutral and separate from DuckDB SQL | Native correctness should be proven as verifier-gated Arrow semantic execution with explicit equivalence/runtime/cache evidence before any host consumes it. | Complete — Phase 35 |
+| Phase 36 should pin "verified" before proof work | MVP1.5 must not let bounded/scaffolded/skipped evidence drift into broad correctness language; every verified claim now maps to one named evidence layer or explicit TCB trust assumption. | Complete — Phase 36 |
 
 ## Evolution
 
@@ -162,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 after Phase 35 closeout — native Arrow semantic execution is now engine-neutral, verifier-gated, and bounded to one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.*
+*Last updated: 2026-06-09 after Phase 36 closeout — verified-lineage wording now means safety + Arrow well-formedness evidence lineage only, with explicit TCB and later-phase seam ownership.*
