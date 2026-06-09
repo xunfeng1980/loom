@@ -6,6 +6,7 @@
 
 use std::sync::Arc;
 
+use arrow_array::{make_array, RecordBatch};
 use arrow_data::ArrayData;
 use arrow_schema::{Schema, SchemaRef};
 
@@ -54,6 +55,29 @@ impl ArrowSemanticBatch {
         Self::try_new(Arc::new(schema), Vec::new())
     }
 
+    pub fn from_record_batch(batch: &RecordBatch) -> Result<Self, LoomDecodeError> {
+        Self::try_new(
+            batch.schema(),
+            batch
+                .columns()
+                .iter()
+                .map(|column| column.to_data())
+                .collect(),
+        )
+    }
+
+    pub fn to_record_batch(&self) -> Result<RecordBatch, LoomDecodeError> {
+        let arrays = self
+            .columns
+            .iter()
+            .cloned()
+            .map(make_array)
+            .collect::<Vec<_>>();
+        RecordBatch::try_new(self.schema.clone(), arrays).map_err(|_| {
+            LoomDecodeError::MalformedLayoutPayload("arrow semantic record batch reconstruction")
+        })
+    }
+
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
     }
@@ -100,5 +124,26 @@ impl ArrowSemanticPayload {
 
     pub fn row_count(&self) -> usize {
         self.batches.iter().map(ArrowSemanticBatch::row_count).sum()
+    }
+
+    pub fn from_record_batches(batches: &[RecordBatch]) -> Result<Self, LoomDecodeError> {
+        let first = batches
+            .first()
+            .ok_or(LoomDecodeError::MalformedLayoutPayload(
+                "arrow semantic payload has no batches",
+            ))?;
+        let schema = first.schema();
+        let batches = batches
+            .iter()
+            .map(ArrowSemanticBatch::from_record_batch)
+            .collect::<Result<Vec<_>, _>>()?;
+        Self::try_new(schema, batches)
+    }
+
+    pub fn to_record_batches(&self) -> Result<Vec<RecordBatch>, LoomDecodeError> {
+        self.batches
+            .iter()
+            .map(ArrowSemanticBatch::to_record_batch)
+            .collect()
     }
 }

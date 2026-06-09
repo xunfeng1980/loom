@@ -3500,6 +3500,7 @@ dependencies = [
  "arrow",
  "arrow-array",
  "arrow-data",
+ "arrow-ipc",
  "arrow-schema",
  "fsst-rs",
  "ron",

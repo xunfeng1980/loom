@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 31 plan 31-01 complete; 31-02 next
-last_updated: "2026-06-09T01:55:00Z"
-last_activity: 2026-06-09 -- Phase 31 plan 31-01 completed with Arrow semantic contract and core scaffolds
+stopped_at: Phase 31 plan 31-02 complete; 31-03 and 31-04 next
+last_updated: "2026-06-09T01:56:00Z"
+last_activity: 2026-06-09 -- Phase 31 plan 31-02 completed with IPC-backed LMA1 Arrow semantic codec
 progress:
   total_phases: 31
   completed_phases: 29
   total_plans: 133
-  completed_plans: 126
+  completed_plans: 127
   percent: 94
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 31
-Plan: 31-02 next; 31-01 complete
+Plan: 31-03 and 31-04 next; 31-01 through 31-02 complete
 Status: Phase 31 in progress; Phase 30 dual-query remains partial/deferred and is not blocking the source-compatibility reset
-Last activity: 2026-06-09 -- Phase 31 plan 31-01 completed
+Last activity: 2026-06-09 -- Phase 31 plan 31-02 completed
 
 Progress: 94%
 
 ## Progress Snapshot
 
 - Completed phases: 29 / 31
-- Completed executable plans: 126 / 133
+- Completed executable plans: 127 / 133
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 31 in progress: `LMC2`/`LMA1` contract and core scaffolds exist; deterministic codec/verifier matrix is next
+- Current position: Phase 31 in progress: `LMA1` Arrow semantic codec exists; Parquet and Lance semantic source emission are next
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/mvp0-verify.sh` passed with Phase 28 wired before Phase 29 Iceberg binding
 
 **Completed phase plan counts:**
@@ -62,7 +62,7 @@ Progress: 94%
 | 28 | Full Lance + Parquet + Vortex semantic compatibility | 5/5 complete |
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
-| 31 | Full Arrow Semantic Source Compatibility | 1/6 complete; 31-02 next |
+| 31 | Full Arrow Semantic Source Compatibility | 2/6 complete; 31-03/31-04 next |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -138,6 +138,7 @@ Recent decisions affecting current work:
 - [Phase 31]: New source compatibility artifacts should use `LMC2`/`LMA1`; old `LMC1(LMP1/LMT1)` remains legacy narrow evidence and must not carry new full-schema claims.
 - [Phase 31]: Native MLIR and query-engine coverage are optimization/surface layers, not prerequisites for full source semantic compatibility.
 - [Phase 31]: 31-01 added the `LMC2`/`LMA1` Arrow semantic contract and core module scaffolds; `NullableRaw` WIP is not present in `loom-core`.
+- [Phase 31]: 31-02 added an IPC-backed `LMA1` codec that verifies Arrow semantic payloads before encode and after decode; Arrow IPC is the carrier, not the trust boundary.
 
 ### Pending Todos
 
