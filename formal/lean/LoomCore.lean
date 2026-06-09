@@ -306,6 +306,30 @@ end
 def checkAuthority (caps : List Capability) (body : List Stmt) : Bool :=
   (checkAuthorityBody caps [] body).isSome
 
+theorem checked_readInput_concrete_in_range
+    (caps : List Capability) (env : ScalarEnv) (cap : String)
+    (offset width : ScalarExpr) (bind : String) (next : ScalarEnv) :
+    checkAuthorityStmt caps env (.readInput cap offset width bind) = some next ->
+      ∃ sliceOffset sliceLen,
+        inputSlice? caps cap = some (sliceOffset, sliceLen) ∧
+        exprWellTyped env offset = true ∧
+        exprWellTyped env width = true ∧
+        concreteReadInRange sliceOffset sliceLen offset width = true := by
+  intro h
+  cases hSlice : inputSlice? caps cap with
+  | none =>
+      simp [checkAuthorityStmt, hSlice] at h
+  | some slice =>
+      cases slice with
+      | mk sliceOffset sliceLen =>
+          by_cases hOffset : exprWellTyped env offset
+          · by_cases hWidth : exprWellTyped env width
+            · by_cases hRange : concreteReadInRange sliceOffset sliceLen offset width
+              · refine ⟨sliceOffset, sliceLen, rfl, hOffset, hWidth, hRange⟩
+              · simp [checkAuthorityStmt, hSlice, hOffset, hWidth, hRange] at h
+            · simp [checkAuthorityStmt, hSlice, hOffset, hWidth] at h
+          · simp [checkAuthorityStmt, hSlice, hOffset] at h
+
 /- finite_bounds checker: ForRange finite constant bounds + row budget;
    CursorLoop monotone progress + finite constant row budget. Reject vocabulary
    mirrored: InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded,
@@ -635,7 +659,14 @@ def restoreScalars (before after : ModeledState) : ModeledState :=
 
 def NoOutOfBoundsRead (p : Program) (state : ModeledState) : Prop :=
   (state.status = .failClosed \/ state.reads.all (fun read => read.inBounds) = true) /\
-    no_ambient_authority p
+    no_ambient_authority p /\
+    (∀ caps env cap offset width bind next,
+      checkAuthorityStmt caps env (.readInput cap offset width bind) = some next ->
+        ∃ sliceOffset sliceLen,
+          inputSlice? caps cap = some (sliceOffset, sliceLen) ∧
+          exprWellTyped env offset = true ∧
+          exprWellTyped env width = true ∧
+          concreteReadInRange sliceOffset sliceLen offset width = true)
 
 def BuilderEventsWellTyped (p : Program) (state : ModeledState) : Prop :=
   state.events.all (eventWellTyped state.caps) = true /\
@@ -753,7 +784,12 @@ theorem accepted_program_safe (p : Program) :
     Verified p -> ModeledExecutionSafe p := by
   intro h
   unfold ModeledExecutionSafe ModeledRunSafe
-  exact And.intro (And.intro (execProgram p).readSafety h.right.right)
+  exact And.intro
+    (And.intro (execProgram p).readSafety
+      (And.intro h.right.right
+        (by
+          intro caps env cap offset width bind next hRead
+          exact checked_readInput_concrete_in_range caps env cap offset width bind next hRead)))
     (And.intro (And.intro (execProgram p).eventsTyped h.right.left)
       (And.intro
         (And.intro (execProgram p).rowsWithinMax

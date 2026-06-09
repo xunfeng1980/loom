@@ -60,10 +60,13 @@ for marker in \
     "(execProgram p).readSafety" \
     "inBounds := false" \
     "appendModeledReadOutOfBoundsFailed" \
+    "checked_readInput_concrete_in_range" \
     "modeled executor only"; do
     rg -q -F "${marker}" "${LEAN_FILE}" \
         || fail "Lean modeled soundness marker missing: ${marker}"
 done
+rg -q -F "exact checked_readInput_concrete_in_range" "${LEAN_FILE}" \
+    || fail "accepted_program_safe must carry the static read-boundary bridge theorem"
 ok "Lean modeled executor evidence"
 
 info "Running Lean/Rust verifier differential gate..."

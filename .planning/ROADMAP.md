@@ -1013,7 +1013,7 @@ Plans:
 
 ### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
 
-**Status:** Complete. Phase 38 added a proof-friendly modeled executor in Lean and re-proved `accepted_program_safe` as a no-`sorry` semantic theorem `Verified p -> ModeledExecutionSafe p`, scoped explicitly to the modeled executor. The theorem now consumes `execProgram p` state evidence for reads/events/rows/status together with the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; and the full-verifier gate rejects `_state`/discarded-premise/all-reads-in-bounds invariant regressions. **Supersedes** parked Phase 37.
+**Status:** Complete. Phase 38 added a proof-friendly modeled executor in Lean and re-proved `accepted_program_safe` as a no-`sorry` semantic theorem `Verified p -> ModeledExecutionSafe p`, scoped explicitly to the modeled executor. The theorem now consumes `execProgram p` state evidence for reads/events/rows/status together with the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; `checked_readInput_concrete_in_range` connects static read-input acceptance to the executor's concrete read-range predicate; and the full-verifier gate rejects `_state`/discarded-premise/all-reads-in-bounds invariant/read-boundary regressions. **Supersedes** parked Phase 37.
 **Goal:** A small-step operational semantics over L2Core and a machine-checked theorem that verifier acceptance implies execution safety, scoped to the modeled executor.
 **Depends on:** Phase 37.
 **Requirements:** LINEAGE-05, LINEAGE-06

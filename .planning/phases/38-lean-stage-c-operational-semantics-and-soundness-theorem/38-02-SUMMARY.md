@@ -17,6 +17,13 @@
   invariant. The `.readInput` branch appends `inBounds := false` and
   fail-closes when `concreteReadInRange` fails; `NoOutOfBoundsRead` now means
   the run is fail-closed or every recorded read is in bounds.
+- Remediation note 3, 2026-06-09: added
+  `checked_readInput_concrete_in_range`, a theorem connecting the static
+  `checkAuthorityStmt` read-input acceptance path to the same
+  `concreteReadInRange` predicate used by the modeled executor. The
+  `accepted_program_safe` proof now carries this read-boundary bridge inside
+  `NoOutOfBoundsRead` instead of relying only on the executor's fail-closed
+  read-safety invariant.
 - Added a visible modeled-executor-only theorem scope note in Lean.
 - Strengthened `scripts/full-verifier-test.sh` to check:
   - `ModeledExecutionSafe` exists;
@@ -43,7 +50,17 @@ state evidence: execution either fail-closes or every recorded modeled read is
 in bounds, every recorded modeled builder event is well typed, modeled row use
 is within the carried row bound, and finalization yields a terminal modeled
 status. The theorem also consumes the static `Verified p` premises for
-authority, builder typing, and finite bounds.
+authority, builder typing, and finite bounds. The authority premise is connected
+to runtime read checks through `checked_readInput_concrete_in_range`: a statically
+accepted `ReadInput` branch proves the concrete slice/range predicate that the
+modeled executor uses before recording an in-bounds read.
+
+The theorem still does not assert `Verified p -> (execProgram p).status =
+.finished` for every program, because the current L2Core AST intentionally
+contains an explicit `FailClosed` statement that both the Rust and Lean checker
+surfaces accept for modeled fail-closed behavior. The stronger closed-world
+claim should either reject that statement at verification time or be stated for
+the no-explicit-fail subset.
 
 It does not prove Rust interpreter behavior, native behavior, source
 correctness, performance, compiler correctness, ABI correctness, or host engine
@@ -59,6 +76,7 @@ lean formal/lean/LoomCore.lean
 rg -n "accepted_program_safe|ModeledExecutionSafe|modeled executor" formal/lean/LoomCore.lean
 ! rg -n "_state : ModeledState|intro _h|readsInBounds|rowsUsed := min" formal/lean/LoomCore.lean
 rg -n "readSafety|inBounds := false|appendModeledReadOutOfBoundsFailed|eventsTyped|rowsWithinMax|finalized_status_terminal" formal/lean/LoomCore.lean
+rg -n "checked_readInput_concrete_in_range|exact checked_readInput_concrete_in_range" formal/lean/LoomCore.lean
 bash scripts/full-verifier-test.sh
 git diff --check
 ```

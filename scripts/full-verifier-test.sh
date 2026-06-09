@@ -91,10 +91,13 @@ for marker in \
     "finalized_status_terminal" \
     "(execProgram p).readSafety" \
     "(execProgram p).eventsTyped" \
-    "(execProgram p).rowsWithinMax"; do
+    "(execProgram p).rowsWithinMax" \
+    "checked_readInput_concrete_in_range"; do
     rg -q -F "${marker}" "${LEAN_FILE}" \
         || fail "Lean modeled soundness bridge missing state evidence marker: ${marker}"
 done
+rg -q -F "exact checked_readInput_concrete_in_range" "${LEAN_FILE}" \
+    || fail "accepted_program_safe must consume the static read-boundary bridge theorem"
 if rg -n '\bsorry\b' "${LEAN_FILE}"; then
     fail "Lean proof contains sorry"
 fi
