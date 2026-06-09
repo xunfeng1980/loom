@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dual-query-surface-test.sh - Phase 29 focused DuckDB executable evidence gate.
+# dual-query-surface-test.sh - Phase 30 focused DuckDB executable evidence gate.
 
 set -euo pipefail
 
@@ -34,18 +34,18 @@ check_file() {
     [ -f "${file}" ] || fail "required file missing: ${file}"
 }
 
-echo "=== Loom Phase 29 DuckDB executable evidence gate ==="
+echo "=== Loom Phase 30 DuckDB executable evidence gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
-info "Checking Phase 29 planning artifacts for DuckDB slice..."
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-CONTEXT.md"
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-RESEARCH.md"
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-PATTERNS.md"
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-01-PLAN.md"
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-02-PLAN.md"
-check_file ".planning/phases/29-starrocks-duckdb-dual-query-surface/29-03-PLAN.md"
-ok "Phase 29 DuckDB-slice artifacts are present"
+info "Checking Phase 30 planning artifacts for DuckDB slice..."
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-CONTEXT.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-RESEARCH.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-PATTERNS.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-01-PLAN.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-02-PLAN.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-03-PLAN.md"
+ok "Phase 30 DuckDB-slice artifacts are present"
 
 info "Running adapter-local Rust tests..."
 cargo test -p loom-dual-query-surface --test dependency_boundary
@@ -53,7 +53,7 @@ cargo test -p loom-dual-query-surface --test query_surface_contract
 cargo test -p loom-dual-query-surface --test duckdb_evidence
 ok "Rust evidence tests passed"
 
-info "Generating accepted Phase 28 binding fixture..."
+info "Generating accepted Phase 29 binding fixture..."
 fixture_output="$(cargo run -q -p loom-dual-query-surface --bin emit_dual_query_fixture -- "${OUT_DIR}")"
 artifact_path="$(printf '%s\n' "${fixture_output}" | awk -F= '/^ARTIFACT_PATH=/{print $2}')"
 descriptor_path="$(printf '%s\n' "${fixture_output}" | awk -F= '/^DESCRIPTOR_PATH=/{print $2}')"
@@ -147,7 +147,7 @@ assert_query "count" "SELECT COUNT(*) FROM loom_scan('${artifact_path}')" "3"
 assert_query "sum" "SELECT SUM(id) FROM loom_scan('${artifact_path}')" "48"
 
 echo ""
-echo "${GRN}=== Phase 29 DuckDB executable evidence PASSED ===${RST}"
+echo "${GRN}=== Phase 30 DuckDB executable evidence PASSED ===${RST}"
 echo "  Artifact: ${artifact_path}"
 echo "  Descriptor: ${descriptor_path}"
 echo "  DuckDB expected: ${expected_path}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# iceberg-binding-test.sh - Phase 28 Iceberg binding dependency/scope guard.
+# iceberg-binding-test.sh - Phase 29 Iceberg binding dependency/scope guard.
 
 set -euo pipefail
 
@@ -22,8 +22,8 @@ info() { echo "${YLW}[iceberg-binding]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
-PHASE_DIR=".planning/phases/28-iceberg-ref-table-binding"
-REPORT="${PHASE_DIR}/28-ICEBERG-BINDING-REPORT.md"
+PHASE_DIR=".planning/phases/29-iceberg-ref-table-binding"
+REPORT="${PHASE_DIR}/29-ICEBERG-BINDING-REPORT.md"
 
 check_file() {
     local file="$1"
@@ -244,18 +244,18 @@ if bad:
 PY
 }
 
-echo "=== Loom Phase 28 Iceberg binding dependency/scope guard ==="
+echo "=== Loom Phase 29 Iceberg binding dependency/scope guard ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking adapter crate scaffold..."
-check_file "${PHASE_DIR}/28-CONTEXT.md"
-check_file "${PHASE_DIR}/28-RESEARCH.md"
-check_file "${PHASE_DIR}/28-PATTERNS.md"
-check_file "${PHASE_DIR}/28-01-SUMMARY.md"
-check_file "${PHASE_DIR}/28-02-SUMMARY.md"
-check_file "${PHASE_DIR}/28-03-SUMMARY.md"
-check_file "${PHASE_DIR}/28-04-SUMMARY.md"
+check_file "${PHASE_DIR}/29-CONTEXT.md"
+check_file "${PHASE_DIR}/29-RESEARCH.md"
+check_file "${PHASE_DIR}/29-PATTERNS.md"
+check_file "${PHASE_DIR}/29-01-SUMMARY.md"
+check_file "${PHASE_DIR}/29-02-SUMMARY.md"
+check_file "${PHASE_DIR}/29-03-SUMMARY.md"
+check_file "${PHASE_DIR}/29-04-SUMMARY.md"
 check_file "${REPORT}"
 check_file "crates/loom-iceberg-binding/Cargo.toml"
 check_file "crates/loom-iceberg-binding/src/lib.rs"
@@ -278,7 +278,7 @@ rg -q --fixed-strings '"crates/loom-iceberg-binding"' Cargo.toml \
     || fail "workspace member missing: crates/loom-iceberg-binding"
 ok "adapter crate scaffold and local parser fixtures"
 
-info "Checking Phase 28 binding report evidence markers..."
+info "Checking Phase 29 binding report evidence markers..."
 for marker in \
     "Executive Summary" \
     "Implemented Artifacts" \
@@ -301,7 +301,7 @@ check_marker "forged-oracle-evidence.json" "${REPORT}" "forged oracle evidence f
 check_marker "does not add the official \`iceberg\` crate by default" "${REPORT}" "no-default-iceberg decision"
 check_marker "Current-Phase Tradeoffs" "${REPORT}" "current tradeoffs section"
 check_binding_report_language
-ok "Phase 28 binding report evidence is present"
+ok "Phase 29 binding report evidence is present"
 
 info "Running focused adapter dependency and contract tests..."
 cargo test -p loom-iceberg-binding --test dependency_boundary
@@ -341,7 +341,7 @@ check_no_manifest_patterns "core/ffi/source-ingress/cli manifests" \
     "${source_dep_patterns[@]}"
 ok "dependency placement"
 
-info "Checking source-neutral and public surfaces for Phase 28 scope creep..."
+info "Checking source-neutral and public surfaces for Phase 29 scope creep..."
 check_no_fixed_patterns "generic source-ingress crate" \
     crates/loom-source-ingress/Cargo.toml \
     crates/loom-source-ingress/src/lib.rs \
@@ -459,4 +459,4 @@ check_no_fixed_patterns "branch/tag mutation controls" "${api_surfaces[@]}" -- "
 ok "public, host, and CLI surfaces"
 
 echo ""
-echo "${GRN}=== Phase 28 Iceberg binding dependency/scope guard PASSED ===${RST}"
+echo "${GRN}=== Phase 29 Iceberg binding dependency/scope guard PASSED ===${RST}"

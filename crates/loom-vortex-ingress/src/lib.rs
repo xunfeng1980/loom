@@ -256,6 +256,404 @@ pub struct VortexEncodingCoverage {
     pub notes: Vec<String>,
 }
 
+/// Phase 28 semantic support status for a Vortex shape.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexSemanticSupport {
+    AcceptedNative,
+    AcceptedInterpreter,
+    AcceptedCanonicalized,
+    AcceptedStructured,
+    Unsupported,
+    Rejected,
+    Deferred,
+}
+
+impl VortexSemanticSupport {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AcceptedNative => "accepted-native",
+            Self::AcceptedInterpreter => "accepted-interpreter",
+            Self::AcceptedCanonicalized => "accepted-canonicalized",
+            Self::AcceptedStructured => "accepted-structured",
+            Self::Unsupported => "unsupported",
+            Self::Rejected => "rejected",
+            Self::Deferred => "deferred",
+        }
+    }
+}
+
+/// Evidence class used to compare a Vortex-origin shape against an oracle.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexSemanticOracleClass {
+    None,
+    VortexValueRows,
+    VortexValueAndNulls,
+    VortexValueAndShape,
+    MetadataOnly,
+}
+
+impl VortexSemanticOracleClass {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::VortexValueRows => "vortex-value-rows",
+            Self::VortexValueAndNulls => "vortex-value-and-nulls",
+            Self::VortexValueAndShape => "vortex-value-and-shape",
+            Self::MetadataOnly => "metadata-only",
+        }
+    }
+}
+
+/// Verifier evidence class for emitted Loom artifacts.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexSemanticVerifierClass {
+    None,
+    ArtifactVerifierAccepted,
+    UnsupportedNoEmission,
+    RejectedNoEmission,
+}
+
+impl VortexSemanticVerifierClass {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::ArtifactVerifierAccepted => "artifact-verifier-accepted",
+            Self::UnsupportedNoEmission => "unsupported-no-emission",
+            Self::RejectedNoEmission => "rejected-no-emission",
+        }
+    }
+}
+
+/// Runtime visibility for a semantic compatibility row.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexSemanticRuntimeClass {
+    NotApplicable,
+    DuckDbVisible,
+    InterpreterOnly,
+    NativeCandidate,
+}
+
+impl VortexSemanticRuntimeClass {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotApplicable => "not-applicable",
+            Self::DuckDbVisible => "duckdb-visible",
+            Self::InterpreterOnly => "interpreter-only",
+            Self::NativeCandidate => "native-candidate",
+        }
+    }
+}
+
+/// Native execution evidence class for a semantic compatibility row.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VortexSemanticNativeClass {
+    None,
+    ProductionLoweringSupported,
+    ExecutionEngineValidated,
+    InterpreterOnly,
+    Deferred,
+}
+
+impl VortexSemanticNativeClass {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::ProductionLoweringSupported => "production-lowering-supported",
+            Self::ExecutionEngineValidated => "execution-engine-validated",
+            Self::InterpreterOnly => "interpreter-only",
+            Self::Deferred => "deferred",
+        }
+    }
+}
+
+/// Stable Phase 28 semantic compatibility row.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexSemanticCompatibilityRow {
+    pub shape_id: String,
+    pub original_vortex_shape: String,
+    pub emitted_loom_shape: String,
+    pub support: VortexSemanticSupport,
+    pub oracle_class: VortexSemanticOracleClass,
+    pub verifier_class: VortexSemanticVerifierClass,
+    pub runtime_class: VortexSemanticRuntimeClass,
+    pub native_class: VortexSemanticNativeClass,
+    pub deferral_reason: String,
+    pub evidence_notes: Vec<String>,
+}
+
+/// Validated semantic compatibility matrix.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VortexSemanticCompatibilityReport {
+    pub rows: Vec<VortexSemanticCompatibilityRow>,
+    pub diagnostics: Vec<String>,
+}
+
+pub fn semantic_row_from_vortex_coverage(
+    shape_id: impl Into<String>,
+    coverage: &VortexEncodingCoverage,
+) -> VortexSemanticCompatibilityRow {
+    let support = semantic_support_from_coverage(coverage);
+    let oracle_class = semantic_oracle_from_coverage(coverage, support);
+    let verifier_class = semantic_verifier_from_coverage(coverage);
+    let runtime_class = semantic_runtime_from_coverage(coverage);
+    let native_class = semantic_native_from_coverage(coverage);
+    let deferral_reason = semantic_deferral_reason(coverage, support);
+
+    let mut evidence_notes = coverage.notes.clone();
+    evidence_notes.push(format!(
+        "reader-support={}",
+        coverage.reader_support.as_str()
+    ));
+    evidence_notes.push(format!(
+        "emission-disposition={}",
+        coverage.emission_disposition.as_str()
+    ));
+    evidence_notes.push(format!(
+        "lowering-disposition={}",
+        coverage.lowering_disposition.as_str()
+    ));
+    if !deferral_reason.is_empty() {
+        evidence_notes.push(format!("deferral-reason={deferral_reason}"));
+    }
+
+    VortexSemanticCompatibilityRow {
+        shape_id: shape_id.into(),
+        original_vortex_shape: semantic_original_shape(coverage),
+        emitted_loom_shape: semantic_emitted_shape(coverage),
+        support,
+        oracle_class,
+        verifier_class,
+        runtime_class,
+        native_class,
+        deferral_reason,
+        evidence_notes,
+    }
+}
+
+pub fn semantic_report_from_vortex_coverages<'a, I>(
+    coverages: I,
+) -> VortexSemanticCompatibilityReport
+where
+    I: IntoIterator<Item = (&'a str, &'a VortexEncodingCoverage)>,
+{
+    let rows = coverages
+        .into_iter()
+        .map(|(shape_id, coverage)| semantic_row_from_vortex_coverage(shape_id, coverage))
+        .collect::<Vec<_>>();
+    let diagnostics = rows
+        .iter()
+        .flat_map(validate_semantic_compatibility_row)
+        .collect::<Vec<_>>();
+    VortexSemanticCompatibilityReport { rows, diagnostics }
+}
+
+pub fn validate_semantic_compatibility_row(row: &VortexSemanticCompatibilityRow) -> Vec<String> {
+    let mut diagnostics = Vec::new();
+
+    let accepted = matches!(
+        row.support,
+        VortexSemanticSupport::AcceptedNative
+            | VortexSemanticSupport::AcceptedInterpreter
+            | VortexSemanticSupport::AcceptedCanonicalized
+            | VortexSemanticSupport::AcceptedStructured
+    );
+    if accepted && matches!(row.oracle_class, VortexSemanticOracleClass::None) {
+        diagnostics.push(format!("{}:oracle-evidence-missing", row.shape_id));
+    }
+    if accepted
+        && row.emitted_loom_shape != "none"
+        && row.verifier_class != VortexSemanticVerifierClass::ArtifactVerifierAccepted
+    {
+        diagnostics.push(format!("{}:verifier-evidence-missing", row.shape_id));
+    }
+    if row.support == VortexSemanticSupport::AcceptedStructured
+        && row.emitted_loom_shape.contains("canonical-raw")
+    {
+        diagnostics.push(format!("{}:canonical-raw-overclaim", row.shape_id));
+    }
+    if row.support == VortexSemanticSupport::AcceptedStructured
+        && row.oracle_class != VortexSemanticOracleClass::VortexValueAndShape
+    {
+        diagnostics.push(format!("{}:structured-shape-oracle-missing", row.shape_id));
+    }
+    if row.native_class == VortexSemanticNativeClass::ExecutionEngineValidated
+        && !row
+            .evidence_notes
+            .iter()
+            .any(|note| note.contains("native-execution-engine-output"))
+    {
+        diagnostics.push(format!("{}:native-evidence-missing", row.shape_id));
+    }
+
+    diagnostics
+}
+
+fn semantic_support_from_coverage(coverage: &VortexEncodingCoverage) -> VortexSemanticSupport {
+    match coverage.reader_support {
+        VortexReaderSupport::Rejected => VortexSemanticSupport::Rejected,
+        VortexReaderSupport::Unsupported => VortexSemanticSupport::Unsupported,
+        VortexReaderSupport::Accepted => match coverage.emission_disposition {
+            VortexEmissionDisposition::StructuredLayout => {
+                VortexSemanticSupport::AcceptedStructured
+            }
+            VortexEmissionDisposition::CanonicalRaw | VortexEmissionDisposition::CanonicalTable => {
+                if coverage.lowering_disposition
+                    == VortexLoweringDisposition::ProductionLoweringSupported
+                    && matches!(coverage.array_encoding.as_str(), "primitive" | "struct")
+                {
+                    VortexSemanticSupport::AcceptedNative
+                } else if coverage.lowering_disposition
+                    == VortexLoweringDisposition::InterpreterOnly
+                {
+                    VortexSemanticSupport::AcceptedInterpreter
+                } else {
+                    VortexSemanticSupport::AcceptedCanonicalized
+                }
+            }
+            VortexEmissionDisposition::None => VortexSemanticSupport::Deferred,
+        },
+    }
+}
+
+fn semantic_oracle_from_coverage(
+    coverage: &VortexEncodingCoverage,
+    support: VortexSemanticSupport,
+) -> VortexSemanticOracleClass {
+    if matches!(
+        support,
+        VortexSemanticSupport::Unsupported
+            | VortexSemanticSupport::Rejected
+            | VortexSemanticSupport::Deferred
+    ) {
+        return VortexSemanticOracleClass::MetadataOnly;
+    }
+    if coverage.emission_disposition == VortexEmissionDisposition::StructuredLayout {
+        return VortexSemanticOracleClass::VortexValueAndShape;
+    }
+    if coverage.nullable == Some(true) {
+        return VortexSemanticOracleClass::VortexValueAndNulls;
+    }
+    VortexSemanticOracleClass::VortexValueRows
+}
+
+fn semantic_verifier_from_coverage(
+    coverage: &VortexEncodingCoverage,
+) -> VortexSemanticVerifierClass {
+    match (coverage.reader_support, coverage.emission_kind) {
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmp1)
+        | (VortexReaderSupport::Accepted, VortexReaderEmissionKind::Lmt1) => {
+            VortexSemanticVerifierClass::ArtifactVerifierAccepted
+        }
+        (VortexReaderSupport::Unsupported, _) => VortexSemanticVerifierClass::UnsupportedNoEmission,
+        (VortexReaderSupport::Rejected, _) => VortexSemanticVerifierClass::RejectedNoEmission,
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::None) => {
+            VortexSemanticVerifierClass::None
+        }
+    }
+}
+
+fn semantic_runtime_from_coverage(coverage: &VortexEncodingCoverage) -> VortexSemanticRuntimeClass {
+    match (
+        coverage.reader_support,
+        coverage.emission_kind,
+        coverage.lowering_disposition,
+    ) {
+        (
+            VortexReaderSupport::Accepted,
+            VortexReaderEmissionKind::Lmp1 | VortexReaderEmissionKind::Lmt1,
+            VortexLoweringDisposition::ProductionLoweringSupported,
+        ) => VortexSemanticRuntimeClass::NativeCandidate,
+        (
+            VortexReaderSupport::Accepted,
+            VortexReaderEmissionKind::Lmp1 | VortexReaderEmissionKind::Lmt1,
+            _,
+        ) => VortexSemanticRuntimeClass::DuckDbVisible,
+        (VortexReaderSupport::Accepted, VortexReaderEmissionKind::None, _) => {
+            VortexSemanticRuntimeClass::InterpreterOnly
+        }
+        _ => VortexSemanticRuntimeClass::NotApplicable,
+    }
+}
+
+fn semantic_native_from_coverage(coverage: &VortexEncodingCoverage) -> VortexSemanticNativeClass {
+    match coverage.lowering_disposition {
+        VortexLoweringDisposition::ProductionLoweringSupported => {
+            VortexSemanticNativeClass::ProductionLoweringSupported
+        }
+        VortexLoweringDisposition::InterpreterOnly => VortexSemanticNativeClass::InterpreterOnly,
+        VortexLoweringDisposition::FailClosedDeferred => VortexSemanticNativeClass::Deferred,
+    }
+}
+
+fn semantic_original_shape(coverage: &VortexEncodingCoverage) -> String {
+    let nullable = match coverage.nullable {
+        Some(true) => "nullable",
+        Some(false) => "non-null",
+        None => "unknown-nullability",
+    };
+    format!(
+        "{}:{}:{}:{}",
+        coverage.dtype_kind, nullable, coverage.layout_class, coverage.array_encoding
+    )
+}
+
+fn semantic_emitted_shape(coverage: &VortexEncodingCoverage) -> String {
+    match (coverage.emission_kind, coverage.emission_disposition) {
+        (VortexReaderEmissionKind::None, _) | (_, VortexEmissionDisposition::None) => {
+            "none".to_string()
+        }
+        (VortexReaderEmissionKind::Lmp1, VortexEmissionDisposition::CanonicalRaw) => {
+            "LMC1(LMP1)/canonical-raw".to_string()
+        }
+        (VortexReaderEmissionKind::Lmt1, VortexEmissionDisposition::CanonicalTable) => {
+            "LMC1(LMT1)/canonical-table".to_string()
+        }
+        (_, VortexEmissionDisposition::StructuredLayout) => "LMC1/structured-layout".to_string(),
+        (kind, disposition) => format!("{}({})", kind.as_str(), disposition.as_str()),
+    }
+}
+
+fn semantic_deferral_reason(
+    coverage: &VortexEncodingCoverage,
+    support: VortexSemanticSupport,
+) -> String {
+    if coverage.nullable == Some(true)
+        && matches!(
+            support,
+            VortexSemanticSupport::Unsupported | VortexSemanticSupport::Deferred
+        )
+    {
+        return "nullable-validity-emission-deferred".to_string();
+    }
+    match coverage.array_encoding.as_str() {
+        "dictionary"
+            if coverage.emission_disposition == VortexEmissionDisposition::CanonicalRaw =>
+        {
+            "structured-dictionary-facts-deferred".to_string()
+        }
+        "run-end" | "sequence"
+            if coverage.emission_disposition == VortexEmissionDisposition::CanonicalRaw =>
+        {
+            "structured-run-end-facts-deferred".to_string()
+        }
+        "bitpack" if coverage.emission_disposition == VortexEmissionDisposition::CanonicalRaw => {
+            "structured-bitpack-facts-deferred".to_string()
+        }
+        "frame-of-reference"
+            if coverage.emission_disposition == VortexEmissionDisposition::CanonicalRaw =>
+        {
+            "structured-for-facts-deferred".to_string()
+        }
+        "varbin" if support == VortexSemanticSupport::Unsupported => {
+            "string-params-deferred".to_string()
+        }
+        _ if coverage.lowering_disposition == VortexLoweringDisposition::FailClosedDeferred => {
+            "fail-closed/deferred".to_string()
+        }
+        _ => String::new(),
+    }
+}
+
 /// Stable diagnostic code vocabulary for the complete-reader boundary.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VortexReaderDiagnosticCode {

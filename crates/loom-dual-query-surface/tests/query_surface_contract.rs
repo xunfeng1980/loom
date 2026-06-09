@@ -5,7 +5,7 @@ use loom_dual_query_surface::{
 use loom_iceberg_binding::IcebergBindingStatus;
 
 #[test]
-fn accepted_fixture_bundle_is_bound_by_phase28_evidence() {
+fn accepted_fixture_bundle_is_bound_by_phase29_evidence() {
     let bundle = accepted_fixture_bundle().expect("accepted fixture bundle");
     assert_eq!(
         bundle.accepted.report.status,

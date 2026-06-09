@@ -124,7 +124,9 @@ ok "scripts/native-hardening-test.sh"
 # Keep late release gates ordered by contract dependency:
 # Phase 24 DuckDB native integration -> Phase 25 native hardening ->
 # Phase 26 source ingress contract -> Phase 27 Lance/Parquet ingress ->
-# Phase 28 Iceberg binding -> DuckDB SQL smoke.
+# Phase 28 Lance/Parquet/Vortex semantic compatibility ->
+# Phase 29 Iceberg binding ->
+# DuckDB SQL smoke.
 info "Running Phase 26 source ingress contract gate..."
 bash scripts/source-ingress-contract-test.sh
 ok "scripts/source-ingress-contract-test.sh"
@@ -133,7 +135,11 @@ info "Running Phase 27 Lance/Parquet ingress gate..."
 bash scripts/lance-parquet-ingress-test.sh
 ok "scripts/lance-parquet-ingress-test.sh"
 
-info "Running Phase 28 Iceberg binding gate..."
+info "Running Phase 28 Lance/Parquet/Vortex semantic compatibility gate..."
+bash scripts/vortex-semantic-compatibility-test.sh
+ok "scripts/vortex-semantic-compatibility-test.sh"
+
+info "Running Phase 29 Iceberg binding gate..."
 bash scripts/iceberg-binding-test.sh
 ok "scripts/iceberg-binding-test.sh"
 

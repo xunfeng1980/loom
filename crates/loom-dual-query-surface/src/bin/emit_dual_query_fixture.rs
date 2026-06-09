@@ -18,7 +18,7 @@ fn main() {
         });
     }
     let bundle = write_accepted_fixture_bundle(&out_dir).unwrap_or_else(|report| {
-        panic!("Phase 28 accepted binding fixture was not accepted: {report:?}");
+        panic!("Phase 29 accepted binding fixture was not accepted: {report:?}");
     });
     let descriptors =
         starrocks_descriptors(&bundle.accepted).expect("build StarRocks-compatible descriptors");

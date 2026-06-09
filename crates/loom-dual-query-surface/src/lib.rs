@@ -1,6 +1,6 @@
 //! Adapter-local Phase 29 query-surface evidence.
 //!
-//! This crate consumes Phase 28 accepted Iceberg binding evidence, keeps
+//! This crate consumes Phase 29 accepted Iceberg binding evidence, keeps
 //! executable DuckDB checks on existing `loom_scan(path)`, and emits offline
 //! StarRocks-compatible descriptors. It is not a StarRocks connector, a DuckDB
 //! public SQL expansion, or a generic query-engine framework.

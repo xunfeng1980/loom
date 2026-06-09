@@ -63,9 +63,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 25: Native Equivalence, Cache, and Fallback Hardening** - Bounded oracle/equivalence gates, in-process native preparation cache reuse/invalidation, negative coverage, and release-gate hardening before table-format binding (completed 2026-06-09)
 - [x] **Phase 26: External Source Ingress Contract** - Next active focus for abstracting the Vortex ingress facts, diagnostics, support classification, emission disposition, and verifier-routed emission pattern into a generic source-ingress contract before Lance/MCAP/Zarr/LeRobot-style integrations duplicate it (completed 2026-06-09)
 - [x] **Phase 27: Lance + Parquet Archival Readability / Dataset Ingress** - Verifier-backed Loom artifacts for supported Lance datasets and Parquet files so supported schema, fragment/row-group, and column data remain readable and rewritable across source-reader version drift, with current-version read/write/verify and actual older-version fixture compatibility as the value proof (completed 2026-06-09)
-- [x] **Phase 28: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
-- [ ] **Phase 29: StarRocks + DuckDB Dual Query Surface** - In progress; DuckDB executable evidence slice is complete through real `loom_scan(path)` SQL over Phase 28 accepted bytes, while StarRocks/full dual-surface closeout remains deferred
-- [ ] **Phase 30: Full Vortex Semantic Compatibility** - Placeholder until Phase 29 remaining StarRocks/full dual-surface decisions are resolved or explicitly bypassed again
+- [ ] **Phase 28: Full Lance + Parquet + Vortex Semantic Compatibility** - Active compatibility gate after source ingress/readability evidence and before Iceberg/query-surface work; records accepted, unsupported, rejected, canonicalized, and native-disposition rows without overclaiming full structured support
+- [x] **Phase 29: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
+- [ ] **Phase 30: StarRocks + DuckDB Dual Query Surface** - In progress; DuckDB executable evidence slice is complete through real `loom_scan(path)` SQL over Phase 29 accepted bytes, while StarRocks/full dual-surface closeout remains deferred
 
 ## Phase Details
 
@@ -795,69 +795,69 @@ Plans:
 
 - [x] 27-05-PLAN.md - Release gate wiring, archival readability report, and closeout verification (PHASE-27)
 
-### Phase 28: Iceberg Ref/Table Binding
+### Phase 28: Full Lance + Parquet + Vortex Semantic Compatibility
 
-**Status:** Complete. Phase 28 established the adapter-local Iceberg binding crate, local metadata/sidecar fact parser, verifier/hash/source/oracle accepted binding path, fail-closed mismatch matrix, focused gate, main verifier wiring, and final evidence report without adding query or public API surfaces.
-**Depends on:** Phase 18, Phase 21, Phase 25, Phase 26, and Phase 27.
+**Status:** Active. Reordered ahead of Iceberg and dual-query work so source-family semantic claims are bounded before table/ref binding and query-surface evidence consume them.
+**Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 27.
+**Ordering decision:** Semantic compatibility across Lance, Parquet, and Vortex should be explicit before Iceberg binding or multi-engine query claims. This phase records accepted, unsupported, rejected, canonicalized, and native-disposition rows across the existing source-ingress/readability evidence. It must distinguish original structured semantics from canonical raw/table emission, require oracle/verifier/native evidence before accepted claims, and fail closed on unsupported nullability, nested/logical/string/encoding cases. It must not become an Iceberg binding phase, StarRocks/DuckDB query-surface phase, or a second ABI design phase.
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 28-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-28)
+- [ ] 28-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-28)
+- [ ] 28-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-28)
+- [ ] 28-04-PLAN.md - Structured encoding semantics versus canonical raw evidence (PHASE-28)
+- [ ] 28-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-28)
+
+### Phase 29: Iceberg Ref/Table Binding
+
+**Status:** Complete. Phase 29 established the adapter-local Iceberg binding crate, local metadata/sidecar fact parser, verifier/hash/source/oracle accepted binding path, fail-closed mismatch matrix, focused gate, main verifier wiring, and final evidence report without adding query or public API surfaces.
+**Depends on:** Phase 18, Phase 21, Phase 25, Phase 26, Phase 27, and Phase 28.
 **Goal:** Local Iceberg table/ref metadata can be bound to verifier-backed Loom artifacts through sidecar/reference evidence, preserving schema/snapshot identity, source/oracle evidence, and fail-closed verifier facts without adding query surfaces or a second source-ingress framework.
-**Requirements:** PHASE-28
-**Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
+**Requirements:** PHASE-29
+**Ordering decision:** Bind Loom artifacts to Iceberg reference/table metadata after source-family semantic compatibility is explicitly bounded and before adding more query surfaces. This phase should define how an Iceberg table/ref points at or carries Loom distribution artifacts, how schema/snapshot identity is represented, and how fail-closed verifier facts travel with table metadata. It must not become a StarRocks/DuckDB integration phase or a second source-ingress framework.
 **Plans:** 5/5 plans complete
 Plans:
 
 **Wave 1**
 
-- [x] 28-01-PLAN.md - Crate scaffold, binding data model, and dependency/scope guards (PHASE-28)
+- [x] 29-01-PLAN.md - Crate scaffold, binding data model, and dependency/scope guards (PHASE-29)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [x] 28-02-PLAN.md - Local Iceberg metadata and sidecar fixture parsing with identity/facts extraction (PHASE-28)
+- [x] 29-02-PLAN.md - Local Iceberg metadata and sidecar fixture parsing with identity/facts extraction (PHASE-29)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [x] 28-03-PLAN.md - Accepted binding validation with verifier, hash, source, and oracle evidence (PHASE-28)
+- [x] 29-03-PLAN.md - Accepted binding validation with verifier, hash, source, and oracle evidence (PHASE-29)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [x] 28-04-PLAN.md - Mismatch fail-closed matrix, fixture evidence, and binding report (PHASE-28)
+- [x] 29-04-PLAN.md - Mismatch fail-closed matrix, fixture evidence, and binding report (PHASE-29)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [x] 28-05-PLAN.md - Focused gate wiring, main verifier order, and closeout evidence (PHASE-28)
+- [x] 29-05-PLAN.md - Focused gate wiring, main verifier order, and closeout evidence (PHASE-29)
 
-### Phase 29: StarRocks + DuckDB Dual Query Surface
+### Phase 30: StarRocks + DuckDB Dual Query Surface
 
-**Status:** In progress. DuckDB executable evidence slice completed on 2026-06-09: the adapter-local crate generates a Phase 28 accepted binding fixture, derives canonical rows/count/sum from verifier-accepted bytes, and `scripts/dual-query-surface-test.sh` executes real DuckDB `loom_scan(path)` SQL for ordered rows, predicate, count, and sum. StarRocks runtime smoke, negative matrix expansion, main release-gate wiring, and final dual-surface report remain pending/deferred.
-**Depends on:** Phase 28.
+**Status:** In progress. DuckDB executable evidence slice completed on 2026-06-09: the adapter-local crate generates a Phase 29 accepted binding fixture, derives canonical rows/count/sum from verifier-accepted bytes, and `scripts/dual-query-surface-test.sh` executes real DuckDB `loom_scan(path)` SQL for ordered rows, predicate, count, and sum. StarRocks runtime smoke, negative matrix expansion, main release-gate wiring, and final dual-surface report remain pending/deferred.
+**Depends on:** Phase 29.
 **Ordering decision:** After Iceberg binding exists, prove the same Loom-bound table artifacts can be consumed from both StarRocks and DuckDB query surfaces. This phase should compare integration seams and query behavior across the two engines, rather than inventing a second artifact format.
 **Plans:** 3/5 plans complete for the DuckDB executable slice; 2/5 remain pending/deferred.
 
 Plans:
-- [x] 29-01-PLAN.md - Adapter-local dual query-surface crate and boundary contract (PHASE-29)
-- [x] 29-02-PLAN.md - Accepted binding query matrix and StarRocks-compatible descriptor validation (PHASE-29)
-- [x] 29-03-PLAN.md - Executable DuckDB `loom_scan(path)` evidence and focused gate seed (PHASE-29)
-- [ ] 29-04-PLAN.md - Mismatch fail-closed matrix, scope guards, and optional StarRocks runtime-smoke handling (PHASE-29; pending/deferred)
-- [ ] 29-05-PLAN.md - Focused gate wiring, final report, release evidence, and Phase 30 handoff (PHASE-29; pending/deferred)
+- [x] 30-01-PLAN.md - Adapter-local dual query-surface crate and boundary contract (PHASE-30)
+- [x] 30-02-PLAN.md - Accepted binding query matrix and StarRocks-compatible descriptor validation (PHASE-30)
+- [x] 30-03-PLAN.md - Executable DuckDB `loom_scan(path)` evidence and focused gate seed (PHASE-30)
+- [ ] 30-04-PLAN.md - Mismatch fail-closed matrix, scope guards, and optional StarRocks runtime-smoke handling (PHASE-30; pending/deferred)
+- [ ] 30-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-30; pending/deferred)
 
 Current tradeoff:
-- DuckDB real execution is now strong evidence for the shared Phase 28 accepted artifact and existing public `loom_scan(path)` surface.
+- DuckDB real execution is now strong evidence for the shared Phase 29 accepted artifact and existing public `loom_scan(path)` surface.
 - Full dual-engine evidence is still incomplete until the StarRocks-compatible negative matrix, optional runtime-smoke semantics, release-gate wiring, and final report are finished.
-- Phase 30 must not cite Phase 29 as a completed dual-query or StarRocks runtime proof until the remaining plans complete or a new explicit bypass is recorded.
-
-### Phase 30: Full Vortex Semantic Compatibility
-
-**Status:** Placeholder. Do not begin until Phase 29 remaining dual-query-surface work is completed or explicitly bypassed again.
-**Depends on:** Phase 21, Phase 23, Phase 25, Phase 26, and Phase 29.
-**Ordering decision:** Arbitrary Vortex support is too broad to be hidden inside Phase 21 coverage, Phase 23 backend implementation, or a host-engine integration phase. This phase should explicitly target full Vortex semantic compatibility across encoding families, layout wrappers, chunking/zoning, statistics, projection/predicate interactions, nullability, nested types, and storage modes, with oracle/equivalence matrices and fail-closed diagnostics. It should decide, per encoding, whether Loom represents the original structured semantics, canonicalizes through a verified bridge, or delegates to a trusted native fast path. It must not become another ABI design phase, Iceberg binding phase, or query-surface integration phase.
-
-**Plans:** 5 plans
-
-Plans:
-- [ ] 30-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-30)
-- [ ] 30-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-30)
-- [ ] 30-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-30)
-- [ ] 30-04-PLAN.md - Structured encoding semantics versus canonical raw evidence (PHASE-30)
-- [ ] 30-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-30)
+- Phase 30 must not cite the StarRocks runtime path as complete until the remaining plans complete or a new explicit bypass is recorded.
 
 ## Progress
 
@@ -893,6 +893,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 25. Native Equivalence, Cache, and Fallback Hardening | 5/5 | Complete    | 2026-06-09 |
 | 26. External Source Ingress Contract | 5/5 | Complete    | 2026-06-09 |
 | 27. Lance + Parquet Archival Readability / Dataset Ingress | 5/5 | Complete    | 2026-06-09 |
-| 28. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
-| 29. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |
-| 30. Full Vortex Semantic Compatibility | 0/? | Placeholder | - |
+| 28. Full Lance + Parquet + Vortex Semantic Compatibility | 0/5 | Active | - |
+| 29. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
+| 30. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 29 DuckDB executable evidence slice complete
+stopped_at: Phase 28 semantic compatibility reorder and gate work
 last_updated: "2026-06-08T23:47:05Z"
-last_activity: 2026-06-09 -- Phase 29 DuckDB executable evidence completed; StarRocks/full dual-surface work remains deferred
+last_activity: 2026-06-09 -- Phase 28 reordered to Full Lance + Parquet + Vortex Semantic Compatibility; former Phase 28/29 moved to Phase 29/30
 progress:
   total_phases: 30
   completed_phases: 28
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded Vortex-style payloads, including a mixed-column table payload, and get expected row/aggregate results.
-**Current focus:** Phase 29 — DuckDB executable evidence slice complete; remaining dual-surface work pending
+**Current focus:** Phase 28 — Full Lance + Parquet + Vortex semantic compatibility before Iceberg/query-surface work
 
 ## Current Position
 
-Phase: 29
-Plan: 29-03 complete; 29-04/29-05 pending or deferred
-Status: DuckDB real execution is complete through `scripts/dual-query-surface-test.sh`; StarRocks runtime smoke, negative matrix expansion, main release wiring, and final report are not complete
-Last activity: 2026-06-09 -- Phase 29 DuckDB executable evidence completed
+Phase: 28
+Plan: 28-01..28-05 active
+Status: Semantic compatibility matrix/gate work is active; Phase 29 Iceberg remains complete after reorder, and Phase 30 dual-query remains partial
+Last activity: 2026-06-09 -- Phase 28 semantic compatibility reorder applied
 
 Progress: 96%
 
@@ -37,7 +37,7 @@ Progress: 96%
 - Completed phases: 28 / 30
 - Completed executable plans: 115 / 117
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 29 partial completion: DuckDB executable evidence is complete, but full StarRocks + DuckDB dual-query proof remains incomplete
+- Current position: Phase 28 active: semantic compatibility must be bounded before Phase 29 Iceberg binding and Phase 30 dual-query claims
 - Last verified gate: Phase 28 `bash scripts/iceberg-binding-test.sh` passed after final review fixes; native DuckDB raw-copy gates also pass with non-zero artifact values
 
 **Completed phase plan counts:**
@@ -59,8 +59,9 @@ Progress: 96%
 | 25 | Native equivalence, cache, and fallback hardening | 5/5 complete |
 | 26 | External source ingress contract | 5/5 complete |
 | 27 | Lance + Parquet archival readability / dataset ingress | 5/5 complete |
-| 28 | Iceberg Ref/Table Binding | 5/5 complete |
-| 29 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
+| 28 | Full Lance + Parquet + Vortex semantic compatibility | 0/5 active |
+| 29 | Iceberg Ref/Table Binding | 5/5 complete |
+| 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -124,12 +125,14 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27 P04]: Legacy readability uses actual older writer outputs from parquet 57.0.0 and lance 6.0.0 paired with sibling verifier-accepted Loom artifacts.
 - [Phase 27]: Phase 27 legacy proof remains hard-gated on actual older-version Lance and Parquet fixture paths plus paired verifier-accepted Loom artifacts.
 - [Phase 27]: The main release verifier runs Phase 27 after Phase 26 source ingress and before DuckDB SQL smoke.
-- [Phase 28]: 28-03: Accepted Iceberg bindings require local artifact bytes, recomputed SHA-256, live verify_artifact acceptance, and a sidecar-referenced evidence JSON artifact before bytes are returned.
-- [Phase 28]: 28-03: Sidecar verifier/source/oracle accepted flags are required descriptive inputs only; they are never sufficient to construct accepted binding evidence.
-- [Phase 28]: 28-04: Stale source/oracle evidence row count must match verified Loom artifact rows; sidecar flags remain descriptive only.
-- [Phase 28]: 28-04: Manifest-only sidecars fail before binding facts are considered complete; no official iceberg crate is added by default.
-- [Phase 28]: 28-05: The focused Iceberg binding gate is wired into `scripts/mvp0-verify.sh` after Phase 27 Lance/Parquet and before DuckDB smoke.
-- [Phase 28]: 28-05: Phase 28 remains binding evidence only; no DuckDB/CLI SQL route, StarRocks route, public C ABI, catalog, credential, branch/tag mutation, or default `iceberg` SDK scope was added.
+- [Phase 28]: Phase 28 was reordered ahead of Iceberg/query-surface work to make Lance, Parquet, and Vortex semantic compatibility claims explicit before table/ref binding consumes them.
+- [Phase 28]: Current semantic gate records accepted, unsupported, rejected, canonicalized, and native-disposition rows; it must not overclaim canonical raw rows as full structured semantics.
+- [Phase 29]: 29-03: Accepted Iceberg bindings require local artifact bytes, recomputed SHA-256, live verify_artifact acceptance, and a sidecar-referenced evidence JSON artifact before bytes are returned.
+- [Phase 29]: 29-03: Sidecar verifier/source/oracle accepted flags are required descriptive inputs only; they are never sufficient to construct accepted binding evidence.
+- [Phase 29]: 29-04: Stale source/oracle evidence row count must match verified Loom artifact rows; sidecar flags remain descriptive only.
+- [Phase 29]: 29-04: Manifest-only sidecars fail before binding facts are considered complete; no official iceberg crate is added by default.
+- [Phase 29]: 29-05: The focused Iceberg binding gate is wired into `scripts/mvp0-verify.sh` after Phase 28 semantic compatibility and before DuckDB smoke.
+- [Phase 29]: 29-05: Phase 29 remains binding evidence only; no DuckDB/CLI SQL route, StarRocks route, public C ABI, catalog, credential, branch/tag mutation, or default `iceberg` SDK scope was added.
 
 ### Pending Todos
 
@@ -207,12 +210,13 @@ None yet.
 - Phase 25 complete: native equivalence/cache/fallback hardening is release-gated through `scripts/native-hardening-test.sh` and the main `scripts/mvp0-verify.sh` gate. The final report is `.planning/phases/25-native-equivalence-cache-and-fallback-hardening/25-NATIVE-HARDENING-REPORT.md`.
 - Phase 26 complete: external source ingress contract is release-gated through `scripts/source-ingress-contract-test.sh` and wired into the main `scripts/mvp0-verify.sh` gate after Phase 25 native hardening and before DuckDB smoke. The generic `loom-source-ingress` contract preserves source-neutral facts/diagnostics/support/emission/oracle/verifier handoff rules, with Vortex as the reference adapter.
 - Phase 27 complete: Lance + Parquet archival readability through the external source ingress contract is release-gated with current-version and actual older-version Parquet 57.0.0 / Lance 6.0.0 read/write proofs.
-- Phase 28 executing: 28-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
-- Phase 28 executing: 28-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
-- Phase 28 executing: 28-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
-- Phase 28 complete: 28-05 finalized and wired `scripts/iceberg-binding-test.sh` into the main release verifier after Phase 27 and before DuckDB smoke, recorded closeout evidence, and kept Iceberg binding out of public query/API/catalog/credential surfaces.
-- Phase 29 partial completion on 2026-06-09: DuckDB executable evidence over Phase 28 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
-- Phase 29 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
+- Phase 28 active: Full Lance + Parquet + Vortex semantic compatibility now precedes Iceberg binding and dual-query work; focused semantic matrix/gate implementation is in progress.
+- Phase 29 executing: 29-01 established the adapter-local `loom-iceberg-binding` crate, binding report contract, exact `serde_json` pin, and dependency/public-surface guards.
+- Phase 29 executing: 29-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
+- Phase 29 executing: 29-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
+- Phase 29 complete: 29-05 finalized and wired `scripts/iceberg-binding-test.sh` into the main release verifier after Phase 28 semantic compatibility and before DuckDB smoke, recorded closeout evidence, and kept Iceberg binding out of public query/API/catalog/credential surfaces.
+- Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
+- Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 
 ### Quick Tasks Completed
 
@@ -269,9 +273,9 @@ None yet.
 | v3 engine | Native equivalence, cache, and fallback hardening | Complete | Phase 25 |
 | v3 ingress | External source ingress contract | Complete | Phase 26 |
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Complete | Phase 27 |
-| v3 table | Iceberg ref/table binding | Complete | Phase 28 |
-| v3 engine | StarRocks + DuckDB dual query surface | DuckDB executable slice complete; full dual-surface pending/deferred | Phase 29 |
-| v3 compatibility | Full Vortex semantic compatibility | Waiting on Phase 29 completion or explicit bypass | Phase 30 |
+| v3 compatibility | Full Lance + Parquet + Vortex semantic compatibility | Active | Phase 28 |
+| v3 table | Iceberg ref/table binding | Complete | Phase 29 |
+| v3 engine | StarRocks + DuckDB dual query surface | DuckDB executable slice complete; full dual-surface pending/deferred | Phase 30 |
 
 ## Session Continuity
 
@@ -340,7 +344,7 @@ Resume file: None
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P03 | 5m23s | 3 tasks | 5 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P04 | 62m | 3 tasks | 20 files |
 | Phase 27-lance-parquet-archival-readability-dataset-ingress P05 | 57m | 3 tasks | 3 files |
-| Phase 28-iceberg-ref-table-binding P01 | 4m | 3 tasks | 8 files |
-| Phase 28-iceberg-ref-table-binding P03 | 5m37s | 3 tasks | 8 files |
-| Phase 28-iceberg-ref-table-binding P04 | 9min | 3 tasks | 9 files |
-| Phase 28-iceberg-ref-table-binding P05 | ~30min | 3 tasks | 5 files |
+| Phase 29-iceberg-ref-table-binding P01 | 4m | 3 tasks | 8 files |
+| Phase 29-iceberg-ref-table-binding P03 | 5m37s | 3 tasks | 8 files |
+| Phase 29-iceberg-ref-table-binding P04 | 9min | 3 tasks | 9 files |
+| Phase 29-iceberg-ref-table-binding P05 | ~30min | 3 tasks | 5 files |

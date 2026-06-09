@@ -138,7 +138,7 @@ pub fn validate_starrocks_descriptor(
     }
     if descriptor.identity != expected {
         return Err(DualQuerySurfaceDiagnostic::rejected(
-            "descriptor identity does not match accepted Phase 28 binding",
+            "descriptor identity does not match accepted Phase 29 binding",
         ));
     }
     if descriptor.projection != ["id"] {
@@ -214,7 +214,7 @@ fn decode_single_i32_id_column(
     })?;
     if table.columns.len() != 1 || table.columns[0].name != "id" {
         return Err(DualQuerySurfaceDiagnostic::unsupported(
-            "Phase 29 DuckDB evidence supports one Int32 column named id",
+            "Phase 30 DuckDB evidence supports one Int32 column named id",
         ));
     }
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -226,7 +226,7 @@ fn decode_single_i32_id_column(
     let ids = Int32Array::from(arrays[0].clone());
     if ids.null_count() != 0 {
         return Err(DualQuerySurfaceDiagnostic::unsupported(
-            "Phase 29 DuckDB evidence supports non-null Int32 id values only",
+            "Phase 30 DuckDB evidence supports non-null Int32 id values only",
         ));
     }
     Ok((0..ids.len()).map(|idx| ids.value(idx)).collect())
