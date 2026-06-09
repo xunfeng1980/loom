@@ -7,11 +7,13 @@ use arrow_array::{
     StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic_codec::decode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::{
+    decode_arrow_semantic_container_payload, is_arrow_semantic_container,
+};
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_parquet_ingress::{
-    emit_source_ingress_lma1_from_parquet_path, parquet_arrow_oracle_batches_from_path,
+    emit_source_ingress_lmc2_from_parquet_path, parquet_arrow_oracle_batches_from_path,
 };
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
@@ -62,9 +64,16 @@ fn primitive_table_path(temp: &TempDir) -> std::path::PathBuf {
 }
 
 fn assert_emitted_artifact_is_verifier_accepted(bytes: &[u8]) {
+    assert!(is_arrow_semantic_container(bytes));
     let registry = L2KernelRegistry::default_for_mvp0();
     let report = verify_artifact(bytes, &registry, &Default::default());
     assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+    let facts = report.facts().expect("accepted LMC2 facts");
+    assert_eq!(facts.artifact_kind, "LMC2");
+    assert_eq!(
+        facts.payload_kind.as_deref(),
+        Some("Arrow semantic payload")
+    );
 }
 
 fn assert_arrow_oracle_batch(path: &Path, expected_schema: &[(&str, DataType)]) {
@@ -83,23 +92,24 @@ fn assert_arrow_oracle_batch(path: &Path, expected_schema: &[(&str, DataType)]) 
     }
 }
 
-fn assert_lma1_matches_arrow_oracle(path: &Path, bytes: &[u8]) {
+fn assert_lmc2_matches_arrow_oracle(path: &Path, bytes: &[u8]) {
     let source = parquet_arrow_oracle_batches_from_path(path).expect("Arrow oracle batches");
-    let decoded = decode_arrow_semantic_payload(bytes)
-        .expect("decode LMA1")
+    let decoded = decode_arrow_semantic_container_payload(bytes)
+        .expect("decode LMC2")
         .to_record_batches()
-        .expect("LMA1 record batches");
+        .expect("LMC2 record batches");
     assert_eq!(decoded, source);
 }
 
 #[test]
-fn accepted_single_column_handoff_is_verifier_routed_lma1() {
+fn accepted_single_column_handoff_is_verifier_routed_lmc2() {
     let temp = TempDir::new().expect("tempdir");
     let path = single_i32_path(&temp);
     let accepted =
-        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lmc2_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     assert!(!accepted.bytes.is_empty());
+    assert!(accepted.bytes.starts_with(b"LMC2"));
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
     assert_eq!(
@@ -124,24 +134,25 @@ fn accepted_single_column_handoff_is_verifier_routed_lma1() {
         .report
         .artifact_verification
         .summary
-        .contains("LMA1"));
+        .contains("LMC2"));
     assert!(accepted
         .report
         .artifact_verification
         .summary
         .contains("Arrow semantic payload"));
-    assert_lma1_matches_arrow_oracle(&path, &accepted.bytes);
+    assert_lmc2_matches_arrow_oracle(&path, &accepted.bytes);
     assert_arrow_oracle_batch(&path, &[("id", DataType::Int32)]);
 }
 
 #[test]
-fn accepted_table_handoff_is_verifier_routed_lma1_and_arrow_equivalent() {
+fn accepted_table_handoff_is_verifier_routed_lmc2_and_arrow_equivalent() {
     let temp = TempDir::new().expect("tempdir");
     let path = primitive_table_path(&temp);
     let accepted =
-        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lmc2_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     assert!(!accepted.bytes.is_empty());
+    assert!(accepted.bytes.starts_with(b"LMC2"));
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
     assert_eq!(
@@ -152,7 +163,7 @@ fn accepted_table_handoff_is_verifier_routed_lma1_and_arrow_equivalent() {
         accepted.report.emission_disposition,
         SourceEmissionDisposition::SemanticArrow
     );
-    assert_lma1_matches_arrow_oracle(&path, &accepted.bytes);
+    assert_lmc2_matches_arrow_oracle(&path, &accepted.bytes);
     assert_arrow_oracle_batch(
         &path,
         &[
@@ -169,7 +180,7 @@ fn accepted_handoff_records_arrow_scan_oracle_evidence() {
     let temp = TempDir::new().expect("tempdir");
     let path = primitive_table_path(&temp);
     let accepted =
-        emit_source_ingress_lma1_from_parquet_path(&path).expect("accepted Parquet handoff");
+        emit_source_ingress_lmc2_from_parquet_path(&path).expect("accepted Parquet handoff");
 
     let oracle = accepted
         .report
@@ -188,7 +199,7 @@ fn accepted_handoff_records_arrow_scan_oracle_evidence() {
 }
 
 #[test]
-fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
+fn nullable_extension_nested_and_string_paths_emit_semantic_lmc2() {
     let temp = TempDir::new().expect("tempdir");
     let nullable_schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, true)]));
     let nullable = RecordBatch::try_new(
@@ -198,10 +209,10 @@ fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
     .expect("nullable batch");
     let nullable_path = parquet_path_for_batch(&temp, "nullable", nullable);
 
-    let accepted = emit_source_ingress_lma1_from_parquet_path(&nullable_path)
-        .expect("nullable Parquet emits LMA1");
+    let accepted = emit_source_ingress_lmc2_from_parquet_path(&nullable_path)
+        .expect("nullable Parquet emits LMC2");
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
-    assert_lma1_matches_arrow_oracle(&nullable_path, &accepted.bytes);
+    assert_lmc2_matches_arrow_oracle(&nullable_path, &accepted.bytes);
 
     let extension_field = Field::new("ext_i32", DataType::Int32, false).with_metadata(
         [(
@@ -218,9 +229,9 @@ fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
     )
     .expect("extension batch");
     let extension_path = parquet_path_for_batch(&temp, "extension", extension);
-    let accepted = emit_source_ingress_lma1_from_parquet_path(&extension_path)
-        .expect("extension Parquet emits LMA1");
-    assert_lma1_matches_arrow_oracle(&extension_path, &accepted.bytes);
+    let accepted = emit_source_ingress_lmc2_from_parquet_path(&extension_path)
+        .expect("extension Parquet emits LMC2");
+    assert_lmc2_matches_arrow_oracle(&extension_path, &accepted.bytes);
 
     let nested_field = Arc::new(Field::new("nested_id", DataType::Int32, false));
     let nested_array: ArrayRef = Arc::new(StructArray::from(vec![(
@@ -234,9 +245,9 @@ fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
     )]));
     let nested = RecordBatch::try_new(nested_schema, vec![nested_array]).expect("nested batch");
     let nested_path = parquet_path_for_batch(&temp, "nested", nested);
-    let accepted = emit_source_ingress_lma1_from_parquet_path(&nested_path)
-        .expect("nested Parquet emits LMA1");
-    assert_lma1_matches_arrow_oracle(&nested_path, &accepted.bytes);
+    let accepted = emit_source_ingress_lmc2_from_parquet_path(&nested_path)
+        .expect("nested Parquet emits LMC2");
+    assert_lmc2_matches_arrow_oracle(&nested_path, &accepted.bytes);
 
     let string_schema = Arc::new(Schema::new(vec![Field::new("name", DataType::Utf8, false)]));
     let string = RecordBatch::try_new(
@@ -245,9 +256,9 @@ fn nullable_extension_nested_and_string_paths_emit_semantic_lma1() {
     )
     .expect("string batch");
     let string_path = parquet_path_for_batch(&temp, "string", string);
-    let accepted = emit_source_ingress_lma1_from_parquet_path(&string_path)
-        .expect("string Parquet emits LMA1");
-    assert_lma1_matches_arrow_oracle(&string_path, &accepted.bytes);
+    let accepted = emit_source_ingress_lmc2_from_parquet_path(&string_path)
+        .expect("string Parquet emits LMC2");
+    assert_lmc2_matches_arrow_oracle(&string_path, &accepted.bytes);
 }
 
 #[test]
@@ -255,7 +266,7 @@ fn malformed_path_returns_rejected_report_without_artifact_bytes() {
     let temp = TempDir::new().expect("tempdir");
     let malformed = temp.path().join("malformed.parquet");
     std::fs::write(&malformed, b"not a parquet file").expect("write malformed bytes");
-    let report = emit_source_ingress_lma1_from_parquet_path(&malformed)
+    let report = emit_source_ingress_lmc2_from_parquet_path(&malformed)
         .expect_err("malformed Parquet is rejected");
     assert_eq!(report.status, SourceIngressStatus::Rejected);
     assert!(report.facts.is_none());

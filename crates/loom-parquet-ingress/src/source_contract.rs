@@ -10,7 +10,7 @@ use std::sync::Arc;
 use arrow_array::{Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::{encode_arrow_semantic_payload, wrap_arrow_semantic_payload};
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -74,17 +74,17 @@ pub fn parquet_source_facts_from_path(path: &Path) -> Result<SourceFacts, Source
 
 /// Build a source ingress report for a local Parquet file.
 ///
-/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
+/// Accepted reports are backed by verifier-accepted `LMC2(LMA1)` semantic emission.
 pub fn source_ingress_report_from_parquet_path(path: &Path) -> SourceIngressReport {
-    emit_source_ingress_lma1_from_parquet_path(path)
+    emit_source_ingress_lmc2_from_parquet_path(path)
         .map(|artifact| artifact.report)
         .unwrap_or_else(|report| report)
 }
 
 /// Read a local Parquet file through the official Arrow scan path.
 ///
-/// This is source evidence only. Accepted Loom artifact bytes come from `LMA1`
-/// Arrow semantic emission plus artifact verification.
+/// This is source evidence only. Accepted Loom artifact bytes come from
+/// `LMC2(LMA1)` Arrow semantic emission plus artifact verification.
 pub fn parquet_arrow_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -153,8 +153,22 @@ fn parquet_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngres
         })
 }
 
-/// Emit verifier-accepted `LMA1` bytes for a Parquet source materialized as Arrow.
+/// Historical Phase 31 entry point. Phase 33 emits verifier-accepted
+/// `LMC2(LMA1)` bytes by default.
 pub fn emit_source_ingress_lma1_from_parquet_path(
+    path: &Path,
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    emit_source_ingress_lmc2_from_parquet_path(path)
+}
+
+/// Emit verifier-accepted `LMC2(LMA1)` bytes for a Parquet source materialized as Arrow.
+pub fn emit_source_ingress_lmc2_from_parquet_path(
+    path: &Path,
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    emit_source_ingress_semantic_from_parquet_path(path)
+}
+
+fn emit_source_ingress_semantic_from_parquet_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let facts = parquet_source_facts_from_path(path)?;
@@ -180,6 +194,7 @@ pub fn emit_source_ingress_lma1_from_parquet_path(
         return Err(source_verification_failed_report(
             &facts,
             verification.status().as_str(),
+            "LMC2(LMA1)",
         ));
     }
 
@@ -379,7 +394,8 @@ fn coverage_from_schema(schema: &Schema, metadata: &ParquetMetaData) -> SourceCo
         coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
         coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
         coverage.notes.push(
-            "Parquet Arrow reader materializes this schema for LMA1 semantic emission".to_string(),
+            "Parquet Arrow reader materializes this schema for LMC2-wrapped LMA1 semantic emission"
+                .to_string(),
         );
     } else {
         coverage.support = SourceIngressStatus::Unsupported;
@@ -514,6 +530,20 @@ fn loom_artifact_from_batches(
     schema: SchemaRef,
     batches: &[RecordBatch],
 ) -> Result<Vec<u8>, SourceDiagnostic> {
+    let lma1 = direct_lma1_artifact_from_batches(schema, batches)?;
+    wrap_arrow_semantic_payload(&lma1).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to wrap Parquet LMA1 payload in LMC2: {err}"),
+        )
+    })
+}
+
+fn direct_lma1_artifact_from_batches(
+    schema: SchemaRef,
+    batches: &[RecordBatch],
+) -> Result<Vec<u8>, SourceDiagnostic> {
     let semantic_batches = batches
         .iter()
         .map(ArrowSemanticBatch::from_record_batch)
@@ -536,7 +566,7 @@ fn loom_artifact_from_batches(
         SourceDiagnostic::new(
             SourceDiagnosticCode::UnsupportedConversion,
             "$.payload",
-            format!("failed to encode Parquet LMA1 payload: {err}"),
+            format!("failed to encode direct Parquet LMA1 payload: {err}"),
         )
     })
 }
@@ -748,13 +778,17 @@ fn non_negative_i64_to_u64(value: i64) -> u64 {
     u64::try_from(value).unwrap_or(0)
 }
 
-fn source_verification_failed_report(facts: &SourceFacts, status: &str) -> SourceIngressReport {
+fn source_verification_failed_report(
+    facts: &SourceFacts,
+    status: &str,
+    artifact_kind: &str,
+) -> SourceIngressReport {
     SourceIngressReport::unsupported(
         Some(facts.clone()),
         SourceDiagnostic::new(
             SourceDiagnosticCode::VerificationFailed,
             "$.verification",
-            format!("emitted Parquet LMA1 was not accepted by Loom artifact verifier: {status}"),
+            format!("emitted Parquet {artifact_kind} was not accepted by Loom artifact verifier: {status}"),
         ),
     )
 }

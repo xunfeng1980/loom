@@ -11,7 +11,7 @@ use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures::TryStreamExt;
 use lance::Dataset;
 use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::{encode_arrow_semantic_payload, wrap_arrow_semantic_payload};
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -91,9 +91,9 @@ pub async fn lance_source_facts_from_path(path: &Path) -> Result<SourceFacts, So
 
 /// Build a source ingress report for a local Lance dataset.
 ///
-/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
+/// Accepted reports are backed by verifier-accepted `LMC2(LMA1)` semantic emission.
 pub async fn source_ingress_report_from_lance_path(path: &Path) -> SourceIngressReport {
-    emit_source_ingress_lma1_from_lance_path(path)
+    emit_source_ingress_lmc2_from_lance_path(path)
         .await
         .map(|artifact| artifact.report)
         .unwrap_or_else(|report| report)
@@ -101,8 +101,8 @@ pub async fn source_ingress_report_from_lance_path(path: &Path) -> SourceIngress
 
 /// Read a local Lance dataset through Lance's native scan path.
 ///
-/// This is source evidence only. Accepted Loom artifact bytes come from `LMA1`
-/// Arrow semantic emission plus artifact verification.
+/// This is source evidence only. Accepted Loom artifact bytes come from
+/// `LMC2(LMA1)` Arrow semantic emission plus artifact verification.
 pub async fn lance_native_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -137,8 +137,22 @@ async fn lance_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIn
     Ok(Arc::new(Schema::from(dataset.schema())))
 }
 
-/// Emit verifier-accepted `LMA1` bytes for a Lance source materialized as Arrow.
+/// Historical Phase 31 entry point. Phase 33 emits verifier-accepted
+/// `LMC2(LMA1)` bytes by default.
 pub async fn emit_source_ingress_lma1_from_lance_path(
+    path: &Path,
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    emit_source_ingress_lmc2_from_lance_path(path).await
+}
+
+/// Emit verifier-accepted `LMC2(LMA1)` bytes for a Lance source materialized as Arrow.
+pub async fn emit_source_ingress_lmc2_from_lance_path(
+    path: &Path,
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    emit_source_ingress_semantic_from_lance_path(path).await
+}
+
+async fn emit_source_ingress_semantic_from_lance_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let facts = lance_source_facts_from_path(path).await?;
@@ -166,6 +180,7 @@ pub async fn emit_source_ingress_lma1_from_lance_path(
         return Err(source_verification_failed_report(
             &facts,
             verification.status().as_str(),
+            "LMC2(LMA1)",
         ));
     }
 
@@ -363,9 +378,10 @@ fn coverage_from_schema(schema: &Schema, fragment_count: usize) -> SourceCoverag
         coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
         coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
         coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
-        coverage
-            .notes
-            .push("Lance scanner materializes this schema for LMA1 semantic emission".to_string());
+        coverage.notes.push(
+            "Lance scanner materializes this schema for LMC2-wrapped LMA1 semantic emission"
+                .to_string(),
+        );
     } else {
         coverage.support = SourceIngressStatus::Unsupported;
         coverage.notes.push(unsupported_note(schema));
@@ -538,6 +554,20 @@ fn loom_artifact_from_batches(
     schema: SchemaRef,
     batches: &[RecordBatch],
 ) -> Result<Vec<u8>, SourceDiagnostic> {
+    let lma1 = direct_lma1_artifact_from_batches(schema, batches)?;
+    wrap_arrow_semantic_payload(&lma1).map_err(|err| {
+        SourceDiagnostic::new(
+            SourceDiagnosticCode::UnsupportedConversion,
+            "$.payload",
+            format!("failed to wrap Lance LMA1 payload in LMC2: {err}"),
+        )
+    })
+}
+
+fn direct_lma1_artifact_from_batches(
+    schema: SchemaRef,
+    batches: &[RecordBatch],
+) -> Result<Vec<u8>, SourceDiagnostic> {
     let semantic_batches = batches
         .iter()
         .map(ArrowSemanticBatch::from_record_batch)
@@ -560,7 +590,7 @@ fn loom_artifact_from_batches(
         SourceDiagnostic::new(
             SourceDiagnosticCode::UnsupportedConversion,
             "$.payload",
-            format!("failed to encode Lance LMA1 payload: {err}"),
+            format!("failed to encode direct Lance LMA1 payload: {err}"),
         )
     })
 }
@@ -769,13 +799,17 @@ fn lance_oracle_evidence(
     Ok(evidence)
 }
 
-fn source_verification_failed_report(facts: &SourceFacts, status: &str) -> SourceIngressReport {
+fn source_verification_failed_report(
+    facts: &SourceFacts,
+    status: &str,
+    artifact_kind: &str,
+) -> SourceIngressReport {
     SourceIngressReport::unsupported(
         Some(facts.clone()),
         SourceDiagnostic::new(
             SourceDiagnosticCode::VerificationFailed,
             "$.verification",
-            format!("emitted Lance LMA1 was not accepted by Loom artifact verifier: {status}"),
+            format!("emitted Lance {artifact_kind} was not accepted by Loom artifact verifier: {status}"),
         ),
     )
 }

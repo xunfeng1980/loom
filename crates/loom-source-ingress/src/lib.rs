@@ -308,7 +308,7 @@ impl SourceEmissionKind {
             Self::None => "none",
             Self::Lmp1 => "LMP1",
             Self::Lmt1 => "LMT1",
-            Self::ArrowSemantic => "LMA1",
+            Self::ArrowSemantic => "LMC2(LMA1)",
         }
     }
 }

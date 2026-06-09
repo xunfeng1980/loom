@@ -1,13 +1,13 @@
 use std::sync::LazyLock;
 
-use loom_core::arrow_semantic_codec::decode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::decode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
     SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
 };
 use loom_vortex_ingress::{
-    emit_source_ingress_lma1_from_vortex_buffer, vortex_arrow_oracle_batches_from_buffer,
+    emit_source_ingress_lmc2_from_vortex_buffer, vortex_arrow_oracle_batches_from_buffer,
 };
 use vortex_array::arrays::{StructArray, VarBinArray};
 use vortex_array::dtype::{DType, FieldNames, Nullability};
@@ -70,8 +70,8 @@ fn struct_vortex_bytes() -> Vec<u8> {
     vortex_file_bytes(array)
 }
 
-fn assert_vortex_lma1_roundtrip(bytes: &[u8]) {
-    let accepted = emit_source_ingress_lma1_from_vortex_buffer(bytes)
+fn assert_vortex_lmc2_roundtrip(bytes: &[u8]) {
+    let accepted = emit_source_ingress_lmc2_from_vortex_buffer(bytes)
         .expect("accepted Vortex semantic handoff");
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
     assert_eq!(
@@ -90,27 +90,27 @@ fn assert_vortex_lma1_roundtrip(bytes: &[u8]) {
     let registry = L2KernelRegistry::default_for_mvp0();
     let verification = verify_artifact(&accepted.bytes, &registry, &Default::default());
     assert_eq!(verification.status(), ArtifactVerificationStatus::Accepted);
-    let facts = verification.facts().expect("LMA1 verifier facts");
-    assert_eq!(facts.artifact_kind, "LMA1");
+    let facts = verification.facts().expect("LMC2 verifier facts");
+    assert_eq!(facts.artifact_kind, "LMC2");
     assert_eq!(
         facts.payload_kind.as_deref(),
         Some("Arrow semantic payload")
     );
 
     let source = vortex_arrow_oracle_batches_from_buffer(bytes).expect("Vortex Arrow oracle");
-    let decoded = decode_arrow_semantic_payload(&accepted.bytes)
-        .expect("decode LMA1")
+    let decoded = decode_arrow_semantic_container_payload(&accepted.bytes)
+        .expect("decode LMC2")
         .to_record_batches()
-        .expect("LMA1 batches");
+        .expect("LMC2 batches");
     assert_eq!(decoded, source);
 }
 
 #[test]
-fn vortex_root_primitive_utf8_and_struct_emit_lma1() {
-    assert_vortex_lma1_roundtrip(&vortex_file_bytes(buffer![7i32, -1, 42]));
-    assert_vortex_lma1_roundtrip(&vortex_file_bytes(VarBinArray::from_iter(
+fn vortex_root_primitive_utf8_and_struct_emit_lmc2() {
+    assert_vortex_lmc2_roundtrip(&vortex_file_bytes(buffer![7i32, -1, 42]));
+    assert_vortex_lmc2_roundtrip(&vortex_file_bytes(VarBinArray::from_iter(
         [Some("a"), Some("b"), Some("c")],
         DType::Utf8(Nullability::Nullable),
     )));
-    assert_vortex_lma1_roundtrip(&struct_vortex_bytes());
+    assert_vortex_lmc2_roundtrip(&struct_vortex_bytes());
 }

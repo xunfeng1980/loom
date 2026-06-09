@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use arrow_array::{Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch};
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic_codec::decode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::decode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::decode_table_payload_maybe_container;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
@@ -198,13 +198,13 @@ fn legacy_parquet_fixture_has_paired_verifier_accepted_loom_and_current_rewrite_
     let report = verify_artifact(&accepted.bytes, &registry, &Default::default());
     assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
     assert_eq!(
-        report.facts().expect("accepted LMA1 facts").artifact_kind,
-        "LMA1"
+        report.facts().expect("accepted LMC2 facts").artifact_kind,
+        "LMC2"
     );
-    let semantic_batches = decode_arrow_semantic_payload(&accepted.bytes)
-        .expect("decode current LMA1")
+    let semantic_batches = decode_arrow_semantic_container_payload(&accepted.bytes)
+        .expect("decode current LMC2")
         .to_record_batches()
-        .expect("decode current LMA1 batches");
+        .expect("decode current LMC2 batches");
     assert_eq!(semantic_batches, source_batches);
 
     let temp = TempDir::new().expect("tempdir");

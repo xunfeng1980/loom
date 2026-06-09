@@ -8,11 +8,11 @@ use arrow_array::{
 };
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
-use loom_core::arrow_semantic_codec::decode_arrow_semantic_payload;
+use loom_core::arrow_semantic_codec::decode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_lance_ingress::{
-    emit_source_ingress_lma1_from_lance_path, lance_native_oracle_batches_from_path,
+    emit_source_ingress_lmc2_from_lance_path, lance_native_oracle_batches_from_path,
 };
 use loom_source_ingress::{
     SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
@@ -33,8 +33,8 @@ async fn semantic_case_path(temp: &TempDir, name: &str, batch: RecordBatch) -> s
     path
 }
 
-async fn assert_lance_lma1_roundtrip(path: &Path) {
-    let accepted = emit_source_ingress_lma1_from_lance_path(path)
+async fn assert_lance_lmc2_roundtrip(path: &Path) {
+    let accepted = emit_source_ingress_lmc2_from_lance_path(path)
         .await
         .expect("accepted Lance semantic handoff");
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
@@ -54,8 +54,8 @@ async fn assert_lance_lma1_roundtrip(path: &Path) {
     let registry = L2KernelRegistry::default_for_mvp0();
     let verification = verify_artifact(&accepted.bytes, &registry, &Default::default());
     assert_eq!(verification.status(), ArtifactVerificationStatus::Accepted);
-    let facts = verification.facts().expect("LMA1 verifier facts");
-    assert_eq!(facts.artifact_kind, "LMA1");
+    let facts = verification.facts().expect("LMC2 verifier facts");
+    assert_eq!(facts.artifact_kind, "LMC2");
     assert_eq!(
         facts.payload_kind.as_deref(),
         Some("Arrow semantic payload")
@@ -64,15 +64,15 @@ async fn assert_lance_lma1_roundtrip(path: &Path) {
     let source = lance_native_oracle_batches_from_path(path)
         .await
         .expect("Lance Arrow source");
-    let decoded = decode_arrow_semantic_payload(&accepted.bytes)
-        .expect("decode LMA1")
+    let decoded = decode_arrow_semantic_container_payload(&accepted.bytes)
+        .expect("decode LMC2")
         .to_record_batches()
-        .expect("LMA1 batches");
+        .expect("LMC2 batches");
     assert_eq!(decoded, source);
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn lance_nullable_scalar_bool_utf8_struct_and_list_emit_lma1() {
+async fn lance_nullable_scalar_bool_utf8_struct_and_list_emit_lmc2() {
     let temp = TempDir::new().expect("tempdir");
 
     let nullable_scalars = RecordBatch::try_new(
@@ -89,7 +89,7 @@ async fn lance_nullable_scalar_bool_utf8_struct_and_list_emit_lma1() {
     )
     .expect("nullable scalar batch");
     let path = semantic_case_path(&temp, "nullable-scalars", nullable_scalars).await;
-    assert_lance_lma1_roundtrip(&path).await;
+    assert_lance_lmc2_roundtrip(&path).await;
 
     let nested_list = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
         Some(vec![Some(1), Some(2)]),
@@ -118,5 +118,5 @@ async fn lance_nullable_scalar_bool_utf8_struct_and_list_emit_lma1() {
     )
     .expect("nested batch");
     let path = semantic_case_path(&temp, "nested", nested).await;
-    assert_lance_lma1_roundtrip(&path).await;
+    assert_lance_lmc2_roundtrip(&path).await;
 }
