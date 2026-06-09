@@ -1101,7 +1101,7 @@ Plans:
 
 ### Phase 43: StarRocks Live Runtime Integration
 
-**Status:** In progress. Plan 43-01 completed the typed runtime evidence contract. Current execution is constrained by the local absence of a StarRocks runtime/client; skipped runtime evidence must remain visibly non-accepted until a live query is actually run.
+**Status:** In progress. Plans 43-01 and 43-02 completed the typed runtime evidence contract and focused runtime gate. Local contract mode passes, strict live mode fails closed without StarRocks env/client inputs, and no live StarRocks runtime query has been collected locally yet.
 **Goal:** Prove engine-independence empirically: a live, different query engine consumes the same accepted artifacts and returns equivalent results.
 **Depends on:** Phase 42, MVP1 Phase 22 (ABI) and Phase 30 (StarRocks descriptor evidence).
 **Requirements:** ENGINE-01, ENGINE-02, ENGINE-03
@@ -1113,7 +1113,7 @@ Plans:
 
 **Non-goals:** Not freezing the ABI yet (this phase exists to *inform* the freeze). Not a third engine. Not productization.
 **Ordering decision:** The second consumer must exist before the ABI is frozen, because it is the only thing that can falsify the engine-independence claim — the N=1 gap flagged since MVP1.
-**Plans:** 1/3 complete. Wave 1: [x] `43-01-PLAN.md` StarRocks runtime evidence contract. Wave 2: [ ] `43-02-PLAN.md` cross-engine equivalence + fail-closed runtime gate, [ ] `43-03-PLAN.md` ABI-shape findings + MVP2 wiring.
+**Plans:** 2/3 complete. Wave 1: [x] `43-01-PLAN.md` StarRocks runtime evidence contract. Wave 2: [x] `43-02-PLAN.md` cross-engine equivalence + fail-closed runtime gate, [ ] `43-03-PLAN.md` ABI-shape findings + MVP2 wiring.
 
 ### Phase 44: ABI Freeze and Compatibility Contract
 
@@ -1250,7 +1250,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 3/3 | Complete (MVP2) | 42-03 complete |
-| 43. StarRocks Live Runtime Integration | 1/3 | In Progress (MVP2) | - |
+| 43. StarRocks Live Runtime Integration | 2/3 | In Progress (MVP2) | - |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
