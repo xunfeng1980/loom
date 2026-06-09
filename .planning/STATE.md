@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 40 complete; ready for Phase 41
-last_updated: "2026-06-09T09:33:38.421Z"
-last_activity: 2026-06-09 -- Phase 40 complete with native/model validation gate, fail-closed validated runtime/cache routing, and TCB record
+stopped_at: Phase 41 executing; 41-02 lineage record pending
+last_updated: "2026-06-09T10:15:00.000Z"
+last_activity: 2026-06-09 -- Phase 41 41-01 combined verified-lineage gate implemented and focused gate passed
 progress:
   total_phases: 47
-  completed_phases: 39
-  total_plans: 160
-  completed_plans: 160
-  percent: 82
+  completed_phases: 40
+  total_plans: 164
+  completed_plans: 163
+  percent: 88
 ---
 
 # Project State
@@ -25,19 +25,19 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase 41 READY: Verified-Lineage Closeout
-Plan: 0 of 0
-Status: Phase 40 complete; ready to discuss/plan Phase 41
-Last activity: 2026-06-09 -- Phase 40 wired native/model validation into the verified-lineage gate and recorded permanent TCB/non-claims
+Phase 41 EXECUTING: Verified-Lineage Closeout
+Plan: 1 of 2
+Status: 41-01 complete; 41-02 lineage record pending
+Last activity: 2026-06-09 -- `scripts/verified-lineage-test.sh` added, passed, and wired into `scripts/full-verifier-test.sh`
 
 Progress: Phase 40 complete; Phase 41 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
 - Completed phases: 40 / 47
-- Completed executable plans: 162 / 162
+- Completed executable plans: 163 / 164
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 41 should compose verified-lineage evidence into one gate and artifact lineage record
+- Current position: Phase 41 is composing verified-lineage evidence into one gate and artifact lineage record
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
@@ -268,6 +268,8 @@ None yet.
 - Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readSafety`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; `scripts/full-verifier-test.sh` rejects `_state : ModeledState`, discarded-premise, `readsInBounds`, and row-clamping regressions.
 - Phase 40 executing: 40-01 extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
 - Phase 40 complete: 40-02 added validation-aware native Arrow semantic runtime/cache helpers, wired `scripts/native-model-validation-test.sh` into `scripts/full-verifier-test.sh`, closed LINEAGE-10, and recorded MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation.
+- Phase 41 executing: context and two plans created; 41-01 combined gate is complete and 41-02 lineage record remains pending.
+- Phase 41 41-01 complete: `scripts/verified-lineage-test.sh` now runs the full MVP1.5 evidence matrix and non-claim/TCB markers, is wired into `scripts/full-verifier-test.sh`, and closes LINEAGE-11.
 
 ### Quick Tasks Completed
 

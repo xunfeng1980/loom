@@ -71,7 +71,7 @@ host integration.
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] MVP1.5 Phase 41 is the next planned phase: compose the verified-lineage stages into one gate and add per-artifact verified-lineage records naming evidence layers and TCB assumptions.
+- [ ] MVP1.5 Phase 41 is active: compose the verified-lineage stages into one gate and add per-artifact verified-lineage records naming evidence layers and TCB assumptions.
 
 ### Out of Scope
 

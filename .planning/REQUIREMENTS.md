@@ -184,6 +184,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **LINEAGE-09**: Native Arrow semantic output for every Phase 35 supported shape (`LMC2(LMA1)` and explicit direct `LMA1`, nullable Boolean/Int32/Int64/Float32/Float64 one-batch primitives) is validated against a Phase 39 reference-executor builder-event trace, with injected native/model trace divergence producing stable fail-closed diagnostics
 - [x] **LINEAGE-10**: Runtime route/cache eligibility requires successful native/model validation, divergent or unsupported validation cannot seed native cache identity, and Phase 40 records MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation
 
+### Verified Lineage Closeout
+
+- [x] **LINEAGE-11**: A single `scripts/verified-lineage-test.sh` closeout gate runs the full MVP1.5 evidence matrix fail-closed: Lean build with zero `sorry`, Lean/Rust verifier differential, model/Rust interpreter trace consistency, native/model validation, and stable non-claim/TCB markers
+- [ ] **LINEAGE-12**: Accepted artifacts can produce a verified-lineage record naming structural verifier evidence, Bitwuzla/solver discharge status, Lean modeled soundness evidence, differential-validation gates, and explicit TCB assumptions, while rejected/unsupported artifacts cannot produce a positive lineage claim
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
