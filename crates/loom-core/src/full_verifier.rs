@@ -646,12 +646,8 @@ fn constraint_term(expr: &ScalarExpr) -> ConstraintTerm {
         ScalarExpr::Const(ScalarValue::Bool(value)) => {
             ConstraintTerm::int(if *value { 1 } else { 0 })
         }
-        ScalarExpr::Const(ScalarValue::Float32Bits(value)) => {
-            ConstraintTerm::int((*value).into())
-        }
-        ScalarExpr::Const(ScalarValue::Float64Bits(value)) => {
-            ConstraintTerm::int((*value).into())
-        }
+        ScalarExpr::Const(ScalarValue::Float32Bits(value)) => ConstraintTerm::int((*value).into()),
+        ScalarExpr::Const(ScalarValue::Float64Bits(value)) => ConstraintTerm::int((*value).into()),
         ScalarExpr::Const(ScalarValue::Bytes(_)) => ConstraintTerm::var("<bytes>"),
         ScalarExpr::Var(name) => ConstraintTerm::var(name),
         ScalarExpr::Add(lhs, rhs) => ConstraintTerm::Add(

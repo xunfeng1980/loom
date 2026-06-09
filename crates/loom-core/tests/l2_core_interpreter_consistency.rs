@@ -252,8 +252,10 @@ impl ProductionTraceSubject {
                     self.fail_closed("output-type-mismatch");
                     return;
                 }
-                self.trace
-                    .push(format!("append-value:{builder}:{}", scalar_type_name(&actual)));
+                self.trace.push(format!(
+                    "append-value:{builder}:{}",
+                    scalar_type_name(&actual)
+                ));
             }
             L2CoreStmt::AppendNull { builder } => {
                 let Some((ty, nullable)) = self.output_builders.get(builder) else {

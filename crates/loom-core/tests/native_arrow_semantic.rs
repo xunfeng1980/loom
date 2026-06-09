@@ -81,7 +81,10 @@ fn unsupported_utf8_logical_and_nested_shapes_fail_closed() {
         assert!(!report.is_supported());
         assert!(report.output().is_none());
         let diagnostic = report.first_error().expect("diagnostic");
-        assert_eq!(diagnostic.code, NativeArrowSemanticDiagnosticCode::UnsupportedType);
+        assert_eq!(
+            diagnostic.code,
+            NativeArrowSemanticDiagnosticCode::UnsupportedType
+        );
         assert_eq!(diagnostic.path, expected_path);
     }
 }
@@ -183,7 +186,11 @@ fn injected_native_model_trace_divergence_fails_validation() {
     let wrong_batch = RecordBatch::try_new(
         batch.schema(),
         vec![
-            Arc::new(BooleanArray::from(vec![Some(true), Some(true), Some(false)])) as ArrayRef,
+            Arc::new(BooleanArray::from(vec![
+                Some(true),
+                Some(true),
+                Some(false),
+            ])) as ArrayRef,
             batch.column(1).clone(),
             batch.column(2).clone(),
             batch.column(3).clone(),
@@ -242,7 +249,11 @@ fn divergent_native_model_validation_fails_closed_and_is_not_cacheable() {
     let wrong_batch = RecordBatch::try_new(
         batch.schema(),
         vec![
-            Arc::new(BooleanArray::from(vec![Some(true), Some(true), Some(false)])) as ArrayRef,
+            Arc::new(BooleanArray::from(vec![
+                Some(true),
+                Some(true),
+                Some(false),
+            ])) as ArrayRef,
             batch.column(1).clone(),
             batch.column(2).clone(),
             batch.column(3).clone(),
@@ -392,11 +403,7 @@ fn full_primitive_nullable_batch() -> RecordBatch {
 }
 
 fn utf8_batch() -> RecordBatch {
-    let schema = Arc::new(Schema::new(vec![Field::new(
-        "name",
-        DataType::Utf8,
-        true,
-    )]));
+    let schema = Arc::new(Schema::new(vec![Field::new("name", DataType::Utf8, true)]));
     RecordBatch::try_new(
         schema,
         vec![Arc::new(StringArray::from(vec![Some("alpha"), None, Some("beta")])) as ArrayRef],
@@ -405,11 +412,7 @@ fn utf8_batch() -> RecordBatch {
 }
 
 fn date32_batch() -> RecordBatch {
-    let schema = Arc::new(Schema::new(vec![Field::new(
-        "day",
-        DataType::Date32,
-        true,
-    )]));
+    let schema = Arc::new(Schema::new(vec![Field::new("day", DataType::Date32, true)]));
     RecordBatch::try_new(
         schema,
         vec![Arc::new(Date32Array::from(vec![Some(1), None, Some(3)])) as ArrayRef],

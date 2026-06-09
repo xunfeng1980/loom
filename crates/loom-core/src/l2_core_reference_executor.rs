@@ -180,7 +180,10 @@ impl<'a> ReferenceExecutor<'a> {
                     self.fail_closed("output-type-mismatch");
                     return;
                 }
-                self.trace(format!("append-value:{builder}:{}", scalar_type_name(&actual)));
+                self.trace(format!(
+                    "append-value:{builder}:{}",
+                    scalar_type_name(&actual)
+                ));
             }
             L2CoreStmt::AppendNull { builder } => {
                 let Some(output) = self.output_builders.get(builder) else {

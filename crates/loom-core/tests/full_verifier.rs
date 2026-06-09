@@ -64,7 +64,9 @@ struct CorrespondenceCase {
 }
 
 fn correspondence_classification(program: &L2CoreProgram) -> Option<FullVerificationCode> {
-    verify_l2_core(program).first_error().map(|diagnostic| diagnostic.code)
+    verify_l2_core(program)
+        .first_error()
+        .map(|diagnostic| diagnostic.code)
 }
 
 fn correspondence_classification_str(code: Option<FullVerificationCode>) -> &'static str {

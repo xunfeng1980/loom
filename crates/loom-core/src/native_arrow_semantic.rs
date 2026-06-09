@@ -124,7 +124,6 @@ impl NativeArrowSemanticExecutionReport {
             diagnostics: vec![diagnostic],
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -182,9 +181,7 @@ impl NativeArrowSemanticModelValidationReport {
     }
 }
 
-pub fn execute_native_arrow_semantic(
-    bytes: &[u8],
-) -> NativeArrowSemanticExecutionReport {
+pub fn execute_native_arrow_semantic(bytes: &[u8]) -> NativeArrowSemanticExecutionReport {
     execute_native_arrow_semantic_with_options(bytes, &ArtifactVerificationOptions::default())
 }
 
@@ -254,11 +251,13 @@ pub fn execute_verified_native_arrow_semantic(
     let output = match RecordBatch::try_new(reference.schema(), copied_columns) {
         Ok(batch) => batch,
         Err(_) => {
-            return NativeArrowSemanticExecutionReport::rejected(NativeArrowSemanticDiagnostic::new(
-                NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
-                "$.native.output",
-                "native Arrow semantic output batch construction failed",
-            ));
+            return NativeArrowSemanticExecutionReport::rejected(
+                NativeArrowSemanticDiagnostic::new(
+                    NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+                    "$.native.output",
+                    "native Arrow semantic output batch construction failed",
+                ),
+            );
         }
     };
 
@@ -521,9 +520,9 @@ pub fn decide_native_arrow_semantic_runtime(
     execution: &NativeArrowSemanticExecutionReport,
     policy: RuntimeSafetyPolicy,
 ) -> RuntimePlanDecisionReport {
-    let verifier_rejected = execution
-        .first_error()
-        .is_some_and(|diagnostic| diagnostic.code == NativeArrowSemanticDiagnosticCode::VerifierRejected);
+    let verifier_rejected = execution.first_error().is_some_and(|diagnostic| {
+        diagnostic.code == NativeArrowSemanticDiagnosticCode::VerifierRejected
+    });
     decide_runtime_execution(&crate::runtime_abi::RuntimeDecisionInput {
         artifact_status: if verifier_rejected {
             ArtifactVerificationStatus::Rejected
@@ -618,7 +617,10 @@ pub fn native_arrow_semantic_runtime_cache_key(
         artifact_digest: stable_digest("artifact", bytes),
         facts_fingerprint: format!(
             "artifact_kind={};payload_kind={};rows={};columns={}",
-            execution.artifact_kind, execution.payload_kind, execution.row_count, execution.column_count
+            execution.artifact_kind,
+            execution.payload_kind,
+            execution.row_count,
+            execution.column_count
         ),
         solver_identity: "not-required".to_string(),
         production_lowering_fingerprint: format!(
