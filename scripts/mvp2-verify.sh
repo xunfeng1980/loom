@@ -39,5 +39,9 @@ info "Running Phase 43.1 production native codegen realization gate..."
 bash scripts/production-native-codegen-realization-test.sh
 ok "scripts/production-native-codegen-realization-test.sh"
 
+info "Running Phase 43.2 production native codegen stabilization gate..."
+bash scripts/production-native-codegen-stabilization-test.sh
+ok "scripts/production-native-codegen-stabilization-test.sh"
+
 echo ""
 echo "${GRN}=== MVP2 release gate PASSED ===${RST}"

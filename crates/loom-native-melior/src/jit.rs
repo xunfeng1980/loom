@@ -13,10 +13,10 @@ use loom_core::l2_core::L2CoreProgram;
 use loom_core::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
 use loom_core::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
-    native_arrow_semantic_codegen_replay_evidence,
-    prepare_native_arrow_semantic_codegen_support, validate_native_arrow_semantic_codegen_output,
-    NativeArrowSemanticCodegenExecutionReport, NativeArrowSemanticCodegenOutputColumn,
-    NativeArrowSemanticCodegenReplayEvidence, NativeArrowSemanticCodegenSupportReport,
+    native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
+    validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
+    NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
+    NativeArrowSemanticCodegenSupportReport,
 };
 use loom_core::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
@@ -29,13 +29,13 @@ use crate::backend::{
 use crate::builder::{build_melior_module, MeliorModuleArtifact};
 #[cfg(feature = "melior")]
 use crate::pipeline::LLVM_LOWERING_PIPELINE;
+use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
+use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use crate::toolchain::probe_toolchain;
 use loom_core::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
 };
-use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
-use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
-use crate::toolchain::probe_toolchain;
 
 pub const PRODUCTION_JIT_ENTRY_SYMBOL: &str = "loom_decode_build_buffers";
 pub const ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL: &str = "loom_arrow_semantic_codegen_buffers";
@@ -82,6 +82,35 @@ impl ArrowSemanticCodegenRouteStatus {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrowSemanticCodegenCancellationCheckpoint {
+    BeforeSupport,
+    BeforeJit,
+    BeforeValidation,
+}
+
+impl ArrowSemanticCodegenCancellationCheckpoint {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::BeforeSupport => "before-support",
+            Self::BeforeJit => "before-jit",
+            Self::BeforeValidation => "before-validation",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrowSemanticCodegenResourceEvidence {
+    pub route_steps_completed: Vec<String>,
+    pub cancellation_checkpoint: Option<String>,
+    pub output_buffer_ownership: String,
+    pub output_buffer_lifetime: String,
+    pub release_assumption: String,
+    pub output_value_buffer_bytes: u64,
+    pub output_validity_buffer_bytes: u64,
+    pub raw_pointer_identity_used: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct ArrowSemanticCodegenProductionRouteReport {
     pub status: ArrowSemanticCodegenRouteStatus,
@@ -91,6 +120,7 @@ pub struct ArrowSemanticCodegenProductionRouteReport {
     pub runtime_decision: Option<RuntimePlanDecisionReport>,
     pub replay_evidence: Option<NativeArrowSemanticCodegenReplayEvidence>,
     pub cacheable: bool,
+    pub resource_evidence: ArrowSemanticCodegenResourceEvidence,
     pub diagnostics: Vec<NativeBackendDiagnostic>,
 }
 
@@ -101,7 +131,7 @@ pub fn execute_arrow_semantic_codegen_jit(
     if cancellation.cancelled {
         return Err(NativeBackendDiagnostic::new(
             NativeBackendDiagnosticCode::Cancelled,
-            "$.cancellation",
+            "$.cancellation.before_jit",
             cancellation.reason.clone().unwrap_or_else(|| {
                 "production Arrow semantic codegen JIT was cancelled".to_string()
             }),
@@ -133,7 +163,60 @@ pub fn execute_arrow_semantic_codegen_production_route(
     split: SplitDescriptor,
     policy: RuntimeSafetyPolicy,
 ) -> ArrowSemanticCodegenProductionRouteReport {
+    execute_arrow_semantic_codegen_production_route_inner(
+        bytes,
+        cancellation,
+        None,
+        projection,
+        predicate,
+        split,
+        policy,
+    )
+}
+
+pub fn execute_arrow_semantic_codegen_production_route_with_cancellation_checkpoint(
+    bytes: &[u8],
+    checkpoint: ArrowSemanticCodegenCancellationCheckpoint,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    execute_arrow_semantic_codegen_production_route_inner(
+        bytes,
+        &NativeBackendCancellation::default(),
+        Some(checkpoint),
+        projection,
+        predicate,
+        split,
+        policy,
+    )
+}
+
+fn execute_arrow_semantic_codegen_production_route_inner(
+    bytes: &[u8],
+    cancellation: &NativeBackendCancellation,
+    checkpoint: Option<ArrowSemanticCodegenCancellationCheckpoint>,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    let cancel_before_support = cancellation.cancelled
+        || checkpoint == Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeSupport);
     if cancellation.cancelled {
+        return cancelled_arrow_semantic_codegen_route(
+            unsupported_route_support(),
+            None,
+            ArrowSemanticCodegenCancellationCheckpoint::BeforeSupport,
+            cancellation.reason.clone().unwrap_or_else(|| {
+                "production Arrow semantic codegen route was cancelled before support extraction"
+                    .to_string()
+            }),
+            Vec::new(),
+        );
+    }
+    if cancel_before_support {
         return ArrowSemanticCodegenProductionRouteReport {
             status: ArrowSemanticCodegenRouteStatus::Cancelled,
             support: unsupported_route_support(),
@@ -142,10 +225,22 @@ pub fn execute_arrow_semantic_codegen_production_route(
             runtime_decision: None,
             replay_evidence: None,
             cacheable: false,
+            resource_evidence: arrow_semantic_resource_evidence(
+                &[],
+                Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeSupport),
+                None,
+            ),
             diagnostics: vec![NativeBackendDiagnostic::new(
                 NativeBackendDiagnosticCode::Cancelled,
-                "$.cancellation",
-                cancellation.reason.clone().unwrap_or_else(|| {
+                "$.cancellation.before_support",
+                checkpoint
+                    .map(|checkpoint| {
+                        format!(
+                            "production Arrow semantic codegen route was cancelled at {}",
+                            checkpoint.as_str()
+                        )
+                    })
+                    .unwrap_or_else(|| {
                     "production Arrow semantic codegen route was cancelled before support extraction"
                         .to_string()
                 }),
@@ -170,6 +265,7 @@ pub fn execute_arrow_semantic_codegen_production_route(
             runtime_decision: None,
             replay_evidence: None,
             cacheable: false,
+            resource_evidence: arrow_semantic_resource_evidence(&["support-rejected"], None, None),
             diagnostics: vec![NativeBackendDiagnostic::new(
                 NativeBackendDiagnosticCode::InvalidBackendArtifact,
                 "$.codegen.support",
@@ -178,7 +274,17 @@ pub fn execute_arrow_semantic_codegen_production_route(
         };
     }
 
-    let jit = match execute_arrow_semantic_codegen_jit(&support, cancellation) {
+    let before_jit_cancellation;
+    let jit_cancellation =
+        if checkpoint == Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeJit) {
+            before_jit_cancellation = NativeBackendCancellation::cancelled(
+                "production Arrow semantic codegen route was cancelled before JIT execution",
+            );
+            &before_jit_cancellation
+        } else {
+            cancellation
+        };
+    let jit = match execute_arrow_semantic_codegen_jit(&support, jit_cancellation) {
         Ok(output) => output,
         Err(diagnostic) => {
             let status = if diagnostic.code == NativeBackendDiagnosticCode::Cancelled {
@@ -194,13 +300,39 @@ pub fn execute_arrow_semantic_codegen_production_route(
                 runtime_decision: None,
                 replay_evidence: None,
                 cacheable: false,
+                resource_evidence: arrow_semantic_resource_evidence(
+                    &["support-extracted"],
+                    if diagnostic.code == NativeBackendDiagnosticCode::Cancelled {
+                        Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeJit)
+                    } else {
+                        None
+                    },
+                    None,
+                ),
                 diagnostics: vec![diagnostic],
             };
         }
     };
 
-    validate_arrow_semantic_codegen_production_route_output(
-        bytes, support, jit, projection, predicate, split, policy,
+    let before_validation_cancellation;
+    let validation_cancellation =
+        if checkpoint == Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeValidation) {
+            before_validation_cancellation = NativeBackendCancellation::cancelled(
+                "production Arrow semantic codegen route was cancelled before validation",
+            );
+            &before_validation_cancellation
+        } else {
+            cancellation
+        };
+    validate_arrow_semantic_codegen_production_route_output_with_cancellation(
+        bytes,
+        support,
+        jit,
+        validation_cancellation,
+        projection,
+        predicate,
+        split,
+        policy,
     )
 }
 
@@ -213,6 +345,41 @@ pub fn validate_arrow_semantic_codegen_production_route_output(
     split: SplitDescriptor,
     policy: RuntimeSafetyPolicy,
 ) -> ArrowSemanticCodegenProductionRouteReport {
+    validate_arrow_semantic_codegen_production_route_output_with_cancellation(
+        bytes,
+        support,
+        jit_output,
+        &NativeBackendCancellation::default(),
+        projection,
+        predicate,
+        split,
+        policy,
+    )
+}
+
+pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation(
+    bytes: &[u8],
+    support: NativeArrowSemanticCodegenSupportReport,
+    jit_output: ArrowSemanticCodegenJitOutput,
+    cancellation: &NativeBackendCancellation,
+    projection: ProjectionSet,
+    predicate: PredicateEnvelope,
+    split: SplitDescriptor,
+    policy: RuntimeSafetyPolicy,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    if cancellation.cancelled {
+        return cancelled_arrow_semantic_codegen_route(
+            support,
+            Some(jit_output),
+            ArrowSemanticCodegenCancellationCheckpoint::BeforeValidation,
+            cancellation.reason.clone().unwrap_or_else(|| {
+                "production Arrow semantic codegen route was cancelled before validation"
+                    .to_string()
+            }),
+            vec!["support-extracted", "jit-executed"],
+        );
+    }
+
     let execution = validate_native_arrow_semantic_codegen_output(
         bytes,
         &support,
@@ -223,13 +390,7 @@ pub fn validate_arrow_semantic_codegen_production_route_output(
         decide_validated_native_arrow_semantic_codegen_runtime(&execution, policy);
 
     let replay_evidence = native_arrow_semantic_codegen_replay_evidence(
-        bytes,
-        &support,
-        &execution,
-        projection,
-        predicate,
-        split,
-        policy,
+        bytes, &support, &execution, projection, predicate, split, policy,
     )
     .ok();
 
@@ -251,6 +412,11 @@ pub fn validate_arrow_semantic_codegen_production_route_output(
             )
         })
         .collect();
+    let resource_evidence = arrow_semantic_resource_evidence(
+        &["support-extracted", "jit-executed", "validated"],
+        None,
+        Some(&jit_output),
+    );
 
     ArrowSemanticCodegenProductionRouteReport {
         status,
@@ -260,7 +426,74 @@ pub fn validate_arrow_semantic_codegen_production_route_output(
         runtime_decision: Some(runtime_decision),
         replay_evidence,
         cacheable,
+        resource_evidence,
         diagnostics,
+    }
+}
+
+fn cancelled_arrow_semantic_codegen_route(
+    support: NativeArrowSemanticCodegenSupportReport,
+    jit_output: Option<ArrowSemanticCodegenJitOutput>,
+    checkpoint: ArrowSemanticCodegenCancellationCheckpoint,
+    message: String,
+    completed_steps: Vec<&str>,
+) -> ArrowSemanticCodegenProductionRouteReport {
+    ArrowSemanticCodegenProductionRouteReport {
+        status: ArrowSemanticCodegenRouteStatus::Cancelled,
+        support,
+        jit_output,
+        execution: None,
+        runtime_decision: None,
+        replay_evidence: None,
+        cacheable: false,
+        resource_evidence: arrow_semantic_resource_evidence(
+            &completed_steps,
+            Some(checkpoint),
+            None,
+        ),
+        diagnostics: vec![NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::Cancelled,
+            format!("$.cancellation.{}", checkpoint.as_str().replace('-', "_")),
+            message,
+        )],
+    }
+}
+
+fn arrow_semantic_resource_evidence(
+    completed_steps: &[&str],
+    cancellation_checkpoint: Option<ArrowSemanticCodegenCancellationCheckpoint>,
+    jit_output: Option<&ArrowSemanticCodegenJitOutput>,
+) -> ArrowSemanticCodegenResourceEvidence {
+    let (output_value_buffer_bytes, output_validity_buffer_bytes) = jit_output
+        .map(|output| {
+            output.columns.iter().fold((0_u64, 0_u64), |acc, column| {
+                (
+                    acc.0 + column.value_buffer.len() as u64,
+                    acc.1
+                        + column
+                            .validity_buffer
+                            .as_ref()
+                            .map(|buffer| buffer.len() as u64)
+                            .unwrap_or(0),
+                )
+            })
+        })
+        .unwrap_or((0, 0));
+
+    ArrowSemanticCodegenResourceEvidence {
+        route_steps_completed: completed_steps
+            .iter()
+            .map(|step| (*step).to_string())
+            .collect(),
+        cancellation_checkpoint: cancellation_checkpoint
+            .map(|checkpoint| checkpoint.as_str().to_string()),
+        output_buffer_ownership: "owned-rust-vec".to_string(),
+        output_buffer_lifetime: "route-report-owned-before-host-abi-handoff".to_string(),
+        release_assumption: "dropped-by-rust-owner; no raw pointer release callback exposed yet"
+            .to_string(),
+        output_value_buffer_bytes,
+        output_validity_buffer_bytes,
+        raw_pointer_identity_used: false,
     }
 }
 

@@ -12,7 +12,7 @@ use arrow_array::{
     types::{Float32Type, Float64Type, Int32Type, Int64Type},
     Array, ArrayRef, BooleanArray, PrimitiveArray, RecordBatch,
 };
-use arrow_buffer::{Buffer, NullBuffer};
+use arrow_buffer::{BooleanBuffer, Buffer, NullBuffer};
 use arrow_data::ArrayData;
 use arrow_schema::{DataType, Field};
 
@@ -769,12 +769,7 @@ pub fn native_arrow_semantic_codegen_replay_evidence(
         .validation()
         .expect("supported codegen execution must expose validation");
     let cache_key = validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
-        bytes,
-        execution,
-        projection,
-        predicate,
-        split,
-        policy,
+        bytes, execution, projection, predicate, split, policy,
     )?;
     let artifact_digest = stable_digest("artifact", bytes);
     let support_fingerprint = support_fingerprint(support);
@@ -1263,9 +1258,7 @@ fn extract_codegen_column_input(
     let data = column.to_data();
     let row_count = data.len() as u64;
     let null_count = data.null_count() as u64;
-    let validity_buffer = data
-        .nulls()
-        .map(|nulls| nulls.inner().sliced().as_slice().to_vec());
+    let validity_buffer = data.nulls().map(|nulls| nulls.validity().to_vec());
 
     let (value_buffer_kind, value_buffer) = match field.data_type() {
         DataType::Boolean => {
@@ -1274,7 +1267,10 @@ fn extract_codegen_column_input(
             };
             (
                 NativeArrowSemanticCodegenBufferKind::BooleanValueBitmap,
-                values.values().sliced().as_slice().to_vec(),
+                BooleanBuffer::collect_bool(data.len(), |row| values.value(row))
+                    .sliced()
+                    .as_slice()
+                    .to_vec(),
             )
         }
         DataType::Int32 => (
@@ -1403,9 +1399,10 @@ fn array_from_codegen_column(
     }
 
     let nulls = null_buffer_from_codegen_column(expected, output.validity_buffer)?;
+    let value_buffer = codegen_value_buffer_for_array(expected, output.value_buffer);
     let data = ArrayData::builder(expected.data_type.clone())
         .len(expected.row_count as usize)
-        .add_buffer(Buffer::from(output.value_buffer))
+        .add_buffer(value_buffer)
         .nulls(nulls)
         .build()
         .map_err(|err| {
@@ -1427,6 +1424,23 @@ fn array_from_codegen_column(
             format!("$.schema.fields[{}].type", expected.index),
             "unsupported production native codegen output type",
         )),
+    }
+}
+
+fn codegen_value_buffer_for_array(
+    expected: &NativeArrowSemanticCodegenColumnInput,
+    value_buffer: Vec<u8>,
+) -> Buffer {
+    if !value_buffer.is_empty() {
+        return Buffer::from(value_buffer);
+    }
+
+    match expected.data_type {
+        DataType::Int32 => Buffer::from_vec(Vec::<i32>::new()),
+        DataType::Int64 => Buffer::from_vec(Vec::<i64>::new()),
+        DataType::Float32 => Buffer::from_vec(Vec::<f32>::new()),
+        DataType::Float64 => Buffer::from_vec(Vec::<f64>::new()),
+        _ => Buffer::from(value_buffer),
     }
 }
 
@@ -1455,6 +1469,19 @@ fn null_buffer_from_codegen_column(
             format!("$.codegen.output.columns[{}].validity_buffer", expected.index),
             "production native codegen validity buffer reported all-valid for a nullable column with nulls",
         ));
+    }
+    if let Some(nulls) = nulls.as_ref() {
+        let actual_null_count = nulls.null_count() as u64;
+        if actual_null_count != expected.null_count {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeOutputMismatch,
+                format!("$.codegen.output.columns[{}].validity_buffer", expected.index),
+                format!(
+                    "production native codegen validity buffer has null count {actual_null_count}, expected {}",
+                    expected.null_count
+                ),
+            ));
+        }
     }
     Ok(nulls)
 }

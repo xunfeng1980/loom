@@ -38,6 +38,8 @@ OBLIGATIONS="${PHASE_DIR}/13-PROOF-OBLIGATIONS.md"
 LEAN_FILE="formal/lean/LoomCore.lean"
 TLA_FILE="specs/tla/LoomVerifierPipeline.tla"
 TLA_CFG="specs/tla/LoomVerifierPipeline.cfg"
+TLC_META_DIR="$(mktemp -d "${TMPDIR:-/tmp}/loom-tlc.XXXXXX")"
+trap 'rm -rf "${TLC_META_DIR}"' EXIT
 
 echo "=== Loom Phase 13 full-verifier gate ==="
 echo "Repository: ${REPO_ROOT}"
@@ -146,17 +148,17 @@ ok "scripts/verified-lineage-test.sh"
 if ! command -v tlc >/dev/null 2>&1 && [ -f "${REPO_ROOT}/.tools/tla2tools.jar" ]; then
     info "Running TLC lifecycle model check..."
     if command -v mise >/dev/null 2>&1; then
-        mise exec -- java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -config "${TLA_CFG}" "${TLA_FILE}"
+        mise exec -- java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
         ok "mise exec -- java -jar .tools/tla2tools.jar ${TLA_FILE}"
     else
         require_cmd java "Run: mise install && mise run formal-tools"
-        java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -config "${TLA_CFG}" "${TLA_FILE}"
+        java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
         ok "java -jar .tools/tla2tools.jar ${TLA_FILE}"
     fi
 else
     require_cmd tlc "Run: mise run formal-tools"
     info "Running TLC lifecycle model check..."
-    tlc -config "${TLA_CFG}" "${TLA_FILE}"
+    tlc -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
     ok "tlc ${TLA_FILE}"
 fi
 

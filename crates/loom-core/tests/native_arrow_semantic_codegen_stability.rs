@@ -10,8 +10,8 @@ use loom_core::arrow_semantic_codec::{
     encode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
 };
 use loom_core::native_arrow_semantic::{
-    native_arrow_semantic_codegen_replay_evidence,
-    prepare_native_arrow_semantic_codegen_support, validate_native_arrow_semantic_codegen_output,
+    native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
+    validate_native_arrow_semantic_codegen_output,
     validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticDiagnosticCode,
 };
@@ -45,9 +45,7 @@ fn replay_evidence_is_deterministic_for_lmc2_and_direct_lma1() {
     assert!(first
         .runtime_cache_canonical_input
         .contains("predicate=none"));
-    assert!(first
-        .runtime_cache_canonical_input
-        .contains("split=full:9"));
+    assert!(first.runtime_cache_canonical_input.contains("split=full:9"));
 
     let direct = replay_evidence_for(
         &direct_lma1,
@@ -149,7 +147,10 @@ fn replay_evidence_detects_projection_predicate_split_backend_and_artifact_drift
         SplitDescriptor::FullScan { row_count: 9 },
     );
     assert_ne!(artifact.artifact_digest, base.artifact_digest);
-    assert_ne!(artifact.output_buffer_fingerprint, base.output_buffer_fingerprint);
+    assert_ne!(
+        artifact.output_buffer_fingerprint,
+        base.output_buffer_fingerprint
+    );
     assert_ne!(artifact.replay_fingerprint, base.replay_fingerprint);
 }
 
@@ -198,7 +199,10 @@ fn unsupported_and_divergent_outputs_cannot_produce_replay_evidence() {
         RuntimeSafetyPolicy::default(),
     )
     .expect_err("divergent execution cannot produce replay evidence");
-    assert_eq!(err.code, NativeArrowSemanticDiagnosticCode::NativeOutputMismatch);
+    assert_eq!(
+        err.code,
+        NativeArrowSemanticDiagnosticCode::NativeOutputMismatch
+    );
 }
 
 #[test]
@@ -394,4 +398,3 @@ fn encode_lma1(batch: &RecordBatch) -> Vec<u8> {
     let payload = ArrowSemanticPayload::from_record_batches(&[batch.clone()]).expect("payload");
     encode_arrow_semantic_payload(&payload).expect("encode LMA1")
 }
-

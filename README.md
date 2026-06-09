@@ -26,7 +26,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts over the Phase 34 primitive/nullable SQL surface |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
-| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts; every admitted output is Phase 40 native/model validated and cache identity binds backend/pipeline/trace fingerprints |
+| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts; the bounded matrix has deterministic replay, adversarial validation, soak/resource evidence, and Phase 40 native/model validation before cache admission |
 | Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
@@ -209,6 +209,24 @@ verified-lineage record tests. `loom_core::verified_lineage` records safety
 provenance for accepted artifacts only. It names evidence layers and TCB
 assumptions; it does not claim source correctness, verified compilation,
 end-to-end toolchain verification, performance, or production readiness.
+
+### 12. Run the production native-codegen stabilization gate
+
+```bash
+bash scripts/production-native-codegen-stabilization-test.sh
+```
+
+This verifies the Phase 43.2 stabilization layer over the real Phase 43.1
+MLIR/LLVM/JIT path. It rejects native-tool skip evidence, checks that the
+production/stabilization path does not use zero-buffer placeholders, reruns the
+Phase 43.1 realization gate, and covers replay/cache stability, production
+routing, adversarial output validation, cancellation checkpoints, resource
+ownership, and bounded soak evidence.
+
+The claim remains intentionally narrow: one-batch nullable fixed-width primitive
+`LMC2(LMA1)` / direct `LMA1` artifacts only. This is not verified compilation,
+not a persistent production cache, not a DuckDB-native integration claim, not
+general Arrow shape support, and not a GA performance promise.
 
 ## Repository Map
 

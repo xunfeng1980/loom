@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 43.2 in progress; 2/5 plans complete, next is 43.2-03 adversarial validation
-last_updated: "2026-06-09T12:40:00.000Z"
-last_activity: 2026-06-09 -- Phase 43.2-02 completed production native-codegen route closure with real JIT route evidence and fail-closed/fallback negatives
+stopped_at: Phase 43.2 complete; next is Phase 44 ABI Freeze and Compatibility Contract
+last_updated: "2026-06-09T13:30:00.000Z"
+last_activity: 2026-06-09 -- Phase 43.2 completed with stabilization gate, ABI-freeze dossier, verification record, and docs
 progress:
   total_phases: 49
-  completed_phases: 44
+  completed_phases: 45
   total_plans: 173
-  completed_plans: 170
-  percent: 91
+  completed_plans: 173
+  percent: 92
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 43.2 — Production Native Codegen Stabilization and Production Readiness
+**Current focus:** Phase 44 — ABI Freeze and Compatibility Contract
 
 ## Current Position
 
-Phase 43.2 IN PROGRESS: Production Native Codegen Stabilization and Production Readiness
-Plan: 2 of 5 complete
-Status: Phase 43.2 is in progress. Plans 43.2-01 and 43.2-02 completed deterministic replay evidence, shape-aware cache identity, production route closure, real JIT route evidence, and fail-closed/fallback route negatives; remaining work covers adversarial validation, resource/performance behavior, and ABI-pressure handoff.
-Last activity: 2026-06-09 -- Phase 43.2-02 completed
+Phase 44 READY: ABI Freeze and Compatibility Contract
+Plan: 0 of 0 complete
+Status: Phase 43.2 is complete. Plans 43.2-01 through 43.2-05 completed deterministic replay evidence, shape-aware cache identity, production route closure, real JIT route evidence, fail-closed/fallback route negatives, adversarial output validation, bounded soak/resource/timing evidence, the focused stabilization gate, and the Phase 44 ABI-freeze dossier.
+Last activity: 2026-06-09 -- Phase 43.2 completed
 
-Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is complete; Phase 43.2 has 2/5 plans complete; Phase 44 waits on 43.2.
+Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is complete; Phase 43.2 is complete; Phase 44 is ready to start.
 
 ## Progress Snapshot
 
-- Completed phases: 44 / 49
-- Completed executable plans: 170 / 173
-- Current milestone stage: MVP2 planned next / coverage expansion
-- Current position: Phase 43.2 must stabilize the real Phase 43.1 native-codegen path before Phase 44 freezes ABI fields and ownership rules
-- Last verified gate: `bash scripts/mvp2-verify.sh` passed before Phase 43.2 insertion, including the Phase 43.1 production native codegen realization gate
+- Completed phases: 45 / 49
+- Completed executable plans: 173 / 173
+- Current milestone stage: MVP2 ABI freeze
+- Current position: Phase 44 can freeze ABI fields and ownership rules using Phase 43.2 production-readiness evidence
+- Last verified gate: `bash scripts/mvp2-verify.sh` passed on 2026-06-09 after Phase 43.2 closeout
 
 **Completed phase plan counts:**
 
@@ -74,7 +74,7 @@ Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspen
 | 40 | Native Model Validation | 2/2 complete |
 | 41 | Verified-Lineage Closeout | 2/2 complete |
 | 43.1 | Production Native Codegen Realization | 4/4 complete |
-| 43.2 | Production Native Codegen Stabilization and Production Readiness | 2/5 complete |
+| 43.2 | Production Native Codegen Stabilization and Production Readiness | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -291,6 +291,9 @@ None yet.
 - Phase 43.2 inserted: Production Native Codegen Stabilization and Production Readiness is a 44-pre phase after Phase 43.1 and before ABI freeze. It must harden the real native-codegen path for deterministic replay, production-route execution, adversarial output validation, resource/performance behavior, diagnostics/observability, and a Phase 44 ABI-freeze dossier before any ABI is frozen.
 - [Phase 43.2 P01]: Added deterministic replay evidence and shape-aware production native-codegen cache keys. Replay evidence now records support fingerprints, output buffer fingerprints, Phase 40 reference/native trace fingerprints, validation fingerprints, runtime cache canonical input, and a combined replay fingerprint. Projection, predicate, split, backend identity, and artifact drift alter replay/cache evidence, while unsupported or divergent executions cannot produce positive replay evidence.
 - [Phase 43.2 P02]: Added production native-codegen route reports in `loom-native-melior`. The route now composes support extraction, real JIT execution, Phase 40 validation, runtime decision, replay evidence, and cacheability; unsupported inputs, cancellation, default non-feature JIT unavailability, and divergent backend output fail closed or fallback explicitly without native cache admission.
+- [Phase 43.2 P03]: Added adversarial native output validation for malformed value/validity buffers, null-count drift, bitmap corruption, sliced buffers, zero/one-row and all-null/no-null boundaries, malformed artifacts, schema/type/value trace drift, and direct `LMA1` versus default `LMC2(LMA1)` identity separation. Malformed outputs cannot pass Phase 40 validation or seed runtime cache/replay evidence.
+- [Phase 43.2 P04]: Added bounded production native-codegen soak/resource evidence. Route reports now expose deterministic resource evidence, output ownership/lifetime classification, cancellation checkpoints before support/JIT/validation, byte counts, and raw-pointer non-identity. Soak tests confirm stable replay/cache evidence over repeated real JIT route execution, drifted artifacts miss prior replay identity, and timing/resource observations are recorded as readiness evidence rather than performance promises.
+- [Phase 43.2 P05]: Closed production native-codegen stabilization with `scripts/production-native-codegen-stabilization-test.sh`, MVP2 gate wiring, `43.2-ABI-FREEZE-DOSSIER.md`, `43.2-VERIFICATION.md`, and README/README-zh updates. CODEGEN-STABLE-01 through CODEGEN-STABLE-05 are complete; Phase 44 is ready to start from stabilized native-codegen evidence. `ENGINE-01` remains suspended/pre-GA and is not closed.
 
 ### Quick Tasks Completed
 

@@ -35,16 +35,15 @@ fn positive_route_uses_real_jit_validation_replay_and_cache_admission() {
         RuntimeSafetyPolicy::default(),
     );
 
-    assert_eq!(route.status, ArrowSemanticCodegenRouteStatus::NativeCandidate);
+    assert_eq!(
+        route.status,
+        ArrowSemanticCodegenRouteStatus::NativeCandidate
+    );
     assert!(route.cacheable);
     assert!(route.diagnostics.is_empty(), "{:?}", route.diagnostics);
     assert!(route.support.is_supported());
     assert!(route.jit_output.is_some());
-    assert!(route
-        .execution
-        .as_ref()
-        .expect("execution")
-        .is_supported());
+    assert!(route.execution.as_ref().expect("execution").is_supported());
     let replay = route.replay_evidence.expect("replay evidence");
     assert_eq!(replay.artifact_kind, "LMC2");
     assert!(replay
@@ -58,8 +57,9 @@ fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() 
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let support = prepare_native_arrow_semantic_codegen_support(&bytes);
-    let mut jit = execute_arrow_semantic_codegen_jit(&support, &NativeBackendCancellation::default())
-        .expect("real JIT output");
+    let mut jit =
+        execute_arrow_semantic_codegen_jit(&support, &NativeBackendCancellation::default())
+            .expect("real JIT output");
     jit.columns[1].value_buffer[0] ^= 0x7f;
 
     let strict = validate_arrow_semantic_codegen_production_route_output(
