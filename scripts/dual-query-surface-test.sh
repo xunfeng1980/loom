@@ -68,10 +68,15 @@ ok "Generated accepted fixture and descriptor files"
 info "Building loom.duckdb_extension..."
 cargo build -p loom-ffi --release
 rm -f "${EXT_PATH}"
-cmake -S "${REPO_ROOT}/duckdb-ext" \
-      -B "${REPO_ROOT}/duckdb-ext/build" \
-      -DCMAKE_BUILD_TYPE=Release \
-      2>&1 | grep -v '^--' || true
+cmake_out="${TMP_DIR}/cmake-configure.log"
+if ! cmake -S "${REPO_ROOT}/duckdb-ext" \
+          -B "${REPO_ROOT}/duckdb-ext/build" \
+          -DCMAKE_BUILD_TYPE=Release \
+          >"${cmake_out}" 2>&1; then
+    cat "${cmake_out}" >&2
+    fail "CMake configure failed"
+fi
+grep -v '^--' "${cmake_out}" || true
 cmake --build "${REPO_ROOT}/duckdb-ext/build" 2>&1
 check_file "${EXT_PATH}"
 ok "Built ${EXT_PATH}"
