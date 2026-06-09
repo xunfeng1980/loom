@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 42 42-02 complete; 42-03 ready
+stopped_at: Phase 42 complete; ready for Phase 43
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase 42 IN PROGRESS: Verified + Native Coverage Expansion
 Plan: 0 of 0
-Status: Phase 42 42-02 complete; ready to execute 42-03
+Status: Phase 42 complete; ready to discuss/plan Phase 43
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 42 is 2/3 complete; next action is 42-03 living matrix gate and closeout
+Progress: Phase 42 is complete; Phase 43 is the next roadmap phase
 
 ## Progress Snapshot
 
@@ -275,6 +275,7 @@ None yet.
 - Phase 41 complete: 41-02 added `loom_core::verified_lineage`, accepted-artifact safety provenance records, fail-closed rejected/undischarged/divergent cases, README docs, gate wiring, and closed LINEAGE-12.
 - Phase 42 42-01 complete: added a Vortex verified/native coverage row set, focused tests, and the first `42-COVERAGE-MATRIX.md` rows. Native support is assigned to emitted verified artifact shapes only; canonical Vortex rows remain interpreter-only value bridges.
 - Phase 42 42-02 complete: added source-neutral verified/native coverage row vocabulary plus Parquet and Lance schema matrix tests for native-supported fixed-width primitive `LMC2(LMA1)` rows and interpreter-only Utf8/List/Struct rows.
+- Phase 42 complete: added `scripts/verified-native-coverage-expansion-test.sh`, `scripts/mvp2-verify.sh`, closed COV2-03, and finalized the Vortex/Lance/Parquet living coverage matrix for Phase 43/44 handoff.
 
 ### Quick Tasks Completed
 

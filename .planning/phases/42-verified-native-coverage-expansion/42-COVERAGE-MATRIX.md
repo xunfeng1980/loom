@@ -44,4 +44,14 @@ bridges, DuckDB visibility, or toolchain skips.
 
 ## Closeout Gate
 
-Pending 42-03.
+`scripts/verified-native-coverage-expansion-test.sh` validates this matrix by
+running:
+
+- Vortex Phase 42 matrix tests;
+- Parquet Phase 42 matrix tests;
+- Lance Phase 42 matrix tests;
+- full Arrow semantic source compatibility;
+- verified-lineage closeout.
+
+`scripts/mvp2-verify.sh` is the broad MVP2 entry point and inherits MVP1 before
+running the Phase 42 gate.
