@@ -62,6 +62,13 @@ rg -q "accepted_program_safe" "${LEAN_FILE}" \
     || fail "Lean scaffold missing accepted_program_safe"
 rg -q "builder_events_well_formed" "${LEAN_FILE}" \
     || fail "Lean scaffold missing builder_events_well_formed"
+rg -q "ModeledExecutionSafe" "${LEAN_FILE}" \
+    || fail "Lean model missing ModeledExecutionSafe"
+rg -q "modeled executor only" "${LEAN_FILE}" \
+    || fail "Lean theorem missing modeled-executor-only scope note"
+if rg -n '\bsorry\b' "${LEAN_FILE}"; then
+    fail "Lean proof contains sorry"
+fi
 rg -q "LoweredImpliesVerified" "${TLA_FILE}" \
     || fail "TLA model missing LoweredImpliesVerified"
 rg -q "LoweredImpliesVerified" "${TLA_CFG}" \

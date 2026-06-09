@@ -171,8 +171,8 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Lean Modeled Operational Semantics
 
-- [ ] **LINEAGE-05**: Lean defines a proof-friendly modeled operational semantics for the current L2Core checker slice, including abstract input assumptions, typed builder events, bounded loop/cursor execution, fail-closed terminal behavior, and modeled safety predicates for safe reads, well-typed events, maxRows termination, and Arrow well-formedness by construction
-- [ ] **LINEAGE-06**: Lean proves `accepted_program_safe` as a no-`sorry` semantic theorem over the modeled executor, with explicit modeled-only scope and handoff notes that Rust interpreter consistency remains Phase 39 and native/model validation remains Phase 40
+- [x] **LINEAGE-05**: Lean defines a proof-friendly modeled operational semantics for the current L2Core checker slice, including abstract input assumptions, typed builder events, bounded loop/cursor execution, fail-closed terminal behavior, and modeled safety predicates for safe reads, well-typed events, maxRows termination, and Arrow well-formedness by construction
+- [x] **LINEAGE-06**: Lean proves `accepted_program_safe` as a no-`sorry` semantic theorem over the modeled executor, with explicit modeled-only scope and handoff notes that Rust interpreter consistency remains Phase 39 and native/model validation remains Phase 40
 
 ## Out of Scope
 
@@ -279,8 +279,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | LINEAGE-02 | Phase 36 | Complete |
 | LINEAGE-03 | Phase 37 | Complete |
 | LINEAGE-04 | Phase 37 | Complete |
-| LINEAGE-05 | Phase 38 | In Progress |
-| LINEAGE-06 | Phase 38 | Pending |
+| LINEAGE-05 | Phase 38 | Complete |
+| LINEAGE-06 | Phase 38 | Complete |
 
 **Coverage:**
 

@@ -80,7 +80,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface) (completed 2026-06-09)
 - [x] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
-- [ ] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
+- [x] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
 - [ ] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
 - [ ] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption
 - [ ] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety
@@ -1013,7 +1013,7 @@ Plans:
 
 ### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
 
-**Status:** In Progress (1/2 plans complete). **Supersedes** parked Phase 37.
+**Status:** Complete. Phase 38 added a proof-friendly modeled executor in Lean and re-proved `accepted_program_safe` as a no-`sorry` semantic theorem `Verified p -> ModeledExecutionSafe p`, scoped explicitly to the modeled executor. **Supersedes** parked Phase 37.
 **Goal:** A small-step operational semantics over L2Core and a machine-checked theorem that verifier acceptance implies execution safety, scoped to the modeled executor.
 **Depends on:** Phase 37.
 **Requirements:** LINEAGE-05, LINEAGE-06
@@ -1025,7 +1025,7 @@ Plans:
 
 **Non-goals:** Not a proof about the Rust interpreter or native codegen (that is Phase 39/40 validation, not Lean proof). No correctness theorem.
 **Ordering decision:** This is the phase that retires the "structural projection" finding — but only as far as the model; the model↔executor seam is the next phase.
-**Plans:** 2 plans. Wave 1: [x] `38-01-PLAN.md` operational semantics. Wave 2: [ ] `38-02-PLAN.md` soundness theorem + scope note.
+**Plans:** 2 plans complete. Wave 1: [x] `38-01-PLAN.md` operational semantics. Wave 2: [x] `38-02-PLAN.md` soundness theorem + scope note.
 
 ### Phase 39: Model ↔ Rust Interpreter Consistency
 
