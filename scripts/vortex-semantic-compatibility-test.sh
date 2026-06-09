@@ -5,6 +5,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
+export RUSTC_WRAPPER=""
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
     GRN="$(tput setaf 2)"
