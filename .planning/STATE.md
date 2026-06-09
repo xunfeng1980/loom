@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 35 complete; ready for Phase 36
-last_updated: "2026-06-09T08:41:22Z"
-last_activity: 2026-06-09 -- Phase 35 35-05 completed docs, requirements, roadmap/state closeout
+status: completed
+stopped_at: Phase 36 context gathered
+last_updated: "2026-06-09T08:57:45.612Z"
+last_activity: 2026-06-09 -- 35-05 completed docs, requirements, roadmap/state closeout
 progress:
   total_phases: 47
-  completed_phases: 35
+  completed_phases: 30
   total_plans: 153
-  completed_plans: 153
-  percent: 74
+  completed_plans: 134
+  percent: 64
 ---
 
 # Project State
@@ -327,8 +327,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-09T08:41:22Z
-Stopped at: Phase 35 complete; ready for Phase 36
+Last session: 2026-06-09T08:57:45.602Z
+Stopped at: Phase 36 context gathered
 
 Phase 17 handoff:
 
@@ -375,7 +375,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/33-lmc2-arrow-semantic-container-wrapper/33-CONTEXT.md
+Resume file: .planning/phases/36-verified-lineage-contract-and-tcb-declaration/36-CONTEXT.md
 
 ## Performance Metrics
 
