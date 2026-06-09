@@ -83,7 +83,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
 - [x] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
 - [x] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption (completed 2026-06-09)
-- [ ] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety (in progress)
+- [x] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety (completed 2026-06-09)
 
 **MVP2 — Coverage, Second Engine, Productization** *(future milestone — planned, not active. Widen coverage and add a real second engine — the two forces that should shape the ABI — then freeze the ABI, then build distribution/security on top and bind the MVP1.5 lineage record.)*
 
@@ -1061,7 +1061,7 @@ Plans:
 
 ### Phase 41: Verified-Lineage Closeout
 
-**Status:** In Progress. Phase 41 added and wired the combined verified-lineage gate; 41-02 is pending the per-artifact lineage record and docs.
+**Status:** Complete. Phase 41 added the combined verified-lineage gate, artifact-facing lineage record API, focused tests, and public/planning docs that preserve the safety-provenance-only claim boundary.
 **Goal:** One combined gate over all lineage evidence, and a per-artifact record that makes each artifact's safety provenance inspectable.
 **Depends on:** Phases 36–40.
 **Requirements:** LINEAGE-11, LINEAGE-12
@@ -1073,7 +1073,7 @@ Plans:
 
 **Non-goals:** Not signing/attestation transport (that is MVP2 Phase 45, which *consumes* this record). Not productization.
 **Ordering decision:** Closeout last; the lineage record is the deliverable the milestone name promises and the input MVP2 attestation will bind to.
-**Plans:** 1/2 plans complete. Wave 1: [x] `41-01-PLAN.md` combined gate. Wave 2: [ ] `41-02-PLAN.md` lineage record + docs.
+**Plans:** 2/2 plans complete. Wave 1: [x] `41-01-PLAN.md` combined gate. Wave 2: [x] `41-02-PLAN.md` lineage record + docs.
 
 ## Milestone: MVP2 — Coverage, Second Engine, Productization
 
@@ -1248,7 +1248,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |
 | 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
-| 41. Verified-Lineage Closeout | 1/2 | In Progress | 2026-06-09 |
+| 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 0/0 | Planned (MVP2) | - |
 | 43. StarRocks Live Runtime Integration | 0/0 | Planned (MVP2) | - |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |

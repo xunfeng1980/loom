@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 41 executing; 41-02 lineage record pending
-last_updated: "2026-06-09T10:15:00.000Z"
-last_activity: 2026-06-09 -- Phase 41 41-01 combined verified-lineage gate implemented and focused gate passed
+stopped_at: Phase 41 complete; ready for Phase 42
+last_updated: "2026-06-09T10:30:00.000Z"
+last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
   total_phases: 47
-  completed_phases: 40
+  completed_phases: 41
   total_plans: 164
-  completed_plans: 163
+  completed_plans: 164
   percent: 88
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts, while bounded engine-neutral native Arrow semantic execution exists for one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts.
-**Current focus:** Phase 41 — Verified-Lineage Closeout
+**Current focus:** Phase 42 — Verified + Native Coverage Expansion
 
 ## Current Position
 
-Phase 41 EXECUTING: Verified-Lineage Closeout
-Plan: 1 of 2
-Status: 41-01 complete; 41-02 lineage record pending
-Last activity: 2026-06-09 -- `scripts/verified-lineage-test.sh` added, passed, and wired into `scripts/full-verifier-test.sh`
+Phase 42 READY: Verified + Native Coverage Expansion
+Plan: 0 of 0
+Status: Phase 41 complete; ready to discuss/plan Phase 42
+Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 40 complete; Phase 41 is the first incomplete roadmap phase
+Progress: Phase 41 complete; Phase 42 is the first incomplete roadmap phase
 
 ## Progress Snapshot
 
-- Completed phases: 40 / 47
-- Completed executable plans: 163 / 164
-- Current milestone stage: MVP1.5 / Verified Lineage planning track
-- Current position: Phase 41 is composing verified-lineage evidence into one gate and artifact lineage record
+- Completed phases: 41 / 47
+- Completed executable plans: 164 / 164
+- Current milestone stage: MVP2 planned next / coverage expansion
+- Current position: Phase 42 should widen verified/native coverage while preserving per-shape lineage and fallback disposition
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, native/model validation, and strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
@@ -71,6 +71,8 @@ Progress: Phase 40 complete; Phase 41 is the first incomplete roadmap phase
 | 37 | Lean Stage B / Lean Rust Verifier Correspondence | 2/2 complete |
 | 38 | Lean Stage C / Operational Semantics and Soundness Theorem | 2/2 complete |
 | 39 | Model Rust Interpreter Consistency | 2/2 complete |
+| 40 | Native Model Validation | 2/2 complete |
+| 41 | Verified-Lineage Closeout | 2/2 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -266,10 +268,11 @@ None yet.
 - Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
 - Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
 - Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readSafety`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run; `scripts/full-verifier-test.sh` rejects `_state : ModeledState`, discarded-premise, `readsInBounds`, and row-clamping regressions.
-- Phase 40 executing: 40-01 extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
+- Phase 40 40-01 complete: extended model scalar tags for Float32/Float64, added native/model trace validation using the Phase 39 reference executor, covered default `LMC2(LMA1)` plus direct `LMA1`, and added injected `native-model-trace-mismatch` diagnostics.
 - Phase 40 complete: 40-02 added validation-aware native Arrow semantic runtime/cache helpers, wired `scripts/native-model-validation-test.sh` into `scripts/full-verifier-test.sh`, closed LINEAGE-10, and recorded MLIR/LLVM/native lowering as permanent TCB per-run translation validation rather than verified compilation.
-- Phase 41 executing: context and two plans created; 41-01 combined gate is complete and 41-02 lineage record remains pending.
+- Phase 41 planned/executed: context and two plans created; 41-01 combined gate and 41-02 lineage record are complete.
 - Phase 41 41-01 complete: `scripts/verified-lineage-test.sh` now runs the full MVP1.5 evidence matrix and non-claim/TCB markers, is wired into `scripts/full-verifier-test.sh`, and closes LINEAGE-11.
+- Phase 41 complete: 41-02 added `loom_core::verified_lineage`, accepted-artifact safety provenance records, fail-closed rejected/undischarged/divergent cases, README docs, gate wiring, and closed LINEAGE-12.
 
 ### Quick Tasks Completed
 

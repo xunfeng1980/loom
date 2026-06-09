@@ -66,12 +66,13 @@ host integration.
 - ✓ Lean modeled operational semantics and soundness theorem: `formal/lean/LoomCore.lean` now contains a proof-friendly modeled executor, typed modeled events, fail-closed terminal semantics, and modeled safety predicates that read `execProgram p` state evidence (`readSafety`, `eventsTyped`, `rowsWithinMax`, terminal status). Out-of-bounds reads are representable as `inBounds := false` and fail-close the modeled run. The no-`sorry` semantic `accepted_program_safe : Verified p -> ModeledExecutionSafe p` theorem consumes modeled execution evidence plus the `Verified p` premises; `scripts/full-verifier-test.sh` checks the theorem marker, state-evidence bridge markers, modeled-only scope note, no `_state`/discarded-premise/all-reads-in-bounds invariant regression, and no-sorry policy — Phase 38
 - ✓ Model/Rust interpreter consistency: `loom_core::l2_core_reference_executor` provides a separate Rust transcription of the Lean modeled executor, and `scripts/model-rust-interpreter-consistency-test.sh` compares reference and observer-only production trace-subject builder-event/fail-closed traces over a deterministic matrix; this is per-run differential validation, not an all-program proof or native/model validation — Phase 39
 - ✓ Native/model validation: `loom_core::native_arrow_semantic` now validates Phase 35 native Arrow semantic output against Phase 39 reference-executor builder-event traces and decoded Arrow value equivalence for default `LMC2(LMA1)` plus explicit direct `LMA1` nullable Boolean/Int32/Int64/Float32/Float64 one-batch primitives. Validation-aware runtime/cache helpers require successful native/model validation, divergent traces fail closed and cannot seed native cache identity, and `scripts/native-model-validation-test.sh` is wired into `scripts/full-verifier-test.sh`; MLIR/LLVM/native lowering remains a permanent TCB assumption and this is per-run translation validation, not verified compilation — Phase 40
+- ✓ Verified-lineage closeout: `scripts/verified-lineage-test.sh` runs the MVP1.5 lineage matrix, and `loom_core::verified_lineage` can produce accepted-artifact safety provenance records naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions without claiming correctness, verified compilation, production readiness, or signed attestation transport — Phase 41
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] MVP1.5 Phase 41 is active: compose the verified-lineage stages into one gate and add per-artifact verified-lineage records naming evidence layers and TCB assumptions.
+- [ ] MVP2 Phase 42 is the next planned phase: widen verified/native coverage while preserving per-shape verified-lineage and native/interpreter fallback disposition.
 
 ### Out of Scope
 

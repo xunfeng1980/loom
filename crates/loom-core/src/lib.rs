@@ -64,6 +64,9 @@ pub mod arrow_semantic_verifier;
 /// Engine-neutral native execution for Arrow semantic artifacts.
 pub mod native_arrow_semantic;
 
+/// Artifact-facing verified-lineage records for MVP1.5.
+pub mod verified_lineage;
+
 /// Unified artifact-facing verifier report model for Phase 17+.
 pub mod artifact_verifier;
 

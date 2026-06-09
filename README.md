@@ -27,6 +27,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
 | Native execution | Engine-neutral native Arrow semantic execution for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts, with explicit equivalence, runtime/cache identity, and fail-closed unsupported-shape diagnostics |
+| Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
 slices over broad unverified format support.
@@ -195,6 +196,19 @@ one-batch nullable `Boolean`, `Int32`, `Int64`, `Float32`, and `Float64`
 columns. Utf8, logical, nested, multi-batch, malformed, and verifier-rejected
 inputs fail closed. This is native execution evidence, not a DuckDB integration
 claim and not full Arrow shape support.
+
+### 11. Run the verified-lineage closeout gate
+
+```bash
+bash scripts/verified-lineage-test.sh
+```
+
+This runs the MVP1.5 lineage matrix: Lean with zero `sorry`, Lean/Rust verifier
+correspondence, model/Rust trace consistency, native/model validation, and
+verified-lineage record tests. `loom_core::verified_lineage` records safety
+provenance for accepted artifacts only. It names evidence layers and TCB
+assumptions; it does not claim source correctness, verified compilation,
+end-to-end toolchain verification, performance, or production readiness.
 
 ## Repository Map
 

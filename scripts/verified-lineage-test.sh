@@ -81,7 +81,21 @@ info "Running native/model validation gate..."
 bash scripts/native-model-validation-test.sh
 ok "native/model validation"
 
+info "Running verified-lineage record tests..."
+cargo test -p loom-core --test verified_lineage
+ok "verified-lineage record tests"
+
 info "Checking verified-lineage non-claim and TCB markers..."
+for marker in \
+    "VerifiedLineageRecord" \
+    "RustVerifierStructuralCheck" \
+    "BitwuzlaSmtDischarge" \
+    "LeanModeledSoundnessTheorem" \
+    "NativeModelValidation" \
+    "no verified compilation claim"; do
+    rg -q -F "${marker}" crates/loom-core/src/verified_lineage.rs \
+        || fail "verified-lineage record marker missing: ${marker}"
+done
 for marker in \
     "Loom guarantees safety + well-formedness, never correctness." \
     "explicit TCB trust assumption" \

@@ -187,7 +187,7 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 ### Verified Lineage Closeout
 
 - [x] **LINEAGE-11**: A single `scripts/verified-lineage-test.sh` closeout gate runs the full MVP1.5 evidence matrix fail-closed: Lean build with zero `sorry`, Lean/Rust verifier differential, model/Rust interpreter trace consistency, native/model validation, and stable non-claim/TCB markers
-- [ ] **LINEAGE-12**: Accepted artifacts can produce a verified-lineage record naming structural verifier evidence, Bitwuzla/solver discharge status, Lean modeled soundness evidence, differential-validation gates, and explicit TCB assumptions, while rejected/unsupported artifacts cannot produce a positive lineage claim
+- [x] **LINEAGE-12**: Accepted artifacts can produce a verified-lineage record naming structural verifier evidence, Bitwuzla/solver discharge status, Lean modeled soundness evidence, differential-validation gates, and explicit TCB assumptions, while rejected/unsupported artifacts cannot produce a positive lineage claim
 
 ## Out of Scope
 
