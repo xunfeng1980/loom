@@ -997,7 +997,7 @@ Plans:
 
 ### Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence
 
-**Status:** Not started. **Supersedes** parked Phase 36.
+**Status:** In Progress (1/2 plans complete). **Supersedes** parked Phase 36.
 **Goal:** The Lean model's static checkers faithfully mirror the executable Rust verifier, and the two are continuously cross-checked.
 **Depends on:** Phase 36.
 **Requirements:** LINEAGE-03, LINEAGE-04
@@ -1009,7 +1009,7 @@ Plans:
 
 **Non-goals:** No operational semantics yet; no soundness theorem yet. Must not extend L2Core beyond what the Rust verifier already accepts.
 **Ordering decision:** Correspondence before soundness — a soundness theorem over a Lean model that does not match the real verifier proves nothing about the product.
-**Plans:** 2 plans. Wave 1: 37-01 AST enrichment + typing parity. Wave 2: 37-02 differential harness + gate wiring.
+**Plans:** 2 plans. Wave 1: [x] `37-01-PLAN.md` AST enrichment + typing parity. Wave 2: [ ] `37-02-PLAN.md` differential harness + gate wiring.
 
 ### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
 

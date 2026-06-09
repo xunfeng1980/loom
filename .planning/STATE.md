@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Phase 37 planned; ready to execute 37-01
+status: executing
+stopped_at: Phase 37 37-01 complete; ready to execute 37-02
 last_updated: "2026-06-09T09:12:33.828Z"
-last_activity: 2026-06-09 -- 36-01 completed verified-lineage contract, TCB declaration, obligation matrix, requirements, roadmap/state closeout
+last_activity: 2026-06-09 -- Phase 37 37-01 enriched Lean AST with ScalarExpr/LetScalar and expression-derived typing parity
 progress:
   total_phases: 47
-  completed_phases: 31
+  completed_phases: 36
   total_plans: 156
-  completed_plans: 135
-  percent: 66
+  completed_plans: 155
+  percent: 76
 ---
 
 # Project State
@@ -25,17 +25,17 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase 37 READY: Lean Stage B — Lean ↔ Rust Verifier Correspondence
-Plan: 0 of 2
-Status: Phase 36 complete; ready to discuss/plan Phase 37
-Last activity: 2026-06-09 -- 36-01 completed verified-lineage contract, TCB declaration, obligation matrix, requirements, roadmap/state closeout
+Phase 37 EXECUTING: Lean Stage B — Lean ↔ Rust Verifier Correspondence
+Plan: 1 of 2
+Status: 37-01 complete; ready to execute 37-02 differential harness + gate wiring
+Last activity: 2026-06-09 -- 37-01 enriched Lean with `ScalarExpr` / `LetScalar`, scalar typing environment, expression-derived append typing, and unknown-variable checks
 
-Progress: Phase 36 complete; Phase 37 is the first incomplete roadmap phase
+Progress: Phase 36 complete; Phase 37 is executing with 1 of 2 plans complete
 
 ## Progress Snapshot
 
 - Completed phases: 36 / 47
-- Completed executable plans: 154 / 154
+- Completed executable plans: 155 / 156
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
 - Current position: Phase 37 should implement Lean ↔ Rust verifier correspondence against the Phase 36 verified-lineage contract
 - Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the Phase 35 native Arrow semantic execution gate wired after DuckDB source e2e
@@ -68,6 +68,7 @@ Progress: Phase 36 complete; Phase 37 is the first incomplete roadmap phase
 | 34 | DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 complete |
 | 35 | Native Arrow Semantic Execution | 5/5 complete |
 | 36 | Verified-Lineage Contract and TCB Declaration | 1/1 complete |
+| 37 | Lean Stage B / Lean Rust Verifier Correspondence | 1/2 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -331,7 +332,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-09T09:12:33.818Z
-Stopped at: Phase 37 planned; ready to execute 37-01
+Stopped at: Phase 37 37-01 complete; ready to execute 37-02
 
 Phase 17 handoff:
 
@@ -378,7 +379,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/37-lean-stage-b-lean-rust-verifier-correspondence/37-01-PLAN.md
+Resume file: .planning/phases/37-lean-stage-b-lean-rust-verifier-correspondence/37-02-PLAN.md
 
 ## Performance Metrics
 

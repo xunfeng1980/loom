@@ -1,42 +1,43 @@
 /-
 Lean mechanized checker for the Loom L2Core verifier slice.
 
-This file is a bounded mechanized checker over a pre-resolved, `Nat`-grounded AST
-projection of the Rust `verify_l2_core` logic (`crates/loom-core/src/full_verifier.rs`).
-It is NOT a complete final Loom soundness proof, but the three semantic predicates
-are now load-bearing decidable checkers, not `True` placeholders.
+This file is a bounded mechanized checker for the static verifier surface in
+`crates/loom-core/src/full_verifier.rs`. It is still NOT a final Loom
+operational semantics or soundness theorem, but the covered checker now mirrors
+the Rust `ScalarExpr` / `LetScalar` shape instead of the older pre-resolved
+`Nat` projection.
 
 What Lean machine-checks now (real `Bool`-valued checkers wrapped as `_ = true`):
   - `builder_events_typed` (via `checkTyped`): AppendValue output type match
-    (OutputTypeMismatch), AppendNull output nullability (OutputNullabilityMismatch),
-    and that every appended-to builder is a declared output builder
-    (MissingOutputBuilder).
-  - `no_ambient_authority` (via `checkAuthority`): every ReadInput targets a declared
-    input capability (MissingInputCapability), the read is spatially in-range over the
-    declared slice (`offset >= sliceOffset && offset + width <= sliceOffset + sliceLen`,
-    faithful because the Lean AST carries concrete `Nat` offset/width), and append
-    targets are declared output builders (shared MissingOutputBuilder).
-  - `finite_bounds` (via `checkBounds`): ForRange `stop >= start` (InvalidLoopBounds)
-    and `(stop - start) <= maxRows` (ResourceBudgetExceeded, row budget); CursorLoop
-    `progress > 0` (NonMonotoneCursorLoop) and `limit <= maxRows`
-    (ResourceBudgetExceeded, row budget).
+    derives the value type from `ScalarExpr` through a scalar type environment,
+    AppendNull output nullability is checked, and every appended-to builder is a
+    declared output builder. Mirrored reject vocabulary:
+    MissingOutputBuilder, UnknownVariable, OutputTypeMismatch, and
+    OutputNullabilityMismatch.
+  - `no_ambient_authority` (via `checkAuthority`): every ReadInput targets a
+    declared input capability (MissingInputCapability), ReadInput offset/width
+    expressions have known variables, concrete read ranges are spatially
+    in-range when offsets/widths are constants, and append targets are declared
+    output builders.
+  - `finite_bounds` (via `checkBounds`): ForRange constant bounds require
+    `end >= start` (InvalidLoopBounds) and `(end - start) <= maxRows`
+    (ResourceBudgetExceeded); CursorLoop requires monotone positive progress
+    of the form `cursor + positive-constant` (NonMonotoneCursorLoop) and a
+    constant `limit <= maxRows` (ResourceBudgetExceeded).
 
-Obligations that remain SMT-only, with NO faithful counterpart on this `Nat`-grounded
-Lean AST (intentionally NOT modeled here — modeling them would require enriching the
-AST, a separate larger task):
-  - Integer overflow (`AddNoOverflow` / `MulNoOverflow`): `Nat` is unbounded, so there
-    is no overflow to catch in Lean; this is discharged by the Rust SMT path
-    (Phase 19 Bitwuzla-backed `QF_BV`).
-  - Unknown-variable / `ScalarExpr` variable environment (`UnknownVariable`,
-    `LetScalar`): the Lean AST is pre-resolved (types/offsets already concrete), so it
-    has no var-env to validate.
+Obligations that remain SMT-only:
+  - Integer overflow (`AddNoOverflow` / `MulNoOverflow`) and non-concrete read
+    range obligations are delegated to the Rust SMT path and Phase 19
+    Bitwuzla-backed `QF_BV` discharge. Lean records expression typing and known
+    variables for these expressions, but does not prove bitvector arithmetic.
   - Non-row resource budgets (`max_steps`, `max_builder_events`, per-builder
-    `max_events`): the Lean `Program` models only `maxRows`, not the full
-    `ResourceBudget`.
+    `max_events`) remain executable Rust verifier checks unless later phases
+    explicitly lift them into the model.
 
-This is therefore a bounded mechanized checker over a lossy AST projection, not a
-claim of full L2Core soundness. Current load-bearing evidence also includes the Rust
-executable verifier and the Phase 19 Bitwuzla-backed SMT discharge.
+This is therefore Phase 37 correspondence evidence for the covered Rust
+verifier slice, not a claim of full L2Core soundness. Current load-bearing
+evidence also includes the Rust executable verifier and the Phase 19
+Bitwuzla-backed SMT discharge.
 
 Rocq remains the fallback if extraction or verified-checker lineage becomes
 mandatory for later milestones.
@@ -52,6 +53,51 @@ inductive L2Ty where
   | rowIndex
 deriving Repr, DecidableEq
 
+inductive RejectCode where
+  | MissingInputCapability
+  | MissingOutputBuilder
+  | UnknownVariable
+  | OutputTypeMismatch
+  | OutputNullabilityMismatch
+  | InvalidLoopBounds
+  | NonMonotoneCursorLoop
+  | ResourceBudgetExceeded
+  | ConstraintBudgetExceeded
+deriving Repr, DecidableEq
+
+def RejectCode.asString : RejectCode -> String
+  | .MissingInputCapability => "missing-input-capability"
+  | .MissingOutputBuilder => "missing-output-builder"
+  | .UnknownVariable => "unknown-variable"
+  | .OutputTypeMismatch => "output-type-mismatch"
+  | .OutputNullabilityMismatch => "output-nullability-mismatch"
+  | .InvalidLoopBounds => "invalid-loop-bounds"
+  | .NonMonotoneCursorLoop => "non-monotone-cursor-loop"
+  | .ResourceBudgetExceeded => "resource-budget-exceeded"
+  | .ConstraintBudgetExceeded => "constraint-budget-exceeded"
+
+inductive ScalarValue where
+  | bool (value : Bool)
+  | int32 (value : Int)
+  | int64 (value : Int)
+  | uint32 (value : Nat)
+  | uint64 (value : Nat)
+  | bytes (value : List Nat)
+deriving Repr, DecidableEq
+
+inductive ScalarExpr where
+  | const (value : ScalarValue)
+  | var (name : String)
+  | add (lhs rhs : ScalarExpr)
+  | sub (lhs rhs : ScalarExpr)
+  | mul (lhs rhs : ScalarExpr)
+  | min (lhs rhs : ScalarExpr)
+  | max (lhs rhs : ScalarExpr)
+  | eq (lhs rhs : ScalarExpr)
+  | lt (lhs rhs : ScalarExpr)
+  | le (lhs rhs : ScalarExpr)
+deriving Repr, DecidableEq
+
 inductive Capability where
   | inputSlice (id : String) (offset : Nat) (length : Nat)
   | scratch (id : String) (maxBytes : Nat)
@@ -65,11 +111,12 @@ inductive ArrowEvent where
 deriving Repr
 
 inductive Stmt where
-  | readInput (capability : String) (offset : Nat) (width : Nat) (bind : String)
-  | appendValue (builder : String) (ty : L2Ty)
+  | readInput (capability : String) (offset : ScalarExpr) (width : ScalarExpr) (bind : String)
+  | letScalar (name : String) (expr : ScalarExpr)
+  | appendValue (builder : String) (value : ScalarExpr)
   | appendNull (builder : String)
-  | forRange (index : String) (start : Nat) (stop : Nat) (body : List Stmt)
-  | cursorLoop (cursor : String) (limit : Nat) (progress : Nat) (body : List Stmt)
+  | forRange (index : String) (start : ScalarExpr) (end_ : ScalarExpr) (body : List Stmt)
+  | cursorLoop (cursor : String) (limit : ScalarExpr) (progress : ScalarExpr) (body : List Stmt)
   | failClosed (code : String)
 deriving Repr
 
@@ -79,6 +126,8 @@ structure Program where
   body : List Stmt
   maxRows : Nat
 deriving Repr
+
+abbrev ScalarEnv := List (String × L2Ty)
 
 /-- Lookup the declared output builder's resolved scalar type and nullability.
     Mirrors the Rust `MissingOutputBuilder` / nullability lookup. -/
@@ -94,86 +143,206 @@ def inputSlice? (caps : List Capability) (name : String) : Option (Nat × Nat) :
     | .inputSlice id offset length => if id == name then some (offset, length) else none
     | _ => none
 
-/- builder_events_typed checker: output type match + nullability + declared builder.
-   Reject codes mirrored: OutputTypeMismatch, OutputNullabilityMismatch,
-   MissingOutputBuilder. -/
-mutual
-  def checkTypedStmt (caps : List Capability) : Stmt → Bool
-    | .appendValue builder ty =>
-        match builderInfo? caps builder with
-        | some (bty, _) => bty == ty                 -- OutputTypeMismatch + MissingOutputBuilder
-        | none          => false
-    | .appendNull builder =>
-        match builderInfo? caps builder with
-        | some (_, nullable) => nullable             -- OutputNullabilityMismatch + MissingOutputBuilder
-        | none               => false
-    | .readInput _ _ _ _ => true
-    | .forRange _ _ _ body => checkTypedBody caps body
-    | .cursorLoop _ _ _ body => checkTypedBody caps body
-    | .failClosed _ => true
-  def checkTypedBody (caps : List Capability) : List Stmt → Bool
-    | []        => true
-    | s :: rest => checkTypedStmt caps s && checkTypedBody caps rest
-end
+def scalarLookup? (env : ScalarEnv) (name : String) : Option L2Ty :=
+  env.findSome? fun entry => if entry.fst == name then some entry.snd else none
 
-/-- builder_events_typed entry point over a program body. -/
-def checkTyped (caps : List Capability) (body : List Stmt) : Bool :=
-  checkTypedBody caps body
+def scalarInsert (name : String) (ty : L2Ty) (env : ScalarEnv) : ScalarEnv :=
+  (name, ty) :: env
 
-/- no_ambient_authority checker: declared input capability + read spatial bounds +
-   declared output builder. Reject codes mirrored: MissingInputCapability,
-   MissingOutputBuilder, plus the read in-range obligation (faithful here because
-   Lean offset/width are concrete `Nat`). -/
-mutual
-  def checkAuthorityStmt (caps : List Capability) : Stmt → Bool
-    | .readInput cap offset width _ =>
-        match inputSlice? caps cap with             -- MissingInputCapability
-        | some (sOff, sLen) =>
-            decide (offset >= sOff) && decide (offset + width <= sOff + sLen)  -- read in-range
+def typeOfConst : ScalarValue -> L2Ty
+  | .bool _ => .bool
+  | .int32 _ => .int32
+  | .int64 _ => .int64
+  | .uint32 _ => .uint32
+  | .uint64 _ => .uint64
+  | .bytes _ => .bytes
+
+def firstSome (lhs rhs : Option L2Ty) : Option L2Ty :=
+  match lhs with
+  | some ty => some ty
+  | none => rhs
+
+def typeOfExpr? (env : ScalarEnv) : ScalarExpr -> Option L2Ty
+  | .const value => some (typeOfConst value)
+  | .var name => scalarLookup? env name
+  | .add lhs rhs => firstSome (typeOfExpr? env lhs) (typeOfExpr? env rhs)
+  | .sub lhs rhs => firstSome (typeOfExpr? env lhs) (typeOfExpr? env rhs)
+  | .mul lhs rhs => firstSome (typeOfExpr? env lhs) (typeOfExpr? env rhs)
+  | .min lhs rhs => firstSome (typeOfExpr? env lhs) (typeOfExpr? env rhs)
+  | .max lhs rhs => firstSome (typeOfExpr? env lhs) (typeOfExpr? env rhs)
+  | .eq lhs rhs =>
+      if (typeOfExpr? env lhs).isSome && (typeOfExpr? env rhs).isSome then some .bool else none
+  | .lt lhs rhs =>
+      if (typeOfExpr? env lhs).isSome && (typeOfExpr? env rhs).isSome then some .bool else none
+  | .le lhs rhs =>
+      if (typeOfExpr? env lhs).isSome && (typeOfExpr? env rhs).isSome then some .bool else none
+
+def exprVarsKnown (env : ScalarEnv) : ScalarExpr -> Bool
+  | .const _ => true
+  | .var name => (scalarLookup? env name).isSome
+  | .add lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .sub lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .mul lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .min lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .max lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .eq lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .lt lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+  | .le lhs rhs => exprVarsKnown env lhs && exprVarsKnown env rhs
+
+def exprWellTyped (env : ScalarEnv) (expr : ScalarExpr) : Bool :=
+  exprVarsKnown env expr && (typeOfExpr? env expr).isSome
+
+def constNat? : ScalarExpr -> Option Nat
+  | .const (.uint64 value) => some value
+  | .const (.uint32 value) => some value
+  | .const (.int32 value) => if value < 0 then none else some (Int.toNat value)
+  | .const (.int64 value) => if value < 0 then none else some (Int.toNat value)
+  | _ => none
+
+def scalarTypeForReadWidth (width : ScalarExpr) : L2Ty :=
+  match constNat? width with
+  | some 4 => .int32
+  | some 8 => .int64
+  | _ => .bytes
+
+def isMonotoneProgress (cursor : String) : ScalarExpr -> Bool
+  | .add (.var name) rhs =>
+      name == cursor &&
+        match constNat? rhs with
+        | some value => decide (value > 0)
         | none => false
-    | .appendValue builder _ =>
-        match builderInfo? caps builder with        -- shared MissingOutputBuilder
-        | some _ => true
-        | none   => false
-    | .appendNull builder =>
-        match builderInfo? caps builder with        -- shared MissingOutputBuilder
-        | some _ => true
-        | none   => false
-    | .forRange _ _ _ body => checkAuthorityBody caps body
-    | .cursorLoop _ _ _ body => checkAuthorityBody caps body
-    | .failClosed _ => true
-  def checkAuthorityBody (caps : List Capability) : List Stmt → Bool
-    | []        => true
-    | s :: rest => checkAuthorityStmt caps s && checkAuthorityBody caps rest
-end
+  | _ => false
 
-/-- no_ambient_authority entry point over a program body. -/
-def checkAuthority (caps : List Capability) (body : List Stmt) : Bool :=
-  checkAuthorityBody caps body
+def concreteReadInRange (sliceOffset sliceLen : Nat) (offset width : ScalarExpr) : Bool :=
+  match constNat? offset, constNat? width with
+  | some off, some len =>
+      decide (off >= sliceOffset) && decide (off + len <= sliceOffset + sliceLen)
+  | _, _ => true
 
-/- finite_bounds checker: ForRange `stop>=start` + `(stop-start)<=maxRows`;
-   CursorLoop `progress>0` + `limit<=maxRows`. Reject codes mirrored:
-   InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded (row budget). -/
+/- builder_events_typed checker: output type match + nullability + declared builder
+   + expression-derived value typing. Reject vocabulary mirrored:
+   MissingOutputBuilder, UnknownVariable, OutputTypeMismatch,
+   OutputNullabilityMismatch. -/
 mutual
-  def checkBoundsStmt (caps : List Capability) (maxRows : Nat) : Stmt → Bool
-    | .forRange _ start stop body =>
-        decide (stop >= start) && decide (stop - start <= maxRows)   -- InvalidLoopBounds + budget
-          && checkBoundsBody caps maxRows body
-    | .cursorLoop _ limit progress body =>
-        decide (progress > 0) && decide (limit <= maxRows)           -- NonMonotone + budget
-          && checkBoundsBody caps maxRows body
-    | .readInput _ _ _ _ => true
-    | .appendValue _ _ => true
-    | .appendNull _ => true
-    | .failClosed _ => true
-  def checkBoundsBody (caps : List Capability) (maxRows : Nat) : List Stmt → Bool
-    | []        => true
-    | s :: rest => checkBoundsStmt caps maxRows s && checkBoundsBody caps maxRows rest
+  def checkTypedStmt (caps : List Capability) (env : ScalarEnv) : Stmt -> Option ScalarEnv
+    | .appendValue builder value =>
+        match builderInfo? caps builder, typeOfExpr? env value with
+        | some (expected, _), some actual =>
+            if exprVarsKnown env value && expected == actual then some env else none
+        | _, _ => none
+    | .appendNull builder =>
+        match builderInfo? caps builder with
+        | some (_, nullable) => if nullable then some env else none
+        | none => none
+    | .letScalar name expr =>
+        match typeOfExpr? env expr with
+        | some ty => if exprVarsKnown env expr then some (scalarInsert name ty env) else none
+        | none => none
+    | .readInput _ _ width bind =>
+        if exprWellTyped env width then some (scalarInsert bind (scalarTypeForReadWidth width) env) else none
+    | .forRange index _ _ body =>
+        checkTypedBody caps (scalarInsert index .rowIndex env) body |>.map fun _ => env
+    | .cursorLoop cursor _ _ body =>
+        checkTypedBody caps (scalarInsert cursor .rowIndex env) body |>.map fun _ => env
+    | .failClosed _ => some env
+
+  def checkTypedBody (caps : List Capability) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
+    | [] => some env
+    | s :: rest =>
+        match checkTypedStmt caps env s with
+        | some next => checkTypedBody caps next rest
+        | none => none
 end
 
-/-- finite_bounds entry point over a program body. -/
+def checkTyped (caps : List Capability) (body : List Stmt) : Bool :=
+  (checkTypedBody caps [] body).isSome
+
+/- no_ambient_authority checker: declared input capability + known ReadInput
+   expressions + concrete read spatial bounds where constants are available +
+   declared output builder. Reject vocabulary mirrored: MissingInputCapability,
+   MissingOutputBuilder, UnknownVariable. -/
+mutual
+  def checkAuthorityStmt (caps : List Capability) (env : ScalarEnv) : Stmt -> Option ScalarEnv
+    | .readInput cap offset width bind =>
+        match inputSlice? caps cap with
+        | some (sliceOffset, sliceLen) =>
+            if exprWellTyped env offset && exprWellTyped env width &&
+              concreteReadInRange sliceOffset sliceLen offset width then
+              some (scalarInsert bind (scalarTypeForReadWidth width) env)
+            else none
+        | none => none
+    | .appendValue builder value =>
+        match builderInfo? caps builder with
+        | some _ => if exprWellTyped env value then some env else none
+        | none => none
+    | .appendNull builder =>
+        match builderInfo? caps builder with
+        | some _ => some env
+        | none => none
+    | .letScalar name expr =>
+        match typeOfExpr? env expr with
+        | some ty => if exprVarsKnown env expr then some (scalarInsert name ty env) else none
+        | none => none
+    | .forRange index _ _ body =>
+        checkAuthorityBody caps (scalarInsert index .rowIndex env) body |>.map fun _ => env
+    | .cursorLoop cursor _ _ body =>
+        checkAuthorityBody caps (scalarInsert cursor .rowIndex env) body |>.map fun _ => env
+    | .failClosed _ => some env
+
+  def checkAuthorityBody (caps : List Capability) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
+    | [] => some env
+    | s :: rest =>
+        match checkAuthorityStmt caps env s with
+        | some next => checkAuthorityBody caps next rest
+        | none => none
+end
+
+def checkAuthority (caps : List Capability) (body : List Stmt) : Bool :=
+  (checkAuthorityBody caps [] body).isSome
+
+/- finite_bounds checker: ForRange finite constant bounds + row budget;
+   CursorLoop monotone progress + finite constant row budget. Reject vocabulary
+   mirrored: InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded,
+   UnknownVariable. -/
+mutual
+  def checkBoundsStmt (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : Stmt -> Option ScalarEnv
+    | .forRange index start end_ body =>
+        match constNat? start, constNat? end_ with
+        | some s, some e =>
+            if exprVarsKnown env start && exprVarsKnown env end_ && decide (e >= s) && decide (e - s <= maxRows) then
+              checkBoundsBody caps maxRows (scalarInsert index .rowIndex env) body |>.map fun _ => env
+            else none
+        | _, _ => none
+    | .cursorLoop cursor limit progress body =>
+        match constNat? limit with
+        | some n =>
+            if isMonotoneProgress cursor progress && decide (n <= maxRows) then
+              checkBoundsBody caps maxRows (scalarInsert cursor .rowIndex env) body |>.map fun _ => env
+            else none
+        | none => none
+    | .readInput _ offset width bind =>
+        if exprWellTyped env offset && exprWellTyped env width then
+          some (scalarInsert bind (scalarTypeForReadWidth width) env)
+        else none
+    | .letScalar name expr =>
+        match typeOfExpr? env expr with
+        | some ty => if exprVarsKnown env expr then some (scalarInsert name ty env) else none
+        | none => none
+    | .appendValue _ value =>
+        if exprWellTyped env value then some env else none
+    | .appendNull _ => some env
+    | .failClosed _ => some env
+
+  def checkBoundsBody (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
+    | [] => some env
+    | s :: rest =>
+        match checkBoundsStmt caps maxRows env s with
+        | some next => checkBoundsBody caps maxRows next rest
+        | none => none
+end
+
 def checkBounds (caps : List Capability) (maxRows : Nat) (body : List Stmt) : Bool :=
-  checkBoundsBody caps maxRows body
+  (checkBoundsBody caps maxRows [] body).isSome
 
 def finite_bounds (p : Program) : Prop :=
   checkBounds p.capabilities p.maxRows p.body = true
@@ -199,3 +368,54 @@ theorem accepted_program_safe (p : Program) :
     Verified p -> Safe p := by
   intro h
   exact And.intro h.right.left h.right.right
+
+def u64 (value : Nat) : ScalarExpr :=
+  .const (.uint64 value)
+
+def validLetScalarAppendProgram : Program :=
+  {
+    artifactVersion := 1,
+    capabilities := [
+      .outputBuilder "out" .int32 false 8
+    ],
+    body := [
+      .letScalar "x" (.const (.int32 7)),
+      .appendValue "out" (.var "x")
+    ],
+    maxRows := 8
+  }
+
+def unknownVariableProgram : Program :=
+  {
+    artifactVersion := 1,
+    capabilities := [
+      .outputBuilder "out" .int32 false 8
+    ],
+    body := [
+      .appendValue "out" (.var "missing")
+    ],
+    maxRows := 8
+  }
+
+def validCursorProgram : Program :=
+  {
+    artifactVersion := 1,
+    capabilities := [
+      .outputBuilder "out" .rowIndex false 8
+    ],
+    body := [
+      .cursorLoop "cursor" (u64 3) (.add (.var "cursor") (u64 1)) [
+        .appendValue "out" (.var "cursor")
+      ]
+    ],
+    maxRows := 8
+  }
+
+example : checkTyped validLetScalarAppendProgram.capabilities validLetScalarAppendProgram.body = true := by
+  native_decide
+
+example : checkTyped unknownVariableProgram.capabilities unknownVariableProgram.body = false := by
+  native_decide
+
+example : checkBounds validCursorProgram.capabilities validCursorProgram.maxRows validCursorProgram.body = true := by
+  native_decide

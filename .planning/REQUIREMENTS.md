@@ -164,6 +164,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **LINEAGE-01**: The MVP1.5 verified-lineage contract defines "verified" as safety + Arrow well-formedness evidence lineage only, keeps source correctness/performance/production readiness as non-claims, and maps each in-scope safety claim to exactly one backing evidence layer: Rust verifier structural check, Bitwuzla SMT discharge, Lean soundness theorem, differential validation, or explicit TCB trust assumption
 - [x] **LINEAGE-02**: The MVP1.5 verified-lineage contract declares the TCB for Rust compiler/std, LLVM + MLIR toolchain, Rust↔C ABI, DuckDB host process, and Arrow C Data Interface, and assigns the Lean↔Rust verifier, static↔dynamic, modeled-executor↔real-executor, and native↔model seams to later MVP1.5 phases or to the TCB
 
+### Lean Rust Verifier Correspondence
+
+- [ ] **LINEAGE-03**: The Lean checker mirrors the executable Rust verifier's current static L2Core surface for `ScalarExpr` / `LetScalar`, scalar type environment threading, expression-derived append value typing, and `UnknownVariable` rejection without expanding Rust L2Core beyond what the verifier already accepts
+- [ ] **LINEAGE-04**: A deterministic Lean/Rust verifier differential harness runs the current full verifier fixture matrix plus bounded generated cases, compares accept/reject and stable reject classification, covers required reject codes, and is wired into the release gate as a fail-closed correspondence check
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -267,6 +272,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | PHASE-35 | Phase 35 | Complete |
 | LINEAGE-01 | Phase 36 | Complete |
 | LINEAGE-02 | Phase 36 | Complete |
+| LINEAGE-03 | Phase 37 | In Progress |
+| LINEAGE-04 | Phase 37 | Pending |
 
 **Coverage:**
 
