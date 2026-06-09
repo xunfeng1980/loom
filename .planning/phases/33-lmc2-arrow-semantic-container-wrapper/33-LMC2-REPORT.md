@@ -36,18 +36,21 @@ Parquet, Lance, and Vortex source-ingress semantic emission now produces
 values, nulls, and metadata.
 
 Per the current project direction, the old `emit_source_ingress_lma1_*` entry
-names also emit the default `LMC2(LMA1)` artifact. There is no historical API
-compatibility burden for those names in Phase 33.
+names continue to emit verifier-accepted direct `LMA1` artifacts. Default
+source reports and the new `emit_source_ingress_lmc2_*` entry names emit
+`LMC2(LMA1)`, keeping wrapper distribution evidence separate from direct bridge
+evidence.
 
 ## Compatibility Bridge
 
-Direct `LMA1` remains present only as an explicit DuckDB bridge artifact for the
-current bounded source SQL e2e test. The fixture generators create
-`*-duckdb-bridge-lma1.loom` files by unwrapping the default `LMC2(LMA1)` source
-artifact and re-encoding the inner Arrow semantic payload as direct `LMA1`.
+Direct `LMA1` remains present as explicit bridge evidence for legacy readability
+and bounded source SQL e2e tests. The fixture generators create
+`*-duckdb-bridge-lma1.loom` files from the old lma1-named source entry points,
+while the default source `*.loom` files are emitted through the lmc2-named entry
+points.
 
 That bridge is not the default source distribution artifact and is not a claim
-that old source-ingress `lma1` entry names still produce direct `LMA1`.
+that direct `LMA1` is the product/default source path.
 
 ## Focused Gate Evidence
 

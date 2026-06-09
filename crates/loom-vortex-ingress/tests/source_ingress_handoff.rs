@@ -1,7 +1,8 @@
 use std::sync::LazyLock;
 
 use loom_core::arrow_semantic_codec::{
-    decode_arrow_semantic_container_payload, is_arrow_semantic_container,
+    decode_arrow_semantic_container_payload, decode_arrow_semantic_payload,
+    is_arrow_semantic_container,
 };
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
@@ -10,7 +11,8 @@ use loom_source_ingress::{
     SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition, SourceOracleStrategy,
 };
 use loom_vortex_ingress::{
-    emit_source_ingress_lmc2_from_vortex_buffer, vortex_arrow_oracle_batches_from_buffer,
+    emit_source_ingress_lma1_from_vortex_buffer, emit_source_ingress_lmc2_from_vortex_buffer,
+    vortex_arrow_oracle_batches_from_buffer,
 };
 use vortex_array::arrays::{StructArray, VarBinArray};
 use vortex_array::dtype::{DType, FieldNames, Nullability};
@@ -116,6 +118,16 @@ fn assert_lmc2_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8])
     assert_eq!(decoded, source);
 }
 
+fn assert_direct_lma1_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8]) {
+    let source =
+        vortex_arrow_oracle_batches_from_buffer(source_bytes).expect("Vortex Arrow oracle");
+    let decoded = decode_arrow_semantic_payload(artifact_bytes)
+        .expect("decode direct LMA1")
+        .to_record_batches()
+        .expect("direct LMA1 record batches");
+    assert_eq!(decoded, source);
+}
+
 #[test]
 fn accepted_single_column_handoff_is_verifier_routed_lmc2() {
     let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
@@ -155,6 +167,26 @@ fn accepted_single_column_handoff_is_verifier_routed_lmc2() {
         .summary
         .contains("Arrow semantic payload"));
     assert_lmc2_matches_vortex_oracle(&vortex, &accepted.bytes);
+}
+
+#[test]
+fn historical_lma1_entry_emits_direct_lma1_bridge_artifact() {
+    let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
+    let accepted =
+        emit_source_ingress_lma1_from_vortex_buffer(&vortex).expect("accepted direct LMA1 handoff");
+
+    assert!(!accepted.bytes.is_empty());
+    assert!(accepted.bytes.starts_with(b"LMA1"));
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let report = verify_artifact(&accepted.bytes, &registry, &Default::default());
+    assert_eq!(report.status(), ArtifactVerificationStatus::Accepted);
+    let facts = report.facts().expect("accepted LMA1 facts");
+    assert_eq!(facts.artifact_kind, "LMA1");
+    assert_eq!(
+        facts.payload_kind.as_deref(),
+        Some("Arrow semantic payload")
+    );
+    assert_direct_lma1_matches_vortex_oracle(&vortex, &accepted.bytes);
 }
 
 #[test]

@@ -6,10 +6,9 @@ use std::sync::Arc;
 use arrow_array::{Int32Array, RecordBatch, RecordBatchIterator};
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
-use loom_core::arrow_semantic_codec::{
-    decode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
+use loom_lance_ingress::{
+    emit_source_ingress_lma1_from_lance_path, emit_source_ingress_lmc2_from_lance_path,
 };
-use loom_lance_ingress::emit_source_ingress_lma1_from_lance_path;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -48,15 +47,20 @@ async fn run() -> Result<(), String> {
     .await
     .map_err(|err| format!("write Lance dataset: {err}"))?;
 
-    let accepted = emit_source_ingress_lma1_from_lance_path(&source_path)
+    let accepted = emit_source_ingress_lmc2_from_lance_path(&source_path)
         .await
         .map_err(|report| format!("emit LMC2 from Lance failed: {:?}", report.diagnostics))?;
-    let duckdb_bridge = decode_arrow_semantic_container_payload(&accepted.bytes)
-        .and_then(|payload| encode_arrow_semantic_payload(&payload))
-        .map_err(|err| format!("build direct LMA1 DuckDB bridge from Lance LMC2: {err}"))?;
+    let duckdb_bridge = emit_source_ingress_lma1_from_lance_path(&source_path)
+        .await
+        .map_err(|report| {
+            format!(
+                "emit direct LMA1 from Lance failed: {:?}",
+                report.diagnostics
+            )
+        })?;
     fs::write(&loom_path, &accepted.bytes)
         .map_err(|err| format!("write {}: {err}", loom_path.display()))?;
-    fs::write(&duckdb_bridge_path, duckdb_bridge)
+    fs::write(&duckdb_bridge_path, duckdb_bridge.bytes)
         .map_err(|err| format!("write {}: {err}", duckdb_bridge_path.display()))?;
 
     println!("source: {}", source_path.display());

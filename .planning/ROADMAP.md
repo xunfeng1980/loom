@@ -928,7 +928,7 @@ Plans:
 
 **Status:** Complete. Phase 33 implemented verifier-accepted `LMC2(LMA1)` wrapping, artifact-verifier/CLI visibility, source-ingress cutover, and release-gate coverage.
 **Depends on:** Phase 31 and Phase 32.
-**Goal:** Implement a versioned `LMC2` distribution wrapper for Arrow semantic `LMA1` payloads, with verifier routing, feature flags/section metadata as needed, CLI/report visibility, source-ingress emission updates, and release-gate coverage. Default source emission now produces `LMC2(LMA1)`; direct `LMA1` remains only an explicit bridge fixture for current bounded DuckDB e2e until Phase 34 broadens SQL support.
+**Goal:** Implement a versioned `LMC2` distribution wrapper for Arrow semantic `LMA1` payloads, with verifier routing, feature flags/section metadata as needed, CLI/report visibility, source-ingress emission updates, and release-gate coverage. Default source reports and new `lmc2` source entry points now produce `LMC2(LMA1)`; historical `lma1` source entry points remain explicit direct `LMA1` bridge evidence for legacy readability and regression checks.
 **Requirements:** PHASE-33
 **Ordering decision:** Resolve the artifact contract before broadening query-engine or native-execution claims. This phase should make `LMC2` a real verifier-accepted wrapper around Arrow semantic payloads, not a documentation-only future direction. It must not broaden DuckDB SQL shape support, claim native `LMA1` execution, or add live StarRocks runtime integration.
 **Plans:** 5/5 plans executed

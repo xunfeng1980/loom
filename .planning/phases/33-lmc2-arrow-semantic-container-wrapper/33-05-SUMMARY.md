@@ -33,8 +33,8 @@ key-files:
     - .planning/STATE.md
 
 key-decisions:
-  - "Default source artifacts and old lma1-named semantic source entrypoints emit `LMC2(LMA1)`; there is no historical direct-LMA1 compatibility burden for those names."
-  - "Direct `LMA1` is documented only as an explicit DuckDB bridge fixture until Phase 34 implements SQL over default `LMC2(LMA1)`."
+  - "Default source artifacts and new lmc2-named semantic source entrypoints emit `LMC2(LMA1)`."
+  - "Old lma1-named semantic source entrypoints emit direct `LMA1` bridge artifacts for legacy readability and regression evidence."
   - "Phase 33 wrapper acceptance is not native Arrow semantic execution evidence; Phase 35 remains engine-neutral native scope."
 
 patterns-established:
@@ -72,11 +72,11 @@ The planned release closeout changes landed in this closeout commit.
 
 ## Decisions Made
 
-The latest project direction removes historical compatibility burden for old `emit_source_ingress_lma1_*` names. Those entrypoints emit the default `LMC2(LMA1)` artifact. Direct `LMA1` remains only as an explicitly named DuckDB bridge fixture for current bounded source e2e SQL.
+The latest project direction keeps historical `emit_source_ingress_lma1_*` names as direct `LMA1` bridge evidence. Default source reports and new `emit_source_ingress_lmc2_*` names emit the `LMC2(LMA1)` distribution artifact.
 
 ## Deviations from Plan
 
-The plan text still described direct `LMA1` as a compatibility bridge. Per user direction, this closeout narrows that language to a DuckDB bridge fixture only and does not preserve direct `LMA1` semantics for old source-ingress entry names.
+The earlier closeout text over-narrowed direct `LMA1` to generated DuckDB bridge fixtures. Per later user correction, old source-ingress `lma1` entry names preserve direct `LMA1` semantics so legacy readability evidence remains precise.
 
 ## Issues Encountered
 

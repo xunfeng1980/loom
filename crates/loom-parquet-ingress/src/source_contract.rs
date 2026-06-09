@@ -153,23 +153,38 @@ fn parquet_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngres
         })
 }
 
-/// Historical Phase 31 entry point. Phase 33 emits verifier-accepted
-/// `LMC2(LMA1)` bytes by default.
+/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
 pub fn emit_source_ingress_lma1_from_parquet_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_lmc2_from_parquet_path(path)
+    emit_source_ingress_semantic_from_parquet_path(path, SemanticArtifactFormat::DirectLma1)
 }
 
 /// Emit verifier-accepted `LMC2(LMA1)` bytes for a Parquet source materialized as Arrow.
 pub fn emit_source_ingress_lmc2_from_parquet_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_semantic_from_parquet_path(path)
+    emit_source_ingress_semantic_from_parquet_path(path, SemanticArtifactFormat::WrappedLmc2)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SemanticArtifactFormat {
+    DirectLma1,
+    WrappedLmc2,
+}
+
+impl SemanticArtifactFormat {
+    fn label(self) -> &'static str {
+        match self {
+            Self::DirectLma1 => "LMA1",
+            Self::WrappedLmc2 => "LMC2(LMA1)",
+        }
+    }
 }
 
 fn emit_source_ingress_semantic_from_parquet_path(
     path: &Path,
+    artifact_format: SemanticArtifactFormat,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let facts = parquet_source_facts_from_path(path)?;
     let coverage = facts
@@ -185,7 +200,7 @@ fn emit_source_ingress_semantic_from_parquet_path(
         .map_err(|report| source_oracle_failed_report(&facts, report))?;
     let batches = parquet_arrow_oracle_batches_from_path(path)
         .map_err(|report| source_oracle_failed_report(&facts, report))?;
-    let artifact_bytes = loom_artifact_from_batches(schema, &batches)
+    let artifact_bytes = loom_artifact_from_batches(schema, &batches, artifact_format)
         .map_err(|diagnostic| SourceIngressReport::unsupported(Some(facts.clone()), diagnostic))?;
 
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -194,7 +209,7 @@ fn emit_source_ingress_semantic_from_parquet_path(
         return Err(source_verification_failed_report(
             &facts,
             verification.status().as_str(),
-            "LMC2(LMA1)",
+            artifact_format.label(),
         ));
     }
 
@@ -529,8 +544,13 @@ fn child_field_names(data_type: &DataType) -> Vec<String> {
 fn loom_artifact_from_batches(
     schema: SchemaRef,
     batches: &[RecordBatch],
+    artifact_format: SemanticArtifactFormat,
 ) -> Result<Vec<u8>, SourceDiagnostic> {
     let lma1 = direct_lma1_artifact_from_batches(schema, batches)?;
+    if artifact_format == SemanticArtifactFormat::DirectLma1 {
+        return Ok(lma1);
+    }
+
     wrap_arrow_semantic_payload(&lma1).map_err(|err| {
         SourceDiagnostic::new(
             SourceDiagnosticCode::UnsupportedConversion,

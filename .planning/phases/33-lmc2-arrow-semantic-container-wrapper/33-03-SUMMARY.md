@@ -17,8 +17,8 @@ affects: [phase-33, phase-34, phase-35, source-ingress, duckdb-surface]
 tech-stack:
   added: []
   patterns:
-    - Source adapters build direct LMA1 bytes internally, wrap as LMC2, then verify the wrapper before acceptance
-    - Historical lma1-named source entry points now delegate to LMC2 output because Phase 33 has no direct-LMA1 default burden
+    - Source adapters build direct LMA1 bytes internally, wrap as LMC2, then verify the wrapper before default acceptance
+    - Historical lma1-named source entry points emit direct LMA1 bridge artifacts; default reports and new lmc2 entry points emit LMC2 output
 
 key-files:
   created:
@@ -31,7 +31,7 @@ key-files:
 
 key-decisions:
   - "Default source artifacts are LMC2(LMA1) for Parquet, Lance, and Vortex."
-  - "Old lma1-named source entry points are historical names only and now emit LMC2(LMA1)."
+  - "Old lma1-named source entry points remain explicit direct LMA1 bridge evidence."
   - "Source/oracle equality evidence remains separate from artifact verifier acceptance."
 
 patterns-established:
@@ -60,7 +60,7 @@ completed: 2026-06-09
 
 - Added LMC2 source emission entry points for Parquet, Lance, and Vortex and routed report/default emission through them.
 - Updated source handoff and full semantic compatibility tests to assert LMC2 magic, LMC2 verifier facts, and decoded-wrapper equality against source/oracle batches.
-- Updated legacy readability current-adapter checks and source emission display strings to reflect that current accepted source bytes are LMC2(LMA1).
+- Updated legacy readability current-adapter checks so old lma1-named entry points remain direct LMA1 evidence while source emission display strings reflect default LMC2(LMA1).
 
 ## Task Commits
 
@@ -76,15 +76,16 @@ The planned adapter and test changes landed in one production commit:
 - `crates/loom-lance-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
 - `crates/loom-vortex-ingress/src/source_contract.rs` - Emits and verifies LMC2(LMA1) by default.
 - `crates/loom-source-ingress/src/lib.rs` - Displays Arrow semantic emission as `LMC2(LMA1)`.
-- Source handoff, full compatibility, and legacy readability tests - Updated to decode wrapper artifacts and keep oracle equality.
+- Source handoff and full compatibility tests - Updated to decode wrapper artifacts and keep oracle equality.
+- Legacy readability tests - Kept old lma1-named entry points as direct LMA1 oracle equality evidence.
 
 ## Decisions Made
 
-Per user direction, Phase 33 treats direct LMA1 compatibility as non-blocking historical naming. Existing `emit_source_ingress_lma1_*` function names now emit default LMC2(LMA1) artifacts rather than preserving a separate direct-LMA1 output path.
+Per later user correction, Phase 33 keeps direct LMA1 compatibility as explicit bridge evidence. Existing `emit_source_ingress_lma1_*` function names emit direct LMA1 artifacts; default source reports and new `emit_source_ingress_lmc2_*` functions emit LMC2(LMA1).
 
 ## Deviations from Plan
 
-The plan mentioned retaining direct LMA1 compatibility shims. User clarified there is no historical burden, so the implementation intentionally makes the old lma1-named helpers emit LMC2(LMA1) as the default artifact.
+The plan mentioned retaining direct LMA1 compatibility shims. The current implementation keeps those shims direct and uses explicit `lmc2` entry points for wrapper artifacts, avoiding ambiguity in legacy readability evidence.
 
 ## Issues Encountered
 

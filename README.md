@@ -153,10 +153,11 @@ bash scripts/lmc2-arrow-semantic-container-test.sh
 ```
 
 This verifies the Phase 33 distribution wrapper: source defaults and the
-source-ingress semantic entrypoints emit `LMC2(LMA1)`, the artifact verifier
+new source-ingress `lmc2` entrypoints emit `LMC2(LMA1)`, the artifact verifier
 recognizes the wrapper and reports the inner Arrow semantic payload, and CLI
 reports keep native lowering unsupported instead of turning wrapper acceptance
-into native execution evidence.
+into native execution evidence. Historical `lma1`-named entrypoints continue to
+emit direct `LMA1` bridge artifacts for regression evidence.
 
 ### 8. Run the DuckDB source e2e gate
 

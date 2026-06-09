@@ -147,10 +147,11 @@ nested/logical type。
 bash scripts/lmc2-arrow-semantic-container-test.sh
 ```
 
-这个 gate 验证 Phase 33 的分发 wrapper：source 默认路径和 source-ingress
-semantic 入口都会发 `LMC2(LMA1)`，artifact verifier 能识别 wrapper 并报告内部
+这个 gate 验证 Phase 33 的分发 wrapper：source 默认路径和新的 source-ingress
+`lmc2` 入口都会发 `LMC2(LMA1)`，artifact verifier 能识别 wrapper 并报告内部
 Arrow semantic payload，CLI 报告继续把 native lowering 标成 unsupported，不把
-wrapper acceptance 当成 native execution evidence。
+wrapper acceptance 当成 native execution evidence。历史 `lma1` 命名入口继续发
+direct `LMA1` bridge artifact，用作 regression evidence。
 
 ### 8. 运行 DuckDB source e2e gate
 

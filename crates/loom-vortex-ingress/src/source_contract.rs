@@ -142,19 +142,50 @@ pub fn emit_source_ingress_lmc1_from_vortex_buffer(
     })
 }
 
-/// Compatibility shim for callers that used the Phase 31 direct-LMA1 name.
-///
-/// Phase 33 default source emission is verifier-accepted `LMC2(LMA1)`.
+/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
 pub fn emit_source_ingress_lma1_from_vortex_buffer(
     bytes: &[u8],
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_lmc2_from_vortex_buffer(bytes)
+    emit_source_ingress_semantic_from_vortex_buffer(bytes, SemanticArtifactFormat::DirectLma1)
 }
 
 /// Emit `LMC2(LMA1)` from a Vortex buffer after Vortex materializes the source
 /// as Arrow and Loom verifies the semantic wrapper.
 pub fn emit_source_ingress_lmc2_from_vortex_buffer(
     bytes: &[u8],
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    emit_source_ingress_semantic_from_vortex_buffer(bytes, SemanticArtifactFormat::WrappedLmc2)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SemanticArtifactFormat {
+    DirectLma1,
+    WrappedLmc2,
+}
+
+impl SemanticArtifactFormat {
+    fn label(self) -> &'static str {
+        match self {
+            Self::DirectLma1 => "LMA1",
+            Self::WrappedLmc2 => "LMC2(LMA1)",
+        }
+    }
+
+    fn coverage_note(self) -> &'static str {
+        match self {
+            Self::DirectLma1 => {
+                "Vortex source materialized as Arrow for direct LMA1 semantic emission"
+            }
+            Self::WrappedLmc2 => {
+                "Vortex source materialized as Arrow for LMC2-wrapped LMA1 semantic emission"
+            }
+        }
+    }
+}
+
+fn emit_source_ingress_semantic_from_vortex_buffer(
+    bytes: &[u8],
+    artifact_format: SemanticArtifactFormat,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let reader_facts =
         reader_facts_from_vortex_buffer(bytes).map_err(source_report_from_vortex_ingress_report)?;
@@ -197,23 +228,27 @@ pub fn emit_source_ingress_lmc2_from_vortex_buffer(
     })?;
     let lma1 = direct_lma1_artifact_from_payload(&payload)
         .map_err(|diagnostic| source_oracle_failed_report(&reader_facts, diagnostic))?;
-    let artifact_bytes = wrap_arrow_semantic_payload(&lma1).map_err(|err| {
-        source_oracle_failed_report(
-            &reader_facts,
-            SourceDiagnostic::new(
-                SourceDiagnosticCode::UnsupportedConversion,
-                "$.payload",
-                format!("failed to wrap Vortex LMA1 payload in LMC2: {err}"),
-            ),
-        )
-    })?;
+    let artifact_bytes = if artifact_format == SemanticArtifactFormat::DirectLma1 {
+        lma1
+    } else {
+        wrap_arrow_semantic_payload(&lma1).map_err(|err| {
+            source_oracle_failed_report(
+                &reader_facts,
+                SourceDiagnostic::new(
+                    SourceDiagnosticCode::UnsupportedConversion,
+                    "$.payload",
+                    format!("failed to wrap Vortex LMA1 payload in LMC2: {err}"),
+                ),
+            )
+        })?
+    };
 
     let registry = L2KernelRegistry::default_for_mvp0();
     let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
     if verification.status() != ArtifactVerificationStatus::Accepted {
         return Err(source_verification_failed_report_with_kind(
             &reader_facts,
-            "LMC2(LMA1)",
+            artifact_format.label(),
             verification.status().as_str(),
         ));
     }
@@ -240,10 +275,9 @@ pub fn emit_source_ingress_lmc2_from_vortex_buffer(
         coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
         coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
         coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
-        coverage.notes.push(
-            "Vortex source materialized as Arrow for LMC2-wrapped LMA1 semantic emission"
-                .to_string(),
-        );
+        coverage
+            .notes
+            .push(artifact_format.coverage_note().to_string());
     }
 
     let mut report = SourceIngressReport::accepted(
@@ -267,11 +301,18 @@ pub fn emit_source_ingress_lmc2_from_vortex_buffer(
     })
 }
 
-/// Compatibility shim for callers that used the Phase 31 direct-LMA1 name.
+/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
 pub fn emit_source_ingress_lma1_from_vortex_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_lmc2_from_vortex_path(path)
+    let bytes = std::fs::read(path).map_err(|err| {
+        source_report_from_vortex_ingress_report(VortexIngressReport::rejected(
+            VortexIngressDiagnosticCode::OpenFailed,
+            "$.path",
+            format!("failed to read Vortex path: {err}"),
+        ))
+    })?;
+    emit_source_ingress_lma1_from_vortex_buffer(&bytes)
 }
 
 /// Emit `LMC2(LMA1)` from a local Vortex path after Vortex materializes the
