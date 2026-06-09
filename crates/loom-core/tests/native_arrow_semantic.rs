@@ -10,9 +10,14 @@ use loom_core::arrow_semantic_codec::{
     encode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
 };
 use loom_core::native_arrow_semantic::{
-    execute_native_arrow_semantic, verify_native_arrow_semantic_equivalence,
-    verify_native_arrow_semantic_output_equivalence, NativeArrowSemanticDiagnosticCode,
-    NATIVE_ARROW_SEMANTIC_BACKEND,
+    decide_native_arrow_semantic_runtime, execute_native_arrow_semantic,
+    native_arrow_semantic_backend_identity, native_arrow_semantic_runtime_cache_key,
+    verify_native_arrow_semantic_equivalence, verify_native_arrow_semantic_output_equivalence,
+    NativeArrowSemanticDiagnosticCode, NATIVE_ARROW_SEMANTIC_BACKEND,
+};
+use loom_core::runtime_abi::{
+    ProjectionColumn, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
+    RuntimeSafetyPolicy,
 };
 
 #[test]
@@ -128,6 +133,83 @@ fn injected_native_output_mismatch_is_explicit_equivalence_failure() {
         equivalence.diagnostics()[0].code,
         NativeArrowSemanticDiagnosticCode::NativeOutputMismatch
     );
+}
+
+#[test]
+fn native_arrow_semantic_runtime_cache_identity_is_engine_neutral() {
+    let batch = primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let execution = execute_native_arrow_semantic(&bytes);
+    let identity = native_arrow_semantic_backend_identity();
+    assert_eq!(identity.backend, NATIVE_ARROW_SEMANTIC_BACKEND);
+    assert_eq!(identity.target_triple, "engine-neutral");
+
+    let decision = decide_native_arrow_semantic_runtime(&execution, RuntimeSafetyPolicy::default());
+    assert_eq!(decision.decision, RuntimeExecutionDecision::NativeCandidate);
+    assert!(decision.diagnostics.is_empty());
+
+    let all = native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &execution,
+        ProjectionSet::All,
+        RuntimeSafetyPolicy::default(),
+    )
+    .expect("native cache key");
+    assert!(all
+        .canonical_input
+        .contains("backend=loom-native-arrow-semantic:phase35"));
+    assert!(all.canonical_input.contains("projection=all"));
+
+    let projected = native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &execution,
+        ProjectionSet::Columns(vec![ProjectionColumn {
+            source_index: 1,
+            output_index: 0,
+        }]),
+        RuntimeSafetyPolicy::default(),
+    )
+    .expect("projected native cache key");
+    assert_ne!(all, projected);
+    assert!(projected.canonical_input.contains("projection=columns:1>0"));
+}
+
+#[test]
+fn unsupported_arrow_semantic_execution_cannot_seed_native_cache() {
+    let bytes = encode_lmc2(&utf8_batch());
+    let execution = execute_native_arrow_semantic(&bytes);
+    assert!(!execution.is_supported());
+
+    let decision = decide_native_arrow_semantic_runtime(&execution, RuntimeSafetyPolicy::default());
+    assert_eq!(decision.decision, RuntimeExecutionDecision::FailClosed);
+
+    let err = native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &execution,
+        ProjectionSet::All,
+        RuntimeSafetyPolicy::default(),
+    )
+    .expect_err("unsupported native execution must not be cacheable");
+    assert_eq!(
+        err.code,
+        NativeArrowSemanticDiagnosticCode::UnsupportedPayload
+    );
+    assert_eq!(err.path, "$.cache.native_arrow_semantic");
+
+    let mut fallback_policy = RuntimeSafetyPolicy::default();
+    fallback_policy.fallback = RuntimeFallbackPolicy::AllowInterpreter;
+    let fallback_decision = decide_native_arrow_semantic_runtime(&execution, fallback_policy);
+    assert_eq!(
+        fallback_decision.decision,
+        RuntimeExecutionDecision::InterpreterFallback
+    );
+    assert!(native_arrow_semantic_runtime_cache_key(
+        &bytes,
+        &execution,
+        ProjectionSet::All,
+        fallback_policy,
+    )
+    .is_err());
 }
 
 fn primitive_nullable_batch() -> RecordBatch {

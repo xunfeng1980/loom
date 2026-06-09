@@ -24,6 +24,13 @@ use crate::artifact_verifier::{
     ArtifactVerificationStatus,
 };
 use crate::l2_kernel_registry::L2KernelRegistry;
+use crate::runtime_abi::{
+    decide_runtime_execution, PredicateEnvelope, ProjectionSet, RuntimeAbiVersion,
+    RuntimeBackendIdentity, RuntimeCacheKey, RuntimeCacheKeyInput, RuntimeDiagnosticCode,
+    RuntimeEmissionDisposition, RuntimeExecutionDecision, RuntimeFallbackPolicy,
+    RuntimeLoweringDisposition, RuntimePlanDecisionReport, RuntimeReaderSupport,
+    RuntimeSafetyPolicy, SplitDescriptor,
+};
 
 pub const NATIVE_ARROW_SEMANTIC_BACKEND: &str = "loom-native-arrow-semantic";
 
@@ -332,6 +339,100 @@ fn verify_native_arrow_semantic_equivalence_for_output(
     }
 }
 
+pub fn native_arrow_semantic_backend_identity() -> RuntimeBackendIdentity {
+    RuntimeBackendIdentity {
+        backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+        backend_version: "phase35".to_string(),
+        toolchain: "rust-arrow-rs-58.3".to_string(),
+        target_triple: "engine-neutral".to_string(),
+        cpu_features: Vec::new(),
+    }
+}
+
+pub fn decide_native_arrow_semantic_runtime(
+    execution: &NativeArrowSemanticExecutionReport,
+    policy: RuntimeSafetyPolicy,
+) -> RuntimePlanDecisionReport {
+    let verifier_rejected = execution
+        .first_error()
+        .is_some_and(|diagnostic| diagnostic.code == NativeArrowSemanticDiagnosticCode::VerifierRejected);
+    decide_runtime_execution(&crate::runtime_abi::RuntimeDecisionInput {
+        artifact_status: if verifier_rejected {
+            ArtifactVerificationStatus::Rejected
+        } else {
+            ArtifactVerificationStatus::Accepted
+        },
+        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        production_lowering_supported: execution.is_supported(),
+        reader_support: if verifier_rejected {
+            RuntimeReaderSupport::Rejected
+        } else {
+            RuntimeReaderSupport::Accepted
+        },
+        emission_disposition: RuntimeEmissionDisposition::SemanticArrow,
+        lowering_disposition: if execution.is_supported() {
+            RuntimeLoweringDisposition::ProductionLoweringSupported
+        } else {
+            RuntimeLoweringDisposition::InterpreterOnly
+        },
+        projection_supported: true,
+        predicate_supported: true,
+        split_supported: true,
+        concurrency_safe: true,
+        policy,
+    })
+}
+
+pub fn native_arrow_semantic_runtime_cache_key(
+    bytes: &[u8],
+    execution: &NativeArrowSemanticExecutionReport,
+    projection: ProjectionSet,
+    policy: RuntimeSafetyPolicy,
+) -> Result<RuntimeCacheKey, NativeArrowSemanticDiagnostic> {
+    let decision = decide_native_arrow_semantic_runtime(execution, policy);
+    if decision.decision != RuntimeExecutionDecision::NativeCandidate || !execution.is_supported() {
+        let fallback_disabled = decision
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == RuntimeDiagnosticCode::FallbackDisabled);
+        let fallback_note = if fallback_disabled
+            && matches!(policy.fallback, RuntimeFallbackPolicy::FailClosedOnly)
+        {
+            " and interpreter fallback is disabled"
+        } else {
+            ""
+        };
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+            "$.cache.native_arrow_semantic",
+            format!(
+                "only accepted native Arrow semantic executions may seed runtime cache keys{fallback_note}"
+            ),
+        ));
+    }
+
+    Ok(RuntimeCacheKey::build(&RuntimeCacheKeyInput {
+        abi_version: RuntimeAbiVersion::CURRENT,
+        artifact_digest: stable_digest("artifact", bytes),
+        facts_fingerprint: format!(
+            "artifact_kind={};payload_kind={};rows={};columns={}",
+            execution.artifact_kind, execution.payload_kind, execution.row_count, execution.column_count
+        ),
+        solver_identity: "not-required".to_string(),
+        production_lowering_fingerprint: format!(
+            "backend={};rows={};columns={}",
+            NATIVE_ARROW_SEMANTIC_BACKEND, execution.row_count, execution.column_count
+        ),
+        backend_identity: native_arrow_semantic_backend_identity(),
+        projection,
+        predicate: PredicateEnvelope::None,
+        split: SplitDescriptor::FullScan {
+            row_count: execution.row_count,
+        },
+        policy,
+    }))
+}
+
 fn decode_reference_batch(bytes: &[u8]) -> Result<RecordBatch, NativeArrowSemanticDiagnostic> {
     let payload = if is_arrow_semantic_container(bytes) {
         decode_arrow_semantic_container_payload(bytes)
@@ -491,6 +592,15 @@ fn downcast_diagnostic(column: &dyn Array, column_index: usize) -> NativeArrowSe
             column.data_type()
         ),
     )
+}
+
+fn stable_digest(label: &str, bytes: &[u8]) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{label}:{hash:016x}")
 }
 
 #[allow(dead_code)]
