@@ -31,7 +31,16 @@ bridges, DuckDB visibility, or toolchain skips.
 
 ## Lance/Parquet Rows
 
-Pending 42-02.
+| Shape ID | Source | Source schema shape | Emitted Loom shape | Disposition | Native class | Evidence |
+|---|---|---|---|---|---|---|
+| `parquet-nullable-i32` | Parquet | nullable fixed-width primitive | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + native-supported | native-supported | Parquet Arrow oracle, artifact verifier, verified-lineage record, Phase 35/40 native-model validation |
+| `parquet-utf8` | Parquet | nullable Utf8 | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Parquet Arrow oracle, artifact verifier, native unsupported-shape fail-closed |
+| `parquet-list-int32` | Parquet | nullable List<Int32> | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Parquet Arrow oracle, artifact verifier, native unsupported-shape fail-closed |
+| `parquet-struct` | Parquet | nullable Struct | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Parquet Arrow oracle, artifact verifier, native unsupported-shape fail-closed |
+| `lance-nullable-i32` | Lance | nullable fixed-width primitive | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + native-supported | native-supported | Lance scanner oracle, artifact verifier, verified-lineage record, Phase 35/40 native-model validation |
+| `lance-utf8` | Lance | nullable Utf8 | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Lance scanner oracle, artifact verifier, native unsupported-shape fail-closed |
+| `lance-list-int32` | Lance | nullable List<Int32> | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Lance scanner oracle, artifact verifier, native unsupported-shape fail-closed |
+| `lance-struct` | Lance | nullable Struct | `LMC2(LMA1)` semantic Arrow | verified-lineage-backed + interpreter-only | interpreter-only | Lance scanner oracle, artifact verifier, native unsupported-shape fail-closed |
 
 ## Closeout Gate
 

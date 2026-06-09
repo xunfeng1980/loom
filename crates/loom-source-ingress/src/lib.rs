@@ -370,6 +370,110 @@ impl SourceOracleStrategy {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SourceVerifiedNativeDisposition {
+    NativeSupported,
+    InterpreterOnly,
+    FailClosedDeferred,
+}
+
+impl SourceVerifiedNativeDisposition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NativeSupported => "native-supported",
+            Self::InterpreterOnly => "interpreter-only",
+            Self::FailClosedDeferred => "fail-closed/deferred",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceVerifiedNativeCoverageRow {
+    pub shape_id: String,
+    pub source_kind: String,
+    pub source_schema_shape: String,
+    pub emitted_loom_shape: String,
+    pub source_status: SourceIngressStatus,
+    pub emission_disposition: SourceEmissionDisposition,
+    pub lowering_disposition: SourceLoweringDisposition,
+    pub native_disposition: SourceVerifiedNativeDisposition,
+    pub evidence_notes: Vec<String>,
+}
+
+pub fn source_verified_native_coverage_row(
+    source_kind: impl Into<String>,
+    shape_id: impl Into<String>,
+    coverage: &SourceCoverage,
+    native_disposition: SourceVerifiedNativeDisposition,
+    evidence_notes: impl IntoIterator<Item = impl Into<String>>,
+) -> SourceVerifiedNativeCoverageRow {
+    SourceVerifiedNativeCoverageRow {
+        shape_id: shape_id.into(),
+        source_kind: source_kind.into(),
+        source_schema_shape: format!(
+            "{}:{}:{}",
+            coverage.schema_family, coverage.layout_class, coverage.array_encoding
+        ),
+        emitted_loom_shape: source_emitted_loom_shape(coverage),
+        source_status: coverage.support,
+        emission_disposition: coverage.emission_disposition,
+        lowering_disposition: coverage.lowering_disposition,
+        native_disposition,
+        evidence_notes: coverage
+            .notes
+            .iter()
+            .cloned()
+            .chain(evidence_notes.into_iter().map(Into::into))
+            .collect(),
+    }
+}
+
+pub fn validate_source_verified_native_coverage_row(
+    row: &SourceVerifiedNativeCoverageRow,
+) -> Vec<String> {
+    let mut diagnostics = Vec::new();
+
+    if row.source_status == SourceIngressStatus::Accepted
+        && !row
+            .evidence_notes
+            .iter()
+            .any(|note| note.contains("verified-lineage"))
+    {
+        diagnostics.push(format!(
+            "{}:verified-lineage-evidence-missing",
+            row.shape_id
+        ));
+    }
+    if row.native_disposition == SourceVerifiedNativeDisposition::NativeSupported
+        && !row.evidence_notes.iter().any(|note| {
+            note.contains("native-model-validation")
+                || note.contains("native-execution-engine-output")
+        })
+    {
+        diagnostics.push(format!("{}:native-evidence-missing", row.shape_id));
+    }
+    if row.source_status != SourceIngressStatus::Accepted && row.emitted_loom_shape != "none" {
+        diagnostics.push(format!("{}:unsupported-row-emits-artifact", row.shape_id));
+    }
+    if row.native_disposition == SourceVerifiedNativeDisposition::NativeSupported
+        && !row.emitted_loom_shape.starts_with("LMC2(LMA1)")
+    {
+        diagnostics.push(format!("{}:native-artifact-shape-mismatch", row.shape_id));
+    }
+
+    diagnostics
+}
+
+fn source_emitted_loom_shape(coverage: &SourceCoverage) -> String {
+    match (coverage.emission_kind, coverage.emission_disposition) {
+        (SourceEmissionKind::None, _) | (_, SourceEmissionDisposition::None) => "none".to_string(),
+        (SourceEmissionKind::ArrowSemantic, SourceEmissionDisposition::SemanticArrow) => {
+            "LMC2(LMA1)/semantic-arrow".to_string()
+        }
+        (kind, disposition) => format!("{}/{}", kind.as_str(), disposition.as_str()),
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SourceOracleEvidence {
     pub strategy: SourceOracleStrategy,

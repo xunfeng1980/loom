@@ -192,7 +192,7 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 ### Verified + Native Coverage Expansion
 
 - [x] **COV2-01**: Vortex coverage rows are widened into a Phase 42 living matrix with explicit source shape, emitted Loom shape, oracle/verifier/verified-lineage evidence, native disposition, interpreter fallback, and fail-closed/deferred rows; canonical raw Vortex rows do not claim native support for original dictionary/RLE/bitpack/FOR encodings
-- [ ] **COV2-02**: Lance and Parquet schema rows record accepted `LMC2(LMA1)` source semantic coverage, native-supported fixed-width primitive subsets, interpreter-only Utf8/nested rows, and fail-closed/deferred unsupported shapes
+- [x] **COV2-02**: Lance and Parquet schema rows record accepted `LMC2(LMA1)` source semantic coverage, native-supported fixed-width primitive subsets, interpreter-only Utf8/nested rows, and fail-closed/deferred unsupported shapes
 - [ ] **COV2-03**: A focused Phase 42 gate validates the living matrix and is wired into the broad verifier before closeout
 
 ## Out of Scope
