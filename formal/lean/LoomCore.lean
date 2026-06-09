@@ -1,15 +1,42 @@
 /-
-Phase 13 Lean scaffold for the tiny Loom L2Core verifier slice.
+Lean mechanized checker for the Loom L2Core verifier slice.
 
-This file is a mechanized scaffold, not a complete final Loom soundness proof.
-It names the core language objects and theorem targets that the Rust verifier,
-SMT obligations, and future proof work must align with.
+This file is a bounded mechanized checker over a pre-resolved, `Nat`-grounded AST
+projection of the Rust `verify_l2_core` logic (`crates/loom-core/src/full_verifier.rs`).
+It is NOT a complete final Loom soundness proof, but the three semantic predicates
+are now load-bearing decidable checkers, not `True` placeholders.
 
-Important limitation: the Phase 13 predicates `builder_events_typed` and
-`no_ambient_authority` are intentionally `True` placeholders. Therefore
-`accepted_program_safe` is a tautological scaffold theorem over names and shape,
-not load-bearing safety evidence. Current load-bearing verifier evidence lives
-in the Rust executable verifier and the Phase 19 Bitwuzla-backed SMT discharge.
+What Lean machine-checks now (real `Bool`-valued checkers wrapped as `_ = true`):
+  - `builder_events_typed` (via `checkTyped`): AppendValue output type match
+    (OutputTypeMismatch), AppendNull output nullability (OutputNullabilityMismatch),
+    and that every appended-to builder is a declared output builder
+    (MissingOutputBuilder).
+  - `no_ambient_authority` (via `checkAuthority`): every ReadInput targets a declared
+    input capability (MissingInputCapability), the read is spatially in-range over the
+    declared slice (`offset >= sliceOffset && offset + width <= sliceOffset + sliceLen`,
+    faithful because the Lean AST carries concrete `Nat` offset/width), and append
+    targets are declared output builders (shared MissingOutputBuilder).
+  - `finite_bounds` (via `checkBounds`): ForRange `stop >= start` (InvalidLoopBounds)
+    and `(stop - start) <= maxRows` (ResourceBudgetExceeded, row budget); CursorLoop
+    `progress > 0` (NonMonotoneCursorLoop) and `limit <= maxRows`
+    (ResourceBudgetExceeded, row budget).
+
+Obligations that remain SMT-only, with NO faithful counterpart on this `Nat`-grounded
+Lean AST (intentionally NOT modeled here — modeling them would require enriching the
+AST, a separate larger task):
+  - Integer overflow (`AddNoOverflow` / `MulNoOverflow`): `Nat` is unbounded, so there
+    is no overflow to catch in Lean; this is discharged by the Rust SMT path
+    (Phase 19 Bitwuzla-backed `QF_BV`).
+  - Unknown-variable / `ScalarExpr` variable environment (`UnknownVariable`,
+    `LetScalar`): the Lean AST is pre-resolved (types/offsets already concrete), so it
+    has no var-env to validate.
+  - Non-row resource budgets (`max_steps`, `max_builder_events`, per-builder
+    `max_events`): the Lean `Program` models only `maxRows`, not the full
+    `ResourceBudget`.
+
+This is therefore a bounded mechanized checker over a lossy AST projection, not a
+claim of full L2Core soundness. Current load-bearing evidence also includes the Rust
+executable verifier and the Phase 19 Bitwuzla-backed SMT discharge.
 
 Rocq remains the fallback if extraction or verified-checker lineage becomes
 mandatory for later milestones.
@@ -89,6 +116,10 @@ mutual
     | s :: rest => checkTypedStmt caps s && checkTypedBody caps rest
 end
 
+/-- builder_events_typed entry point over a program body. -/
+def checkTyped (caps : List Capability) (body : List Stmt) : Bool :=
+  checkTypedBody caps body
+
 /- no_ambient_authority checker: declared input capability + read spatial bounds +
    declared output builder. Reject codes mirrored: MissingInputCapability,
    MissingOutputBuilder, plus the read in-range obligation (faithful here because
@@ -116,6 +147,10 @@ mutual
     | s :: rest => checkAuthorityStmt caps s && checkAuthorityBody caps rest
 end
 
+/-- no_ambient_authority entry point over a program body. -/
+def checkAuthority (caps : List Capability) (body : List Stmt) : Bool :=
+  checkAuthorityBody caps body
+
 /- finite_bounds checker: ForRange `stop>=start` + `(stop-start)<=maxRows`;
    CursorLoop `progress>0` + `limit<=maxRows`. Reject codes mirrored:
    InvalidLoopBounds, NonMonotoneCursorLoop, ResourceBudgetExceeded (row budget). -/
@@ -136,14 +171,18 @@ mutual
     | s :: rest => checkBoundsStmt caps maxRows s && checkBoundsBody caps maxRows rest
 end
 
+/-- finite_bounds entry point over a program body. -/
+def checkBounds (caps : List Capability) (maxRows : Nat) (body : List Stmt) : Bool :=
+  checkBoundsBody caps maxRows body
+
 def finite_bounds (p : Program) : Prop :=
-  p.maxRows >= 0
+  checkBounds p.capabilities p.maxRows p.body = true
 
-def builder_events_typed (_p : Program) : Prop :=
-  True
+def builder_events_typed (p : Program) : Prop :=
+  checkTyped p.capabilities p.body = true
 
-def no_ambient_authority (_p : Program) : Prop :=
-  True
+def no_ambient_authority (p : Program) : Prop :=
+  checkAuthority p.capabilities p.body = true
 
 def Verified (p : Program) : Prop :=
   finite_bounds p /\ builder_events_typed p /\ no_ambient_authority p
