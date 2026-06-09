@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# mvp1-review-audit-test.sh - focused Phase 32 review marker gate.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "${REPO_ROOT}"
+
+fail() {
+    echo "[FAIL] $*" >&2
+    exit 1
+}
+
+ok() {
+    echo "[PASS] $*"
+}
+
+require_file() {
+    local path="$1"
+    test -f "${path}" || fail "missing ${path}"
+}
+
+require_fixed() {
+    local needle="$1"
+    local path="$2"
+    rg -q --fixed-strings "${needle}" "${path}" || fail "${path} missing fixed marker: ${needle}"
+}
+
+require_regex() {
+    local pattern="$1"
+    local path="$2"
+    rg -q "${pattern}" "${path}" || fail "${path} missing regex marker: ${pattern}"
+}
+
+require_order() {
+    local first="$1"
+    local second="$2"
+    local path="$3"
+    local first_line
+    local second_line
+    first_line="$(rg -n --fixed-strings "${first}" "${path}" | head -n1 | cut -d: -f1 || true)"
+    second_line="$(rg -n --fixed-strings "${second}" "${path}" | head -n1 | cut -d: -f1 || true)"
+    if [ -z "${first_line}" ] || [ -z "${second_line}" ] || [ "${first_line}" -ge "${second_line}" ]; then
+        fail "${path} does not contain '${first}' before '${second}'"
+    fi
+}
+
+CLAIM_LEDGER=".planning/phases/32-mvp1-architecture-and-code-review/32-CLAIM-LEDGER.md"
+EVIDENCE_REVIEW=".planning/phases/32-mvp1-architecture-and-code-review/32-EXECUTION-EVIDENCE-REVIEW.md"
+MVP1_SCRIPT="scripts/mvp1-verify.sh"
+SOURCE_E2E="scripts/duckdb-source-e2e-test.sh"
+NATIVE_HARDENING="scripts/native-hardening-test.sh"
+
+echo "=== Loom MVP1 review audit marker gate ==="
+
+require_file "${CLAIM_LEDGER}"
+require_file "${EVIDENCE_REVIEW}"
+require_file "${MVP1_SCRIPT}"
+require_file "${SOURCE_E2E}"
+require_file "${NATIVE_HARDENING}"
+ok "required review files exist"
+
+require_fixed "Claim Ledger" "${CLAIM_LEDGER}"
+require_fixed "Actual Status" "${CLAIM_LEDGER}"
+require_fixed "Required Action" "${CLAIM_LEDGER}"
+require_fixed "fallback" "${CLAIM_LEDGER}"
+require_fixed "deferred" "${CLAIM_LEDGER}"
+require_fixed "unsupported" "${CLAIM_LEDGER}"
+ok "claim ledger markers"
+
+require_fixed "Execution Evidence Matrix" "${EVIDENCE_REVIEW}"
+require_fixed "Proves" "${EVIDENCE_REVIEW}"
+require_fixed "Does Not Prove" "${EVIDENCE_REVIEW}"
+require_fixed "duckdb-source-e2e" "${EVIDENCE_REVIEW}"
+require_fixed "native-hardening" "${EVIDENCE_REVIEW}"
+require_fixed "fallback" "${EVIDENCE_REVIEW}"
+require_fixed "skip" "${EVIDENCE_REVIEW}"
+require_fixed "single-column" "${EVIDENCE_REVIEW}"
+require_fixed "StarRocks" "${EVIDENCE_REVIEW}"
+require_fixed "LMC2" "${EVIDENCE_REVIEW}"
+ok "execution evidence review markers"
+
+require_order "bash scripts/mvp0-verify.sh" "bash scripts/duckdb-source-e2e-test.sh" "${MVP1_SCRIPT}"
+ok "mvp1-verify runs inherited gate before source e2e"
+
+require_fixed "assert_lma1" "${SOURCE_E2E}"
+require_fixed "expected_rows=\$'7\\n-1\\n42'" "${SOURCE_E2E}"
+require_fixed 'expected_agg="3,48,-1,42"' "${SOURCE_E2E}"
+require_fixed "SELECT value FROM loom_scan" "${SOURCE_E2E}"
+require_fixed "SELECT COUNT(*), SUM(value), MIN(value), MAX(value) FROM loom_scan" "${SOURCE_E2E}"
+ok "duckdb source e2e checks LMA1 magic and SQL rows/aggregates"
+
+require_regex "route=native-candidate" "${NATIVE_HARDENING}"
+require_regex "native-execution-engine-output" "${NATIVE_HARDENING}"
+require_regex "interpreter-fallback" "${NATIVE_HARDENING}"
+require_regex "toolchain-skipped|toolchain-failed" "${NATIVE_HARDENING}"
+require_regex "fail-closed" "${NATIVE_HARDENING}"
+require_regex "cache-miss" "${NATIVE_HARDENING}"
+require_regex "cache-hit" "${NATIVE_HARDENING}"
+ok "native hardening route/fallback/skip markers"
+
+echo "[PASS] MVP1 review audit marker gate"
+
