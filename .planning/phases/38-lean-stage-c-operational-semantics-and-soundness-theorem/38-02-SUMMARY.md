@@ -10,10 +10,18 @@
   `formal/lean/LoomCore.lean` with a semantic theorem:
   `Verified p -> ModeledExecutionSafe p`.
 - Preserved the old structural projection as `structural_safe_projection`.
+- Remediation note, 2026-06-09: strengthened the theorem target after review so
+  modeled safety predicates no longer accept `_state` and discard it. `ModeledState`
+  now carries execution-maintained evidence for `readsInBounds`, `eventsTyped`,
+  and `rowsWithinMax`; `accepted_program_safe` consumes both those
+  `(execProgram p)` state fields and the `Verified p` static premises.
 - Added a visible modeled-executor-only theorem scope note in Lean.
 - Strengthened `scripts/full-verifier-test.sh` to check:
   - `ModeledExecutionSafe` exists;
   - the modeled-executor-only scope note exists;
+  - modeled safety predicates reference state reads/events/rows/status rather
+    than `_state`;
+  - `accepted_program_safe` consumes the `Verified` premise;
   - no `sorry` appears in `formal/lean/LoomCore.lean`.
 - Completed `LINEAGE-05` and `LINEAGE-06`, marked Phase 38 complete, and moved
   planning state to Phase 39 ready.
@@ -27,8 +35,13 @@ theorem accepted_program_safe (p : Program) :
     Verified p -> ModeledExecutionSafe p
 ```
 
-This proves modeled execution safety for verifier-accepted programs in the Lean
-model. It does not prove Rust interpreter behavior, native behavior, source
+This now proves modeled execution safety by reading the actual `execProgram p`
+state evidence: every recorded modeled read is in bounds, every recorded modeled
+builder event is well typed, modeled row use is within the carried row bound,
+and finalization yields a terminal modeled status. The theorem also consumes the
+static `Verified p` premises for authority, builder typing, and finite bounds.
+
+It does not prove Rust interpreter behavior, native behavior, source
 correctness, performance, compiler correctness, ABI correctness, or host engine
 correctness.
 
@@ -40,6 +53,8 @@ All checks passed:
 lean formal/lean/LoomCore.lean
 ! rg -n "\\bsorry\\b" formal/lean/LoomCore.lean
 rg -n "accepted_program_safe|ModeledExecutionSafe|modeled executor" formal/lean/LoomCore.lean
+! rg -n "_state : ModeledState|intro _h" formal/lean/LoomCore.lean
+rg -n "readsInBounds|eventsTyped|rowsWithinMax|finalized_status_terminal" formal/lean/LoomCore.lean
 bash scripts/full-verifier-test.sh
 git diff --check
 ```

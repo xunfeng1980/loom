@@ -491,35 +491,6 @@ inductive ExecutionStatus where
   | failClosed
 deriving Repr, DecidableEq
 
-structure ModeledState where
-  scalars : ScalarEnv
-  reads : List ModeledRead
-  events : List ModeledEvent
-  rowsUsed : Nat
-  status : ExecutionStatus
-deriving Repr
-
-def initialModeledState : ModeledState :=
-  {
-    scalars := [],
-    reads := [],
-    events := [],
-    rowsUsed := 0,
-    status := .running
-  }
-
-def modeledFailClosed (state : ModeledState) : ModeledState :=
-  { state with status := .failClosed }
-
-def appendModeledRead (state : ModeledState) (cap : String) (offset width : ScalarExpr) (inBounds : Bool) : ModeledState :=
-  { state with reads := state.reads ++ [{ capability := cap, offset := offset, width := width, inBounds := inBounds }] }
-
-def appendModeledEvent (state : ModeledState) (event : ModeledEvent) : ModeledState :=
-  { state with events := state.events ++ [event] }
-
-def restoreScalars (before after : ModeledState) : ModeledState :=
-  { after with scalars := before.scalars }
-
 def eventWellTyped (caps : List Capability) : ModeledEvent -> Bool
   | .appendValue builder ty =>
       match builderInfo? caps builder with
@@ -530,17 +501,113 @@ def eventWellTyped (caps : List Capability) : ModeledEvent -> Bool
       | some (expected, nullable) => nullable && expected == ty
       | none => false
 
-def NoOutOfBoundsRead (p : Program) (_state : ModeledState) : Prop :=
-  no_ambient_authority p
+structure ModeledState where
+  caps : List Capability
+  maxRows : Nat
+  scalars : ScalarEnv
+  reads : List ModeledRead
+  events : List ModeledEvent
+  rowsUsed : Nat
+  status : ExecutionStatus
+  readsInBounds : reads.all (fun read => read.inBounds) = true
+  eventsTyped : events.all (eventWellTyped caps) = true
+  rowsWithinMax : rowsUsed <= maxRows
 
-def BuilderEventsWellTyped (p : Program) (_state : ModeledState) : Prop :=
-  builder_events_typed p
+def initialModeledState (caps : List Capability) (maxRows : Nat) : ModeledState :=
+  {
+    caps := caps,
+    maxRows := maxRows,
+    scalars := [],
+    reads := [],
+    events := [],
+    rowsUsed := 0,
+    status := .running,
+    readsInBounds := by simp,
+    eventsTyped := by simp,
+    rowsWithinMax := Nat.zero_le maxRows
+  }
 
-def TerminatesWithinMaxRows (p : Program) (_state : ModeledState) : Prop :=
-  finite_bounds p
+def modeledFailClosed (state : ModeledState) : ModeledState :=
+  { state with status := .failClosed }
 
-def ArrowWellFormedByConstruction (p : Program) (_state : ModeledState) : Prop :=
-  builder_events_typed p
+def modeledFinished (state : ModeledState) : ModeledState :=
+  { state with status := .finished }
+
+def finalizeModeledState (state : ModeledState) : ModeledState :=
+  if state.status == .running then modeledFailClosed state else state
+
+theorem finalized_status_terminal (state : ModeledState) :
+    (finalizeModeledState state).status = .finished \/
+      (finalizeModeledState state).status = .failClosed := by
+  cases h : state.status
+  · right
+    simp [finalizeModeledState, modeledFailClosed, h]
+  · left
+    simp [finalizeModeledState, h]
+  · right
+    simp [finalizeModeledState, h]
+
+def appendModeledReadInBounds (state : ModeledState) (cap : String) (offset width : ScalarExpr) : ModeledState :=
+  {
+    state with
+    reads := state.reads ++ [{ capability := cap, offset := offset, width := width, inBounds := true }],
+    readsInBounds := by
+      simp [List.all_append, state.readsInBounds]
+  }
+
+def appendModeledEvent (state : ModeledState) (event : ModeledEvent)
+    (h : eventWellTyped state.caps event = true) : ModeledState :=
+  {
+    state with
+    events := state.events ++ [event],
+    eventsTyped := by
+      simp [List.all_append, state.eventsTyped, h]
+  }
+
+def appendModeledAppendValueEvent (state : ModeledState) (builder : String) : ModeledState :=
+  match h : builderInfo? state.caps builder with
+  | some (expected, _) =>
+      appendModeledEvent state (.appendValue builder expected) (by
+        simp [eventWellTyped, h])
+  | none => modeledFailClosed state
+
+def appendModeledAppendNullEvent (state : ModeledState) (builder : String) : ModeledState :=
+  match h : builderInfo? state.caps builder with
+  | some (ty, nullable) =>
+      if hn : nullable then
+        appendModeledEvent state (.appendNull builder ty) (by
+          simp [eventWellTyped, h, hn])
+      else modeledFailClosed state
+  | none => modeledFailClosed state
+
+def addModeledRows (state : ModeledState) (rows : Nat) : ModeledState :=
+  if h : state.rowsUsed + rows <= state.maxRows then
+    {
+      state with
+      rowsUsed := state.rowsUsed + rows,
+      rowsWithinMax := h
+    }
+  else modeledFailClosed state
+
+def restoreScalars (before after : ModeledState) : ModeledState :=
+  { after with scalars := before.scalars }
+
+def NoOutOfBoundsRead (p : Program) (state : ModeledState) : Prop :=
+  state.reads.all (fun read => read.inBounds) = true /\
+    no_ambient_authority p
+
+def BuilderEventsWellTyped (p : Program) (state : ModeledState) : Prop :=
+  state.events.all (eventWellTyped state.caps) = true /\
+    builder_events_typed p
+
+def TerminatesWithinMaxRows (p : Program) (state : ModeledState) : Prop :=
+  state.rowsUsed <= state.maxRows /\
+    (state.status = .finished \/ state.status = .failClosed) /\
+    finite_bounds p
+
+def ArrowWellFormedByConstruction (p : Program) (state : ModeledState) : Prop :=
+  state.events.all (eventWellTyped state.caps) = true /\
+    builder_events_typed p
 
 def ModeledRunSafe (p : Program) (state : ModeledState) : Prop :=
   NoOutOfBoundsRead p state /\
@@ -552,22 +619,22 @@ def modeledExecutorScopeNote : String :=
   "Phase 38 theorem scope: modeled executor only; Rust interpreter consistency is Phase 39 and native/model validation is Phase 40."
 
 mutual
-  def execStmtFuel (fuel : Nat) (caps : List Capability) (maxRows : Nat) (stmt : Stmt) (state : ModeledState) : ModeledState :=
+  def execStmtFuel (fuel : Nat) (stmt : Stmt) (state : ModeledState) : ModeledState :=
     match fuel with
     | 0 => modeledFailClosed state
     | fuel' + 1 =>
         if state.status != .running then state else
         match stmt with
         | .readInput cap offset width bind =>
-            match inputSlice? caps cap with
+            match inputSlice? state.caps cap with
             | none => modeledFailClosed state
             | some (sliceOffset, sliceLen) =>
                 if exprWellTyped state.scalars offset && exprWellTyped state.scalars width then
                   let inBounds := concreteReadInRange sliceOffset sliceLen offset width
                   if inBounds then
-                    let next := appendModeledRead state cap offset width inBounds
+                    let next := appendModeledReadInBounds state cap offset width
                     { next with scalars := scalarInsert bind (scalarTypeForReadWidth width) state.scalars }
-                  else modeledFailClosed (appendModeledRead state cap offset width inBounds)
+                  else modeledFailClosed state
                 else modeledFailClosed state
         | .letScalar name expr =>
             match typeOfExpr? state.scalars expr with
@@ -577,48 +644,56 @@ mutual
                 else modeledFailClosed state
             | none => modeledFailClosed state
         | .appendValue builder value =>
-            match builderInfo? caps builder, typeOfExpr? state.scalars value with
+            match builderInfo? state.caps builder, typeOfExpr? state.scalars value with
             | some (expected, _), some actual =>
                 if exprVarsKnown state.scalars value && expected == actual then
-                  appendModeledEvent state (.appendValue builder expected)
+                  appendModeledAppendValueEvent state builder
                 else modeledFailClosed state
             | _, _ => modeledFailClosed state
         | .appendNull builder =>
-            match builderInfo? caps builder with
-            | some (ty, nullable) =>
-                if nullable then appendModeledEvent state (.appendNull builder ty) else modeledFailClosed state
+            match builderInfo? state.caps builder with
+            | some (_, nullable) =>
+                if nullable then appendModeledAppendNullEvent state builder else modeledFailClosed state
             | none => modeledFailClosed state
         | .forRange index start end_ body =>
             match constNat? start, constNat? end_ with
             | some s, some e =>
-                if decide (e >= s) && decide (e - s <= maxRows) then
-                  let loopState := { state with scalars := scalarInsert index .rowIndex state.scalars, rowsUsed := state.rowsUsed + (e - s) }
-                  restoreScalars state (execBodyFuel fuel' caps maxRows body loopState)
+                if decide (e >= s) && decide (e - s <= state.maxRows) then
+                  let countedState := addModeledRows state (e - s)
+                  if countedState.status == .running then
+                    let loopState := { countedState with scalars := scalarInsert index .rowIndex state.scalars }
+                    restoreScalars state (execBodyFuel fuel' body loopState)
+                  else countedState
                 else modeledFailClosed state
             | _, _ => modeledFailClosed state
         | .cursorLoop cursor limit progress body =>
             match constNat? limit with
             | some n =>
-                if isMonotoneProgress cursor progress && decide (n <= maxRows) then
-                  let loopState := { state with scalars := scalarInsert cursor .rowIndex state.scalars, rowsUsed := state.rowsUsed + n }
-                  restoreScalars state (execBodyFuel fuel' caps maxRows body loopState)
+                if isMonotoneProgress cursor progress && decide (n <= state.maxRows) then
+                  let countedState := addModeledRows state n
+                  if countedState.status == .running then
+                    let loopState := { countedState with scalars := scalarInsert cursor .rowIndex state.scalars }
+                    restoreScalars state (execBodyFuel fuel' body loopState)
+                  else countedState
                 else modeledFailClosed state
             | none => modeledFailClosed state
         | .failClosed _ => modeledFailClosed state
 
-  def execBodyFuel (fuel : Nat) (caps : List Capability) (maxRows : Nat) (body : List Stmt) (state : ModeledState) : ModeledState :=
+  def execBodyFuel (fuel : Nat) (body : List Stmt) (state : ModeledState) : ModeledState :=
     match fuel with
     | 0 => modeledFailClosed state
     | fuel' + 1 =>
         match body with
-        | [] => { state with status := if state.status == .running then .finished else state.status }
+        | [] => if state.status == .running then modeledFinished state else state
         | stmt :: rest =>
-            let next := execStmtFuel fuel' caps maxRows stmt state
-            if next.status == .running then execBodyFuel fuel' caps maxRows rest next else next
+            let next := execStmtFuel fuel' stmt state
+            if next.status == .running then execBodyFuel fuel' rest next else next
 end
 
 def execProgram (p : Program) : ModeledState :=
-  execBodyFuel (p.maxRows + p.body.length + 64) p.capabilities p.maxRows p.body initialModeledState
+  finalizeModeledState
+    (execBodyFuel (p.maxRows + p.body.length + 64) p.body
+      (initialModeledState p.capabilities p.maxRows))
 
 def ModeledExecutionSafe (p : Program) : Prop :=
   ModeledRunSafe p (execProgram p)
@@ -632,9 +707,17 @@ def ModeledExecutionSafe (p : Program) : Prop :=
 theorem accepted_program_safe (p : Program) :
     Verified p -> ModeledExecutionSafe p := by
   intro h
-  exact And.intro h.right.right
-    (And.intro h.right.left
-      (And.intro h.left h.right.left))
+  unfold ModeledExecutionSafe ModeledRunSafe
+  exact And.intro (And.intro (execProgram p).readsInBounds h.right.right)
+    (And.intro (And.intro (execProgram p).eventsTyped h.right.left)
+      (And.intro
+        (And.intro (execProgram p).rowsWithinMax
+          (And.intro
+            (finalized_status_terminal
+              (execBodyFuel (p.maxRows + p.body.length + 64) p.body
+                (initialModeledState p.capabilities p.maxRows)))
+            h.left))
+        (And.intro (execProgram p).eventsTyped h.right.left)))
 
 def validLetScalarAppendProgram : Program :=
   {

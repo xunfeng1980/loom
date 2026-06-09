@@ -66,6 +66,29 @@ rg -q "ModeledExecutionSafe" "${LEAN_FILE}" \
     || fail "Lean model missing ModeledExecutionSafe"
 rg -q "modeled executor only" "${LEAN_FILE}" \
     || fail "Lean theorem missing modeled-executor-only scope note"
+if rg -n "_state : ModeledState" "${LEAN_FILE}"; then
+    fail "Lean modeled safety predicates must not ignore ModeledState via _state"
+fi
+if rg -n "intro _h" "${LEAN_FILE}"; then
+    fail "Lean accepted_program_safe must consume the Verified premise, not discard it"
+fi
+if rg -n "rowsUsed := min" "${LEAN_FILE}"; then
+    fail "Lean modeled executor must fail closed on row-budget overflow, not clamp rowsUsed"
+fi
+for marker in \
+    "state.reads.all (fun read => read.inBounds)" \
+    "state.events.all (eventWellTyped state.caps)" \
+    "state.rowsUsed <= state.maxRows" \
+    "no_ambient_authority p" \
+    "builder_events_typed p" \
+    "finite_bounds p" \
+    "finalized_status_terminal" \
+    "(execProgram p).readsInBounds" \
+    "(execProgram p).eventsTyped" \
+    "(execProgram p).rowsWithinMax"; do
+    rg -q -F "${marker}" "${LEAN_FILE}" \
+        || fail "Lean modeled soundness bridge missing state evidence marker: ${marker}"
+done
 if rg -n '\bsorry\b' "${LEAN_FILE}"; then
     fail "Lean proof contains sorry"
 fi

@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Phase 39 complete; ready for Phase 40
 last_updated: "2026-06-09T09:33:38.421Z"
-last_activity: 2026-06-09 -- Phase 39 complete with model/Rust interpreter trace consistency gate wired into full verifier path
+last_activity: 2026-06-09 -- Phase 38 soundness bridge remediated; accepted_program_safe now consumes execProgram state evidence and Verified premises
 progress:
   total_phases: 47
   completed_phases: 39
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase 40 READY: Native ↔ Model Validation
 Plan: 0 of 0
 Status: Phase 39 complete; ready to discuss/plan Phase 40
-Last activity: 2026-06-09 -- 39-02 added observer-only production trace subject, model/Rust trace diff gate, and full verifier wiring
+Last activity: 2026-06-09 -- Phase 38 soundness bridge remediated so `accepted_program_safe` consumes `(execProgram p)` read/event/row/status evidence plus the `Verified p` premises
 
-Progress: Phase 39 complete; Phase 40 is the first incomplete roadmap phase
+Progress: Phase 39 complete; Phase 40 is the first incomplete roadmap phase after the Phase 38 bridge remediation
 
 ## Progress Snapshot
 
@@ -38,7 +38,7 @@ Progress: Phase 39 complete; Phase 40 is the first incomplete roadmap phase
 - Completed executable plans: 160 / 160
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
 - Current position: Phase 40 should validate native Arrow semantic execution against the faithful model/reference path
-- Last verified gate: `bash scripts/full-verifier-test.sh` passed with the Phase 37 Lean/Rust correspondence diff gate wired into the full verifier path
+- Last verified gate: `bash scripts/full-verifier-test.sh` passed with Lean/Rust correspondence, model/Rust consistency, and the strengthened modeled soundness bridge checks
 
 **Completed phase plan counts:**
 
@@ -265,6 +265,7 @@ None yet.
 - Phase 35 35-04 complete: `scripts/native-arrow-semantic-execution-test.sh` is wired into `scripts/mvp1-verify.sh`, and `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp1-verify.sh` passed with the new Phase 35 gate.
 - Phase 35 complete: 35-05 updated public/planning docs, requirements, ROADMAP/STATE, and final summary so native Arrow semantic execution is documented as engine-neutral bounded primitive evidence without DuckDB native consumption or full Arrow-shape claims.
 - Phase 36 complete: 36-01 created the verified-lineage contract and TCB declaration, defined "verified" as safety + Arrow well-formedness evidence lineage only, mapped each safety claim to exactly one evidence layer, assigned Lean/Rust/model/native trust seams to Phase 37-40 or TCB, and closed LINEAGE-01/LINEAGE-02 without proof/code changes.
+- Phase 38 remediation complete: `accepted_program_safe` now consumes `(execProgram p)` modeled state evidence (`readsInBounds`, `eventsTyped`, `rowsWithinMax`, terminal status) plus the `Verified p` premises; `scripts/full-verifier-test.sh` rejects `_state : ModeledState` and discarded-premise regressions.
 
 ### Quick Tasks Completed
 
