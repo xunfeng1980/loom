@@ -175,7 +175,7 @@ flowchart LR
     verify["静态验证<br/>safety、bounds、termination shape"]
     arrow["Typed Arrow builder events<br/>输出构造时即合法"]
     host["宿主引擎边界<br/>Arrow C Data Interface"]
-    native["可选可信 native lowering<br/>MLIR / LLVM / engine backend"]
+    native["可选有界 native lowering<br/>MLIR / LLVM / engine backend"]
 
     data --> verify --> arrow --> host --> native
 ```

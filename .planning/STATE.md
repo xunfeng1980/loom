@@ -20,15 +20,15 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-06-08)
 
-**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and Parquet/Lance/Vortex source-backed `LMA1` semantic artifacts, and get expected row/aggregate results.
+**Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and the current Parquet/Lance/Vortex source-backed single-column `LMA1` e2e artifacts, and get expected row/aggregate results.
 **Current focus:** Execute Phase 32 overall MVP1 architecture and code review; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
 
 ## Current Position
 
-Phase: 32 planned
-Plan: 32-01 ready
-Status: Phase 32 planned; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Planned Phase 32 architecture/code review after MVP1 verify gate
+Phase: 32 executing
+Plan: 32-01 executing
+Status: Phase 32 executing claim-ledger review; Phase 30 dual-query remains partial/deferred
+Last activity: 2026-06-09 -- Started Phase 32 claim ledger and documentation truth audit
 
 Progress: 95%
 

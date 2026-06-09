@@ -179,7 +179,7 @@ flowchart LR
     verify["Static verification<br/>safety, bounds, termination shape"]
     arrow["Typed Arrow builder events<br/>legal output by construction"]
     host["Host engine boundary<br/>Arrow C Data Interface"]
-    native["Optional trusted native lowering<br/>MLIR / LLVM / engine backend"]
+    native["Optional bounded native lowering<br/>MLIR / LLVM / engine backend"]
 
     data --> verify --> arrow --> host --> native
 ```
