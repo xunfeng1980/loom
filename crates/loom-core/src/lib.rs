@@ -58,6 +58,9 @@ pub mod arrow_semantic_codec;
 /// Verifier scaffold for Arrow semantic artifacts.
 pub mod arrow_semantic_verifier;
 
+/// Engine-neutral native execution for Arrow semantic artifacts.
+pub mod native_arrow_semantic;
+
 /// Unified artifact-facing verifier report model for Phase 17+.
 pub mod artifact_verifier;
 
