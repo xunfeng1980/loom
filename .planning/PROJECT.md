@@ -64,12 +64,13 @@ host integration.
 - ✓ Verified-lineage contract: MVP1.5 now has a normative contract that defines "verified" as safety + Arrow well-formedness evidence lineage only, maps each safety claim to exactly one layer (Rust verifier structural check, Bitwuzla SMT discharge, Lean soundness theorem, differential validation, or explicit TCB trust assumption), declares the Rust/std, LLVM/MLIR, Rust↔C ABI, DuckDB host, and Arrow C Data Interface TCB, and assigns Lean↔Rust verifier, static↔dynamic, modeled-executor↔real-executor, and native↔model seams to Phase 37-40 or TCB — Phase 36
 - ✓ Lean Rust verifier correspondence: `formal/lean/LoomCore.lean` now mirrors the Rust verifier's current static L2Core surface for `ScalarExpr` / `LetScalar`, scalar environment typing, expression-derived append value typing, and unknown-variable rejection; `scripts/lean-rust-correspondence-test.sh` diffs Lean and Rust accept/reject plus reject-code classifications over the current verifier matrix plus deterministic fuzz cases and is wired into `scripts/full-verifier-test.sh` — Phase 37
 - ✓ Lean modeled operational semantics and soundness theorem: `formal/lean/LoomCore.lean` now contains a proof-friendly modeled executor, typed modeled events, fail-closed terminal semantics, modeled safety predicates, and a no-`sorry` semantic `accepted_program_safe : Verified p -> ModeledExecutionSafe p` theorem scoped to the modeled executor only; `scripts/full-verifier-test.sh` checks the theorem marker, modeled-only scope note, and no-sorry policy — Phase 38
+- ✓ Model/Rust interpreter consistency: `loom_core::l2_core_reference_executor` provides a separate Rust transcription of the Lean modeled executor, and `scripts/model-rust-interpreter-consistency-test.sh` compares reference and observer-only production trace-subject builder-event/fail-closed traces over a deterministic matrix; this is per-run differential validation, not an all-program proof or native/model validation — Phase 39
 
 ### Active
 
 <!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
 
-- [ ] MVP1.5 Phase 39 is the next planned phase: validate real Rust interpreter behavior against the modeled executor at builder-event trace granularity. It consumes Phase 38 modeled soundness and must not claim native/model validation.
+- [ ] MVP1.5 Phase 40 is the next planned phase: validate Phase 35 native Arrow semantic execution against the faithful model/reference path. It consumes Phase 39 model/Rust consistency and must preserve compiler/toolchain TCB boundaries.
 
 ### Out of Scope
 
@@ -127,6 +128,7 @@ host integration.
 | Phase 13 should use a layered full-verifier stack | The full verifier spans different problem classes: Rust executable diagnostics, local arithmetic/range proof, language soundness, and lifecycle invariants. Use Rust abstract interpretation + SMT + Lean/Rocq + TLA+ rather than betting on one formalism. | Complete — Phase 13 |
 | Phase 37 closes Lean/Rust verifier correspondence for the static checker slice | `formal/lean/LoomCore.lean` now models `ScalarExpr` / `LetScalar`, scalar environment typing, expression-derived append typing, and unknown-variable rejection, while `scripts/lean-rust-correspondence-test.sh` diffs Lean and Rust classifications. Overflow/range proof obligations and non-row budgets remain Rust/Bitwuzla evidence, and semantic soundness remains Phase 38. | Complete — Phase 37 |
 | Phase 38 soundness is modeled-executor-only | The no-`sorry` `accepted_program_safe` theorem proves `Verified p -> ModeledExecutionSafe p` for the Lean modeled executor. It does not prove Rust interpreter behavior, native behavior, source correctness, performance, compiler correctness, or ABI/host correctness. | Complete — Phase 38 |
+| Phase 39 is per-run differential validation | The reference executor and observer-only production trace subject compare traces across a deterministic corpus. Passing the gate validates the matrix and catches divergence; it is not a verified compilation proof or a native/model equivalence claim. | Complete — Phase 39 |
 | Phase 14 should start with verifier-gated textual MLIR | The first native-lowering proof point must preserve the Phase 13 verifier boundary before taking on `melior`/LLVM/JIT/toolchain complexity. | Complete — Phase 14 |
 | Phase 15 should remain before full `melior`/LLVM/JIT | Real Vortex file/container ingress should stabilize the artifact/layout evidence that later native lowering consumes; otherwise the backend risks overfitting the Phase 14 synthetic copy slice. | Complete — Phase 15 |
 | Phase 16 should be the full `melior`/LLVM/JIT integration step | Programmatic MLIR, LLVM lowering, and JIT execution are the next backend step only after Phase 15 provides real-ingress shapes and Phase 14 preserves the verifier-gated handoff. Keep it optional and bounded to Int32 copy evidence. | Complete — Phase 16 |
@@ -167,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 after Phase 38 closeout — modeled executor soundness is now machine-checked in Lean; model-to-Rust interpreter validation remains Phase 39.*
+*Last updated: 2026-06-09 after Phase 39 closeout — model/Rust interpreter trace consistency is release-gated for the deterministic corpus; native/model validation remains Phase 40.*

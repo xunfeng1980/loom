@@ -81,7 +81,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 36: Verified-Lineage Contract and TCB Declaration** - Define what "verified" means at MVP1.5 exit, the obligation matrix, and the explicit Trusted Computing Base (Rust compiler, LLVM/MLIR, C ABI seam, DuckDB host, Arrow C Data Interface) (completed 2026-06-09)
 - [x] **Phase 37: Lean Stage B — Lean ↔ Rust Verifier Correspondence** - Enrich the Lean AST (ScalarExpr/LetScalar) so `builder_events_typed` derives value types from expressions like the Rust verifier; wire Lean↔Rust differential testing into the release gate (supersedes parked Phase 36)
 - [x] **Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem** - Define small-step operational semantics over L2Core and prove the load-bearing safety theorem so `accepted_program_safe` is a semantic theorem, scoped explicitly to the modeled executor (supersedes parked Phase 37)
-- [ ] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
+- [x] **Phase 39: Model ↔ Rust Interpreter Consistency** - Validate that the real Rust interpreter (the actual safety path) matches a faithful transcription of the Lean operational semantics, event-for-event, across the supported matrix plus a fuzz corpus
 - [ ] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption
 - [ ] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety
 
@@ -1029,7 +1029,7 @@ Plans:
 
 ### Phase 39: Model ↔ Rust Interpreter Consistency
 
-**Status:** In Progress (1/2 plans complete). **(Highest-leverage new phase.)**
+**Status:** Complete. Phase 39 added a separate Rust reference executor, observer-only production trace subject, deterministic trace-level diff gate, and Lean extraction deferral note. **(Highest-leverage new phase.)**
 **Goal:** Continuously validate that the real Rust interpreter — the actual safety path users run — matches a faithful transcription of the Lean operational semantics.
 **Depends on:** Phase 38.
 **Requirements:** LINEAGE-07, LINEAGE-08
@@ -1041,7 +1041,7 @@ Plans:
 
 **Non-goals:** Does not *prove* interpreter = model (that would be verified compilation); it *validates* the correspondence per-run. Must not modify the production interpreter to match the model — divergence is a finding, not a fixup.
 **Ordering decision:** This is the step the parked 36/37 lacked. Without it the soundness theorem holds over a model nobody runs. It reuses the project's existing differential/oracle infrastructure, so cost is low relative to value.
-**Plans:** 2 plans. Wave 1: [x] `39-01-PLAN.md` reference executor. Wave 2: [ ] `39-02-PLAN.md` trace-level differential gate.
+**Plans:** 2 plans complete. Wave 1: [x] `39-01-PLAN.md` reference executor. Wave 2: [x] `39-02-PLAN.md` trace-level differential gate.
 
 ### Phase 40: Native ↔ Model Validation
 

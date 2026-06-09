@@ -176,8 +176,8 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 ### Model Rust Interpreter Consistency
 
-- [ ] **LINEAGE-07**: A Rust reference executor transcribes the Phase 38 Lean modeled operational semantics as a separate differential oracle, emits stable read/append/fail-closed/terminal trace records, and is not used as a production fallback or behavior fixup
-- [ ] **LINEAGE-08**: A deterministic trace-level differential gate compares the production Rust interpreter surface against the reference executor over the supported matrix plus generated cases, fails closed on builder-event/fail-closed divergence, and records that this is per-run validation rather than all-program proof
+- [x] **LINEAGE-07**: A Rust reference executor transcribes the Phase 38 Lean modeled operational semantics as a separate differential oracle, emits stable read/append/fail-closed/terminal trace records, and is not used as a production fallback or behavior fixup
+- [x] **LINEAGE-08**: A deterministic trace-level differential gate compares the production Rust interpreter surface against the reference executor over the supported matrix plus generated cases, fails closed on builder-event/fail-closed divergence, and records that this is per-run validation rather than all-program proof
 
 ## Out of Scope
 
@@ -286,8 +286,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | LINEAGE-04 | Phase 37 | Complete |
 | LINEAGE-05 | Phase 38 | Complete |
 | LINEAGE-06 | Phase 38 | Complete |
-| LINEAGE-07 | Phase 39 | In Progress |
-| LINEAGE-08 | Phase 39 | Pending |
+| LINEAGE-07 | Phase 39 | Complete |
+| LINEAGE-08 | Phase 39 | Complete |
 
 **Coverage:**
 
