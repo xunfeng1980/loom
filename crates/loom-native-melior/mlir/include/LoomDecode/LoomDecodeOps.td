@@ -105,15 +105,6 @@ def LoomDecode_ForRowsOp : LoomDecode_Op<"for_rows"> {
   let hasVerifier = 1;
 }
 
-def LoomDecode_RawCopyOp : LoomDecode_Op<"raw_copy"> {
-  let summary = "Raw primitive copy kernel";
-  let description = [{
-    `loom.decode.raw_copy` is the initial production-supported primitive kernel.
-  }];
-  let arguments = (ins StrAttr:$builder_id, I64Attr:$row);
-  let hasVerifier = 1;
-}
-
 def LoomDecode_BitpackUnpackOp : LoomDecode_Op<"bit_unpack"> {
   let summary = "Bitpack primitive unpack kernel";
   let description = [{

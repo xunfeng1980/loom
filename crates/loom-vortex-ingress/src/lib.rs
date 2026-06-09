@@ -6,8 +6,7 @@
 
 pub mod source_contract;
 pub use source_contract::{
-    emit_source_ingress_lma1_from_vortex_buffer, emit_source_ingress_lma1_from_vortex_path,
-    emit_source_ingress_lmc1_from_vortex_buffer, emit_source_ingress_lmc2_from_vortex_buffer,
+    emit_source_ingress_lmc2_from_vortex_buffer,
     emit_source_ingress_lmc2_from_vortex_path, source_coverage_from_vortex_coverage,
     source_diagnostic_from_vortex_ingress_diagnostic,
     source_diagnostic_from_vortex_reader_diagnostic, source_facts_from_vortex_buffer,
@@ -1541,6 +1540,10 @@ pub fn reader_facts_from_vortex_path(
 /// Phase 18 supports an explicit fail-closed matrix: non-null primitive
 /// single-column files emit wrapped `LMP1`, and non-null struct files whose
 /// fields all match that matrix emit wrapped `LMT1`.
+///
+/// This is an internal helper retained for coverage tests; new code should
+/// use the verifier-routed `emit_source_ingress_lmc2_from_vortex_buffer` path.
+#[doc(hidden)]
 pub fn emit_supported_lmc1_from_vortex_buffer(
     bytes: &[u8],
 ) -> Result<Vec<u8>, VortexIngressReport> {

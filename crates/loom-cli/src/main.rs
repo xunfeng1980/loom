@@ -31,8 +31,8 @@ use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, i
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
 use loom_solver_smt::{verify_artifact_with_l2_core_and_bitwuzla, SolverRunOptions};
 use loom_vortex_ingress::{
-    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_path, reader_facts_from_vortex_path,
-    VortexIngressReport, VortexReaderEmissionKind,
+    emit_source_ingress_lmc2_from_vortex_buffer, inspect_vortex_path,
+    reader_facts_from_vortex_path, VortexIngressReport, VortexReaderEmissionKind,
 };
 
 fn main() {
@@ -182,18 +182,19 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
             let output = Path::new(&args[1]);
             let bytes =
                 fs::read(input).map_err(|err| format!("read {}: {err}", input.display()))?;
-            match emit_supported_lmc1_from_vortex_buffer(&bytes) {
-                Ok(loom_bytes) => {
-                    fs::write(output, loom_bytes)
+            match emit_source_ingress_lmc2_from_vortex_buffer(&bytes) {
+                Ok(artifact) => {
+                    fs::write(output, &artifact.bytes)
                         .map_err(|err| format!("write {}: {err}", output.display()))?;
                     println!("input: {}", input.display());
                     println!("output: {}", output.display());
                     println!("status: emitted");
+                    println!("artifact_kind: {}", artifact.report.emission_kind.as_str());
                     Ok(())
                 }
                 Err(report) => {
                     println!("input: {}", input.display());
-                    print_vortex_ingress_report(&report);
+                    println!("status: {}", report.status.as_str());
                     Err("Vortex file is not in the supported Loom ingress slice".to_string())
                 }
             }
@@ -216,11 +217,9 @@ fn print_reader_artifact_verification(
     }
 
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    match emit_supported_lmc1_from_vortex_buffer(&bytes) {
+    match emit_source_ingress_lmc2_from_vortex_buffer(&bytes) {
         Ok(artifact) => {
-            let registry = L2KernelRegistry::default_for_mvp0();
-            let report = verify_artifact(&artifact, &registry, &Default::default());
-            let status = if report.status() == ArtifactVerificationStatus::Accepted {
+            let status = if artifact.report.artifact_verification.accepted {
                 "pass"
             } else {
                 "fail"

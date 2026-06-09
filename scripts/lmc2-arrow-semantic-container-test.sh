@@ -53,8 +53,8 @@ cargo test -p loom-core --test artifact_verifier
 ok "core LMC2 wrapper tests"
 
 info "Checking CLI artifact verification visibility for LMC2..."
-cargo run -q -p loom-parquet-ingress --bin emit_duckdb_parquet_lma1_fixture -- "${TMP_DIR}/parquet" >/dev/null
-cli_output="$(cargo run -q -p loom-cli -- verify-artifact "${TMP_DIR}/parquet/parquet.loom")"
+cargo run -q -p loom-fixtures --bin emit_arrow_semantic_lmc2_sql_fixture -- "${TMP_DIR}" >/dev/null
+cli_output="$(cargo run -q -p loom-cli -- verify-artifact "${TMP_DIR}/logical-date32-lmc2.loom")"
 grep -q "artifact: LMC2" <<<"${cli_output}" || fail "CLI output did not identify artifact: LMC2"
 grep -q "payload: Arrow semantic payload" <<<"${cli_output}" || fail "CLI output did not identify Arrow semantic payload"
 grep -q "container_version: 1" <<<"${cli_output}" || fail "CLI output did not identify LMC2 version"

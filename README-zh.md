@@ -57,7 +57,7 @@ flowchart LR
 在 smoke test 中，DuckDB 会加载 extension 并查询生成的 `.loom` fixtures：
 
 ```sql
-LOAD 'duckdb-ext/build/loom.duckdb_extension';
+LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
 
 SELECT id, flag, label
 FROM loom_scan('target/loom-duckdb-fixtures/mixed-table.loom');
@@ -114,7 +114,7 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 这个脚本会生成 fixtures、构建 `loom-ffi`、构建
-`duckdb-ext/build/loom.duckdb_extension`、在没有通过 `DUCKDB_CLI` 指定本地
+`contrib/duckdb-ext/build/loom.duckdb_extension`、在没有通过 `DUCKDB_CLI` 指定本地
 DuckDB 时下载固定版本 CLI，并验证 `loom_scan(...)` 上的行结果与聚合结果。
 
 ### 5. 尝试窄范围 Vortex ingress

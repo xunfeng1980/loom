@@ -36,7 +36,7 @@ for file in \
     ".planning/phases/43-starrocks-live-runtime-integration/43-01-PLAN.md" \
     ".planning/phases/43-starrocks-live-runtime-integration/43-02-PLAN.md" \
     ".planning/phases/43-starrocks-live-runtime-integration/43-01-SUMMARY.md" \
-    "crates/loom-dual-query-surface/tests/starrocks_runtime_contract.rs"; do
+    "contrib/loom-dual-query-surface/tests/starrocks_runtime_contract.rs"; do
     [ -f "${file}" ] || fail "missing Phase 43 artifact: ${file}"
 done
 for marker in \
@@ -45,7 +45,7 @@ for marker in \
     "validate_starrocks_runtime_output" \
     "missing_starrocks_runtime_evidence" \
     "unsupported_starrocks_runtime_evidence"; do
-    rg -q -F "${marker}" crates/loom-dual-query-surface \
+    rg -q -F "${marker}" contrib/loom-dual-query-surface \
         || fail "missing StarRocks runtime evidence marker: ${marker}"
 done
 ok "Phase 43 runtime evidence markers are present"

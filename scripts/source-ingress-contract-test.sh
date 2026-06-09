@@ -147,7 +147,7 @@ check_marker "pub struct SourceFacts" crates/loom-source-ingress/src/lib.rs "Sou
 check_marker "pub struct SourceOracleEvidence" crates/loom-source-ingress/src/lib.rs "SourceOracleEvidence"
 check_marker "source_facts_from_vortex_reader_facts" crates/loom-vortex-ingress/src/source_contract.rs "Vortex facts mapping helper"
 check_marker "source_report_from_vortex_reader_facts" crates/loom-vortex-ingress/src/source_contract.rs "Vortex report mapping helper"
-check_marker "emit_source_ingress_lmc1_from_vortex_buffer" crates/loom-vortex-ingress/src/source_contract.rs "verifier-routed Vortex handoff helper"
+check_marker "emit_source_ingress_lmc2_from_vortex_buffer" crates/loom-vortex-ingress/src/source_contract.rs "verifier-routed Vortex handoff helper"
 ok "implementation markers are present"
 
 info "Running focused Phase 26 contract tests..."
@@ -203,7 +203,7 @@ api_surfaces=(
     crates/loom-ffi/include/loom.h
     crates/loom-ffi/include/loom_runtime.h
     crates/loom-ffi/include/loom_duckdb_internal.h
-    duckdb-ext/loom_extension.cpp
+    contrib/duckdb-ext/loom_extension.cpp
     crates/loom-cli/src/main.rs
 )
 

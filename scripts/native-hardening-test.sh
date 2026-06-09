@@ -50,7 +50,7 @@ ok "production route regressions passed"
 info "Checking public SQL/API creep gates..."
 route_prefix="loom_scan_"
 for suffix in native interpreter fallback cache; do
-    if rg -n "${route_prefix}${suffix}" scripts/native-hardening-test.sh duckdb-ext/loom_extension.cpp crates/loom-ffi/include/loom.h; then
+    if rg -n "${route_prefix}${suffix}" scripts/native-hardening-test.sh contrib/duckdb-ext/loom_extension.cpp crates/loom-ffi/include/loom.h; then
         fail "found forbidden public route function marker"
     fi
 done

@@ -31,9 +31,8 @@ info "Running Phase 42 verified/native coverage expansion gate..."
 bash scripts/verified-native-coverage-expansion-test.sh
 ok "scripts/verified-native-coverage-expansion-test.sh"
 
-info "Running Phase 43 StarRocks local/strict runtime integration gate..."
-bash scripts/starrocks-live-runtime-test.sh
-ok "scripts/starrocks-live-runtime-test.sh"
+info "Phase 43 StarRocks local/strict runtime integration gate skipped (suspended, see 43-SUSPENSION-NOTE.md)"
+ok "Phase 43 skipped — suspended pending live StarRocks runtime"
 
 info "Running Phase 43.1 production native codegen realization gate..."
 bash scripts/production-native-codegen-realization-test.sh

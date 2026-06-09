@@ -7,8 +7,8 @@ DUCKDB_VERSION="v1.5.3"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
 
-EXT_PATH="${REPO_ROOT}/duckdb-ext/build/loom.duckdb_extension"
-CLI_CACHE_DIR="${REPO_ROOT}/duckdb-ext/vendor/duckdb-cli"
+EXT_PATH="${REPO_ROOT}/contrib/duckdb-ext/build/loom.duckdb_extension"
+CLI_CACHE_DIR="${REPO_ROOT}/contrib/duckdb-ext/vendor/duckdb-cli"
 PAYLOAD_DIR="${REPO_ROOT}/target/loom-duckdb-fixtures"
 ARROW_FIXTURE_DIR="${REPO_ROOT}/target/loom-duckdb-lmc2-sql"
 
@@ -54,15 +54,15 @@ info "Building loom-ffi and DuckDB extension..."
 cargo build -p loom-ffi --release
 rm -f "${EXT_PATH}"
 cmake_out="${TMP_DIR}/cmake-configure.log"
-if ! cmake -S "${REPO_ROOT}/duckdb-ext" \
-          -B "${REPO_ROOT}/duckdb-ext/build" \
+if ! cmake -S "${REPO_ROOT}/contrib/duckdb-ext" \
+          -B "${REPO_ROOT}/contrib/duckdb-ext/build" \
           -DCMAKE_BUILD_TYPE=Release \
           >"${cmake_out}" 2>&1; then
     cat "${cmake_out}" >&2
     fail "CMake configure failed"
 fi
 grep -v '^--' "${cmake_out}" || true
-cmake --build "${REPO_ROOT}/duckdb-ext/build" 2>&1
+cmake --build "${REPO_ROOT}/contrib/duckdb-ext/build" 2>&1
 test -f "${EXT_PATH}" || fail "loom.duckdb_extension was not built"
 ok "built ${EXT_PATH}"
 
@@ -131,7 +131,7 @@ fallback_payload="${PAYLOAD_DIR}/fsst-utf8.loom"
 bitpack_payload="${PAYLOAD_DIR}/bitpack-i32.loom"
 
 info "Checking native primitive table SQL rows and route diagnostics..."
-export LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK=0
+export LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=0
 unset LOOM_DUCKDB_TEST_CANCEL_PREPARE
 native_out="${TMP_DIR}/native-agg.csv"
 sql_to_file "SELECT * FROM loom_scan('${native_payload}')" "${native_out}"
@@ -144,7 +144,7 @@ if rg -q 'interpreter-fallback|toolchain-skipped|toolchain-failed' "${LOOM_DUCKD
     fail "native primitive query must not pass through fallback or toolchain skip"
 fi
 ok "native primitive table SQL and route diagnostics"
-unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
+export LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1
 
 info "Checking projection order over public loom_scan(path)..."
 projection_out="${TMP_DIR}/projection.csv"
@@ -162,7 +162,7 @@ require_report 'interpreter-fallback'
 ok "interpreter fallback route visible"
 
 info "Checking strict fail-closed diagnostics..."
-export LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK=0
+export LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=0
 strict_err="${TMP_DIR}/strict.err"
 sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${fallback_payload}');" "${strict_err}"
 rg -q 'diagnostic code=.*path=' "${strict_err}" || fail "strict failure missing stable diagnostic code/path"
@@ -173,7 +173,7 @@ sql_expect_failure "SELECT value FROM loom_scan('${fallback_payload}');" "${stri
 rg -q 'diagnostic code=.*path=' "${strict_projection_err}" || \
     fail "strict projected failure missing stable diagnostic code/path"
 cat "${strict_projection_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
-unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
+export LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1
 ok "strict fail-closed error includes code/path diagnostics"
 
 info "Checking cancellation path through test-only adapter control..."
@@ -212,14 +212,14 @@ sql_to_file "SELECT COUNT(*) FROM loom_scan('${native_payload}')" "${first_count
 sql_to_file "SELECT COUNT(*) FROM loom_scan('${native_payload}')" "${second_count}"
 [ "$(cat "${first_count}")" = "5" ] && [ "$(cat "${second_count}")" = "5" ] || \
     fail "repeated scan counts were not stable"
-rg -q 'MaxThreads\(\) const override' duckdb-ext/loom_extension.cpp || fail "missing single-worker guard"
-rg -q 'batch_emitted' duckdb-ext/loom_extension.cpp || fail "missing single-batch guard"
+rg -q 'MaxThreads\(\) const override' contrib/duckdb-ext/loom_extension.cpp || fail "missing single-worker guard"
+rg -q 'batch_emitted' contrib/duckdb-ext/loom_extension.cpp || fail "missing single-batch guard"
 ok "repeated scan behavior and adapter guards"
 
 info "Checking public SQL/API creep gates..."
 route_prefix="loom_scan_"
 for suffix in native interpreter; do
-    if rg -n "${route_prefix}${suffix}" scripts/duckdb-native-integration-test.sh duckdb-ext/loom_extension.cpp crates/loom-ffi/include/loom.h; then
+    if rg -n "${route_prefix}${suffix}" scripts/duckdb-native-integration-test.sh contrib/duckdb-ext/loom_extension.cpp crates/loom-ffi/include/loom.h; then
         fail "found forbidden public route function marker"
     fi
 done

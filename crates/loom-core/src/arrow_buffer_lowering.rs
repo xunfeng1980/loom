@@ -254,6 +254,9 @@ pub fn lower_arrow_buffers_to_standard_mlir(
     Ok(text)
 }
 
+/// Deprecated: retained only for `loom-native-melior` internal use until Phase 40
+/// validation replaces the raw-copy MLIR lowering path.
+#[doc(hidden)]
 pub fn lower_arrow_raw_copy_to_standard_mlir(
     plan: &ArrowTableBufferPlan,
 ) -> Result<String, ArrowBufferLoweringReport> {
@@ -312,6 +315,8 @@ pub fn lower_arrow_raw_copy_to_standard_mlir(
     Ok(text)
 }
 
+/// Deprecated zeroed-reference helper removed from production path.
+#[doc(hidden)]
 pub fn reference_zeroed_value_bytes(plan: &ArrowColumnBufferPlan) -> Vec<u8> {
     vec![0u8; plan.primitive.value_buffer_bytes as usize]
 }

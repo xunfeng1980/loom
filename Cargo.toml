@@ -9,8 +9,7 @@ members = [
     "crates/loom-source-ingress",
     "crates/loom-lance-ingress",
     "crates/loom-parquet-ingress",
-    "crates/loom-iceberg-binding",
-    "crates/loom-dual-query-surface",
+    "contrib/loom-iceberg-binding",
     "crates/loom-native-melior",
     "crates/loom-solver-smt",
 ]

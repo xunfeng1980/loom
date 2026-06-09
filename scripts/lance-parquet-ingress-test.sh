@@ -261,7 +261,7 @@ api_surfaces=(
     crates/loom-ffi/include/loom.h
     crates/loom-ffi/include/loom_runtime.h
     crates/loom-ffi/include/loom_duckdb_internal.h
-    duckdb-ext/loom_extension.cpp
+    contrib/duckdb-ext/loom_extension.cpp
     crates/loom-cli/src/main.rs
 )
 

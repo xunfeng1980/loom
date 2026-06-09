@@ -35,9 +35,6 @@ impl NativeBackendCapabilities {
             llvm_lowering: false,
             jit_execution: false,
             supported_kernels: vec![
-                ProductionNativeKernel::RawPrimitiveCopy
-                    .as_str()
-                    .to_string(),
                 ProductionNativeKernel::BitpackPrimitiveUnpack
                     .as_str()
                     .to_string(),

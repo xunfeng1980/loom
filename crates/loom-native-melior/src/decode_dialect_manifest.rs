@@ -97,13 +97,6 @@ pub const DECODE_DIALECT_MANIFEST: &[DecodeDialectOpManifest] = &[
         ods_source: ODS_OPS_SOURCE,
     },
     DecodeDialectOpManifest {
-        textual_name: "loom.decode.raw_copy",
-        ods_record: "LoomDecode_RawCopyOp",
-        attributes: &["builder_id", "row"],
-        disposition: DecodeDialectDisposition::NativeSupported,
-        ods_source: ODS_OPS_SOURCE,
-    },
-    DecodeDialectOpManifest {
         textual_name: "loom.decode.bit_unpack",
         ods_record: "LoomDecode_BitpackUnpackOp",
         attributes: &["builder_id", "row", "bit_width"],

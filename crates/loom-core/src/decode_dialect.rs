@@ -21,7 +21,6 @@ pub enum DecodeDialectOp {
     Builder,
     Finish,
     ForRows,
-    RawCopy,
     BitUnpack,
     ForDelta,
     ValidityAllValid,
@@ -38,7 +37,6 @@ impl DecodeDialectOp {
             Self::Builder => "loom.decode.builder",
             Self::Finish => "loom.decode.finish",
             Self::ForRows => "loom.decode.for_rows",
-            Self::RawCopy => "loom.decode.raw_copy",
             Self::BitUnpack => "loom.decode.bit_unpack",
             Self::ForDelta => "loom.decode.for_delta",
             Self::ValidityAllValid => "loom.decode.validity_all_valid",
@@ -113,11 +111,6 @@ pub fn emit_decode_dialect_text(facts: &ProductionLoweringFacts) -> DecodeDialec
     ));
     for column in &module.columns {
         let symbol = sanitize_symbol(&column.builder_id);
-        text.push_str(&format!(
-            "      {} @{}[%row]\n",
-            DecodeDialectOp::RawCopy,
-            symbol
-        ));
         text.push_str(&format!(
             "      {} @{}[%row]\n",
             DecodeDialectOp::ValidityAllValid,

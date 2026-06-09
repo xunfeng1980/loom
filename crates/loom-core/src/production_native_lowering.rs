@@ -130,7 +130,6 @@ pub struct ProductionLoweringFacts {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProductionNativeKernel {
-    RawPrimitiveCopy,
     BitpackPrimitiveUnpack,
     FrameOfReferencePrimitiveDecode,
 }
@@ -138,7 +137,6 @@ pub enum ProductionNativeKernel {
 impl ProductionNativeKernel {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::RawPrimitiveCopy => "raw-primitive-copy",
             Self::BitpackPrimitiveUnpack => "bitpack-primitive-unpack",
             Self::FrameOfReferencePrimitiveDecode => "frame-of-reference-primitive-decode",
         }
@@ -403,7 +401,11 @@ pub fn check_layout_kernel_support(
                     ),
                 });
             }
-            Ok(ProductionNativeKernel::RawPrimitiveCopy)
+            Err(ProductionLoweringDiagnostic {
+                code: ProductionLoweringDiagnosticCode::UnsupportedKernel,
+                path: "$.root.Raw".to_string(),
+                message: "raw-copy primitive kernel removed from production path pending Phase 40 validation".to_string(),
+            })
         }
         LayoutNode::BitPack { .. } => Err(ProductionLoweringDiagnostic {
             code: ProductionLoweringDiagnosticCode::UnsupportedKernel,

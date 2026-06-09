@@ -26,14 +26,13 @@ use vortex_array::VortexSessionExecute;
 use vortex_io::runtime::BlockingRuntime;
 
 use crate::{
-    emit_supported_lmc1_from_vortex_buffer, opened_buffer_or_report,
+    opened_buffer_or_report,
     reader_facts_from_vortex_buffer, reader_facts_from_vortex_path,
-    scan_supported_single_column_layout, scan_supported_table, VortexEmissionDisposition,
-    VortexEncodingCoverage, VortexFileFacts, VortexIngressDiagnostic, VortexIngressDiagnosticCode,
-    VortexIngressReport, VortexIngressSourceKind, VortexIngressStatus, VortexLoweringDisposition,
-    VortexReaderDTypeFact, VortexReaderDiagnostic, VortexReaderDiagnosticCode,
-    VortexReaderEmissionKind, VortexReaderFacts, VortexReaderLayoutFact, VortexReaderSegmentFact,
-    VortexReaderSplitFact, VortexReaderSupport,
+    VortexEmissionDisposition, VortexEncodingCoverage, VortexFileFacts, VortexIngressDiagnostic,
+    VortexIngressDiagnosticCode, VortexIngressReport, VortexIngressSourceKind, VortexIngressStatus,
+    VortexLoweringDisposition, VortexReaderDTypeFact, VortexReaderDiagnostic,
+    VortexReaderDiagnosticCode, VortexReaderEmissionKind, VortexReaderFacts, VortexReaderLayoutFact,
+    VortexReaderSegmentFact, VortexReaderSplitFact, VortexReaderSupport,
 };
 
 /// Verifier-accepted source artifact handoff.
@@ -75,117 +74,10 @@ pub fn source_ingress_report_from_vortex_path(path: &Path) -> SourceIngressRepor
         .unwrap_or_else(|report| report)
 }
 
-/// Emit `LMC1` from a Vortex buffer only after Loom artifact verification accepts it.
-pub fn emit_source_ingress_lmc1_from_vortex_buffer(
-    bytes: &[u8],
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    let reader_facts =
-        reader_facts_from_vortex_buffer(bytes).map_err(source_report_from_vortex_ingress_report)?;
-
-    if reader_facts.support != VortexReaderSupport::Accepted {
-        return Err(source_report_from_vortex_reader_facts(&reader_facts));
-    }
-
-    let artifact_bytes = emit_supported_lmc1_from_vortex_buffer(bytes)
-        .map_err(source_report_from_vortex_ingress_report)?;
-    let registry = L2KernelRegistry::default_for_mvp0();
-    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
-    if verification.status() != ArtifactVerificationStatus::Accepted {
-        return Err(source_verification_failed_report(
-            &reader_facts,
-            verification.status().as_str(),
-        ));
-    }
-
-    let artifact_facts = verification
-        .facts()
-        .expect("accepted artifact verification exposes facts");
-    let artifact_summary = SourceArtifactVerificationSummary::accepted(
-        artifact_bytes.len(),
-        format!(
-            "{} verifier accepted {}",
-            artifact_facts.artifact_kind,
-            artifact_facts
-                .payload_kind
-                .as_deref()
-                .unwrap_or("unknown payload")
-        ),
-    );
-    let oracle_evidence = source_native_oracle_evidence_from_vortex_buffer(bytes, &reader_facts)
-        .map_err(|diagnostic| source_oracle_failed_report(&reader_facts, diagnostic))?;
-    let source_facts = source_facts_from_vortex_reader_facts(&reader_facts);
-    let coverage = source_facts
-        .coverage
-        .as_ref()
-        .expect("Vortex reader facts always map coverage");
-    let emission_kind = coverage.emission_kind;
-    let emission_disposition = coverage.emission_disposition;
-    let lowering_disposition = coverage.lowering_disposition;
-    let mut report = SourceIngressReport::accepted(
-        source_facts,
-        emission_kind,
-        emission_disposition,
-        lowering_disposition,
-        artifact_summary,
-        oracle_evidence,
-    )
-    .expect("accepted Vortex reader facts map to an accepted source report");
-    report.diagnostics = reader_facts
-        .diagnostics
-        .iter()
-        .map(source_diagnostic_from_vortex_reader_diagnostic)
-        .collect();
-
-    Ok(SourceIngressAcceptedArtifact {
-        bytes: artifact_bytes,
-        report,
-    })
-}
-
-/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
-pub fn emit_source_ingress_lma1_from_vortex_buffer(
-    bytes: &[u8],
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_semantic_from_vortex_buffer(bytes, SemanticArtifactFormat::DirectLma1)
-}
-
 /// Emit `LMC2(LMA1)` from a Vortex buffer after Vortex materializes the source
 /// as Arrow and Loom verifies the semantic wrapper.
 pub fn emit_source_ingress_lmc2_from_vortex_buffer(
     bytes: &[u8],
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_semantic_from_vortex_buffer(bytes, SemanticArtifactFormat::WrappedLmc2)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SemanticArtifactFormat {
-    DirectLma1,
-    WrappedLmc2,
-}
-
-impl SemanticArtifactFormat {
-    fn label(self) -> &'static str {
-        match self {
-            Self::DirectLma1 => "LMA1",
-            Self::WrappedLmc2 => "LMC2(LMA1)",
-        }
-    }
-
-    fn coverage_note(self) -> &'static str {
-        match self {
-            Self::DirectLma1 => {
-                "Vortex source materialized as Arrow for direct LMA1 semantic emission"
-            }
-            Self::WrappedLmc2 => {
-                "Vortex source materialized as Arrow for LMC2-wrapped LMA1 semantic emission"
-            }
-        }
-    }
-}
-
-fn emit_source_ingress_semantic_from_vortex_buffer(
-    bytes: &[u8],
-    artifact_format: SemanticArtifactFormat,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
     let reader_facts =
         reader_facts_from_vortex_buffer(bytes).map_err(source_report_from_vortex_ingress_report)?;
@@ -228,27 +120,23 @@ fn emit_source_ingress_semantic_from_vortex_buffer(
     })?;
     let lma1 = direct_lma1_artifact_from_payload(&payload)
         .map_err(|diagnostic| source_oracle_failed_report(&reader_facts, diagnostic))?;
-    let artifact_bytes = if artifact_format == SemanticArtifactFormat::DirectLma1 {
-        lma1
-    } else {
-        wrap_arrow_semantic_payload(&lma1).map_err(|err| {
-            source_oracle_failed_report(
-                &reader_facts,
-                SourceDiagnostic::new(
-                    SourceDiagnosticCode::UnsupportedConversion,
-                    "$.payload",
-                    format!("failed to wrap Vortex LMA1 payload in LMC2: {err}"),
-                ),
-            )
-        })?
-    };
+    let artifact_bytes = wrap_arrow_semantic_payload(&lma1).map_err(|err| {
+        source_oracle_failed_report(
+            &reader_facts,
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.payload",
+                format!("failed to wrap Vortex LMA1 payload in LMC2: {err}"),
+            ),
+        )
+    })?;
 
     let registry = L2KernelRegistry::default_for_mvp0();
     let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
     if verification.status() != ArtifactVerificationStatus::Accepted {
         return Err(source_verification_failed_report_with_kind(
             &reader_facts,
-            artifact_format.label(),
+            "LMC2(LMA1)",
             verification.status().as_str(),
         ));
     }
@@ -277,7 +165,7 @@ fn emit_source_ingress_semantic_from_vortex_buffer(
         coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
         coverage
             .notes
-            .push(artifact_format.coverage_note().to_string());
+            .push("Vortex source materialized as Arrow for LMC2-wrapped LMA1 semantic emission".to_string());
     }
 
     let mut report = SourceIngressReport::accepted(
@@ -299,20 +187,6 @@ fn emit_source_ingress_semantic_from_vortex_buffer(
         bytes: artifact_bytes,
         report,
     })
-}
-
-/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
-pub fn emit_source_ingress_lma1_from_vortex_path(
-    path: &Path,
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    let bytes = std::fs::read(path).map_err(|err| {
-        source_report_from_vortex_ingress_report(VortexIngressReport::rejected(
-            VortexIngressDiagnosticCode::OpenFailed,
-            "$.path",
-            format!("failed to read Vortex path: {err}"),
-        ))
-    })?;
-    emit_source_ingress_lma1_from_vortex_buffer(&bytes)
 }
 
 /// Emit `LMC2(LMA1)` from a local Vortex path after Vortex materializes the
@@ -663,51 +537,6 @@ fn source_split_from_vortex_split(split: &VortexReaderSplitFact) -> SourceSplitF
         end_row: split.end_row,
         row_count: split.row_count,
     }
-}
-
-fn source_native_oracle_evidence_from_vortex_buffer(
-    bytes: &[u8],
-    facts: &VortexReaderFacts,
-) -> Result<SourceOracleEvidence, SourceDiagnostic> {
-    let file = opened_buffer_or_report(bytes).map_err(|report| {
-        source_diagnostic_from_vortex_ingress_diagnostic(report.diagnostics.first().unwrap_or(
-            &VortexIngressDiagnostic::new(
-                VortexIngressDiagnosticCode::OpenFailed,
-                "$.oracle",
-                "source-native oracle could not open source bytes",
-            ),
-        ))
-    })?;
-
-    let row_count = match facts.emission_kind {
-        VortexReaderEmissionKind::Lmp1 => scan_supported_single_column_layout(&file)
-            .map(|layout| layout.row_count as u64)
-            .map_err(|message| source_oracle_unavailable_diagnostic(message))?,
-        VortexReaderEmissionKind::Lmt1 => scan_supported_table(&file)
-            .map(|table| table.row_count as u64)
-            .map_err(|message| source_oracle_unavailable_diagnostic(message))?,
-        VortexReaderEmissionKind::None => {
-            return Err(source_oracle_unavailable_diagnostic(
-                "source-native oracle is only checked for emitted artifacts",
-            ))
-        }
-    };
-
-    let mut evidence =
-        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
-    evidence.nulls_checked = true;
-    evidence.notes.push(
-        "source-native scan is metadata only; Loom artifact verification/decode remains the acceptance path"
-            .to_string(),
-    );
-    Ok(evidence)
-}
-
-fn source_verification_failed_report(
-    facts: &VortexReaderFacts,
-    status: &str,
-) -> SourceIngressReport {
-    source_verification_failed_report_with_kind(facts, "LMC1", status)
 }
 
 fn source_verification_failed_report_with_kind(

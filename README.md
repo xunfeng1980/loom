@@ -19,14 +19,14 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 
 | Area | Current state |
 |---|---|
-| Container | `LMC1` distribution container wrapping `LMP1` single-column and `LMT1` table payloads |
+| Container | `LMC2(LMA1)` is the default distribution artifact; legacy `LMC1` wrapping `LMP1`/`LMT1` remains for internal coverage tests |
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
 | Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
-| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts; full-projection primitive/nullable `LMC2(LMA1)` scans now route through production native codegen by default when the MLIR/JIT backend is available |
+| DuckDB | C++ extension in `contrib/duckdb-ext` exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage over default `LMC2(LMA1)` Arrow semantic artifacts; interpreter fallback is disabled by default and requires explicit `LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1` |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
-| Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
-| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts under full projection, no predicate, and full-scan split only; DuckDB no longer has a `LMC1` raw-copy native branch or test-facts route |
+| Vortex ingress | Real `.vortex` files enter through `loom-vortex-ingress` and emit verifier-accepted `LMC2(LMA1)` by default; legacy `LMC1` emission helpers are internal-only |
+| Native execution | Native MLIR/LLVM/JIT path is gated behind Phase 40 validation; raw-copy kernel and decode dialect op have been removed from core production modules pending that gate. Phase 35 Arrow semantic JIT evidence remains in `loom-native-melior` |
 | Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
@@ -46,7 +46,7 @@ flowchart LR
     container["LMC1 .loom container<br/>LMP1 layout or LMT1 table"]
     verifier["Loom artifact verifier<br/>fail closed on malformed input"]
     ffi["loom-ffi<br/>Arrow C Data Interface"]
-    duckext["DuckDB extension<br/>loom_scan(path)"]
+    duckext["contrib/duckdb-ext<br/>loom_scan(path)"]
     sql["DuckDB SQL<br/>SELECT ... FROM loom_scan(...)"]
     result["Arrow columns<br/>rows and aggregates"]
 
@@ -59,7 +59,7 @@ In the smoke test, DuckDB loads the extension and queries generated `.loom`
 fixtures:
 
 ```sql
-LOAD 'duckdb-ext/build/loom.duckdb_extension';
+LOAD 'contrib/contrib/duckdb-ext/build/loom.duckdb_extension';
 
 SELECT id, flag, label
 FROM loom_scan('target/loom-duckdb-fixtures/mixed-table.loom');
@@ -117,7 +117,7 @@ bash scripts/duckdb-smoke-test.sh
 ```
 
 The script generates fixtures, builds `loom-ffi`, builds
-`duckdb-ext/build/loom.duckdb_extension`, downloads a pinned DuckDB CLI if one
+`contrib/duckdb-ext/build/loom.duckdb_extension`, downloads a pinned DuckDB CLI if one
 is not supplied through `DUCKDB_CLI`, and checks row/aggregate SQL results over
 `loom_scan(...)`.
 
@@ -157,21 +157,10 @@ This verifies the Phase 33 distribution wrapper: source defaults and the
 new source-ingress `lmc2` entrypoints emit `LMC2(LMA1)`, the artifact verifier
 recognizes the wrapper and reports the inner Arrow semantic payload, and CLI
 reports keep native lowering unsupported instead of turning wrapper acceptance
-into native execution evidence. Historical `lma1`-named entrypoints continue to
-emit direct `LMA1` bridge artifacts for regression evidence.
+into native execution evidence. Direct `LMA1` bridge entrypoints have been
+removed from the public API; only `LMC2(LMA1)` remains as the default.
 
-### 8. Run the DuckDB source e2e gate
-
-```bash
-bash scripts/duckdb-source-e2e-test.sh
-```
-
-This generates Parquet, Lance, and Vortex source fixtures, emits
-verifier-accepted `LMC2(LMA1)` distribution artifacts through the adapter crates,
-queries those default artifacts with DuckDB `loom_scan(...)`, and keeps
-explicit direct-`LMA1` bridge fixtures as regression evidence only.
-
-### 9. Run the DuckDB LMC2 SQL surface gate
+### 8. Run the DuckDB LMC2 SQL surface gate
 
 ```bash
 bash scripts/duckdb-lmc2-sql-surface-test.sh
@@ -184,20 +173,20 @@ with explicit unsupported diagnostics. Native Arrow semantic execution is
 covered by the separate engine-neutral Phase 35 gate and is not consumed by
 DuckDB yet.
 
-### 10. Run the native Arrow semantic execution gate
+### 9. Run the native Arrow semantic execution gate
 
 ```bash
 bash scripts/native-arrow-semantic-execution-test.sh
 ```
 
-This verifies the Phase 35 native route: verifier-accepted `LMC2(LMA1)` and
-explicit direct `LMA1` artifacts execute through an engine-neutral backend for
-one-batch nullable `Boolean`, `Int32`, `Int64`, `Float32`, and `Float64`
-columns. Utf8, logical, nested, multi-batch, malformed, and verifier-rejected
-inputs fail closed. This is native execution evidence, not a DuckDB integration
-claim and not full Arrow shape support.
+This verifies the Phase 35 native route: verifier-accepted `LMC2(LMA1)`
+artifacts execute through an engine-neutral backend for one-batch nullable
+`Boolean`, `Int32`, `Int64`, `Float32`, and `Float64` columns. Utf8, logical,
+nested, multi-batch, malformed, and verifier-rejected inputs fail closed.
+The raw-copy kernel has been removed from the core production path; native
+execution is gated behind Phase 40 validation.
 
-### 11. Run the verified-lineage closeout gate
+### 10. Run the verified-lineage closeout gate
 
 ```bash
 bash scripts/verified-lineage-test.sh
@@ -210,7 +199,7 @@ provenance for accepted artifacts only. It names evidence layers and TCB
 assumptions; it does not claim source correctness, verified compilation,
 end-to-end toolchain verification, performance, or production readiness.
 
-### 12. Run the production native-codegen stabilization gate
+### 11. Run the production native-codegen stabilization gate
 
 ```bash
 bash scripts/production-native-codegen-stabilization-test.sh
@@ -224,7 +213,7 @@ routing, adversarial output validation, cancellation checkpoints, resource
 ownership, and bounded soak evidence.
 
 The claim remains intentionally narrow: one-batch nullable fixed-width primitive
-`LMC2(LMA1)` / direct `LMA1` artifacts only. This is not verified compilation,
+`LMC2(LMA1)` artifacts only. This is not verified compilation,
 not a persistent production cache, not a DuckDB-native integration claim, not
 general Arrow shape support, and not a GA performance promise.
 
@@ -239,7 +228,9 @@ general Arrow shape support, and not a GA performance promise.
 | `crates/loom-vortex-ingress` | Isolated real Vortex file ingress boundary |
 | `crates/loom-native-melior` | Optional MLIR/melior/native-backend evidence path |
 | `crates/loom-solver-smt` | Optional SMT solver integration, currently Bitwuzla-primary |
-| `duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |
+| `contrib/duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |
+| `contrib/loom-iceberg-binding` | Iceberg binding placeholder (moved to contrib) |
+| `contrib/loom-dual-query-surface` | Dual-query surface placeholder (moved to contrib) |
 | `scripts` | Release gates and focused smoke tests |
 
 ## Design Shape
@@ -283,7 +274,6 @@ bash scripts/solver-verifier-test.sh
 bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
 bash scripts/lmc2-arrow-semantic-container-test.sh
-bash scripts/duckdb-source-e2e-test.sh
 bash scripts/native-arrow-semantic-execution-test.sh
 ```
 

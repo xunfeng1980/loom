@@ -31,8 +31,8 @@
 #include "vendor/duckdb-src/duckdb.hpp"  // DuckDB v1.5.3 amalgamated header
 
 extern "C" {
-#include "../crates/loom-ffi/include/loom.h"  // Phase 1: loom_decode signature
-#include "../crates/loom-ffi/include/loom_duckdb_internal.h"
+#include "../../crates/loom-ffi/include/loom.h"  // Phase 1: loom_decode signature
+#include "../../crates/loom-ffi/include/loom_duckdb_internal.h"
 }
 
 #include <cstdint>
@@ -369,7 +369,7 @@ struct LoomBindData : TableFunctionData {
     vector<LoomValueKind> column_kinds;
     vector<vector<uint8_t>> column_payloads;
     bool arrow_semantic = false;
-    bool allow_interpreter_fallback = true;
+    bool allow_interpreter_fallback = false;
     std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
     string route_decision;
     string route_cache_key;
@@ -919,7 +919,7 @@ static unique_ptr<FunctionData> LoomBind(
     }
     PopulateColumnSpecs(*bind_data);
     bind_data->allow_interpreter_fallback =
-        !TestEnvDisabled("LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK", false);
+        TestEnvEnabled("LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK", false);
     bind_data->runtime_plan =
         CreateRuntimePlan(bind_data->payload, bind_data->allow_interpreter_fallback);
     bind_data->route_decision = ReadPlanDecision(*bind_data->runtime_plan);

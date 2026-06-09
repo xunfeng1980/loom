@@ -8,7 +8,7 @@ use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
     check_layout_kernel_support, check_production_lowering_support,
-    ProductionLoweringDiagnosticCode, ProductionNativeKernel,
+    ProductionLoweringDiagnosticCode,
 };
 
 fn raw_layout(data_type: DataType, elem_size: u8) -> LayoutDescription {
@@ -62,7 +62,7 @@ fn accepted_table(status: ConstraintDischargeStatus) -> ArtifactVerificationRepo
 }
 
 #[test]
-fn raw_primitive_kernel_matrix_is_supported() {
+fn raw_primitive_kernel_matrix_is_rejected_pending_phase40() {
     for (data_type, elem_size) in [
         (DataType::Int32, 4),
         (DataType::Int64, 8),
@@ -70,14 +70,10 @@ fn raw_primitive_kernel_matrix_is_supported() {
         (DataType::Float64, 8),
     ] {
         let layout = raw_layout(data_type, elem_size);
-        assert_eq!(
-            check_layout_kernel_support(&layout).expect("raw primitive support"),
-            ProductionNativeKernel::RawPrimitiveCopy
-        );
-        assert_eq!(
-            ProductionNativeKernel::RawPrimitiveCopy.as_str(),
-            "raw-primitive-copy"
-        );
+        let err = check_layout_kernel_support(&layout)
+            .expect_err("raw primitive copy removed from production path");
+        assert_eq!(err.code, ProductionLoweringDiagnosticCode::UnsupportedKernel);
+        assert!(err.message.contains("Phase 40"));
     }
 }
 
@@ -177,7 +173,7 @@ fn multi_column_table_lowers_through_dialect_and_buffer_plan() {
 
     assert_eq!(dialect.column_count, 2);
     assert!(dialect.text.contains("loom.decode.column @id"));
-    assert!(dialect.text.contains("loom.decode.raw_copy @score"));
+    assert!(!dialect.text.contains("loom.decode.raw_copy"));
     assert_eq!(buffers.table().expect("table").columns.len(), 2);
 }
 

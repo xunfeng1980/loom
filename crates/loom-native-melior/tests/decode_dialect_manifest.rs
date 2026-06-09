@@ -15,7 +15,6 @@ fn textual_ops() -> Vec<&'static str> {
         DecodeDialectOp::Builder.as_str(),
         DecodeDialectOp::Finish.as_str(),
         DecodeDialectOp::ForRows.as_str(),
-        DecodeDialectOp::RawCopy.as_str(),
         DecodeDialectOp::BitUnpack.as_str(),
         DecodeDialectOp::ForDelta.as_str(),
         DecodeDialectOp::ValidityAllValid.as_str(),
@@ -62,10 +61,6 @@ fn ods_records_exist_in_source_files() {
 #[test]
 fn manifest_distinguishes_supported_guarded_and_interpreter_paths() {
     assert_eq!(
-        manifest_entry("loom.decode.raw_copy").map(|entry| entry.disposition),
-        Some(DecodeDialectDisposition::NativeSupported)
-    );
-    assert_eq!(
         manifest_entry("loom.decode.validity_all_valid").map(|entry| entry.disposition),
         Some(DecodeDialectDisposition::NativeSupported)
     );
@@ -86,10 +81,6 @@ fn manifest_distinguishes_supported_guarded_and_interpreter_paths() {
 
 #[test]
 fn manifest_covers_expected_primitive_kernel_surface() {
-    let raw = manifest_entry("loom.decode.raw_copy").expect("raw copy manifest");
-    assert!(raw.attributes.contains(&"builder_id"));
-    assert!(raw.attributes.contains(&"row"));
-
     let bitpack = manifest_entry("loom.decode.bit_unpack").expect("bitpack manifest");
     assert!(bitpack.attributes.contains(&"bit_width"));
 

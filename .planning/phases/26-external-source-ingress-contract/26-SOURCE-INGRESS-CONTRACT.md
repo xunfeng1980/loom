@@ -16,10 +16,9 @@ generic contract vocabulary is `Source*` and `SourceIngress*`, not Vortex-named.
 Adapter code may carry source-specific names internally. Reviewer-facing generic
 reports must expose Loom-owned strings, enums, and primitive fields only.
 
-The only accepted artifact target in this phase is `LMC1` wrapping either:
-
-- `LMP1` for a single-column layout payload.
-- `LMT1` for a table payload.
+The accepted artifact target is `LMC2(LMA1)` for Arrow semantic payloads.
+Legacy `LMC1` wrapping `LMP1` (single-column layout) or `LMT1` (table) remains
+supported for narrow regression paths.
 
 Every accepted artifact must be routed through the existing Loom artifact
 verifier before the source-ingress report can claim `accepted`.

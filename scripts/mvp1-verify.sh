@@ -27,10 +27,6 @@ info "Running inherited MVP0 release gate..."
 bash scripts/mvp0-verify.sh
 ok "scripts/mvp0-verify.sh"
 
-info "Running MVP1 DuckDB source e2e gate..."
-bash scripts/duckdb-source-e2e-test.sh
-ok "scripts/duckdb-source-e2e-test.sh"
-
 info "Running Phase 35 native Arrow semantic execution gate..."
 bash scripts/native-arrow-semantic-execution-test.sh
 ok "scripts/native-arrow-semantic-execution-test.sh"

@@ -3,10 +3,12 @@
 
 set -euo pipefail
 
+export LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1
+
 DUCKDB_VERSION="v1.5.3"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-EXT_PATH="${REPO_ROOT}/duckdb-ext/build/loom.duckdb_extension"
-CLI_CACHE_DIR="${REPO_ROOT}/duckdb-ext/vendor/duckdb-cli"
+EXT_PATH="${REPO_ROOT}/contrib/duckdb-ext/build/loom.duckdb_extension"
+CLI_CACHE_DIR="${REPO_ROOT}/contrib/duckdb-ext/vendor/duckdb-cli"
 PAYLOAD_DIR="${REPO_ROOT}/target/loom-duckdb-fixtures"
 
 if [ -t 1 ] && command -v tput &>/dev/null; then
@@ -73,15 +75,15 @@ info "Building loom.duckdb_extension..."
 cargo build -p loom-ffi --release
 rm -f "${EXT_PATH}"
 cmake_out="${TMP_DIR}/cmake-configure.log"
-if ! cmake -S "${REPO_ROOT}/duckdb-ext" \
-          -B "${REPO_ROOT}/duckdb-ext/build" \
+if ! cmake -S "${REPO_ROOT}/contrib/duckdb-ext" \
+          -B "${REPO_ROOT}/contrib/duckdb-ext/build" \
           -DCMAKE_BUILD_TYPE=Release \
           >"${cmake_out}" 2>&1; then
     cat "${cmake_out}" >&2
     fail "CMake configure failed"
 fi
 grep -v '^--' "${cmake_out}" || true
-cmake --build "${REPO_ROOT}/duckdb-ext/build" 2>&1
+cmake --build "${REPO_ROOT}/contrib/duckdb-ext/build" 2>&1
 
 if [ ! -f "${EXT_PATH}" ]; then
     fail "Build succeeded but loom.duckdb_extension not found at: ${EXT_PATH}"

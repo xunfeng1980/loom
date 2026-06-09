@@ -10,10 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---------------------------------------------------------------------------
 # Paths
 #
-# CMAKE_SOURCE_DIR = <repo>/duckdb-ext   (because cmake -S duckdb-ext)
-# Workspace Cargo.toml is one directory up.
+# CMAKE_SOURCE_DIR = <repo>/contrib/duckdb-ext   (because cmake -S contrib/duckdb-ext)
+# Workspace Cargo.toml is two directories up.
 # ---------------------------------------------------------------------------
-set(WORKSPACE_ROOT "${CMAKE_SOURCE_DIR}/..")
+set(WORKSPACE_ROOT "${CMAKE_SOURCE_DIR}/../..")
 set(WORKSPACE_CARGO_TOML "${WORKSPACE_ROOT}/Cargo.toml")
 set(LIBLOOM_FFI "${WORKSPACE_ROOT}/target/release/libloom_ffi.a")
 
@@ -189,8 +189,8 @@ message(STATUS "DuckDB extension platform: ${DUCKDB_PLATFORM}")
 # Without this step, DuckDB rejects the extension even with -unsigned
 # (AppearsValid() checks for the 512-byte footer regardless of unsigned mode).
 #
-# IMPORTANT PATH NOTE: CMAKE_SOURCE_DIR = <repo>/duckdb-ext (because cmake -S
-# duckdb-ext is the configure command used by Task 2 / CI). The correct paths
+# IMPORTANT PATH NOTE: CMAKE_SOURCE_DIR = <repo>/contrib/duckdb-ext (because cmake -S
+# contrib/duckdb-ext is the configure command used by Task 2 / CI). The correct paths
 # are ${CMAKE_SOURCE_DIR}/vendor/null.txt and .../vendor/append_metadata.cmake
 # — NOT the double-nested "duckdb-ext/vendor/..." that appears in the RESEARCH
 # §Code Examples snippet (that snippet assumes CMAKE_SOURCE_DIR = <repo>,

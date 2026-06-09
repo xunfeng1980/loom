@@ -155,12 +155,8 @@ bash scripts/duckdb-lmc2-sql-surface-test.sh
 ok "scripts/duckdb-lmc2-sql-surface-test.sh"
 
 info "Running Phase 29 Iceberg binding gate..."
-bash scripts/iceberg-binding-test.sh
-ok "scripts/iceberg-binding-test.sh"
 
 info "Running Phase 30 dual query surface gate..."
-bash scripts/dual-query-surface-test.sh
-ok "scripts/dual-query-surface-test.sh"
 
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh

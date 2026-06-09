@@ -118,8 +118,10 @@ test -s "${emitted}" || fail "CLI emit produced no artifact"
 verify_output="$(cargo run -q --bin loom -- verify-artifact "${emitted}")"
 grep -q "artifact_verification: pass" <<<"${verify_output}" \
     || fail "emitted artifact did not verify"
-grep -q "payload_kind: LMP1 layout" <<<"${verify_output}" \
-    || fail "emitted artifact missing payload kind"
+grep -q "artifact: LMC2" <<<"${verify_output}" \
+    || fail "emitted artifact not identified as LMC2"
+grep -q "payload: Arrow semantic payload" <<<"${verify_output}" \
+    || fail "emitted artifact missing Arrow semantic payload"
 ok "CLI emit verifies through artifact verifier"
 
 info "Running dependency-boundary guards..."
