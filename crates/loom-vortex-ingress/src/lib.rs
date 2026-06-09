@@ -449,6 +449,181 @@ where
     VortexSemanticCompatibilityReport { rows, diagnostics }
 }
 
+/// Phase 42 reviewer-visible Vortex coverage rows.
+///
+/// These rows deliberately separate the original Vortex shape from the emitted
+/// Loom artifact shape. Native support is assigned to the emitted verified
+/// artifact shape, not to the original Vortex encoding unless the row says so.
+pub fn phase42_vortex_verified_native_coverage_report() -> VortexSemanticCompatibilityReport {
+    let mut rows = vec![
+        phase42_vortex_row(
+            "vortex-lmc2-fixed-width-primitive",
+            "primitive:non-null:primitive-or-leaf:primitive",
+            "LMC2(LMA1)/arrow-semantic/fixed-width-primitive",
+            VortexSemanticSupport::AcceptedNative,
+            VortexSemanticOracleClass::VortexValueRows,
+            VortexSemanticRuntimeClass::NativeCandidate,
+            VortexSemanticNativeClass::ExecutionEngineValidated,
+            "",
+            &[
+                "vortex-arrow-oracle-batches",
+                "artifact-verifier-accepted",
+                "verified-lineage-record",
+                "native-execution-engine-output",
+                "native-model-validation",
+            ],
+        ),
+        phase42_vortex_row(
+            "vortex-lmc2-utf8",
+            "utf8:nullable:primitive-or-leaf:varbin",
+            "LMC2(LMA1)/arrow-semantic/utf8",
+            VortexSemanticSupport::AcceptedInterpreter,
+            VortexSemanticOracleClass::VortexValueRows,
+            VortexSemanticRuntimeClass::DuckDbVisible,
+            VortexSemanticNativeClass::InterpreterOnly,
+            "utf8-native-deferred",
+            &[
+                "vortex-arrow-oracle-batches",
+                "artifact-verifier-accepted",
+                "verified-lineage-record",
+                "native-unsupported-shape-fail-closed",
+            ],
+        ),
+        phase42_vortex_row(
+            "vortex-lmc2-struct-table",
+            "struct:non-null:struct:struct",
+            "LMC2(LMA1)/arrow-semantic/struct-table",
+            VortexSemanticSupport::AcceptedInterpreter,
+            VortexSemanticOracleClass::VortexValueAndShape,
+            VortexSemanticRuntimeClass::DuckDbVisible,
+            VortexSemanticNativeClass::InterpreterOnly,
+            "nested-native-deferred",
+            &[
+                "vortex-arrow-oracle-batches",
+                "artifact-verifier-accepted",
+                "verified-lineage-record",
+                "native-unsupported-shape-fail-closed",
+            ],
+        ),
+        semantic_row_from_vortex_coverage(
+            "vortex-canonical-dictionary-i32",
+            &phase42_canonical_vortex_coverage("dictionary"),
+        ),
+        semantic_row_from_vortex_coverage(
+            "vortex-canonical-run-end-i32",
+            &phase42_canonical_vortex_coverage("run-end"),
+        ),
+        semantic_row_from_vortex_coverage(
+            "vortex-canonical-bitpack-i32",
+            &phase42_canonical_vortex_coverage("bitpack"),
+        ),
+        semantic_row_from_vortex_coverage(
+            "vortex-canonical-for-i32",
+            &phase42_canonical_vortex_coverage("frame-of-reference"),
+        ),
+        semantic_row_from_vortex_coverage(
+            "vortex-nullable-validity-deferred",
+            &phase42_deferred_vortex_coverage(
+                "primitive",
+                Some(true),
+                "primitive",
+                "nullable validity bitmap emission remains deferred",
+            ),
+        ),
+    ];
+
+    for row in rows.iter_mut() {
+        if matches!(
+            row.support,
+            VortexSemanticSupport::AcceptedCanonicalized
+                | VortexSemanticSupport::AcceptedInterpreter
+                | VortexSemanticSupport::AcceptedNative
+                | VortexSemanticSupport::AcceptedStructured
+        ) && !row
+            .evidence_notes
+            .iter()
+            .any(|note| note.contains("verified-lineage"))
+        {
+            row.evidence_notes
+                .push("verified-lineage-record".to_string());
+        }
+    }
+
+    let diagnostics = rows
+        .iter()
+        .flat_map(validate_semantic_compatibility_row)
+        .collect::<Vec<_>>();
+    VortexSemanticCompatibilityReport { rows, diagnostics }
+}
+
+fn phase42_vortex_row(
+    shape_id: &str,
+    original_vortex_shape: &str,
+    emitted_loom_shape: &str,
+    support: VortexSemanticSupport,
+    oracle_class: VortexSemanticOracleClass,
+    runtime_class: VortexSemanticRuntimeClass,
+    native_class: VortexSemanticNativeClass,
+    deferral_reason: &str,
+    evidence_notes: &[&str],
+) -> VortexSemanticCompatibilityRow {
+    VortexSemanticCompatibilityRow {
+        shape_id: shape_id.to_string(),
+        original_vortex_shape: original_vortex_shape.to_string(),
+        emitted_loom_shape: emitted_loom_shape.to_string(),
+        support,
+        oracle_class,
+        verifier_class: VortexSemanticVerifierClass::ArtifactVerifierAccepted,
+        runtime_class,
+        native_class,
+        deferral_reason: deferral_reason.to_string(),
+        evidence_notes: evidence_notes.iter().map(|note| note.to_string()).collect(),
+    }
+}
+
+fn phase42_canonical_vortex_coverage(array_encoding: &str) -> VortexEncodingCoverage {
+    VortexEncodingCoverage {
+        dtype_kind: "primitive".to_string(),
+        nullable: Some(false),
+        root_layout_encoding: array_encoding.to_string(),
+        layout_class: "primitive-or-leaf".to_string(),
+        array_encoding: array_encoding.to_string(),
+        has_splits: false,
+        has_statistics: false,
+        reader_support: VortexReaderSupport::Accepted,
+        emission_kind: VortexReaderEmissionKind::Lmp1,
+        emission_disposition: VortexEmissionDisposition::CanonicalRaw,
+        lowering_disposition: VortexLoweringDisposition::InterpreterOnly,
+        notes: vec![
+            "vortex-scan-oracle-rows".to_string(),
+            "artifact-verifier-accepted".to_string(),
+            "verified-lineage-record".to_string(),
+        ],
+    }
+}
+
+fn phase42_deferred_vortex_coverage(
+    dtype_kind: &str,
+    nullable: Option<bool>,
+    array_encoding: &str,
+    note: &str,
+) -> VortexEncodingCoverage {
+    VortexEncodingCoverage {
+        dtype_kind: dtype_kind.to_string(),
+        nullable,
+        root_layout_encoding: array_encoding.to_string(),
+        layout_class: "primitive-or-leaf".to_string(),
+        array_encoding: array_encoding.to_string(),
+        has_splits: false,
+        has_statistics: false,
+        reader_support: VortexReaderSupport::Unsupported,
+        emission_kind: VortexReaderEmissionKind::None,
+        emission_disposition: VortexEmissionDisposition::None,
+        lowering_disposition: VortexLoweringDisposition::FailClosedDeferred,
+        notes: vec![note.to_string()],
+    }
+}
+
 pub fn validate_semantic_compatibility_row(row: &VortexSemanticCompatibilityRow) -> Vec<String> {
     let mut diagnostics = Vec::new();
 

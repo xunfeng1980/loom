@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 42 planning started; 42-01 ready
+stopped_at: Phase 42 42-01 complete; 42-02 ready
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase 42 IN PROGRESS: Verified + Native Coverage Expansion
 Plan: 0 of 0
-Status: Phase 42 context and execution plans created; ready to execute 42-01
+Status: Phase 42 42-01 complete; ready to execute 42-02
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 42 planning complete; next action is 42-01 Vortex coverage matrix
+Progress: Phase 42 is 1/3 complete; next action is 42-02 Lance/Parquet schema coverage matrix
 
 ## Progress Snapshot
 
@@ -273,6 +273,7 @@ None yet.
 - Phase 41 planned/executed: context and two plans created; 41-01 combined gate and 41-02 lineage record are complete.
 - Phase 41 41-01 complete: `scripts/verified-lineage-test.sh` now runs the full MVP1.5 evidence matrix and non-claim/TCB markers, is wired into `scripts/full-verifier-test.sh`, and closes LINEAGE-11.
 - Phase 41 complete: 41-02 added `loom_core::verified_lineage`, accepted-artifact safety provenance records, fail-closed rejected/undischarged/divergent cases, README docs, gate wiring, and closed LINEAGE-12.
+- Phase 42 42-01 complete: added a Vortex verified/native coverage row set, focused tests, and the first `42-COVERAGE-MATRIX.md` rows. Native support is assigned to emitted verified artifact shapes only; canonical Vortex rows remain interpreter-only value bridges.
 
 ### Quick Tasks Completed
 
