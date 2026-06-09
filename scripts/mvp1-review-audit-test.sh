@@ -47,17 +47,27 @@ require_order() {
 
 CLAIM_LEDGER=".planning/phases/32-mvp1-architecture-and-code-review/32-CLAIM-LEDGER.md"
 EVIDENCE_REVIEW=".planning/phases/32-mvp1-architecture-and-code-review/32-EXECUTION-EVIDENCE-REVIEW.md"
+BOUNDARY_REVIEW=".planning/phases/32-mvp1-architecture-and-code-review/32-ARCHITECTURE-BOUNDARY-REVIEW.md"
 MVP1_SCRIPT="scripts/mvp1-verify.sh"
 SOURCE_E2E="scripts/duckdb-source-e2e-test.sh"
 NATIVE_HARDENING="scripts/native-hardening-test.sh"
+PUBLIC_HEADER="crates/loom-ffi/include/loom.h"
+INTERNAL_DUCKDB_HEADER="crates/loom-ffi/include/loom_duckdb_internal.h"
+CBINDGEN_CONFIG="crates/loom-ffi/cbindgen.toml"
+ARROW_SEMANTIC_CODEC="crates/loom-core/src/arrow_semantic_codec.rs"
 
 echo "=== Loom MVP1 review audit marker gate ==="
 
 require_file "${CLAIM_LEDGER}"
 require_file "${EVIDENCE_REVIEW}"
+require_file "${BOUNDARY_REVIEW}"
 require_file "${MVP1_SCRIPT}"
 require_file "${SOURCE_E2E}"
 require_file "${NATIVE_HARDENING}"
+require_file "${PUBLIC_HEADER}"
+require_file "${INTERNAL_DUCKDB_HEADER}"
+require_file "${CBINDGEN_CONFIG}"
+require_file "${ARROW_SEMANTIC_CODEC}"
 ok "required review files exist"
 
 require_fixed "Claim Ledger" "${CLAIM_LEDGER}"
@@ -99,5 +109,41 @@ require_regex "cache-miss" "${NATIVE_HARDENING}"
 require_regex "cache-hit" "${NATIVE_HARDENING}"
 ok "native hardening route/fallback/skip markers"
 
-echo "[PASS] MVP1 review audit marker gate"
+core_forbidden_count="$(cargo tree -p loom-core | awk '/vortex|fastlanes|parquet|lance|iceberg/{c++} END{print c+0}')"
+if [ "${core_forbidden_count}" != "0" ]; then
+    fail "loom-core has forbidden source/native dependency entries: ${core_forbidden_count}"
+fi
+ffi_forbidden_count="$(cargo tree -p loom-ffi | awk '/vortex|fastlanes|parquet|lance|iceberg/{c++} END{print c+0}')"
+if [ "${ffi_forbidden_count}" != "0" ]; then
+    fail "loom-ffi has forbidden source SDK dependency entries: ${ffi_forbidden_count}"
+fi
+ok "core/ffi source dependency guards"
 
+require_fixed "loom_decode" "${PUBLIC_HEADER}"
+for forbidden in \
+    "loom_duckdb_" \
+    "LoomDuckDb" \
+    "duckdb_runtime" \
+    "native_preparation" \
+    "ArrowArrayStream"; do
+    if rg -q --fixed-strings "${forbidden}" "${PUBLIC_HEADER}"; then
+        fail "public loom.h leaked internal marker: ${forbidden}"
+    fi
+done
+ok "public loom.h excludes internal route/native symbols"
+
+require_fixed "loom_duckdb_plan_create" "${INTERNAL_DUCKDB_HEADER}"
+require_fixed "loom_duckdb_prepare_native_buffer" "${INTERNAL_DUCKDB_HEADER}"
+require_fixed "This header is non-public" "${INTERNAL_DUCKDB_HEADER}"
+require_fixed "LoomDuckDbPlan" "${CBINDGEN_CONFIG}"
+require_fixed "loom_duckdb_plan_create" "${CBINDGEN_CONFIG}"
+ok "internal DuckDB header and cbindgen exclusions"
+
+require_fixed "LMA1_MAGIC" "${ARROW_SEMANTIC_CODEC}"
+require_fixed "is_arrow_semantic_container" "${ARROW_SEMANTIC_CODEC}"
+require_fixed 'direct `LMA1` payload' "${BOUNDARY_REVIEW}"
+require_fixed 'future `LMC2` wrapper' "${BOUNDARY_REVIEW}"
+require_fixed "arrow-semantic-lowering-deferred" "${BOUNDARY_REVIEW}"
+ok "LMA1 direct payload and future LMC2 wrapper markers"
+
+echo "[PASS] MVP1 review audit marker gate"
