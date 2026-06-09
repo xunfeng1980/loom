@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 32 plan 32-04 complete
-last_updated: "2026-06-09T04:31:00Z"
-last_activity: 2026-06-09 -- Completed Phase 32 code review
+status: review-complete
+stopped_at: Phase 32 complete
+last_updated: "2026-06-09T04:45:00Z"
+last_activity: 2026-06-09 -- Completed Phase 32 bounded MVP1 readiness closeout
 progress:
   total_phases: 32
-  completed_phases: 30
+  completed_phases: 31
   total_plans: 138
-  completed_plans: 135
-  percent: 97
+  completed_plans: 136
+  percent: 99
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and the current Parquet/Lance/Vortex source-backed single-column `LMA1` e2e artifacts, and get expected row/aggregate results.
-**Current focus:** Execute Phase 32 overall MVP1 architecture and code review; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
+**Current focus:** Phase 32 complete; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
 
 ## Current Position
 
-Phase: 32 executing
-Plan: 32-05 ready
-Status: Phase 32 executing MVP1 readiness closeout; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Completed Phase 32 code review
+Phase: 32 complete
+Plan: 32-05 complete
+Status: Phase 32 closed with bounded MVP1 GO readiness; Phase 30 dual-query remains partial/deferred
+Last activity: 2026-06-09 -- Completed Phase 32 bounded MVP1 readiness closeout
 
-Progress: 97%
+Progress: 99%
 
 ## Progress Snapshot
 
-- Completed phases: 30 / 32
-- Completed executable plans: 135 / 138
+- Completed phases: 31 / 32
+- Completed executable plans: 136 / 138
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 32 executing: claim/evidence/boundary/code reviews complete; readiness closeout is next
-- Last verified gate: `RUSTC_WRAPPER= bash scripts/duckdb-source-e2e-test.sh` passed; `scripts/mvp1-verify.sh` now wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
+- Current position: Phase 32 complete: MVP1 architecture/code review closed with bounded release readiness and explicit non-claims/deferred work
+- Last verified gate: `bash scripts/mvp1-review-audit-test.sh` and `RUSTC_WRAPPER= bash scripts/mvp1-verify.sh` passed; `scripts/mvp1-verify.sh` wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
 
 **Completed phase plan counts:**
 
@@ -63,7 +63,7 @@ Progress: 97%
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
-| 32 | MVP1 Architecture and Code Review | 4/5 executing |
+| 32 | MVP1 Architecture and Code Review | 5/5 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -152,6 +152,8 @@ Recent decisions affecting current work:
 - [Phase 32 P02]: Execution evidence matrix records what each major gate proves and does not prove; `scripts/mvp1-review-audit-test.sh` is a marker/report audit seed, not a runtime semantics gate.
 - [Phase 32 P03]: Architecture boundary review found source SDK isolation and public/internal FFI separation intact; direct `LMA1` is implemented, `LMC2` remains future wrapper, and native lowering rejects `Arrow semantic payload`.
 - [Phase 32 P04]: Code review found no high-severity production bug in the reviewed slice; medium residual risks remain around narrow direct `LMA1` FFI/DuckDB support, hand-maintained internal DuckDB header drift, and test-assisted native facts.
+- [Phase 32 P05]: MVP1 readiness is GO only for the bounded baseline: verifier-backed source-to-Arrow semantic `LMA1` compatibility, DuckDB SQL over legacy tables and current single-column source-backed `LMA1` e2e fixtures, bounded native route/cache/fallback/fail-closed hardening, source SDK isolation, and a narrow public `loom.h`.
+- [Phase 32 P05]: MVP1 readiness is explicitly not a GO for broad production-native execution, arbitrary DuckDB `LMA1` SQL, implemented `LMC2`, or Phase 30 StarRocks/full dual-surface completion.
 
 ### Pending Todos
 
@@ -237,7 +239,7 @@ None yet.
 - Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
 - Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
-- Phase 32 executing: 32-01 through 32-04 completed claim/evidence/boundary/code review artifacts; 32-05 will produce MVP1 readiness and closeout.
+- Phase 32 complete: 32-05 produced the MVP1 readiness report, finalized the review audit gate, passed `RUSTC_WRAPPER= bash scripts/mvp1-verify.sh`, and closed with a bounded GO decision while preserving Phase 30 partial/deferred status.
 
 ### Quick Tasks Completed
 
