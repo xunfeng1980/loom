@@ -888,16 +888,20 @@ Plans:
 
 ### Phase 32: MVP1 Architecture and Code Review
 
-**Status:** Not planned. This phase is intentionally review-first and should not add new source formats, query surfaces, native features, or artifact formats unless required to fix a review finding.
+**Status:** Planned. This phase is intentionally review-first and should not add new source formats, query surfaces, native features, or artifact formats unless required to fix a review finding.
 **Depends on:** Phase 31. Phase 30's StarRocks/full dual-surface work remains partial/deferred and should be reviewed as such rather than silently marked complete.
 **Goal:** Produce an end-to-end design and code review of the MVP1 implementation, covering artifact contracts, source-ingress semantics, DuckDB execution evidence, native/runtime claims, ABI/FFI boundaries, dependency isolation, release gates, documentation truthfulness, and concrete remediation items.
 **Requirements:** PHASE-32
 **Ordering decision:** Pause feature expansion after the MVP1 source compatibility and DuckDB source e2e gate so the project can separate proven value from scaffolding, fallback-only paths, and deferred claims. This phase should read the code and executable gates directly, classify findings by severity, update design/code review reports, and propose or apply narrow fixes only when a defect is unambiguous. It must not resume StarRocks integration, broaden DuckDB SQL support, redesign `LMA1`/`LMC2`, or expand native MLIR execution scope.
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 32 to break down)
+- [ ] 32-01-PLAN.md - Claim ledger and documentation truth audit (PHASE-32)
+- [ ] 32-02-PLAN.md - Execution evidence matrix and focused review audit gate seed (PHASE-32)
+- [ ] 32-03-PLAN.md - Architecture, ABI/FFI, and dependency-boundary audit (PHASE-32)
+- [ ] 32-04-PLAN.md - Code-quality review and narrow remediation (PHASE-32)
+- [ ] 32-05-PLAN.md - MVP1 go/no-go readiness report, audit gate finalization, and closeout (PHASE-32)
 
 ## Progress
 
@@ -937,4 +941,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 29. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
 | 30. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |
 | 31. Full Arrow Semantic Source Compatibility | 6/6 | Complete | 2026-06-09 |
-| 32. MVP1 Architecture and Code Review | 0/0 | Not Planned | - |
+| 32. MVP1 Architecture and Code Review | 0/5 | Planned | - |

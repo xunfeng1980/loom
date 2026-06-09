@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: planning
-stopped_at: Phase 32 context gathered
-last_updated: "2026-06-09T02:50:45.647Z"
-last_activity: 2026-06-09 -- Phase 32 architecture/code review added after MVP1 verify gate
+stopped_at: Phase 32 planned
+last_updated: "2026-06-09T03:10:00Z"
+last_activity: 2026-06-09 -- Planned Phase 32 MVP1 architecture and code review
 progress:
   total_phases: 32
-  completed_phases: 25
-  total_plans: 133
-  completed_plans: 112
-  percent: 78
+  completed_phases: 30
+  total_plans: 138
+  completed_plans: 131
+  percent: 95
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and Parquet/Lance/Vortex source-backed `LMA1` semantic artifacts, and get expected row/aggregate results.
-**Current focus:** Phase 32 planning for an overall MVP1 architecture and code review; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
+**Current focus:** Execute Phase 32 overall MVP1 architecture and code review; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
 
 ## Current Position
 
-Phase: 32 added
-Plan: Not planned yet
-Status: Ready to plan Phase 32 review; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Phase 32 architecture/code review added after MVP1 verify gate
+Phase: 32 planned
+Plan: 32-01 ready
+Status: Phase 32 planned; Phase 30 dual-query remains partial/deferred
+Last activity: 2026-06-09 -- Planned Phase 32 architecture/code review after MVP1 verify gate
 
-Progress: 94%
+Progress: 95%
 
 ## Progress Snapshot
 
 - Completed phases: 30 / 32
-- Completed executable plans: 131 / 133
+- Completed executable plans: 131 / 138
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 32 ready for planning: review the full MVP1 architecture/codebase and separate proven execution evidence from deferred or fallback-only claims
+- Current position: Phase 32 planned: 5 review-first plans will separate proven execution evidence from deferred, scaffold, skipped, and fallback-only claims
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/duckdb-source-e2e-test.sh` passed; `scripts/mvp1-verify.sh` now wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
 
 **Completed phase plan counts:**
@@ -63,7 +63,7 @@ Progress: 94%
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
-| 32 | MVP1 Architecture and Code Review | 0/0 not planned |
+| 32 | MVP1 Architecture and Code Review | 0/5 planned |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -147,6 +147,7 @@ Recent decisions affecting current work:
 - [Quick 260609-eip]: MVP1 verify is the broad check entry point; it runs `scripts/mvp0-verify.sh` first, then DuckDB e2e over Parquet, Lance, and Vortex source-backed single-column `LMA1` artifacts.
 - [Quick 260609-eip]: DuckDB `loom_scan` may execute single-column `LMA1` through interpreter fallback; native lowering remains unsupported for `Arrow semantic payload` and continues to report lowering diagnostics.
 - [Phase 32]: Added as a review-first phase to audit MVP1 architecture, code quality, ABI/FFI boundaries, true execution evidence, release gates, dependency isolation, and documentation claims before further feature expansion.
+- [Phase 32]: Planned as five review-first plans: claim ledger, execution evidence audit, architecture/ABI/dependency audit, code-quality review with narrow remediation, and MVP1 go/no-go readiness closeout.
 
 ### Pending Todos
 
@@ -232,6 +233,7 @@ None yet.
 - Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
 - Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
+- Phase 32 planned: 5 plans across claim truth, execution evidence, architecture boundaries, code review, and release readiness.
 
 ### Quick Tasks Completed
 
