@@ -151,6 +151,10 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 
 - [x] **PHASE-33**: The default Arrow semantic source-distribution artifact is a verifier-accepted `LMC2(LMA1)` wrapper with version/features/section checks, artifact-verifier routing and CLI facts, source-ingress emission cutover, focused and broad release-gate coverage, and explicit non-claims for broad DuckDB SQL and native Arrow semantic execution
 
+### DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)
+
+- [x] **PHASE-34**: DuckDB `loom_scan(path)` accepts default verifier-backed `LMC2(LMA1)` artifacts directly, preserves Arrow field names, supports one-batch multi-column primitive/Utf8/Boolean nullable SQL with projection/filter/aggregate/null evidence, keeps direct `LMA1` as regression-only bridge input, rejects unsupported logical/nested SQL shapes with stable diagnostics, and does not claim native Arrow semantic execution
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -250,6 +254,7 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | INGEST-05 | Phase 15 | Complete |
 | PHASE-31 | Phase 31 | Complete |
 | PHASE-33 | Phase 33 | Complete |
+| PHASE-34 | Phase 34 | Complete |
 
 **Coverage:**
 
@@ -266,9 +271,10 @@ Phase mapping finalized by roadmapper 2026-06-07.
 - v3 real-vortex-ingress requirements: 5 total
 - v3 full-arrow-semantic-source-compatibility requirements: 1 total
 - v3 lmc2-arrow-semantic-container-wrapper requirements: 1 total
-- Mapped to phases: 79
+- v3 duckdb-arrow-semantic-sql-surface requirements: 1 total
+- Mapped to phases: 80
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-07*
-*Last updated: 2026-06-09 — Phase 33 LMC2 Arrow Semantic Container Wrapper complete*
+*Last updated: 2026-06-09 — Phase 34 DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) complete*

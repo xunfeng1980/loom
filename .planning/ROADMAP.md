@@ -73,8 +73,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 31: Full Arrow Semantic Source Compatibility** - Replace the bounded source-ingress raw/table slice with verifier-backed Arrow semantic artifacts for arbitrary Lance/Parquet schemas and materialized Vortex dtypes (completed 2026-06-09)
 - [x] **Phase 32: MVP1 Architecture and Code Review** - Audit the full MVP1 design and implementation for architectural consistency, true execution evidence, ABI/FFI safety, release-gate fidelity, dependency boundaries, code quality, and overclaim cleanup before further feature expansion (completed 2026-06-09)
 - [x] **Phase 33: LMC2 Arrow Semantic Container Wrapper** - Implement the `LMC2` distribution wrapper around verifier-backed `LMA1` Arrow semantic payloads before expanding query or native claims (completed 2026-06-09)
-- [ ] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads
+- [x] **Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)** - Broaden DuckDB `loom_scan(path)` support by accepting default `LMC2(LMA1)` artifacts, unwrapping to inner `LMA1`, and staging SQL support from multi-column primitive/nullable through logical and nested Arrow semantic payloads (completed 2026-06-09)
 - [ ] **Phase 35: Native Arrow Semantic Execution** - Add true verifier-gated, engine-neutral native execution for Arrow semantic payloads with equivalence evidence, rather than relying on interpreter fallback
+
+**MVP1.5 — Verified Lineage** *(parked future milestone — placeholders only, not started, not on the MVP1 critical path; current load-bearing safety evidence remains the Rust verifier + Phase 19 Bitwuzla SMT discharge)*
+
+- [ ] **Phase 36: Lean Stage B — Close L2Core Abstraction Gap (ScalarExpr/LetScalar)** — PARKED. Enrich the Lean AST so `builder_events_typed` derives value types from expressions like the Rust verifier, making the Lean model faithfully correspond to the executable verifier and unlocking Lean↔Rust differential testing
+- [ ] **Phase 37: Lean Stage C — Operational Semantics + Soundness Theorem** — PARKED. Define an operational semantics over L2Core and prove load-bearing soundness so `accepted_program_safe` becomes a semantic theorem rather than a structural projection
 
 ## Phase Details
 
@@ -917,13 +922,21 @@ Plans:
 
 ### Phase 34: DuckDB Arrow Semantic SQL Surface for LMC2(LMA1)
 
-**Status:** Planned. Phase 32 classified arbitrary DuckDB Arrow semantic SQL as a non-claim because the current direct FFI/DuckDB path is intentionally bounded to one batch, one column, and a small Arrow format set.
+**Status:** Complete. Phase 34 adds DuckDB SQL over default `LMC2(LMA1)` artifacts for the staged primitive/nullable surface: one record batch, multiple named columns, Bool/Int32/Int64/Utf8/Float32/Float64, projection/filter/aggregate/null evidence, and direct `LMA1` regression bridge support. Date32 logical and Struct nested artifacts are verifier-encoded but rejected by DuckDB with stable unsupported diagnostics; native execution remains Phase 35 scope.
 **Depends on:** Phase 33, plus Phase 31 and Phase 32 evidence.
 **Goal:** Broaden DuckDB `loom_scan(path)` over default `LMC2(LMA1)` Arrow semantic artifacts: recognize the `LMC2` distribution wrapper, unwrap to the inner verifier-accepted `LMA1` payload, and scan Arrow semantic data through a staged surface.
 **Requirements:** PHASE-34
 **Ordering decision:** Query semantics should expand after the artifact wrapper decision is settled. This phase should redesign or extend the FFI/DuckDB adapter surface as needed instead of stretching the current one-column bind path. It must not claim native execution; interpreter-backed DuckDB correctness is sufficient unless Phase 35 has already supplied native Arrow semantic evidence.
-**Scope split:** Start with multi-column primitive and nullable Arrow semantic payloads, then add logical types, then nested/list/struct coverage as explicit tasks or follow-up sub-phases if the DuckDB adapter, Arrow C FFI schema mapping, or negative-diagnostic surface becomes too large for one phase.
-**Plans:** Planned during phase discussion.
+**Scope split:** Completed positive SQL support for multi-column primitive and nullable Arrow semantic payloads. Logical Date32 and nested Struct are covered as fail-closed unsupported diagnostics and remain follow-up positive-support candidates.
+**Plans:** 5/5 plans executed.
+
+Plans:
+
+- [x] 34-01-PLAN.md - Internal Arrow semantic DuckDB FFI contract for `LMC2(LMA1)` and direct `LMA1`
+- [x] 34-02-PLAN.md - DuckDB adapter bind/init/scan support for default `LMC2(LMA1)`
+- [x] 34-03-PLAN.md - Focused DuckDB LMC2 SQL gate and source e2e cutover to default artifacts
+- [x] 34-04-PLAN.md - Logical/nested scope diagnostics for unsupported Arrow semantic SQL shapes
+- [x] 34-05-PLAN.md - Release gate wiring, docs, final report, and closeout
 
 ### Phase 35: Native Arrow Semantic Execution
 
@@ -933,6 +946,26 @@ Plans:
 **Requirements:** PHASE-35
 **Ordering decision:** Native Arrow semantic execution should remain separate from DuckDB SQL broadening so the project does not confuse "queryable" with "natively executed." If native support starts before Phase 34 completes, it must stay engine-neutral and avoid DuckDB SQL claims. This phase must not count route scaffolding, zero/reference buffers, toolchain skip, or interpreter fallback as positive native semantic evidence.
 **Plans:** Planned during phase discussion.
+
+## MVP1.5 — Verified Lineage (parked future milestone)
+
+*Placeholder milestone, deliberately not started and not expanded into plans. Both phases are future-IR formal-methods deepening that the project has explicitly deferred (PROJECT.md decision "Defer full future-IR formal proof"). The Lean layer is a theorem-target scaffold; quick task 260609-lb2 already upgraded its predicates from `True` to real decidable checkers mirroring the Rust verifier. Current load-bearing safety evidence remains the Rust executable verifier + Phase 19 Bitwuzla SMT discharge — neither phase below blocks MVP1 (Phases 34–35).*
+
+### Phase 36: Lean Stage B — Close L2Core Abstraction Gap (ScalarExpr/LetScalar)
+
+**Status:** PARKED (placeholder — not planned, not started).
+**Depends on:** Phase 13 Lean scaffold (and quick task 260609-lb2).
+**Goal:** Enrich `formal/lean/LoomCore.lean` with `ScalarExpr` + `LetScalar` + a typing judgment so `builder_events_typed` derives value types from expressions exactly like the Rust verifier (`verify_expr` / `UnknownVariable` in `crates/loom-core/src/full_verifier.rs`), closing the lossy `Nat`-grounded AST projection and making the Lean model faithfully correspond to the executable verifier. Unlocks differential testing of the decidable Lean checkers against the Rust verifier on shared sample programs.
+**Trigger to activate:** the L2Core IR has stabilized AND faithful Lean↔Rust correspondence / differential testing is wanted (natural to do adjacent to Phase 35 native execution).
+**Plans:** None — do not expand until activated.
+
+### Phase 37: Lean Stage C — Operational Semantics + Soundness Theorem
+
+**Status:** PARKED (placeholder — not planned, not started).
+**Depends on:** Phase 36.
+**Goal:** Define a big-step / fueled operational semantics over L2Core that produces `ArrowEvent`s, and prove load-bearing soundness lemmas — type preservation of emitted append events, spatial safety of reads, and termination from bounded loops + positive cursor progress — so `accepted_program_safe` becomes a semantic theorem about execution rather than a structural projection over the `Verified` conjunction.
+**Trigger to activate:** a milestone mandates extraction or verified-checker lineage (matches the `formal/lean/LoomCore.lean` header note and the Rocq fallback). Research-grade scope.
+**Plans:** None — do not expand until activated.
 
 ## Progress
 
@@ -974,5 +1007,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 31. Full Arrow Semantic Source Compatibility | 6/6 | Complete | 2026-06-09 |
 | 32. MVP1 Architecture and Code Review | 5/5 | Complete | 2026-06-09 |
 | 33. LMC2 Arrow Semantic Container Wrapper | 5/5 | Complete | 2026-06-09 |
-| 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 0/0 | Planned | - |
+| 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
 | 35. Native Arrow Semantic Execution | 0/0 | Planned | - |
+| 36. Lean Stage B — Close L2Core Abstraction Gap | 0/0 | Parked (MVP1.5) | - |
+| 37. Lean Stage C — Operational Semantics + Soundness | 0/0 | Parked (MVP1.5) | - |

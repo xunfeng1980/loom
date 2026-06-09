@@ -23,7 +23,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
 | Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
-| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage; the current source e2e gate uses explicit direct-`LMA1` DuckDB bridge fixtures until Phase 34 broadens `LMC2(LMA1)` SQL support |
+| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts over the Phase 34 primitive/nullable SQL surface |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
 | Native lowering | Verifier-gated textual MLIR / decode-dialect evidence and raw primitive lowering preparation |
@@ -166,8 +166,20 @@ bash scripts/duckdb-source-e2e-test.sh
 
 This generates Parquet, Lance, and Vortex source fixtures, emits
 verifier-accepted `LMC2(LMA1)` distribution artifacts through the adapter crates,
-also writes explicit direct-`LMA1` DuckDB bridge fixtures, and queries those
-bridge fixtures with DuckDB `loom_scan(...)`.
+queries those default artifacts with DuckDB `loom_scan(...)`, and keeps
+explicit direct-`LMA1` bridge fixtures as regression evidence only.
+
+### 9. Run the DuckDB LMC2 SQL surface gate
+
+```bash
+bash scripts/duckdb-lmc2-sql-surface-test.sh
+```
+
+This verifies the Phase 34 query surface: one-batch, multi-column
+primitive/Utf8/Boolean nullable `LMC2(LMA1)` artifacts work through
+`loom_scan(...)`, while Date32 logical and Struct nested fixtures fail closed
+with explicit unsupported diagnostics. Native Arrow semantic execution remains
+Phase 35 scope.
 
 ## Repository Map
 
@@ -234,8 +246,8 @@ bash scripts/mvp1-verify.sh
 ```
 
 `scripts/mvp1-verify.sh` runs the inherited `scripts/mvp0-verify.sh` gate first,
-including the full Arrow semantic and `LMC2(LMA1)` wrapper gates, then runs the
-DuckDB source e2e gate.
+including the full Arrow semantic, `LMC2(LMA1)` wrapper, and DuckDB LMC2 SQL
+surface gates, then runs the DuckDB source e2e gate.
 
 Formal and external tooling is explicit. Missing Lean/TLC, LLVM/MLIR, or
 Bitwuzla is not treated as success unless the corresponding opt-out environment
