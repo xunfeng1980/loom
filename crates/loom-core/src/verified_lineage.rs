@@ -75,6 +75,10 @@ impl VerifiedLineageEvidenceLayer {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerifiedLineageEvidenceStatus {
     Passed,
+    /// True for the full release corpus via the CI gate
+    /// (`scripts/verified-lineage-test.sh`); trusted-by-reference at artifact
+    /// granularity, not re-validated when this individual record is built.
+    CorpusValidated,
     Discharged,
     NotRequired,
     NotApplicable,
@@ -86,6 +90,7 @@ impl VerifiedLineageEvidenceStatus {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Passed => "passed",
+            Self::CorpusValidated => "corpus-validated",
             Self::Discharged => "discharged",
             Self::NotRequired => "not-required",
             Self::NotApplicable => "not-applicable",
@@ -229,7 +234,7 @@ pub fn build_verified_lineage_record(
     ));
 
     let l2_scope_status = if facts.l2_core.is_some() {
-        VerifiedLineageEvidenceStatus::Passed
+        VerifiedLineageEvidenceStatus::CorpusValidated
     } else {
         VerifiedLineageEvidenceStatus::NotApplicable
     };
@@ -241,13 +246,13 @@ pub fn build_verified_lineage_record(
     ));
     evidence.push(VerifiedLineageEvidence::new(
         VerifiedLineageEvidenceLayer::LeanRustVerifierDifferential,
-        VerifiedLineageEvidenceStatus::Passed,
+        VerifiedLineageEvidenceStatus::CorpusValidated,
         "scripts/lean-rust-correspondence-test.sh",
         "Lean and Rust verifier accept/reject classifications match over the release corpus",
     ));
     evidence.push(VerifiedLineageEvidence::new(
         VerifiedLineageEvidenceLayer::ModelRustInterpreterDifferential,
-        VerifiedLineageEvidenceStatus::Passed,
+        VerifiedLineageEvidenceStatus::CorpusValidated,
         "scripts/model-rust-interpreter-consistency-test.sh",
         "Rust interpreter trace subject matches the reference modeled executor over the deterministic corpus",
     ));

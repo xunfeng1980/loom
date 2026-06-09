@@ -105,11 +105,15 @@ fn accepted_artifact_record_names_evidence_layers_and_tcb() {
     );
     assert_eq!(
         record.evidence_status(VerifiedLineageEvidenceLayer::LeanModeledSoundnessTheorem),
-        Some(VerifiedLineageEvidenceStatus::Passed)
+        Some(VerifiedLineageEvidenceStatus::CorpusValidated)
     );
-    assert!(record.has_evidence_layer(VerifiedLineageEvidenceLayer::LeanRustVerifierDifferential));
-    assert!(
-        record.has_evidence_layer(VerifiedLineageEvidenceLayer::ModelRustInterpreterDifferential)
+    assert_eq!(
+        record.evidence_status(VerifiedLineageEvidenceLayer::LeanRustVerifierDifferential),
+        Some(VerifiedLineageEvidenceStatus::CorpusValidated)
+    );
+    assert_eq!(
+        record.evidence_status(VerifiedLineageEvidenceLayer::ModelRustInterpreterDifferential),
+        Some(VerifiedLineageEvidenceStatus::CorpusValidated)
     );
     assert_eq!(
         record.evidence_status(VerifiedLineageEvidenceLayer::NativeModelValidation),

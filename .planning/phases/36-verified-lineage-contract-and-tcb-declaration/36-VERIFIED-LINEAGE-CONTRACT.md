@@ -41,6 +41,7 @@ Evidence status words remain distinct and must not be collapsed:
 | Status | Meaning |
 |---|---|
 | proven | Executable code or focused gate proves the claim for the stated scope. |
+| corpus-validated | True for the full release corpus via the CI gate (e.g. `scripts/verified-lineage-test.sh`); carried in a per-artifact lineage record as trust-by-reference, not re-validated when that individual record is built. |
 | bounded | True only for a named slice, fixture family, or adapter path. |
 | fallback | The path is connected, but accepted execution routes through fallback. |
 | scaffold | Contracts or reports exist, but load-bearing implementation/proof is absent. |
