@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: completed
-stopped_at: Phase 38 planned; ready to execute 38-01
+status: executing
+stopped_at: Phase 38 38-01 complete; ready to execute 38-02
 last_updated: "2026-06-09T09:25:32.329Z"
-last_activity: 2026-06-09 -- 37-02 wired Lean/Rust correspondence diff gate for current verifier matrix plus deterministic fuzz cases
+last_activity: 2026-06-09 -- Phase 38 38-01 added modeled Lean operational semantics and safety predicates
 progress:
   total_phases: 47
-  completed_phases: 32
+  completed_phases: 37
   total_plans: 158
-  completed_plans: 137
-  percent: 68
+  completed_plans: 157
+  percent: 78
 ---
 
 # Project State
@@ -25,17 +25,17 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase 38 READY: Lean Stage C — Operational Semantics and Soundness Theorem
-Plan: 0 of 0
-Status: Phase 37 complete; ready to discuss/plan Phase 38
-Last activity: 2026-06-09 -- 37-02 wired Lean/Rust correspondence diff gate for current verifier matrix plus deterministic fuzz cases
+Phase 38 EXECUTING: Lean Stage C — Operational Semantics and Soundness Theorem
+Plan: 1 of 2
+Status: 38-01 complete; ready to execute 38-02 soundness theorem + scope note
+Last activity: 2026-06-09 -- 38-01 added modeled input/state/event semantics, fueled execution, fail-closed terminal behavior, and modeled safety predicates
 
-Progress: Phase 37 complete; Phase 38 is the first incomplete roadmap phase
+Progress: Phase 37 complete; Phase 38 is executing with 1 of 2 plans complete
 
 ## Progress Snapshot
 
 - Completed phases: 37 / 47
-- Completed executable plans: 156 / 156
+- Completed executable plans: 157 / 158
 - Current milestone stage: MVP1.5 / Verified Lineage planning track
 - Current position: Phase 38 should define modeled operational semantics and a scoped soundness theorem over the Lean model, consuming Phase 37 correspondence evidence
 - Last verified gate: `bash scripts/full-verifier-test.sh` passed with the Phase 37 Lean/Rust correspondence diff gate wired into the full verifier path
@@ -69,6 +69,7 @@ Progress: Phase 37 complete; Phase 38 is the first incomplete roadmap phase
 | 35 | Native Arrow Semantic Execution | 5/5 complete |
 | 36 | Verified-Lineage Contract and TCB Declaration | 1/1 complete |
 | 37 | Lean Stage B / Lean Rust Verifier Correspondence | 2/2 complete |
+| 38 | Lean Stage C / Operational Semantics and Soundness Theorem | 1/2 complete |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -332,7 +333,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-06-09T09:25:32.321Z
-Stopped at: Phase 38 planned; ready to execute 38-01
+Stopped at: Phase 38 38-01 complete; ready to execute 38-02
 
 Phase 17 handoff:
 
@@ -379,7 +380,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/phases/38-lean-stage-c-operational-semantics-and-soundness-theorem/38-01-PLAN.md
+Resume file: .planning/phases/38-lean-stage-c-operational-semantics-and-soundness-theorem/38-02-PLAN.md
 
 ## Performance Metrics
 

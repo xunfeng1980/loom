@@ -463,6 +463,166 @@ def classificationString (code : Option RejectCode) : String :=
 def correspondenceLine (id : String) (program : Program) : String :=
   "correspondence:" ++ id ++ ":" ++ classificationString (classifyProgram? program)
 
+/- Modeled executor semantics for Phase 38.
+
+   This is a proof-friendly modeled executor, not a byte-accurate Rust
+   interpreter or Arrow buffer implementation. It records abstract reads and
+   typed builder events so the Lean theorem can talk about the modeled executor
+   safety obligations assigned to Phase 38. -/
+
+structure ModeledInput where
+  satisfiesCapabilities : Program -> Prop
+
+structure ModeledRead where
+  capability : String
+  offset : ScalarExpr
+  width : ScalarExpr
+  inBounds : Bool
+deriving Repr
+
+inductive ModeledEvent where
+  | appendValue (builderId : String) (ty : L2Ty)
+  | appendNull (builderId : String) (ty : L2Ty)
+deriving Repr
+
+inductive ExecutionStatus where
+  | running
+  | finished
+  | failClosed
+deriving Repr, DecidableEq
+
+structure ModeledState where
+  scalars : ScalarEnv
+  reads : List ModeledRead
+  events : List ModeledEvent
+  rowsUsed : Nat
+  status : ExecutionStatus
+deriving Repr
+
+def initialModeledState : ModeledState :=
+  {
+    scalars := [],
+    reads := [],
+    events := [],
+    rowsUsed := 0,
+    status := .running
+  }
+
+def modeledFailClosed (state : ModeledState) : ModeledState :=
+  { state with status := .failClosed }
+
+def appendModeledRead (state : ModeledState) (cap : String) (offset width : ScalarExpr) (inBounds : Bool) : ModeledState :=
+  { state with reads := state.reads ++ [{ capability := cap, offset := offset, width := width, inBounds := inBounds }] }
+
+def appendModeledEvent (state : ModeledState) (event : ModeledEvent) : ModeledState :=
+  { state with events := state.events ++ [event] }
+
+def restoreScalars (before after : ModeledState) : ModeledState :=
+  { after with scalars := before.scalars }
+
+def eventWellTyped (caps : List Capability) : ModeledEvent -> Bool
+  | .appendValue builder ty =>
+      match builderInfo? caps builder with
+      | some (expected, _) => expected == ty
+      | none => false
+  | .appendNull builder ty =>
+      match builderInfo? caps builder with
+      | some (expected, nullable) => nullable && expected == ty
+      | none => false
+
+def NoOutOfBoundsRead (state : ModeledState) : Prop :=
+  state.reads.all (fun read => read.inBounds) = true
+
+def BuilderEventsWellTyped (caps : List Capability) (state : ModeledState) : Prop :=
+  state.events.all (eventWellTyped caps) = true
+
+def TerminatesWithinMaxRows (p : Program) (state : ModeledState) : Prop :=
+  state.rowsUsed <= p.maxRows
+
+def ArrowWellFormedByConstruction (caps : List Capability) (state : ModeledState) : Prop :=
+  BuilderEventsWellTyped caps state
+
+def ModeledRunSafe (p : Program) (state : ModeledState) : Prop :=
+  NoOutOfBoundsRead state /\
+    BuilderEventsWellTyped p.capabilities state /\
+    TerminatesWithinMaxRows p state /\
+    ArrowWellFormedByConstruction p.capabilities state
+
+def modeledExecutorScopeNote : String :=
+  "Phase 38 theorem scope: modeled executor only; Rust interpreter consistency is Phase 39 and native/model validation is Phase 40."
+
+mutual
+  def execStmtFuel (fuel : Nat) (caps : List Capability) (maxRows : Nat) (stmt : Stmt) (state : ModeledState) : ModeledState :=
+    match fuel with
+    | 0 => modeledFailClosed state
+    | fuel' + 1 =>
+        if state.status != .running then state else
+        match stmt with
+        | .readInput cap offset width bind =>
+            match inputSlice? caps cap with
+            | none => modeledFailClosed state
+            | some (sliceOffset, sliceLen) =>
+                if exprWellTyped state.scalars offset && exprWellTyped state.scalars width then
+                  let inBounds := concreteReadInRange sliceOffset sliceLen offset width
+                  if inBounds then
+                    let next := appendModeledRead state cap offset width inBounds
+                    { next with scalars := scalarInsert bind (scalarTypeForReadWidth width) state.scalars }
+                  else modeledFailClosed (appendModeledRead state cap offset width inBounds)
+                else modeledFailClosed state
+        | .letScalar name expr =>
+            match typeOfExpr? state.scalars expr with
+            | some ty =>
+                if exprVarsKnown state.scalars expr then
+                  { state with scalars := scalarInsert name ty state.scalars }
+                else modeledFailClosed state
+            | none => modeledFailClosed state
+        | .appendValue builder value =>
+            match builderInfo? caps builder, typeOfExpr? state.scalars value with
+            | some (expected, _), some actual =>
+                if exprVarsKnown state.scalars value && expected == actual then
+                  appendModeledEvent state (.appendValue builder expected)
+                else modeledFailClosed state
+            | _, _ => modeledFailClosed state
+        | .appendNull builder =>
+            match builderInfo? caps builder with
+            | some (ty, nullable) =>
+                if nullable then appendModeledEvent state (.appendNull builder ty) else modeledFailClosed state
+            | none => modeledFailClosed state
+        | .forRange index start end_ body =>
+            match constNat? start, constNat? end_ with
+            | some s, some e =>
+                if decide (e >= s) && decide (e - s <= maxRows) then
+                  let loopState := { state with scalars := scalarInsert index .rowIndex state.scalars, rowsUsed := state.rowsUsed + (e - s) }
+                  restoreScalars state (execBodyFuel fuel' caps maxRows body loopState)
+                else modeledFailClosed state
+            | _, _ => modeledFailClosed state
+        | .cursorLoop cursor limit progress body =>
+            match constNat? limit with
+            | some n =>
+                if isMonotoneProgress cursor progress && decide (n <= maxRows) then
+                  let loopState := { state with scalars := scalarInsert cursor .rowIndex state.scalars, rowsUsed := state.rowsUsed + n }
+                  restoreScalars state (execBodyFuel fuel' caps maxRows body loopState)
+                else modeledFailClosed state
+            | none => modeledFailClosed state
+        | .failClosed _ => modeledFailClosed state
+
+  def execBodyFuel (fuel : Nat) (caps : List Capability) (maxRows : Nat) (body : List Stmt) (state : ModeledState) : ModeledState :=
+    match fuel with
+    | 0 => modeledFailClosed state
+    | fuel' + 1 =>
+        match body with
+        | [] => { state with status := if state.status == .running then .finished else state.status }
+        | stmt :: rest =>
+            let next := execStmtFuel fuel' caps maxRows stmt state
+            if next.status == .running then execBodyFuel fuel' caps maxRows rest next else next
+end
+
+def execProgram (p : Program) : ModeledState :=
+  execBodyFuel (p.maxRows + p.body.length + 64) p.capabilities p.maxRows p.body initialModeledState
+
+def ModeledExecutionSafe (p : Program) : Prop :=
+  ModeledRunSafe p (execProgram p)
+
 def validLetScalarAppendProgram : Program :=
   {
     artifactVersion := 1,
@@ -577,6 +737,9 @@ def fuzz002ReadBytesMismatchProgram : Program :=
     ]
   }
 
+def failClosedProgram : Program :=
+  { sampleCopyProgram with body := [ .failClosed "test-fail-closed" ] }
+
 def correspondenceReportLines : List String := [
   correspondenceLine "matrix-accepted-copy" sampleCopyProgram,
   correspondenceLine "matrix-missing-input-capability" missingInputProgram,
@@ -611,6 +774,21 @@ example : classifyProgram? missingInputProgram = some .MissingInputCapability :=
   native_decide
 
 example : classifyProgram? nonMonotoneCursorProgram = some .NonMonotoneCursorLoop := by
+  native_decide
+
+example : (execProgram sampleCopyProgram).status = .finished := by
+  native_decide
+
+example : (execProgram sampleCopyProgram).reads.all (fun read => read.inBounds) = true := by
+  native_decide
+
+example : (execProgram sampleCopyProgram).events.all (eventWellTyped sampleCopyProgram.capabilities) = true := by
+  native_decide
+
+example : (execProgram sampleCopyProgram).rowsUsed <= sampleCopyProgram.maxRows := by
+  native_decide
+
+example : (execProgram failClosedProgram).status = .failClosed := by
   native_decide
 
 #eval IO.println correspondenceReport

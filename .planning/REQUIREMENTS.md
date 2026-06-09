@@ -169,6 +169,11 @@ Tracked for work that moves Loom from a runnable MVP0/v2 prototype toward the fi
 - [x] **LINEAGE-03**: The Lean checker mirrors the executable Rust verifier's current static L2Core surface for `ScalarExpr` / `LetScalar`, scalar type environment threading, expression-derived append value typing, and `UnknownVariable` rejection without expanding Rust L2Core beyond what the verifier already accepts
 - [x] **LINEAGE-04**: A deterministic Lean/Rust verifier differential harness runs the current full verifier fixture matrix plus bounded generated cases, compares accept/reject and stable reject classification, covers required reject codes, and is wired into the release gate as a fail-closed correspondence check
 
+### Lean Modeled Operational Semantics
+
+- [ ] **LINEAGE-05**: Lean defines a proof-friendly modeled operational semantics for the current L2Core checker slice, including abstract input assumptions, typed builder events, bounded loop/cursor execution, fail-closed terminal behavior, and modeled safety predicates for safe reads, well-typed events, maxRows termination, and Arrow well-formedness by construction
+- [ ] **LINEAGE-06**: Lean proves `accepted_program_safe` as a no-`sorry` semantic theorem over the modeled executor, with explicit modeled-only scope and handoff notes that Rust interpreter consistency remains Phase 39 and native/model validation remains Phase 40
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -274,6 +279,8 @@ Phase mapping finalized by roadmapper 2026-06-07.
 | LINEAGE-02 | Phase 36 | Complete |
 | LINEAGE-03 | Phase 37 | Complete |
 | LINEAGE-04 | Phase 37 | Complete |
+| LINEAGE-05 | Phase 38 | In Progress |
+| LINEAGE-06 | Phase 38 | Pending |
 
 **Coverage:**
 

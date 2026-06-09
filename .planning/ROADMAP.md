@@ -1013,7 +1013,7 @@ Plans:
 
 ### Phase 38: Lean Stage C — Operational Semantics and Soundness Theorem
 
-**Status:** Not started. **Supersedes** parked Phase 37.
+**Status:** In Progress (1/2 plans complete). **Supersedes** parked Phase 37.
 **Goal:** A small-step operational semantics over L2Core and a machine-checked theorem that verifier acceptance implies execution safety, scoped to the modeled executor.
 **Depends on:** Phase 37.
 **Requirements:** LINEAGE-05, LINEAGE-06
@@ -1025,7 +1025,7 @@ Plans:
 
 **Non-goals:** Not a proof about the Rust interpreter or native codegen (that is Phase 39/40 validation, not Lean proof). No correctness theorem.
 **Ordering decision:** This is the phase that retires the "structural projection" finding — but only as far as the model; the model↔executor seam is the next phase.
-**Plans:** 2 plans. Wave 1: 38-01 operational semantics. Wave 2: 38-02 soundness theorem + scope note.
+**Plans:** 2 plans. Wave 1: [x] `38-01-PLAN.md` operational semantics. Wave 2: [ ] `38-02-PLAN.md` soundness theorem + scope note.
 
 ### Phase 39: Model ↔ Rust Interpreter Consistency
 
