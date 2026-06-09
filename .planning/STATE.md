@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 32 plan 32-03 complete
-last_updated: "2026-06-09T04:10:00Z"
-last_activity: 2026-06-09 -- Completed Phase 32 architecture boundary review
+stopped_at: Phase 32 plan 32-04 complete
+last_updated: "2026-06-09T04:31:00Z"
+last_activity: 2026-06-09 -- Completed Phase 32 code review
 progress:
   total_phases: 32
   completed_phases: 30
   total_plans: 138
-  completed_plans: 134
+  completed_plans: 135
   percent: 97
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 32 executing
-Plan: 32-04 ready
-Status: Phase 32 executing code-quality review and narrow remediation; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Completed Phase 32 architecture boundary review
+Plan: 32-05 ready
+Status: Phase 32 executing MVP1 readiness closeout; Phase 30 dual-query remains partial/deferred
+Last activity: 2026-06-09 -- Completed Phase 32 code review
 
 Progress: 97%
 
 ## Progress Snapshot
 
 - Completed phases: 30 / 32
-- Completed executable plans: 134 / 138
+- Completed executable plans: 135 / 138
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 32 executing: claim/evidence/boundary reviews complete; code-quality review and narrow remediation are next
+- Current position: Phase 32 executing: claim/evidence/boundary/code reviews complete; readiness closeout is next
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/duckdb-source-e2e-test.sh` passed; `scripts/mvp1-verify.sh` now wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
 
 **Completed phase plan counts:**
@@ -63,7 +63,7 @@ Progress: 97%
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
-| 32 | MVP1 Architecture and Code Review | 3/5 executing |
+| 32 | MVP1 Architecture and Code Review | 4/5 executing |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -151,6 +151,7 @@ Recent decisions affecting current work:
 - [Phase 32 P01]: Claim ledger classifies source compatibility as proven at the Arrow semantic layer, DuckDB `LMA1` SQL as bounded to the single-column e2e slice, native `LMA1` execution as unsupported/fallback, `LMC2` as deferred, and Phase 30 dual-surface as partial.
 - [Phase 32 P02]: Execution evidence matrix records what each major gate proves and does not prove; `scripts/mvp1-review-audit-test.sh` is a marker/report audit seed, not a runtime semantics gate.
 - [Phase 32 P03]: Architecture boundary review found source SDK isolation and public/internal FFI separation intact; direct `LMA1` is implemented, `LMC2` remains future wrapper, and native lowering rejects `Arrow semantic payload`.
+- [Phase 32 P04]: Code review found no high-severity production bug in the reviewed slice; medium residual risks remain around narrow direct `LMA1` FFI/DuckDB support, hand-maintained internal DuckDB header drift, and test-assisted native facts.
 
 ### Pending Todos
 
@@ -236,7 +237,7 @@ None yet.
 - Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
 - Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
-- Phase 32 executing: 32-01 through 32-03 completed claim/evidence/boundary review artifacts; 32-04 will perform code-quality review and narrow remediation.
+- Phase 32 executing: 32-01 through 32-04 completed claim/evidence/boundary/code review artifacts; 32-05 will produce MVP1 readiness and closeout.
 
 ### Quick Tasks Completed
 
