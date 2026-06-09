@@ -89,7 +89,9 @@ pub fn wrap_arrow_semantic_payload(lma1_bytes: &[u8]) -> Result<Vec<u8>, LoomDec
     let section_count = 1u32;
     let header_len = LMC2_HEADER_PREFIX_LEN
         .checked_add(LMC2_SECTION_ENTRY_LEN)
-        .ok_or(LoomDecodeError::MalformedContainer("header length overflow"))?;
+        .ok_or(LoomDecodeError::MalformedContainer(
+            "header length overflow",
+        ))?;
     let header_len_u16 = u16::try_from(header_len)
         .map_err(|_| LoomDecodeError::MalformedContainer("header length overflow"))?;
     let section_offset = u64::try_from(header_len)
@@ -253,9 +255,9 @@ pub fn decode_arrow_semantic_container(
         ));
     }
 
-    let (offset_u64, length_u64) = payload_section.ok_or(
-        LoomDecodeError::MalformedContainer("missing arrow semantic payload"),
-    )?;
+    let (offset_u64, length_u64) = payload_section.ok_or(LoomDecodeError::MalformedContainer(
+        "missing arrow semantic payload",
+    ))?;
     let offset = usize::try_from(offset_u64)
         .map_err(|_| LoomDecodeError::MalformedContainer("section offset overflow"))?;
     let length = usize::try_from(length_u64)
@@ -388,7 +390,9 @@ impl<'a> Reader<'a> {
         let end = self
             .pos
             .checked_add(len)
-            .ok_or(LoomDecodeError::MalformedContainer("payload length overflow"))?;
+            .ok_or(LoomDecodeError::MalformedContainer(
+                "payload length overflow",
+            ))?;
         if end > self.input.len() {
             return Err(LoomDecodeError::MalformedContainer("truncated container"));
         }
