@@ -17,6 +17,7 @@ extern "C" {
 
 typedef struct LoomDuckDbPlan LoomDuckDbPlan;
 typedef struct LoomDuckDbPrepared LoomDuckDbPrepared;
+typedef struct LoomDuckDbArrowSemantic LoomDuckDbArrowSemantic;
 
 typedef struct LoomDuckDbDiagnostic {
     const char *code;
@@ -88,6 +89,31 @@ int32_t loom_duckdb_prepare_native_buffer_count(const LoomDuckDbPrepared *prepar
 int32_t loom_duckdb_prepare_native_buffer(const LoomDuckDbPrepared *prepared,
                                           uintptr_t index,
                                           LoomDuckDbNativeBuffer *out_buffer);
+
+int32_t loom_duckdb_arrow_semantic_create(const uint8_t *artifact_ptr,
+                                          uintptr_t artifact_len,
+                                          LoomDuckDbArrowSemantic **out_handle);
+
+int32_t loom_duckdb_arrow_semantic_destroy(LoomDuckDbArrowSemantic *handle);
+
+int32_t loom_duckdb_arrow_semantic_column_count(const LoomDuckDbArrowSemantic *handle,
+                                                uintptr_t *out_count);
+
+int32_t loom_duckdb_arrow_semantic_row_count(const LoomDuckDbArrowSemantic *handle,
+                                             uintptr_t *out_count);
+
+int32_t loom_duckdb_arrow_semantic_column_name(const LoomDuckDbArrowSemantic *handle,
+                                               uintptr_t index,
+                                               const char **out_name);
+
+int32_t loom_duckdb_arrow_semantic_column_format(const LoomDuckDbArrowSemantic *handle,
+                                                 uintptr_t index,
+                                                 const char **out_format);
+
+int32_t loom_duckdb_arrow_semantic_export_column(const LoomDuckDbArrowSemantic *handle,
+                                                 uintptr_t index,
+                                                 struct ArrowArray *out_array,
+                                                 struct ArrowSchema *out_schema);
 
 #ifdef __cplusplus
 }

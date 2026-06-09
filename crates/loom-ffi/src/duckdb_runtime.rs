@@ -6,11 +6,17 @@
 //! runtime policy in C++.
 
 use std::collections::HashMap;
-use std::ffi::{c_char, CString};
+use std::ffi::{c_char, CStr, CString};
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Mutex, OnceLock};
 
+use arrow::array::{Array, RecordBatch};
 use arrow::datatypes::DataType;
+use arrow::ffi::{to_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::arrow_semantic_codec::{
+    decode_arrow_semantic_container_payload, decode_arrow_semantic_payload,
+    is_arrow_semantic_container, is_arrow_semantic_payload,
+};
 use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationFacts, ArtifactVerificationOptions,
     ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
@@ -163,6 +169,7 @@ enum LoomDuckDbStatus {
     NullPointer = 1,
     Panicked = 2,
     OutOfRange = 3,
+    ArtifactUnsupported = 4,
 }
 
 impl LoomDuckDbStatus {
@@ -187,6 +194,13 @@ pub struct LoomDuckDbPrepared {
     decision: CString,
     diagnostics: Vec<OwnedDuckDbDiagnostic>,
     native_buffers: Vec<OwnedDuckDbNativeBuffer>,
+}
+
+#[repr(C)]
+pub struct LoomDuckDbArrowSemantic {
+    batch: RecordBatch,
+    column_names: Vec<CString>,
+    column_formats: Vec<CString>,
 }
 
 #[repr(C)]
@@ -663,6 +677,175 @@ pub unsafe extern "C" fn loom_duckdb_prepare_native_buffer(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_create(
+    artifact_ptr: *const u8,
+    artifact_len: usize,
+    out_handle: *mut *mut LoomDuckDbArrowSemantic,
+) -> i32 {
+    if out_handle.is_null() || (artifact_len > 0 && artifact_ptr.is_null()) {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_handle, std::ptr::null_mut());
+        let artifact = if artifact_len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(artifact_ptr, artifact_len)
+        };
+        match LoomDuckDbArrowSemantic::from_artifact(artifact) {
+            Ok(handle) => {
+                std::ptr::write(out_handle, Box::into_raw(Box::new(handle)));
+                0
+            }
+            Err(_) => LoomDuckDbStatus::ArtifactUnsupported.code(),
+        }
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_destroy(
+    handle: *mut LoomDuckDbArrowSemantic,
+) -> i32 {
+    if handle.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        drop(Box::from_raw(handle));
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_column_count(
+    handle: *const LoomDuckDbArrowSemantic,
+    out_count: *mut usize,
+) -> i32 {
+    if handle.is_null() || out_count.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_count, (*handle).batch.num_columns());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_row_count(
+    handle: *const LoomDuckDbArrowSemantic,
+    out_count: *mut usize,
+) -> i32 {
+    if handle.is_null() || out_count.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        std::ptr::write(out_count, (*handle).batch.num_rows());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_column_name(
+    handle: *const LoomDuckDbArrowSemantic,
+    index: usize,
+    out_name: *mut *const c_char,
+) -> i32 {
+    if handle.is_null() || out_name.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(name) = (&(*handle).column_names).get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        std::ptr::write(out_name, name.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_column_format(
+    handle: *const LoomDuckDbArrowSemantic,
+    index: usize,
+    out_format: *mut *const c_char,
+) -> i32 {
+    if handle.is_null() || out_format.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(format) = (&(*handle).column_formats).get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        std::ptr::write(out_format, format.as_ptr());
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loom_duckdb_arrow_semantic_export_column(
+    handle: *const LoomDuckDbArrowSemantic,
+    index: usize,
+    out_array: *mut FFI_ArrowArray,
+    out_schema: *mut FFI_ArrowSchema,
+) -> i32 {
+    if handle.is_null() || out_array.is_null() || out_schema.is_null() {
+        return LoomDuckDbStatus::NullPointer.code();
+    }
+
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let Some(column) = (*handle).batch.columns().get(index) else {
+            return LoomDuckDbStatus::OutOfRange.code();
+        };
+        let data = column.to_data();
+        let Ok((ffi_array, ffi_schema)) = to_ffi(&data) else {
+            return LoomDuckDbStatus::ArtifactUnsupported.code();
+        };
+        std::ptr::write(out_array, ffi_array);
+        std::ptr::write(out_schema, ffi_schema);
+        0
+    }));
+
+    match result {
+        Ok(code) => code,
+        Err(_) => LoomDuckDbStatus::Panicked.code(),
+    }
+}
+
 impl LoomDuckDbPlan {
     fn from_report(report: DuckDbRuntimePlanReport) -> Self {
         let decision = cstring_lossy(report.decision.as_str());
@@ -708,6 +891,68 @@ impl LoomDuckDbPrepared {
             route,
         }
     }
+}
+
+impl LoomDuckDbArrowSemantic {
+    fn from_artifact(artifact: &[u8]) -> Result<Self, String> {
+        let registry = L2KernelRegistry::default_for_mvp0();
+        let verifier_options = ArtifactVerificationOptions {
+            require_l2_core_for_lowering: false,
+            lowering_backend: Some("loom-decode-dialect".to_string()),
+            compute_lowering_readiness: true,
+        };
+        let report = verify_artifact(artifact, &registry, &verifier_options);
+        if !report.is_ok() {
+            return Err(format!(
+                "artifact verification status {}",
+                report.status().as_str()
+            ));
+        }
+
+        let payload = if is_arrow_semantic_container(artifact) {
+            decode_arrow_semantic_container_payload(artifact).map_err(|err| format!("{err:?}"))?
+        } else if is_arrow_semantic_payload(artifact) {
+            decode_arrow_semantic_payload(artifact).map_err(|err| format!("{err:?}"))?
+        } else {
+            return Err("artifact is not LMC2(LMA1) or direct LMA1".to_string());
+        };
+
+        let mut batches = payload
+            .to_record_batches()
+            .map_err(|err| format!("{err:?}"))?;
+        if batches.len() != 1 {
+            return Err(format!(
+                "DuckDB Arrow semantic scan requires exactly one record batch, got {}",
+                batches.len()
+            ));
+        }
+        let batch = batches.remove(0);
+
+        let mut column_names = Vec::with_capacity(batch.num_columns());
+        let mut column_formats = Vec::with_capacity(batch.num_columns());
+        for (index, field) in batch.schema().fields().iter().enumerate() {
+            column_names.push(cstring_lossy(field.name()));
+            column_formats.push(arrow_c_format_for_column(batch.column(index).as_ref())?);
+        }
+
+        Ok(Self {
+            batch,
+            column_names,
+            column_formats,
+        })
+    }
+}
+
+fn arrow_c_format_for_column(column: &dyn Array) -> Result<CString, String> {
+    let data = column.to_data();
+    let (_array, schema) = to_ffi(&data).map_err(|err| format!("{err:?}"))?;
+    if schema.format.is_null() {
+        return Err("Arrow schema has null format".to_string());
+    }
+    let format = unsafe { CStr::from_ptr(schema.format) }
+        .to_string_lossy()
+        .into_owned();
+    Ok(cstring_lossy(&format))
 }
 
 fn create_duckdb_plan_report(

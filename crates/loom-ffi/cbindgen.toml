@@ -51,6 +51,7 @@ exclude = [
     "LoomDuckDbNativeBuffer",
     "LoomDuckDbPlan",
     "LoomDuckDbPrepared",
+    "LoomDuckDbArrowSemantic",
     "loom_duckdb_plan_create",
     "loom_duckdb_plan_create_projected",
     "loom_duckdb_plan_destroy",
@@ -67,6 +68,13 @@ exclude = [
     "loom_duckdb_prepare_diagnostic",
     "loom_duckdb_prepare_native_buffer_count",
     "loom_duckdb_prepare_native_buffer",
+    "loom_duckdb_arrow_semantic_create",
+    "loom_duckdb_arrow_semantic_destroy",
+    "loom_duckdb_arrow_semantic_column_count",
+    "loom_duckdb_arrow_semantic_row_count",
+    "loom_duckdb_arrow_semantic_column_name",
+    "loom_duckdb_arrow_semantic_column_format",
+    "loom_duckdb_arrow_semantic_export_column",
 ]
 
 # Do not emit the System allocator static (it has no C-visible symbol).

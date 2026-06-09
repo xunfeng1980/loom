@@ -1,21 +1,32 @@
 use std::ffi::CStr;
 use std::ptr;
+use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};
 
-use arrow::datatypes::DataType;
+use arrow::array::{Array, BooleanArray, Int32Array, RecordBatch, StringArray};
+use arrow::datatypes::{DataType, Field, Schema};
+use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use loom_core::arrow_semantic::ArrowSemanticPayload;
+use loom_core::arrow_semantic_codec::{
+    encode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
+};
 use loom_core::container_codec::wrap_layout_payload;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::layout_codec::encode_layout_payload;
 use loom_ffi::duckdb_runtime::{
-    duckdb_runtime_clear_native_preparation_cache_for_test, loom_duckdb_plan_cache_input,
-    loom_duckdb_plan_cache_key, loom_duckdb_plan_create, loom_duckdb_plan_create_projected,
-    loom_duckdb_plan_decision, loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic,
-    loom_duckdb_plan_diagnostic_count, loom_duckdb_prepare_create, loom_duckdb_prepare_destroy,
-    loom_duckdb_prepare_diagnostic, loom_duckdb_prepare_diagnostic_count,
-    loom_duckdb_prepare_native_buffer, loom_duckdb_prepare_native_buffer_count,
-    loom_duckdb_prepare_route, plan_duckdb_runtime, prepare_duckdb_runtime, DuckDbProjection,
-    DuckDbRuntimePlanInput, DuckDbRuntimePolicy, DuckDbTestNativeFacts, LoomDuckDbDiagnostic,
-    LoomDuckDbNativeBuffer, LoomDuckDbPlan, LoomDuckDbPrepared,
+    duckdb_runtime_clear_native_preparation_cache_for_test,
+    loom_duckdb_arrow_semantic_column_count, loom_duckdb_arrow_semantic_column_format,
+    loom_duckdb_arrow_semantic_column_name, loom_duckdb_arrow_semantic_create,
+    loom_duckdb_arrow_semantic_destroy, loom_duckdb_arrow_semantic_export_column,
+    loom_duckdb_arrow_semantic_row_count, loom_duckdb_plan_cache_input, loom_duckdb_plan_cache_key,
+    loom_duckdb_plan_create, loom_duckdb_plan_create_projected, loom_duckdb_plan_decision,
+    loom_duckdb_plan_destroy, loom_duckdb_plan_diagnostic, loom_duckdb_plan_diagnostic_count,
+    loom_duckdb_prepare_create, loom_duckdb_prepare_destroy, loom_duckdb_prepare_diagnostic,
+    loom_duckdb_prepare_diagnostic_count, loom_duckdb_prepare_native_buffer,
+    loom_duckdb_prepare_native_buffer_count, loom_duckdb_prepare_route, plan_duckdb_runtime,
+    prepare_duckdb_runtime, DuckDbProjection, DuckDbRuntimePlanInput, DuckDbRuntimePolicy,
+    DuckDbTestNativeFacts, LoomDuckDbArrowSemantic, LoomDuckDbDiagnostic, LoomDuckDbNativeBuffer,
+    LoomDuckDbPlan, LoomDuckDbPrepared,
 };
 use loom_native_melior::backend::NativeBackendCancellation;
 
@@ -44,6 +55,35 @@ fn raw_i32_lmc1(row_count: u64) -> Vec<u8> {
     };
     let payload = encode_layout_payload(&desc);
     wrap_layout_payload(&payload).expect("valid LMC1 layout")
+}
+
+fn arrow_semantic_record_batch() -> RecordBatch {
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("id", DataType::Int32, false),
+        Field::new("label", DataType::Utf8, true),
+        Field::new("active", DataType::Boolean, true),
+    ]));
+    RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(Int32Array::from(vec![10, 20, 30])),
+            Arc::new(StringArray::from(vec![Some("alpha"), None, Some("gamma")])),
+            Arc::new(BooleanArray::from(vec![Some(true), None, Some(false)])),
+        ],
+    )
+    .expect("record batch")
+}
+
+fn arrow_semantic_lma1() -> Vec<u8> {
+    let payload = ArrowSemanticPayload::from_record_batches(&[arrow_semantic_record_batch()])
+        .expect("semantic payload");
+    encode_arrow_semantic_payload(&payload).expect("encode direct LMA1")
+}
+
+fn arrow_semantic_lmc2() -> Vec<u8> {
+    let payload = ArrowSemanticPayload::from_record_batches(&[arrow_semantic_record_batch()])
+        .expect("semantic payload");
+    encode_arrow_semantic_container_payload(&payload).expect("encode LMC2")
 }
 
 unsafe fn cstr(ptr: *const std::ffi::c_char) -> String {
@@ -375,6 +415,143 @@ fn public_header_excludes_internal_duckdb_symbols() {
 }
 
 #[test]
+fn internal_header_exposes_arrow_semantic_duckdb_symbols() {
+    let internal_header = std::fs::read_to_string(format!(
+        "{}/include/loom_duckdb_internal.h",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("read DuckDB internal header");
+    for required in [
+        "LoomDuckDbArrowSemantic",
+        "loom_duckdb_arrow_semantic_create",
+        "loom_duckdb_arrow_semantic_destroy",
+        "loom_duckdb_arrow_semantic_column_count",
+        "loom_duckdb_arrow_semantic_row_count",
+        "loom_duckdb_arrow_semantic_column_name",
+        "loom_duckdb_arrow_semantic_column_format",
+        "loom_duckdb_arrow_semantic_export_column",
+    ] {
+        assert!(
+            internal_header.contains(required),
+            "internal header must expose {required}"
+        );
+    }
+}
+
+#[test]
+fn arrow_semantic_handle_accepts_lmc2_and_exports_nullable_columns() {
+    let artifact = arrow_semantic_lmc2();
+    let mut handle: *mut LoomDuckDbArrowSemantic = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_arrow_semantic_create(
+                artifact.as_ptr(),
+                artifact.len(),
+                &mut handle as *mut _,
+            )
+        },
+        0
+    );
+    assert!(!handle.is_null(), "handle must be populated");
+
+    let mut column_count = usize::MAX;
+    assert_eq!(
+        unsafe { loom_duckdb_arrow_semantic_column_count(handle, &mut column_count as *mut _) },
+        0
+    );
+    assert_eq!(column_count, 3);
+
+    let mut row_count = usize::MAX;
+    assert_eq!(
+        unsafe { loom_duckdb_arrow_semantic_row_count(handle, &mut row_count as *mut _) },
+        0
+    );
+    assert_eq!(row_count, 3);
+
+    assert_eq!(unsafe { arrow_semantic_column_name(handle, 0) }, "id");
+    assert_eq!(unsafe { arrow_semantic_column_name(handle, 1) }, "label");
+    assert_eq!(unsafe { arrow_semantic_column_name(handle, 2) }, "active");
+    assert_eq!(unsafe { arrow_semantic_column_format(handle, 0) }, "i");
+    assert_eq!(unsafe { arrow_semantic_column_format(handle, 1) }, "u");
+    assert_eq!(unsafe { arrow_semantic_column_format(handle, 2) }, "b");
+
+    let label_array = unsafe { export_arrow_semantic_string_column(handle, 1) };
+    assert_eq!(label_array.len(), 3);
+    assert_eq!(label_array.value(0), "alpha");
+    assert!(
+        label_array.is_null(1),
+        "nullable Utf8 null must survive export"
+    );
+    assert_eq!(label_array.value(2), "gamma");
+
+    let active_array = unsafe { export_arrow_semantic_bool_column(handle, 2) };
+    assert_eq!(active_array.len(), 3);
+    assert!(active_array.value(0));
+    assert!(
+        active_array.is_null(1),
+        "nullable Bool null must survive export"
+    );
+    assert!(!active_array.value(2));
+
+    assert_eq!(unsafe { loom_duckdb_arrow_semantic_destroy(handle) }, 0);
+}
+
+#[test]
+fn arrow_semantic_handle_accepts_direct_lma1_bridge() {
+    let artifact = arrow_semantic_lma1();
+    let mut handle: *mut LoomDuckDbArrowSemantic = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            loom_duckdb_arrow_semantic_create(
+                artifact.as_ptr(),
+                artifact.len(),
+                &mut handle as *mut _,
+            )
+        },
+        0
+    );
+    assert!(
+        !handle.is_null(),
+        "direct LMA1 bridge handle must be populated"
+    );
+    assert_eq!(unsafe { arrow_semantic_column_name(handle, 0) }, "id");
+    assert_eq!(unsafe { arrow_semantic_column_format(handle, 0) }, "i");
+    let id_array = unsafe { export_arrow_semantic_i32_column(handle, 0) };
+    assert_eq!(id_array.values(), &[10, 20, 30]);
+    assert_eq!(unsafe { loom_duckdb_arrow_semantic_destroy(handle) }, 0);
+}
+
+#[test]
+fn arrow_semantic_handle_rejects_invalid_inputs_and_multibatch() {
+    let mut handle: *mut LoomDuckDbArrowSemantic = ptr::null_mut();
+    let rc = unsafe { loom_duckdb_arrow_semantic_create(ptr::null(), 3, &mut handle as *mut _) };
+    assert_ne!(rc, 0, "null non-empty input must fail");
+    assert!(handle.is_null());
+
+    let garbage = b"not an artifact";
+    let rc = unsafe {
+        loom_duckdb_arrow_semantic_create(garbage.as_ptr(), garbage.len(), &mut handle as *mut _)
+    };
+    assert_ne!(rc, 0, "garbage bytes must fail closed");
+    assert!(handle.is_null());
+
+    let batch = arrow_semantic_record_batch();
+    let payload = ArrowSemanticPayload::from_record_batches(&[batch.clone(), batch])
+        .expect("multi-batch semantic payload");
+    let multibatch =
+        encode_arrow_semantic_container_payload(&payload).expect("encode multi-batch LMC2");
+    let rc = unsafe {
+        loom_duckdb_arrow_semantic_create(
+            multibatch.as_ptr(),
+            multibatch.len(),
+            &mut handle as *mut _,
+        )
+    };
+    assert_ne!(rc, 0, "multi-batch LMC2 must be unsupported for DuckDB SQL");
+    assert!(handle.is_null());
+}
+
+#[test]
 fn fallback_and_strict_modes_expose_runtime_policy_diagnostics() {
     let artifact = raw_i32_lmc1(4);
 
@@ -564,6 +741,8 @@ fn public_header_leakage_gate_blocks_route_and_stream_symbols() {
     for forbidden in [
         "loom_duckdb_",
         "LoomDuckDb",
+        "loom_duckdb_arrow_semantic",
+        "LoomDuckDbArrowSemantic",
         "duckdb_runtime",
         "cache",
         "native_preparation",
@@ -606,6 +785,84 @@ unsafe fn prepare_route_string(prepared: *mut LoomDuckDbPrepared) -> String {
     let mut route = ptr::null();
     assert_eq!(loom_duckdb_prepare_route(prepared, &mut route as *mut _), 0);
     cstr(route)
+}
+
+unsafe fn arrow_semantic_column_name(handle: *mut LoomDuckDbArrowSemantic, index: usize) -> String {
+    let mut name = ptr::null();
+    assert_eq!(
+        loom_duckdb_arrow_semantic_column_name(handle, index, &mut name as *mut _),
+        0
+    );
+    cstr(name)
+}
+
+unsafe fn arrow_semantic_column_format(
+    handle: *mut LoomDuckDbArrowSemantic,
+    index: usize,
+) -> String {
+    let mut format = ptr::null();
+    assert_eq!(
+        loom_duckdb_arrow_semantic_column_format(handle, index, &mut format as *mut _),
+        0
+    );
+    cstr(format)
+}
+
+unsafe fn export_arrow_semantic_i32_column(
+    handle: *mut LoomDuckDbArrowSemantic,
+    index: usize,
+) -> Int32Array {
+    let (array, schema) = export_arrow_semantic_column(handle, index);
+    let array_data = from_ffi(array, &schema).expect("from_ffi i32 column");
+    let array = Int32Array::from(array_data);
+    release_schema(schema);
+    array
+}
+
+unsafe fn export_arrow_semantic_string_column(
+    handle: *mut LoomDuckDbArrowSemantic,
+    index: usize,
+) -> StringArray {
+    let (array, schema) = export_arrow_semantic_column(handle, index);
+    let array_data = from_ffi(array, &schema).expect("from_ffi Utf8 column");
+    let array = StringArray::from(array_data);
+    release_schema(schema);
+    array
+}
+
+unsafe fn export_arrow_semantic_bool_column(
+    handle: *mut LoomDuckDbArrowSemantic,
+    index: usize,
+) -> BooleanArray {
+    let (array, schema) = export_arrow_semantic_column(handle, index);
+    let array_data = from_ffi(array, &schema).expect("from_ffi Bool column");
+    let array = BooleanArray::from(array_data);
+    release_schema(schema);
+    array
+}
+
+unsafe fn export_arrow_semantic_column(
+    handle: *mut LoomDuckDbArrowSemantic,
+    index: usize,
+) -> (FFI_ArrowArray, FFI_ArrowSchema) {
+    let mut array: FFI_ArrowArray = std::mem::zeroed();
+    let mut schema: FFI_ArrowSchema = std::mem::zeroed();
+    assert_eq!(
+        loom_duckdb_arrow_semantic_export_column(
+            handle,
+            index,
+            &mut array as *mut _,
+            &mut schema as *mut _,
+        ),
+        0
+    );
+    (array, schema)
+}
+
+fn release_schema(mut schema: FFI_ArrowSchema) {
+    if let Some(release_fn) = schema.release {
+        unsafe { release_fn(&mut schema as *mut _) };
+    }
 }
 
 unsafe fn prepare_diagnostic_codes(prepared: *mut LoomDuckDbPrepared) -> Vec<String> {
