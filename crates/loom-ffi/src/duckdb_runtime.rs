@@ -1782,6 +1782,16 @@ fn column_count_for(report: &ArtifactVerificationReport, input: &DuckDbRuntimePl
     if let Some(test_facts) = input.policy.test_native_facts.as_ref() {
         return test_facts.columns.len() as u32;
     }
+    if is_arrow_semantic_container(&input.artifact_bytes) {
+        if let Ok(payload) = decode_arrow_semantic_container_payload(&input.artifact_bytes) {
+            return payload.schema().fields().len() as u32;
+        }
+    }
+    if is_arrow_semantic_payload(&input.artifact_bytes) {
+        if let Ok(payload) = decode_arrow_semantic_payload(&input.artifact_bytes) {
+            return payload.schema().fields().len() as u32;
+        }
+    }
     if let Ok(table) = decode_table_payload_maybe_container(&input.artifact_bytes) {
         return table.columns.len() as u32;
     }

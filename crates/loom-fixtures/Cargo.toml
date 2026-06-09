@@ -20,6 +20,7 @@ vortex-array     = { workspace = true }
 vortex-fastlanes = { workspace = true }
 vortex-fsst      = { workspace = true }
 loom-core        = { path = "../loom-core" }
+arrow-array      = { workspace = true }
 arrow-schema     = { workspace = true }
 
 [[bin]]
@@ -29,6 +30,10 @@ path = "src/bin/emit_duckdb_payloads.rs"
 [[bin]]
 name = "loom_fixture_timing"
 path = "src/bin/loom_fixture_timing.rs"
+
+[[bin]]
+name = "emit_arrow_semantic_lmc2_sql_fixture"
+path = "src/bin/emit_arrow_semantic_lmc2_sql_fixture.rs"
 
 [dev-dependencies]
 # fastlanes is added for the Wave-0 fl_transpose_matches_fastlanes check ONLY.

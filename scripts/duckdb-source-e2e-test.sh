@@ -131,12 +131,14 @@ sql_to_file() {
 check_source_artifact() {
     local label="$1"
     local payload="$2"
+    local bridge_payload="$3"
     local rows_out="${TMP_DIR}/${label}-rows.csv"
     local agg_out="${TMP_DIR}/${label}-agg.csv"
+    local bridge_out="${TMP_DIR}/${label}-bridge.csv"
     local expected_rows=$'7\n-1\n42'
     local expected_agg="3,48,-1,42"
 
-    info "Checking bounded DuckDB SQL over ${label} direct LMA1 bridge artifact..."
+    info "Checking bounded DuckDB SQL over ${label} default LMC2 artifact..."
     sql_to_file "SELECT value FROM loom_scan('${payload}')" "${rows_out}"
     local actual_rows
     actual_rows="$(cat "${rows_out}")"
@@ -154,12 +156,28 @@ check_source_artifact() {
     if [ "${actual_agg}" != "${expected_agg}" ]; then
         fail "aggregate mismatch for ${label}: expected '${expected_agg}', got '${actual_agg}'"
     fi
-    ok "${label} source -> LMC2 distribution proof plus direct LMA1 DuckDB bridge SQL matched"
+
+    sql_to_file "SELECT COUNT(*), SUM(value) FROM loom_scan('${bridge_payload}')" "${bridge_out}"
+    local actual_bridge
+    actual_bridge="$(cat "${bridge_out}")"
+    if [ "${actual_bridge}" != "3,48" ]; then
+        fail "direct LMA1 bridge regression mismatch for ${label}: got '${actual_bridge}'"
+    fi
+    ok "${label} default LMC2 SQL matched; direct LMA1 bridge regression retained"
 }
 
-check_source_artifact "parquet" "${FIXTURE_DIR}/parquet/parquet-duckdb-bridge-lma1.loom"
-check_source_artifact "lance" "${FIXTURE_DIR}/lance/lance-duckdb-bridge-lma1.loom"
-check_source_artifact "vortex" "${FIXTURE_DIR}/vortex/vortex-duckdb-bridge-lma1.loom"
+check_source_artifact \
+    "parquet" \
+    "${FIXTURE_DIR}/parquet/parquet.loom" \
+    "${FIXTURE_DIR}/parquet/parquet-duckdb-bridge-lma1.loom"
+check_source_artifact \
+    "lance" \
+    "${FIXTURE_DIR}/lance/lance.loom" \
+    "${FIXTURE_DIR}/lance/lance-duckdb-bridge-lma1.loom"
+check_source_artifact \
+    "vortex" \
+    "${FIXTURE_DIR}/vortex/vortex.loom" \
+    "${FIXTURE_DIR}/vortex/vortex-duckdb-bridge-lma1.loom"
 
 echo ""
 echo "${GRN}=== DuckDB source e2e gate PASSED ===${RST}"
