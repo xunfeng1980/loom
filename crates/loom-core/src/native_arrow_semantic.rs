@@ -452,6 +452,128 @@ pub fn execute_verified_native_arrow_semantic(
     }
 }
 
+/// Execute native Arrow semantic with internal builder-event trace.
+///
+/// This is Phase 1's traced variant of [`execute_verified_native_arrow_semantic`].
+/// It uses [`TracedOutputBuilder`] so the trace is emitted *inside* the builder
+/// API rather than reconstructed from the output [`RecordBatch`].
+///
+/// Returns the execution report together with the internal trace. The trace
+/// format aligns with the Phase 39 reference executor:
+/// `append-value:{builder_id}:{type_name}` / `append-null:{builder_id}:{type_name}`
+/// followed by `terminal:finished`.
+pub fn execute_verified_native_arrow_semantic_with_internal_trace(
+    bytes: &[u8],
+    verification: &ArtifactVerificationReport,
+) -> (NativeArrowSemanticExecutionReport, Vec<String>) {
+    if verification.status() != ArtifactVerificationStatus::Accepted || !verification.is_ok() {
+        let report = NativeArrowSemanticExecutionReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::VerifierRejected,
+                "$.verification",
+                "native Arrow semantic execution requires an accepted artifact verifier report",
+            ),
+        );
+        return (report, Vec::new());
+    }
+
+    let Some(facts) = verification.facts() else {
+        let report = NativeArrowSemanticExecutionReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::VerifierRejected,
+                "$.facts",
+                "accepted artifact verifier report did not expose facts",
+            ),
+        );
+        return (report, Vec::new());
+    };
+
+    if !matches!(facts.artifact_kind.as_str(), "LMC2" | "LMA1") {
+        let report = NativeArrowSemanticExecutionReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedArtifact,
+                "$.facts.artifact_kind",
+                format!(
+                    "unsupported artifact kind '{}'; expected LMC2 or LMA1",
+                    facts.artifact_kind
+                ),
+            ),
+        );
+        return (report, Vec::new());
+    }
+
+    if facts.payload_kind.as_deref() != Some("Arrow semantic payload") {
+        let report = NativeArrowSemanticExecutionReport::rejected(
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::UnsupportedPayload,
+                "$.facts.payload_kind",
+                "native Arrow semantic execution requires an Arrow semantic payload",
+            ),
+        );
+        return (report, Vec::new());
+    }
+
+    let reference = match decode_reference_batch(bytes) {
+        Ok(batch) => batch,
+        Err(diagnostic) => {
+            return (NativeArrowSemanticExecutionReport::rejected(diagnostic), Vec::new())
+        }
+    };
+
+    let mut copied_columns = Vec::with_capacity(reference.num_columns());
+    let mut internal_trace = Vec::new();
+    for (idx, (field, column)) in reference
+        .schema()
+        .fields()
+        .iter()
+        .zip(reference.columns())
+        .enumerate()
+    {
+        match copy_supported_column_traced(column.as_ref(), field, idx) {
+            Ok((array, trace)) => {
+                copied_columns.push(array);
+                internal_trace.extend(trace);
+            }
+            Err(diagnostic) => {
+                return (
+                    NativeArrowSemanticExecutionReport::rejected(diagnostic),
+                    Vec::new(),
+                )
+            }
+        }
+    }
+    internal_trace.push("terminal:finished".to_string());
+
+    let row_count = reference.num_rows() as u64;
+    let column_count = reference.num_columns();
+    let output = match RecordBatch::try_new(reference.schema(), copied_columns) {
+        Ok(batch) => batch,
+        Err(_) => {
+            return (
+                NativeArrowSemanticExecutionReport::rejected(
+                    NativeArrowSemanticDiagnostic::new(
+                        NativeArrowSemanticDiagnosticCode::UnsupportedBatchShape,
+                        "$.native.output",
+                        "native Arrow semantic output batch construction failed",
+                    ),
+                ),
+                Vec::new(),
+            );
+        }
+    };
+
+    let report = NativeArrowSemanticExecutionReport {
+        backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+        artifact_kind: facts.artifact_kind.clone(),
+        payload_kind: facts.payload_kind.clone().unwrap_or_default(),
+        row_count,
+        column_count,
+        output: Some(output),
+        diagnostics: Vec::new(),
+    };
+    (report, internal_trace)
+}
+
 pub fn prepare_native_arrow_semantic_codegen_support(
     bytes: &[u8],
 ) -> NativeArrowSemanticCodegenSupportReport {
@@ -601,7 +723,7 @@ fn validate_native_arrow_semantic_codegen_output_inner(
     };
 
     let validation =
-        verify_native_arrow_semantic_model_for_output(bytes, support.artifact_kind.clone(), &batch);
+        verify_native_arrow_semantic_model_for_output(bytes, support.artifact_kind.clone(), &batch, None);
     let diagnostics = validation.diagnostics().to_vec();
     NativeArrowSemanticCodegenExecutionReport {
         backend: PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND.to_string(),
@@ -951,7 +1073,12 @@ pub fn verify_native_arrow_semantic_model_from_execution(
     let output = execution
         .output()
         .expect("supported execution report must expose output");
-    verify_native_arrow_semantic_model_for_output(bytes, execution.artifact_kind.clone(), output)
+    verify_native_arrow_semantic_model_for_output(
+        bytes,
+        execution.artifact_kind.clone(),
+        output,
+        None,
+    )
 }
 
 pub fn verify_native_arrow_semantic_model_output(
@@ -959,7 +1086,96 @@ pub fn verify_native_arrow_semantic_model_output(
     artifact_kind: impl Into<String>,
     output: &RecordBatch,
 ) -> NativeArrowSemanticModelValidationReport {
-    verify_native_arrow_semantic_model_for_output(bytes, artifact_kind.into(), output)
+    verify_native_arrow_semantic_model_for_output(bytes, artifact_kind.into(), output, None)
+}
+
+/// Phase 1: verify using the internal builder-event trace rather than the
+/// post-hoc reconstructed trace.
+///
+/// This is the entry point for the transitioned trace path. It executes the
+/// artifact through [`execute_verified_native_arrow_semantic_with_internal_trace`],
+/// then validates the internal trace against the reference model trace.
+pub fn verify_native_arrow_semantic_model_with_internal_trace(
+    bytes: &[u8],
+) -> NativeArrowSemanticModelValidationReport {
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let options = ArtifactVerificationOptions::default();
+    let verification = verify_artifact(bytes, &registry, &options);
+
+    let (execution, internal_trace) =
+        execute_verified_native_arrow_semantic_with_internal_trace(bytes, &verification);
+
+    if !execution.is_supported() {
+        return NativeArrowSemanticModelValidationReport {
+            backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+            artifact_kind: execution.artifact_kind.clone(),
+            row_count: execution.row_count,
+            column_count: execution.column_count,
+            model_trace_matches: false,
+            value_equivalent: false,
+            reference_trace: Vec::new(),
+            native_trace: internal_trace,
+            diagnostics: execution.diagnostics.clone(),
+        };
+    }
+
+    let output = execution
+        .output()
+        .expect("supported execution report must expose output");
+
+    // Phase 2: independent trace checker (mirrors Lean checkAppendTrace).
+    let reference_batch = match decode_reference_batch(bytes) {
+        Ok(batch) => batch,
+        Err(diagnostic) => {
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind: execution.artifact_kind.clone(),
+                row_count: execution.row_count,
+                column_count: execution.column_count,
+                model_trace_matches: false,
+                value_equivalent: false,
+                reference_trace: Vec::new(),
+                native_trace: internal_trace.clone(),
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+    let reference_program = match reference_program_for_batch(&reference_batch) {
+        Ok(program) => program,
+        Err(diagnostic) => {
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind: execution.artifact_kind.clone(),
+                row_count: execution.row_count,
+                column_count: execution.column_count,
+                model_trace_matches: false,
+                value_equivalent: false,
+                reference_trace: Vec::new(),
+                native_trace: internal_trace.clone(),
+                diagnostics: vec![diagnostic],
+            };
+        }
+    };
+    if let Err(diagnostic) = check_native_model_trace(&internal_trace, &reference_program) {
+        return NativeArrowSemanticModelValidationReport {
+            backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+            artifact_kind: execution.artifact_kind.clone(),
+            row_count: execution.row_count,
+            column_count: execution.column_count,
+            model_trace_matches: false,
+            value_equivalent: false,
+            reference_trace: Vec::new(),
+            native_trace: internal_trace,
+            diagnostics: vec![diagnostic],
+        };
+    }
+
+    verify_native_arrow_semantic_model_for_output(
+        bytes,
+        execution.artifact_kind.clone(),
+        output,
+        Some(internal_trace),
+    )
 }
 
 fn verify_native_arrow_semantic_equivalence_for_output(
@@ -1006,6 +1222,7 @@ fn verify_native_arrow_semantic_model_for_output(
     bytes: &[u8],
     artifact_kind: String,
     output: &RecordBatch,
+    internal_trace: Option<Vec<String>>,
 ) -> NativeArrowSemanticModelValidationReport {
     let reference = match decode_reference_batch(bytes) {
         Ok(batch) => batch,
@@ -1041,20 +1258,48 @@ fn verify_native_arrow_semantic_model_for_output(
         }
     };
 
-    let native_trace = match native_model_trace_for_batch(output) {
-        Ok(trace) => trace,
-        Err(diagnostic) => {
-            return NativeArrowSemanticModelValidationReport {
-                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
-                artifact_kind,
-                row_count: output.num_rows() as u64,
-                column_count: output.num_columns(),
-                model_trace_matches: false,
-                value_equivalent: false,
-                reference_trace,
-                native_trace: Vec::new(),
-                diagnostics: vec![diagnostic],
+    // Phase 1 transition: if an internal trace is provided, use it as the
+    // native trace and additionally compare it against the post-hoc trace as a
+    // regression guard.  When the transition is complete the post-hoc path can
+    // be removed.
+    let (native_trace, posthoc_trace) = match internal_trace {
+        Some(internal) => {
+            let posthoc = match native_model_trace_for_batch(output) {
+                Ok(t) => t,
+                Err(diagnostic) => {
+                    return NativeArrowSemanticModelValidationReport {
+                        backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                        artifact_kind,
+                        row_count: output.num_rows() as u64,
+                        column_count: output.num_columns(),
+                        model_trace_matches: false,
+                        value_equivalent: false,
+                        reference_trace,
+                        native_trace: internal,
+                        diagnostics: vec![diagnostic],
+                    };
+                }
             };
+            (internal, Some(posthoc))
+        }
+        None => {
+            let posthoc = match native_model_trace_for_batch(output) {
+                Ok(t) => t,
+                Err(diagnostic) => {
+                    return NativeArrowSemanticModelValidationReport {
+                        backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                        artifact_kind,
+                        row_count: output.num_rows() as u64,
+                        column_count: output.num_columns(),
+                        model_trace_matches: false,
+                        value_equivalent: false,
+                        reference_trace,
+                        native_trace: Vec::new(),
+                        diagnostics: vec![diagnostic],
+                    };
+                }
+            };
+            (posthoc, None)
         }
     };
 
@@ -1074,6 +1319,20 @@ fn verify_native_arrow_semantic_model_for_output(
             "$.native.output",
             "native Arrow semantic output does not match decoded reference batch",
         ));
+    }
+
+    // Transition-period guard: internal trace must agree with post-hoc trace.
+    // This is observational only — a mismatch here does not fail validation,
+    // but it signals that the internal instrumentation or the post-hoc
+    // reconstruction has drifted.
+    if let Some(posthoc) = posthoc_trace {
+        if native_trace != posthoc {
+            diagnostics.push(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.internal_posthoc_divergence",
+                "internal builder trace diverges from post-hoc reconstructed trace; this is a Phase 1 transition warning",
+            ));
+        }
     }
 
     NativeArrowSemanticModelValidationReport {
@@ -1775,6 +2034,114 @@ fn model_builder_id(column_index: usize, name: &str) -> String {
     format!("col{column_index}:{name}")
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2: lightweight independent trace checker
+// ---------------------------------------------------------------------------
+
+/// Check a native model trace independently of the reference executor.
+///
+/// This mirrors Lean `checkAppendTrace` at the Rust level: validates that
+/// every event targets a declared builder with matching type and nullability,
+/// and that the trace length is within the row budget.
+fn check_native_model_trace(
+    trace: &[String],
+    program: &L2CoreProgram,
+) -> Result<(), NativeArrowSemanticDiagnostic> {
+    let mut event_count: u64 = 0;
+    for line in trace {
+        if line == "terminal:finished" {
+            continue;
+        }
+        // Parse: {kind}:{builder_id}:{type_name}
+        // builder_id itself may contain ':' (e.g. "col0:ok"), so we split
+        // from the right: kind is the first segment, type_name is the last.
+        let first_colon = line.find(':').ok_or_else(|| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.format",
+                format!("malformed trace line (no colon): {line}"),
+            )
+        })?;
+        let last_colon = line.rfind(':').ok_or_else(|| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.format",
+                format!("malformed trace line (no colon): {line}"),
+            )
+        })?;
+        if first_colon == last_colon {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.format",
+                format!("malformed trace line (only one colon): {line}"),
+            ));
+        }
+        let kind = &line[..first_colon];
+        let builder_id = &line[first_colon + 1..last_colon];
+        let type_name = &line[last_colon + 1..];
+
+        // Locate the declared output builder.
+        let builder = program
+            .capabilities
+            .iter()
+            .find_map(|cap| match cap {
+                Capability::OutputBuilder(b) if b.id == builder_id => Some(b),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                NativeArrowSemanticDiagnostic::new(
+                    NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                    "$.native.model_trace.builder",
+                    format!("trace references undeclared builder: {builder_id}"),
+                )
+            })?;
+
+        // Verify type name matches the builder's Arrow type.
+        let expected = model_type_name(&builder.arrow_type, 0).map_err(|_| {
+            NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.type",
+                format!("unsupported builder type for trace check: {:?}", builder.arrow_type),
+            )
+        })?;
+        if expected != type_name {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.type",
+                format!(
+                    "type mismatch for builder {builder_id}: expected {expected}, got {type_name}"
+                ),
+            ));
+        }
+
+        // append-null requires nullable builder.
+        if kind == "append-null" && !builder.nullable {
+            return Err(NativeArrowSemanticDiagnostic::new(
+                NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+                "$.native.model_trace.nullability",
+                format!("append-null on non-nullable builder: {builder_id}"),
+            ));
+        }
+
+        event_count += 1;
+    }
+
+    // Phase 2 note: length check against max_builder_events rather than max_rows,
+    // because a pure-append program emits row_count * column_count events.
+    if event_count > program.resource_budget.max_builder_events {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
+            "$.native.model_trace.length",
+            format!(
+                "trace event count {event_count} exceeds max_builder_events {}",
+                program.resource_budget.max_builder_events
+            ),
+        ));
+    }
+
+    Ok(())
+}
+
 fn ensure_model_supported_type(
     data_type: &DataType,
     column_index: usize,
@@ -1872,6 +2239,41 @@ fn copy_supported_column(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Traced copy variants — Phase 1: internal trace instrumentation
+// ---------------------------------------------------------------------------
+
+fn copy_supported_column_traced(
+    column: &dyn Array,
+    field: &arrow_schema::Field,
+    column_index: usize,
+) -> Result<(ArrayRef, Vec<String>), NativeArrowSemanticDiagnostic> {
+    let builder_id = model_builder_id(column_index, field.name());
+    let type_name = model_type_name(field.data_type(), column_index)?;
+    match column.data_type() {
+        DataType::Boolean => copy_boolean_column_traced(column, &builder_id, &type_name),
+        DataType::Int32 => {
+            copy_primitive_column_traced::<Int32Type>(column, &builder_id, &type_name)
+        }
+        DataType::Int64 => {
+            copy_primitive_column_traced::<Int64Type>(column, &builder_id, &type_name)
+        }
+        DataType::Float32 => {
+            copy_primitive_column_traced::<Float32Type>(column, &builder_id, &type_name)
+        }
+        DataType::Float64 => {
+            copy_primitive_column_traced::<Float64Type>(column, &builder_id, &type_name)
+        }
+        other => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedType,
+            format!("$.schema.fields[{column_index}].type"),
+            format!(
+                "unsupported native Arrow semantic type {other:?}; expected Boolean, Int32, Int64, Float32, or Float64"
+            ),
+        )),
+    }
+}
+
 fn copy_boolean_column(
     column: &dyn Array,
     column_index: usize,
@@ -1909,6 +2311,76 @@ where
         }
     }
     Ok(arrow_array::make_array(builder.finish()))
+}
+
+// Traced variants — emit builder-event trace inside the append API.
+
+fn copy_boolean_column_traced(
+    column: &dyn Array,
+    builder_id: &str,
+    type_name: &str,
+) -> Result<(ArrayRef, Vec<String>), NativeArrowSemanticDiagnostic> {
+    use crate::arrow_builder_output::TracedOutputBuilder;
+    let Some(values) = column.as_any().downcast_ref::<BooleanArray>() else {
+        return Err(downcast_diagnostic(column, 0));
+    };
+    let mut builder =
+        TracedOutputBuilder::new(&DataType::Boolean, builder_id.to_string(), type_name.to_string());
+    for row in 0..values.len() {
+        if values.is_null(row) {
+            builder.append_null();
+        } else {
+            builder.append_bool(values.value(row));
+        }
+    }
+    let trace = builder.take_trace();
+    Ok((arrow_array::make_array(builder.finish()), trace))
+}
+
+fn copy_primitive_column_traced<T>(
+    column: &dyn Array,
+    builder_id: &str,
+    type_name: &str,
+) -> Result<(ArrayRef, Vec<String>), NativeArrowSemanticDiagnostic>
+where
+    T: arrow_array::types::ArrowPrimitiveType,
+{
+    use crate::arrow_builder_output::TracedOutputBuilder;
+    let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<T>>() else {
+        return Err(downcast_diagnostic(column, 0));
+    };
+    let mut builder = TracedOutputBuilder::new(
+        column.data_type(),
+        builder_id.to_string(),
+        type_name.to_string(),
+    );
+    for row in 0..values.len() {
+        if values.is_null(row) {
+            builder.append_null();
+        } else {
+            append_primitive_value_traced::<T>(&mut builder, values.value(row));
+        }
+    }
+    let trace = builder.take_trace();
+    Ok((arrow_array::make_array(builder.finish()), trace))
+}
+
+fn append_primitive_value_traced<T>(builder: &mut crate::arrow_builder_output::TracedOutputBuilder, value: T::Native)
+where
+    T: arrow_array::types::ArrowPrimitiveType,
+{
+    let any = &value as &dyn std::any::Any;
+    if let Some(v) = any.downcast_ref::<i32>() {
+        builder.append_i32(*v);
+    } else if let Some(v) = any.downcast_ref::<i64>() {
+        builder.append_i64(*v);
+    } else if let Some(v) = any.downcast_ref::<f32>() {
+        builder.append_f32(*v);
+    } else if let Some(v) = any.downcast_ref::<f64>() {
+        builder.append_f64(*v);
+    } else {
+        panic!("unsupported primitive type for TracedOutputBuilder")
+    }
 }
 
 fn append_primitive_value<T>(builder: &mut OutputBuilder, value: T::Native)

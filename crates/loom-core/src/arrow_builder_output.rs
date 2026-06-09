@@ -48,6 +48,7 @@ use arrow_schema::DataType;
 ///
 /// `OutputBuilder` is not `Send` (arrow-rs builders are not either). Each
 /// decode invocation constructs its own builder.
+#[derive(Debug)]
 pub enum OutputBuilder {
     /// Wraps `arrow::array::BooleanBuilder`.
     Boolean(BooleanBuilder),
@@ -267,6 +268,122 @@ impl OutputBuilder {
 }
 
 // ---------------------------------------------------------------------------
+// TracedOutputBuilder — Phase 1: internal trace instrumentation
+// ---------------------------------------------------------------------------
+
+/// A wrapper around [`OutputBuilder`] that records every append operation as a
+/// trace event.
+///
+/// This solves seam 2a (post-hoc trace reconstruction). Instead of inferring a
+/// trace from the final [`RecordBatch`], the trace is emitted *inside* the
+/// builder API as each append happens. The trace format aligns with the Phase
+/// 39 reference executor:
+///
+/// - `append-value:{builder_id}:{type_name}`
+/// - `append-null:{builder_id}:{type_name}`
+///
+/// # Trust boundary
+///
+/// `TracedOutputBuilder` is part of the TCB: it must faithfully record one
+/// event per append call. The implementation is intentionally thin (~80 lines,
+/// no branches, direct API-call-to-trace mapping).
+#[derive(Debug)]
+pub struct TracedOutputBuilder {
+    inner: OutputBuilder,
+    builder_id: String,
+    type_name: String,
+    trace: Vec<String>,
+}
+
+impl TracedOutputBuilder {
+    /// Construct a traced builder for the given Arrow [`DataType`].
+    ///
+    /// `builder_id` and `type_name` are caller-supplied identifiers used in
+    /// trace rows. They are *not* validated against the `data_type`; the caller
+    /// (native Arrow semantic execution) is responsible for consistency.
+    pub fn new(data_type: &DataType, builder_id: String, type_name: String) -> Self {
+        Self {
+            inner: OutputBuilder::new(data_type),
+            builder_id,
+            type_name,
+            trace: Vec::new(),
+        }
+    }
+
+    /// Append a non-null boolean value and record the event.
+    pub fn append_bool(&mut self, v: bool) {
+        self.trace.push(format!(
+            "append-value:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_bool(v);
+    }
+
+    /// Append a non-null `i32` value and record the event.
+    pub fn append_i32(&mut self, v: i32) {
+        self.trace.push(format!(
+            "append-value:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_i32(v);
+    }
+
+    /// Append a non-null `i64` value and record the event.
+    pub fn append_i64(&mut self, v: i64) {
+        self.trace.push(format!(
+            "append-value:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_i64(v);
+    }
+
+    /// Append a non-null `f32` value and record the event.
+    pub fn append_f32(&mut self, v: f32) {
+        self.trace.push(format!(
+            "append-value:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_f32(v);
+    }
+
+    /// Append a non-null `f64` value and record the event.
+    pub fn append_f64(&mut self, v: f64) {
+        self.trace.push(format!(
+            "append-value:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_f64(v);
+    }
+
+    /// Append a null value and record the event.
+    pub fn append_null(&mut self) {
+        self.trace.push(format!(
+            "append-null:{}:{}",
+            self.builder_id, self.type_name
+        ));
+        self.inner.append_null();
+    }
+
+    /// Consume the builder and return the accumulated trace.
+    ///
+    /// Clears the internal trace buffer; subsequent calls return an empty vec
+    /// until more append operations occur.
+    pub fn take_trace(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.trace)
+    }
+
+    /// Return the current trace without consuming it.
+    pub fn trace(&self) -> &[String] {
+        &self.trace
+    }
+
+    /// Finalise the builder and return the [`ArrayData`].
+    pub fn finish(self) -> ArrayData {
+        self.inner.finish()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -449,5 +566,81 @@ mod tests {
             OutputBuilder::new(&DataType::Float64).data_type(),
             DataType::Float64
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // TracedOutputBuilder tests — Phase 1
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn traced_builder_records_append_value_and_null() {
+        let mut builder = TracedOutputBuilder::new(
+            &DataType::Int32,
+            "col0:id".to_string(),
+            "int32".to_string(),
+        );
+        builder.append_i32(7);
+        builder.append_null();
+        builder.append_i32(-1);
+
+        let trace = builder.take_trace();
+        assert_eq!(trace, vec![
+            "append-value:col0:id:int32",
+            "append-null:col0:id:int32",
+            "append-value:col0:id:int32",
+        ]);
+    }
+
+    #[test]
+    fn traced_builder_produces_identical_array_data() {
+        use arrow::array::Int32Array;
+
+        let mut plain = OutputBuilder::new(&DataType::Int32);
+        plain.append_i32(1);
+        plain.append_null();
+        plain.append_i32(3);
+        let plain_data = plain.finish();
+
+        let mut traced = TracedOutputBuilder::new(
+            &DataType::Int32,
+            "b".to_string(),
+            "int32".to_string(),
+        );
+        traced.append_i32(1);
+        traced.append_null();
+        traced.append_i32(3);
+        let _trace = traced.take_trace();
+        let traced_data = traced.finish();
+
+        let plain_array = Int32Array::from(plain_data);
+        let traced_array = Int32Array::from(traced_data);
+        assert_eq!(plain_array.len(), traced_array.len());
+        assert_eq!(plain_array.null_count(), traced_array.null_count());
+        for i in 0..plain_array.len() {
+            assert_eq!(plain_array.is_null(i), traced_array.is_null(i));
+            if !plain_array.is_null(i) {
+                assert_eq!(plain_array.value(i), traced_array.value(i));
+            }
+        }
+    }
+
+    #[test]
+    fn traced_builder_all_scalar_types() {
+        let cases: Vec<(DataType, fn(&mut TracedOutputBuilder), &str)> = vec![
+            (DataType::Boolean, |b| b.append_bool(true), "bool"),
+            (DataType::Int32, |b| b.append_i32(1), "int32"),
+            (DataType::Int64, |b| b.append_i64(1), "int64"),
+            (DataType::Float32, |b| b.append_f32(1.0), "float32"),
+            (DataType::Float64, |b| b.append_f64(1.0), "float64"),
+        ];
+
+        for (ty, append, type_name) in cases {
+            let mut builder = TracedOutputBuilder::new(&ty, "b".to_string(), type_name.to_string());
+            append(&mut builder);
+            builder.append_null();
+            let trace = builder.take_trace();
+            assert_eq!(trace[0], format!("append-value:b:{type_name}"));
+            assert_eq!(trace[1], format!("append-null:b:{type_name}"));
+        }
     }
 }

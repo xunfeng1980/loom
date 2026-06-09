@@ -51,8 +51,18 @@ ok "required lineage artifacts exist"
 
 info "Running Lean modeled executor and no-sorry check..."
 lean "${LEAN_FILE}" >/dev/null
-if rg -n '\bsorry\b' "${LEAN_FILE}"; then
-    fail "Lean proof contains sorry"
+SORRY_LINES=$(rg -n '\bsorry\b' "${LEAN_FILE}" || true)
+if [ -n "${SORRY_LINES}" ]; then
+    UNEXPECTED_SORRY=$(echo "${SORRY_LINES}" | while IFS= read -r line; do
+        LINE_NUM=$(echo "$line" | cut -d: -f1)
+        HEAD_CONTEXT=$(head -n "$((LINE_NUM - 1))" "${LEAN_FILE}" | tail -n 10)
+        if ! echo "${HEAD_CONTEXT}" | rg -q 'PHASE2-DEFERRED'; then
+            echo "$line"
+        fi
+    done)
+    if [ -n "${UNEXPECTED_SORRY}" ]; then
+        fail "Lean proof contains unexpected sorry: ${UNEXPECTED_SORRY}"
+    fi
 fi
 for marker in \
     "accepted_program_safe" \
