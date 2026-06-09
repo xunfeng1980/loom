@@ -1077,7 +1077,7 @@ Plans:
 
 ## Milestone: MVP2 — Coverage, Second Engine, Productization
 
-> **Status: planned, not active.** Requirement IDs below (`COV2-*`, `ENGINE-*`, `ABI2-*`, `DIST2-*`, `HARDEN-*`) are placeholders to be defined when the milestone is formally started via `/gsd-new-milestone`.
+> **Status: Phase 42 active.** Requirement IDs below (`COV2-*`, `ENGINE-*`, `ABI2-*`, `DIST2-*`, `HARDEN-*`) are now being refined as MVP2 starts from coverage expansion; later-phase IDs remain placeholders until their phases begin.
 
 **Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) prove engine-independence with a genuine second consumer, and (3) become a distributable, signed, fetchable artifact — in that order, because each later phase depends on the contract the earlier one stabilizes.
 
@@ -1085,7 +1085,7 @@ Plans:
 
 ### Phase 42: Verified + Native Coverage Expansion
 
-**Status:** Not started.
+**Status:** In progress. Planning artifacts created for three slices: Vortex coverage matrix, Lance/Parquet schema matrix, and living matrix/gate closeout.
 **Goal:** Widen the accepted matrix well beyond the MVP1 slice, with every new encoding/layout/format shape carrying an explicit paired disposition.
 **Depends on:** MVP1.5 Phase 41 (so each new shape's safety is lineage-backed), MVP1 Phase 21/31.
 **Requirements:** COV2-01, COV2-02, COV2-03
@@ -1249,7 +1249,7 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
-| 42. Verified + Native Coverage Expansion | 0/0 | Planned (MVP2) | - |
+| 42. Verified + Native Coverage Expansion | 0/3 | In Progress (MVP2) | - |
 | 43. StarRocks Live Runtime Integration | 0/0 | Planned (MVP2) | - |
 | 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |

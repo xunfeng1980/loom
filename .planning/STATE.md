@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 41 complete; ready for Phase 42
+stopped_at: Phase 42 planning started; 42-01 ready
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase 42 READY: Verified + Native Coverage Expansion
+Phase 42 IN PROGRESS: Verified + Native Coverage Expansion
 Plan: 0 of 0
-Status: Phase 41 complete; ready to discuss/plan Phase 42
+Status: Phase 42 context and execution plans created; ready to execute 42-01
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 41 complete; Phase 42 is the first incomplete roadmap phase
+Progress: Phase 42 planning complete; next action is 42-01 Vortex coverage matrix
 
 ## Progress Snapshot
 
