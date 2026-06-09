@@ -143,6 +143,44 @@ struct LoomDuckDbPreparedHolder {
     }
 };
 
+struct LoomDuckDbArrowSemanticHolder {
+    LoomDuckDbArrowSemantic *handle = nullptr;
+
+    LoomDuckDbArrowSemanticHolder() = default;
+    explicit LoomDuckDbArrowSemanticHolder(LoomDuckDbArrowSemantic *handle_p) : handle(handle_p) {
+    }
+    LoomDuckDbArrowSemanticHolder(const LoomDuckDbArrowSemanticHolder &) = delete;
+    LoomDuckDbArrowSemanticHolder &operator=(const LoomDuckDbArrowSemanticHolder &) = delete;
+
+    LoomDuckDbArrowSemanticHolder(LoomDuckDbArrowSemanticHolder &&other) noexcept : handle(other.handle) {
+        other.handle = nullptr;
+    }
+
+    LoomDuckDbArrowSemanticHolder &operator=(LoomDuckDbArrowSemanticHolder &&other) noexcept {
+        if (this != &other) {
+            Reset();
+            handle = other.handle;
+            other.handle = nullptr;
+        }
+        return *this;
+    }
+
+    ~LoomDuckDbArrowSemanticHolder() {
+        Reset();
+    }
+
+    void Reset() {
+        if (handle != nullptr) {
+            loom_duckdb_arrow_semantic_destroy(handle);
+            handle = nullptr;
+        }
+    }
+
+    LoomDuckDbArrowSemantic *Get() const {
+        return handle;
+    }
+};
+
 static void RequireDuckDbRuntimeOk(int32_t status, const char *operation) {
     if (status != 0) {
         throw IOException("loom_scan: internal DuckDB runtime call %s failed with status %d",
@@ -333,6 +371,7 @@ struct LoomBindData : TableFunctionData {
     vector<LogicalType> column_types;
     vector<LoomValueKind> column_kinds;
     vector<vector<uint8_t>> column_payloads;
+    bool arrow_semantic = false;
     bool allow_interpreter_fallback = true;
     std::shared_ptr<LoomDuckDbPlanHolder> runtime_plan;
     string route_decision;
@@ -348,6 +387,7 @@ struct LoomBindData : TableFunctionData {
         copy->column_types = column_types;
         copy->column_kinds = column_kinds;
         copy->column_payloads = column_payloads;
+        copy->arrow_semantic = arrow_semantic;
         copy->allow_interpreter_fallback = allow_interpreter_fallback;
         copy->runtime_plan = runtime_plan;
         copy->route_decision = route_decision;
@@ -362,6 +402,7 @@ struct LoomBindData : TableFunctionData {
         return payload_path == other.payload_path && column_names == other.column_names &&
                column_types == other.column_types && column_kinds == other.column_kinds &&
                column_payloads == other.column_payloads &&
+               arrow_semantic == other.arrow_semantic &&
                allow_interpreter_fallback == other.allow_interpreter_fallback &&
                route_decision == other.route_decision &&
                route_cache_key == other.route_cache_key &&
@@ -572,6 +613,14 @@ static bool IsArrowSemanticPayload(const vector<uint8_t> &payload) {
     return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'A' && payload[3] == '1';
 }
 
+static bool IsArrowSemanticContainerPayload(const vector<uint8_t> &payload) {
+    return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'C' && payload[3] == '2';
+}
+
+static bool IsArrowSemanticArtifact(const vector<uint8_t> &payload) {
+    return IsArrowSemanticPayload(payload) || IsArrowSemanticContainerPayload(payload);
+}
+
 static bool IsContainerPayload(const vector<uint8_t> &payload) {
     return payload.size() >= 4 && payload[0] == 'L' && payload[1] == 'M' && payload[2] == 'C' && payload[3] == '1';
 }
@@ -665,7 +714,7 @@ static vector<uint8_t> ExtractContainerPayload(const vector<uint8_t> &payload) {
 
 static LoomValueKind PayloadKindFromArrowSchemaFormat(const char *format) {
     if (format == nullptr) {
-        throw IOException("loom_scan: decoded LMA1 Arrow schema has null format");
+        throw IOException("loom_scan: decoded Arrow semantic schema has null format");
     }
     if (std::strcmp(format, "b") == 0) {
         return LoomValueKind::BOOL;
@@ -685,53 +734,67 @@ static LoomValueKind PayloadKindFromArrowSchemaFormat(const char *format) {
     if (std::strcmp(format, "g") == 0) {
         return LoomValueKind::F64;
     }
-    throw IOException("loom_scan: unsupported LMA1 Arrow schema format '%s'", format);
+    throw IOException("loom_scan: unsupported Arrow semantic schema format '%s'", format);
 }
 
-static LoomValueKind PayloadKindFromLma1Decode(const vector<uint8_t> &payload) {
-    ArrowArray arrow_array {};
-    ArrowSchema arrow_schema {};
-    int32_t rc = loom_decode(payload.data(),
-                             payload.size(),
-                             reinterpret_cast<FFI_ArrowArray *>(&arrow_array),
-                             reinterpret_cast<FFI_ArrowSchema *>(&arrow_schema));
+static LoomDuckDbArrowSemanticHolder CreateArrowSemanticHandle(const vector<uint8_t> &payload) {
+    LoomDuckDbArrowSemantic *handle = nullptr;
+    const auto *payload_ptr = payload.empty() ? nullptr : payload.data();
+    int32_t rc = loom_duckdb_arrow_semantic_create(payload_ptr, payload.size(), &handle);
     if (rc != 0) {
-        throw IOException("loom_scan: failed to decode LMA1 schema with code %d", static_cast<int>(rc));
+        throw IOException("loom_scan: failed to inspect Arrow semantic artifact with code %d",
+                          static_cast<int>(rc));
+    }
+    return LoomDuckDbArrowSemanticHolder(handle);
+}
+
+static bool TryPopulateArrowSemanticColumnSpecs(LoomBindData &bind_data) {
+    LoomDuckDbArrowSemantic *raw_handle = nullptr;
+    const auto *payload_ptr = bind_data.payload.empty() ? nullptr : bind_data.payload.data();
+    int32_t rc = loom_duckdb_arrow_semantic_create(payload_ptr, bind_data.payload.size(), &raw_handle);
+    if (rc != 0) {
+        if (IsArrowSemanticArtifact(bind_data.payload)) {
+            throw IOException("loom_scan: failed to inspect Arrow semantic artifact with code %d",
+                              static_cast<int>(rc));
+        }
+        return false;
     }
 
-    try {
-        auto kind = PayloadKindFromArrowSchemaFormat(arrow_schema.format);
-        if (arrow_array.release) {
-            arrow_array.release(&arrow_array);
-            arrow_array.release = nullptr;
-        }
-        if (arrow_schema.release) {
-            arrow_schema.release(&arrow_schema);
-            arrow_schema.release = nullptr;
-        }
-        return kind;
-    } catch (...) {
-        if (arrow_array.release) {
-            arrow_array.release(&arrow_array);
-            arrow_array.release = nullptr;
-        }
-        if (arrow_schema.release) {
-            arrow_schema.release(&arrow_schema);
-            arrow_schema.release = nullptr;
-        }
-        throw;
+    LoomDuckDbArrowSemanticHolder handle(raw_handle);
+    uintptr_t column_count = 0;
+    RequireDuckDbRuntimeOk(loom_duckdb_arrow_semantic_column_count(handle.Get(), &column_count),
+                           "loom_duckdb_arrow_semantic_column_count");
+    if (column_count == 0) {
+        throw IOException("loom_scan: Arrow semantic artifact has no columns");
     }
+
+    bind_data.arrow_semantic = true;
+    bind_data.column_names.reserve(static_cast<idx_t>(column_count));
+    bind_data.column_types.reserve(static_cast<idx_t>(column_count));
+    bind_data.column_kinds.reserve(static_cast<idx_t>(column_count));
+    bind_data.column_payloads.reserve(static_cast<idx_t>(column_count));
+    for (uintptr_t i = 0; i < column_count; i++) {
+        const char *name = nullptr;
+        const char *format = nullptr;
+        RequireDuckDbRuntimeOk(loom_duckdb_arrow_semantic_column_name(handle.Get(), i, &name),
+                               "loom_duckdb_arrow_semantic_column_name");
+        RequireDuckDbRuntimeOk(loom_duckdb_arrow_semantic_column_format(handle.Get(), i, &format),
+                               "loom_duckdb_arrow_semantic_column_format");
+        auto kind = PayloadKindFromArrowSchemaFormat(format);
+        bind_data.column_names.push_back(CStringOrEmpty(name));
+        bind_data.column_kinds.push_back(kind);
+        bind_data.column_types.push_back(LogicalTypeForKind(kind));
+        bind_data.column_payloads.emplace_back();
+    }
+    return true;
 }
 
 static void PopulateColumnSpecs(LoomBindData &bind_data) {
-    auto bind_payload = ExtractContainerPayload(bind_data.payload);
-    if (IsArrowSemanticPayload(bind_payload)) {
-        bind_data.column_names.push_back("value");
-        bind_data.column_kinds.push_back(PayloadKindFromLma1Decode(bind_payload));
-        bind_data.column_types.push_back(LogicalTypeForKind(bind_data.column_kinds.back()));
-        bind_data.column_payloads.push_back(bind_payload);
+    if (TryPopulateArrowSemanticColumnSpecs(bind_data)) {
         return;
     }
+
+    auto bind_payload = ExtractContainerPayload(bind_data.payload);
 
     if (!IsTablePayload(bind_payload)) {
         bind_data.column_names.push_back("value");
@@ -912,7 +975,11 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
                                                  state->route_diagnostics).c_str());
     }
 
-    if (state->route_decision == "native-candidate" && state->output_column_count > 0) {
+    if (bind_data.arrow_semantic && state->route_decision == "native-candidate") {
+        state->route_decision = "interpreter-fallback";
+    }
+
+    if (!bind_data.arrow_semantic && state->route_decision == "native-candidate" && state->output_column_count > 0) {
         const bool cancelled = TestEnvEnabled("LOOM_DUCKDB_TEST_CANCEL_PREPARE", false);
         auto prepared = CreatePreparedRoute(*runtime_plan.runtime_plan, cancelled);
         auto prepared_route = ReadPreparedRoute(prepared);
@@ -966,14 +1033,32 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
     state->arrow_arrays.resize(decode_ids.size());
     state->arrow_schemas.resize(decode_ids.size());
 
+    if (bind_data.arrow_semantic) {
+        auto handle = CreateArrowSemanticHandle(bind_data.payload);
+        for (idx_t output_idx = 0; output_idx < decode_ids.size(); output_idx++) {
+            const auto source_idx = decode_ids[output_idx];
+            int32_t rc = loom_duckdb_arrow_semantic_export_column(
+                handle.Get(),
+                source_idx,
+                reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[output_idx]),
+                reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[output_idx]));
+
+            if (rc != 0) {
+                throw IOException("loom_scan: failed to export Arrow semantic column %llu with code %d",
+                                  static_cast<unsigned long long>(source_idx),
+                                  static_cast<int>(rc));
+            }
+        }
+        return state;
+    }
+
     for (idx_t output_idx = 0; output_idx < decode_ids.size(); output_idx++) {
         const auto source_idx = decode_ids[output_idx];
         auto &payload = bind_data.column_payloads[source_idx];
-        int32_t rc = loom_decode(
-            payload.data(),
-            payload.size(),
-            reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[output_idx]),
-            reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[output_idx]));
+        int32_t rc = loom_decode(payload.data(),
+                                 payload.size(),
+                                 reinterpret_cast<FFI_ArrowArray *>(&state->arrow_arrays[output_idx]),
+                                 reinterpret_cast<FFI_ArrowSchema *>(&state->arrow_schemas[output_idx]));
 
         // PITFALLS P5 / panic-safety: check the return code BEFORE touching outputs.
         // On nonzero the output pointers contain uninitialized data — never use them.

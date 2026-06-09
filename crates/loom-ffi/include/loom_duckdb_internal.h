@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+struct ArrowArray;
+struct ArrowSchema;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
