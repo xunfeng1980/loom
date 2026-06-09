@@ -24,6 +24,19 @@
   `accepted_program_safe` proof now carries this read-boundary bridge inside
   `NoOutOfBoundsRead` instead of relying only on the executor's fail-closed
   read-safety invariant.
+- Remediation note 4, 2026-06-09: added the program-level induction bridge:
+  `classified_body_exec_finishes`, `classified_stmt_exec_progress`,
+  `classified_program_finishes`, `verified_program_finishes`, and
+  `verified_program_reads_in_bounds`. `NoOutOfBoundsRead` now requires
+  `(execProgram p).status = .finished` and all recorded reads in bounds; the
+  theorem derives those facts from `Verified p` instead of accepting the
+  fail-closed/read-safe disjunction as the dynamic safety result.
+- Remediation note 5, 2026-06-09: explicit `.failClosed` statements are now
+  rejected by both the Lean/Rust verifier correspondence surface, and constant
+  out-of-range reads are rejected before execution. The proof-friendly Lean
+  executor validates append builder/type/nullability conditions fail-closed but
+  keeps successful append events abstract; Rust builder-event trace behavior
+  remains covered by the Phase 39 differential gate rather than this theorem.
 - Added a visible modeled-executor-only theorem scope note in Lean.
 - Strengthened `scripts/full-verifier-test.sh` to check:
   - `ModeledExecutionSafe` exists;
@@ -46,21 +59,14 @@ theorem accepted_program_safe (p : Program) :
 ```
 
 This now proves modeled execution safety by reading the actual `execProgram p`
-state evidence: execution either fail-closes or every recorded modeled read is
-in bounds, every recorded modeled builder event is well typed, modeled row use
-is within the carried row bound, and finalization yields a terminal modeled
-status. The theorem also consumes the static `Verified p` premises for
+state evidence plus a program-level induction bridge: `Verified p` implies
+`(execProgram p).status = .finished`, which rules out the fail-closed arm of
+the executor read-safety invariant and yields every recorded modeled read
+in-bounds. The theorem also consumes the static `Verified p` premises for
 authority, builder typing, and finite bounds. The authority premise is connected
 to runtime read checks through `checked_readInput_concrete_in_range`: a statically
 accepted `ReadInput` branch proves the concrete slice/range predicate that the
 modeled executor uses before recording an in-bounds read.
-
-The theorem still does not assert `Verified p -> (execProgram p).status =
-.finished` for every program, because the current L2Core AST intentionally
-contains an explicit `FailClosed` statement that both the Rust and Lean checker
-surfaces accept for modeled fail-closed behavior. The stronger closed-world
-claim should either reject that statement at verification time or be stated for
-the no-explicit-fail subset.
 
 It does not prove Rust interpreter behavior, native behavior, source
 correctness, performance, compiler correctness, ABI correctness, or host engine
@@ -75,7 +81,8 @@ lean formal/lean/LoomCore.lean
 ! rg -n "\\bsorry\\b" formal/lean/LoomCore.lean
 rg -n "accepted_program_safe|ModeledExecutionSafe|modeled executor" formal/lean/LoomCore.lean
 ! rg -n "_state : ModeledState|intro _h|readsInBounds|rowsUsed := min" formal/lean/LoomCore.lean
-rg -n "readSafety|inBounds := false|appendModeledReadOutOfBoundsFailed|eventsTyped|rowsWithinMax|finalized_status_terminal" formal/lean/LoomCore.lean
+! rg -n "And\\.intro \\(execProgram p\\)\\.readSafety" formal/lean/LoomCore.lean
+rg -n "classified_program_finishes|verified_program_finishes|verified_program_reads_in_bounds|inBounds := false|appendModeledReadOutOfBoundsFailed|eventsTyped|rowsWithinMax" formal/lean/LoomCore.lean
 rg -n "checked_readInput_concrete_in_range|exact checked_readInput_concrete_in_range" formal/lean/LoomCore.lean
 bash scripts/full-verifier-test.sh
 git diff --check

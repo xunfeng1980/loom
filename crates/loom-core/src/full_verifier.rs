@@ -22,6 +22,7 @@ pub enum FullVerificationCode {
     NonMonotoneCursorLoop,
     ResourceBudgetExceeded,
     ConstraintBudgetExceeded,
+    ExplicitFailClosed,
 }
 
 impl FullVerificationCode {
@@ -36,6 +37,7 @@ impl FullVerificationCode {
             FullVerificationCode::NonMonotoneCursorLoop => "non-monotone-cursor-loop",
             FullVerificationCode::ResourceBudgetExceeded => "resource-budget-exceeded",
             FullVerificationCode::ConstraintBudgetExceeded => "constraint-budget-exceeded",
+            FullVerificationCode::ExplicitFailClosed => "explicit-fail-closed",
         }
     }
 }
@@ -327,6 +329,22 @@ fn verify_statements(
                     );
                     continue;
                 };
+                if let (Some(offset), Some(width)) = (const_u64(offset), const_u64(width)) {
+                    if offset < input.offset
+                        || offset.saturating_add(width) > input.offset.saturating_add(input.length)
+                    {
+                        report.push(
+                            FullVerificationCode::MissingInputCapability,
+                            format!("{stmt_path}.range"),
+                            format!(
+                                "read offset {offset} width {width} is outside input capability '{capability}' range {}..{}",
+                                input.offset,
+                                input.offset.saturating_add(input.length)
+                            ),
+                        );
+                        continue;
+                    }
+                };
 
                 push_read_constraints(capability, &input, offset, width, &stmt_path, state);
                 state
@@ -389,7 +407,13 @@ fn verify_statements(
                 state.builder_events_used = state.builder_events_used.saturating_add(1);
                 check_builder_budget(builder, &stmt_path, state, report);
             }
-            L2CoreStmt::FailClosed { .. } => {}
+            L2CoreStmt::FailClosed { .. } => {
+                report.push(
+                    FullVerificationCode::ExplicitFailClosed,
+                    stmt_path,
+                    "explicit FailClosed statements are runtime diagnostics, not accepted verifier programs",
+                );
+            }
         }
     }
 }

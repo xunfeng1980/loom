@@ -78,8 +78,12 @@ fi
 if rg -n "readsInBounds" "${LEAN_FILE}"; then
     fail "Lean modeled reads must allow fail-closed out-of-bounds traces, not carry all-reads-in-bounds as a state invariant"
 fi
+if rg -n -F "And.intro (execProgram p).readSafety" "${LEAN_FILE}"; then
+    fail "accepted_program_safe must not consume readSafety directly as the accepted-program dynamic safety result"
+fi
 for marker in \
-    "state.status = .failClosed \\/ state.reads.all (fun read => read.inBounds)" \
+    "state.status = .finished" \
+    "state.reads.all (fun read => read.inBounds)" \
     "inBounds := false" \
     "appendModeledReadOutOfBoundsFailed" \
     "(execProgram outOfBoundsReadProgram).reads.all (fun read => read.inBounds) = false" \
@@ -89,7 +93,12 @@ for marker in \
     "builder_events_typed p" \
     "finite_bounds p" \
     "finalized_status_terminal" \
-    "(execProgram p).readSafety" \
+    "classified_program_finishes" \
+    "verified_program_finishes" \
+    "finished_state_reads_in_bounds" \
+    "verified_program_reads_in_bounds" \
+    "hFinished := verified_program_finishes p h" \
+    "hReadsInBounds := verified_program_reads_in_bounds p h" \
     "(execProgram p).eventsTyped" \
     "(execProgram p).rowsWithinMax" \
     "checked_readInput_concrete_in_range"; do

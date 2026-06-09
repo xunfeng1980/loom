@@ -202,6 +202,14 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
         },
     ];
 
+    let mut read_out_of_bounds = sample_program();
+    read_out_of_bounds.body = vec![L2CoreStmt::ReadInput {
+        capability: "input0".to_string(),
+        offset: ScalarExpr::u64(16),
+        width: ScalarExpr::u64(4),
+        bind: "value".to_string(),
+    }];
+
     let mut fuzz_003 = sample_program();
     fuzz_003.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
         id: "score32".to_string(),
@@ -230,6 +238,11 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
             builder: "score64".to_string(),
         },
     ];
+
+    let mut explicit_fail_closed = sample_program();
+    explicit_fail_closed.body = vec![L2CoreStmt::FailClosed {
+        code: "test-fail-closed".to_string(),
+    }];
 
     vec![
         CorrespondenceCase {
@@ -293,6 +306,11 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
             expected: Some(FullVerificationCode::OutputTypeMismatch),
         },
         CorrespondenceCase {
+            id: "matrix-read-out-of-bounds",
+            program: read_out_of_bounds,
+            expected: Some(FullVerificationCode::MissingInputCapability),
+        },
+        CorrespondenceCase {
             id: "fuzz-003-float32-builder",
             program: fuzz_003,
             expected: None,
@@ -301,6 +319,11 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
             id: "fuzz-004-float64-nullable-builder",
             program: fuzz_004,
             expected: None,
+        },
+        CorrespondenceCase {
+            id: "matrix-explicit-fail-closed",
+            program: explicit_fail_closed,
+            expected: Some(FullVerificationCode::ExplicitFailClosed),
         },
     ]
 }

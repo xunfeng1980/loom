@@ -106,14 +106,6 @@ fn consistency_cases() -> Vec<ConsistencyCase> {
         },
     ];
 
-    let fail_closed = {
-        let mut program = sample_program();
-        program.body = vec![L2CoreStmt::FailClosed {
-            code: "test-fail-closed".to_string(),
-        }];
-        program
-    };
-
     vec![
         ConsistencyCase {
             id: "matrix-accepted-copy",
@@ -138,10 +130,6 @@ fn consistency_cases() -> Vec<ConsistencyCase> {
         ConsistencyCase {
             id: "matrix-non-monotone-cursor-loop",
             program: non_monotone,
-        },
-        ConsistencyCase {
-            id: "matrix-fail-closed",
-            program: fail_closed,
         },
         ConsistencyCase {
             id: "fuzz-000-let-add-int32",

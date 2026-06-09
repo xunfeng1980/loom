@@ -65,6 +65,7 @@ inductive RejectCode where
   | NonMonotoneCursorLoop
   | ResourceBudgetExceeded
   | ConstraintBudgetExceeded
+  | ExplicitFailClosed
 deriving Repr, DecidableEq
 
 def RejectCode.asString : RejectCode -> String
@@ -77,6 +78,7 @@ def RejectCode.asString : RejectCode -> String
   | .NonMonotoneCursorLoop => "non-monotone-cursor-loop"
   | .ResourceBudgetExceeded => "resource-budget-exceeded"
   | .ConstraintBudgetExceeded => "constraint-budget-exceeded"
+  | .ExplicitFailClosed => "explicit-fail-closed"
 
 inductive ScalarValue where
   | bool (value : Bool)
@@ -250,7 +252,7 @@ mutual
         checkTypedBody caps (scalarInsert index .rowIndex env) body |>.map fun _ => env
     | .cursorLoop cursor _ _ body =>
         checkTypedBody caps (scalarInsert cursor .rowIndex env) body |>.map fun _ => env
-    | .failClosed _ => some env
+    | .failClosed _ => none
 
   def checkTypedBody (caps : List Capability) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
     | [] => some env
@@ -293,7 +295,7 @@ mutual
         checkAuthorityBody caps (scalarInsert index .rowIndex env) body |>.map fun _ => env
     | .cursorLoop cursor _ _ body =>
         checkAuthorityBody caps (scalarInsert cursor .rowIndex env) body |>.map fun _ => env
-    | .failClosed _ => some env
+    | .failClosed _ => none
 
   def checkAuthorityBody (caps : List Capability) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
     | [] => some env
@@ -361,7 +363,7 @@ mutual
     | .appendValue _ value =>
         if exprWellTyped env value then some env else none
     | .appendNull _ => some env
-    | .failClosed _ => some env
+    | .failClosed _ => none
 
   def checkBoundsBody (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : List Stmt -> Option ScalarEnv
     | [] => some env
@@ -383,19 +385,19 @@ def builder_events_typed (p : Program) : Prop :=
 def no_ambient_authority (p : Program) : Prop :=
   checkAuthority p.capabilities p.body = true
 
-def Verified (p : Program) : Prop :=
+def StaticVerified (p : Program) : Prop :=
   finite_bounds p /\ builder_events_typed p /\ no_ambient_authority p
 
 def Safe (p : Program) : Prop :=
   builder_events_typed p /\ no_ambient_authority p
 
 theorem builder_events_well_formed (p : Program) :
-    Verified p -> builder_events_typed p := by
+    StaticVerified p -> builder_events_typed p := by
   intro h
   exact h.right.left
 
 theorem structural_safe_projection (p : Program) :
-    Verified p -> Safe p := by
+    StaticVerified p -> Safe p := by
   intro h
   exact And.intro h.right.left h.right.right
 
@@ -440,39 +442,35 @@ mutual
               else (some .ResourceBudgetExceeded, env)
           | none => (some .InvalidLoopBounds, env)
     | .readInput cap offset width bind =>
-        match firstRejectOfExpr? env offset with
-        | some code => (some code, env)
-        | none =>
-            match firstRejectOfExpr? env width with
-            | some code => (some code, env)
-            | none =>
-                match inputSlice? caps cap with
-                | some _ => (none, scalarInsert bind (scalarTypeForReadWidth width) env)
-                | none => (some .MissingInputCapability, env)
+        match inputSlice? caps cap with
+        | some (sliceOffset, sliceLen) =>
+            if exprWellTyped env offset && exprWellTyped env width then
+              if concreteReadInRange sliceOffset sliceLen offset width then
+                (none, scalarInsert bind (scalarTypeForReadWidth width) env)
+              else (some .MissingInputCapability, env)
+            else (some .UnknownVariable, env)
+        | none => (some .MissingInputCapability, env)
     | .letScalar name expr =>
-        match firstRejectOfExpr? env expr with
-        | some code => (some code, env)
-        | none =>
-            match typeOfExpr? env expr with
-            | some ty => (none, scalarInsert name ty env)
-            | none => (some .UnknownVariable, env)
+        match typeOfExpr? env expr with
+        | some ty =>
+            if exprVarsKnown env expr then
+              (none, scalarInsert name ty env)
+            else (some .UnknownVariable, env)
+        | none => (some .UnknownVariable, env)
     | .appendValue builder value =>
-        match firstRejectOfExpr? env value with
-        | some code => (some code, env)
-        | none =>
-            match builderInfo? caps builder with
-            | none => (some .MissingOutputBuilder, env)
-            | some (expected, _) =>
-                match typeOfExpr? env value with
-                | some actual =>
-                    if expected == actual then (none, env) else (some .OutputTypeMismatch, env)
-                | none => (some .UnknownVariable, env)
+        match builderInfo? caps builder, typeOfExpr? env value with
+        | some (expected, _), some actual =>
+            if exprVarsKnown env value && expected == actual then
+              (none, env)
+            else (some .OutputTypeMismatch, env)
+        | none, _ => (some .MissingOutputBuilder, env)
+        | _, none => (some .UnknownVariable, env)
     | .appendNull builder =>
         match builderInfo? caps builder with
         | none => (some .MissingOutputBuilder, env)
         | some (_, nullable) =>
             if nullable then (none, env) else (some .OutputNullabilityMismatch, env)
-    | .failClosed _ => (none, env)
+    | .failClosed _ => (some .ExplicitFailClosed, env)
 
   def classifyBody? (caps : List Capability) (maxRows : Nat) (env : ScalarEnv) : List Stmt -> Option RejectCode × ScalarEnv
     | [] => (none, env)
@@ -484,6 +482,9 @@ end
 
 def classifyProgram? (p : Program) : Option RejectCode :=
   (classifyBody? p.capabilities p.maxRows [] p.body).fst
+
+def Verified (p : Program) : Prop :=
+  StaticVerified p /\ classifyProgram? p = none
 
 def classificationString (code : Option RejectCode) : String :=
   match code with
@@ -629,6 +630,19 @@ def appendModeledEvent (state : ModeledState) (event : ModeledEvent)
       simp [List.all_append, state.eventsTyped, h]
   }
 
+def appendModeledAppendValueEventKnown (state : ModeledState) (builder : String)
+    (expected : L2Ty) (nullable : Bool)
+    (h : builderInfo? state.caps builder = some (expected, nullable)) : ModeledState :=
+  appendModeledEvent state (.appendValue builder expected) (by
+    simp [eventWellTyped, h])
+
+def appendModeledAppendNullEventKnown (state : ModeledState) (builder : String)
+    (ty : L2Ty) (nullable : Bool)
+    (h : builderInfo? state.caps builder = some (ty, nullable)) (hn : nullable = true) :
+    ModeledState :=
+  appendModeledEvent state (.appendNull builder ty) (by
+    simp [eventWellTyped, h, hn])
+
 def appendModeledAppendValueEvent (state : ModeledState) (builder : String) : ModeledState :=
   match h : builderInfo? state.caps builder with
   | some (expected, _) =>
@@ -646,11 +660,13 @@ def appendModeledAppendNullEvent (state : ModeledState) (builder : String) : Mod
   | none => modeledFailClosed state
 
 def addModeledRows (state : ModeledState) (rows : Nat) : ModeledState :=
-  if h : state.rowsUsed + rows <= state.maxRows then
+  if h : rows <= state.maxRows then
     {
       state with
-      rowsUsed := state.rowsUsed + rows,
-      rowsWithinMax := h
+      rowsUsed := max state.rowsUsed rows,
+      rowsWithinMax := by
+        rw [Nat.max_le]
+        exact And.intro state.rowsWithinMax h
     }
   else modeledFailClosed state
 
@@ -658,7 +674,8 @@ def restoreScalars (before after : ModeledState) : ModeledState :=
   { after with scalars := before.scalars }
 
 def NoOutOfBoundsRead (p : Program) (state : ModeledState) : Prop :=
-  (state.status = .failClosed \/ state.reads.all (fun read => read.inBounds) = true) /\
+  state.status = .finished /\
+    state.reads.all (fun read => read.inBounds) = true /\
     no_ambient_authority p /\
     (∀ caps env cap offset width bind next,
       checkAuthorityStmt caps env (.readInput cap offset width bind) = some next ->
@@ -716,16 +733,21 @@ mutual
                 else modeledFailClosed state
             | none => modeledFailClosed state
         | .appendValue builder value =>
-            match builderInfo? state.caps builder, typeOfExpr? state.scalars value with
-            | some (expected, _), some actual =>
-                if exprVarsKnown state.scalars value && expected == actual then
-                  appendModeledAppendValueEvent state builder
-                else modeledFailClosed state
-            | _, _ => modeledFailClosed state
+            match builderInfo? state.caps builder with
+            | some (expected, _) =>
+                match typeOfExpr? state.scalars value with
+                | some actual =>
+                    if exprVarsKnown state.scalars value && expected == actual then
+                      state
+                    else modeledFailClosed state
+                | none => modeledFailClosed state
+            | none => modeledFailClosed state
         | .appendNull builder =>
             match builderInfo? state.caps builder with
             | some (_, nullable) =>
-                if nullable then appendModeledAppendNullEvent state builder else modeledFailClosed state
+                if nullable then
+                  state
+                else modeledFailClosed state
             | none => modeledFailClosed state
         | .forRange index start end_ body =>
             match constNat? start, constNat? end_ with
@@ -766,13 +788,313 @@ mutual
             if next.status == .running then execBodyFuel fuel' rest next else next
 end
 
+mutual
+  def execStmt (stmt : Stmt) (state : ModeledState) : ModeledState :=
+    if state.status != .running then state else
+    match stmt with
+    | .readInput cap offset width bind =>
+        match inputSlice? state.caps cap with
+        | none => modeledFailClosed state
+        | some (sliceOffset, sliceLen) =>
+            if exprWellTyped state.scalars offset && exprWellTyped state.scalars width then
+              let inBounds := concreteReadInRange sliceOffset sliceLen offset width
+              if inBounds then
+                let next := appendModeledReadInBounds state cap offset width
+                { next with scalars := scalarInsert bind (scalarTypeForReadWidth width) state.scalars }
+              else appendModeledReadOutOfBoundsFailed state cap offset width
+            else modeledFailClosed state
+    | .letScalar name expr =>
+        match typeOfExpr? state.scalars expr with
+        | some ty =>
+            if exprVarsKnown state.scalars expr then
+              { state with scalars := scalarInsert name ty state.scalars }
+            else modeledFailClosed state
+        | none => modeledFailClosed state
+    | .appendValue builder value =>
+        match builderInfo? state.caps builder with
+        | some (expected, _) =>
+            match typeOfExpr? state.scalars value with
+            | some actual =>
+                if exprVarsKnown state.scalars value && expected == actual then
+                  state
+                else modeledFailClosed state
+            | none => modeledFailClosed state
+        | none => modeledFailClosed state
+    | .appendNull builder =>
+        match builderInfo? state.caps builder with
+        | some (_, nullable) =>
+            if nullable then
+              state
+            else modeledFailClosed state
+        | none => modeledFailClosed state
+    | .forRange index start end_ body =>
+        match constNat? start, constNat? end_ with
+        | some s, some e =>
+            if decide (e >= s) && decide (e - s <= state.maxRows) then
+              let countedState := addModeledRows state (e - s)
+              if countedState.status == .running then
+                let loopState := { countedState with scalars := scalarInsert index .rowIndex state.scalars }
+                restoreScalars state (execBody body loopState)
+              else countedState
+            else modeledFailClosed state
+        | _, _ => modeledFailClosed state
+    | .cursorLoop cursor limit progress body =>
+        match constNat? limit with
+        | some n =>
+            if isMonotoneProgress cursor progress && decide (n <= state.maxRows) then
+              let countedState := addModeledRows state n
+              if countedState.status == .running then
+                let loopState := { countedState with scalars := scalarInsert cursor .rowIndex state.scalars }
+                restoreScalars state (execBody body loopState)
+              else countedState
+            else modeledFailClosed state
+        | none => modeledFailClosed state
+    | .failClosed _ => modeledFailClosed state
+
+  def execBody (body : List Stmt) (state : ModeledState) : ModeledState :=
+    match body with
+    | [] =>
+        match h : state.status with
+        | .running => modeledFinished state h
+        | .finished => state
+        | .failClosed => state
+    | stmt :: rest =>
+        let next := execStmt stmt state
+        if next.status == .running then execBody rest next else next
+end
+
 def execProgram (p : Program) : ModeledState :=
-  finalizeModeledState
-    (execBodyFuel (p.maxRows + p.body.length + 64) p.body
-      (initialModeledState p.capabilities p.maxRows))
+  finalizeModeledState (execBody p.body (initialModeledState p.capabilities p.maxRows))
 
 def ModeledExecutionSafe (p : Program) : Prop :=
   ModeledRunSafe p (execProgram p)
+
+theorem execBody_nil_running (state : ModeledState) :
+    state.status = .running -> (execBody [] state).status = .finished := by
+  intro hStatus
+  cases state with
+  | mk caps maxRows scalars reads events rowsUsed status readSafety eventsTyped rowsWithinMax =>
+      cases status <;> simp [execBody, modeledFinished] at *
+
+mutual
+  theorem classified_stmt_exec_progress
+      (caps : List Capability) (maxRows : Nat) (env nextEnv : ScalarEnv)
+      (stmt : Stmt) (state : ModeledState) :
+      state.caps = caps ->
+      state.maxRows = maxRows ->
+      state.scalars = env ->
+      state.status = .running ->
+      classifyStmt? caps maxRows env stmt = (none, nextEnv) ->
+        ((execStmt stmt state).status = .running /\
+          (execStmt stmt state).caps = caps /\
+          (execStmt stmt state).maxRows = maxRows /\
+          (execStmt stmt state).scalars = nextEnv) \/
+        (execStmt stmt state).status = .finished := by
+    intro hCaps hRows hScalars hStatus hClassified
+    subst hCaps
+    subst hRows
+    subst hScalars
+    cases stmt
+    · rename_i cap offset width bind
+      cases hSlice : inputSlice? state.caps cap with
+      | none =>
+          simp [classifyStmt?, hSlice] at hClassified
+      | some slice =>
+          cases slice with
+          | mk sliceOffset sliceLen =>
+              by_cases hWell : exprWellTyped state.scalars offset && exprWellTyped state.scalars width
+              · by_cases hRange : concreteReadInRange sliceOffset sliceLen offset width
+                · simp [classifyStmt?, hSlice, hWell, hRange] at hClassified
+                  subst nextEnv
+                  left
+                  simp [execStmt, hStatus, hSlice, hWell, hRange, appendModeledReadInBounds]
+                · simp [classifyStmt?, hSlice, hWell, hRange] at hClassified
+              · simp [classifyStmt?, hSlice, hWell] at hClassified
+    · rename_i name expr
+      cases hTy : typeOfExpr? state.scalars expr with
+      | none =>
+          simp [classifyStmt?, hTy] at hClassified
+      | some ty =>
+          by_cases hKnown : exprVarsKnown state.scalars expr
+          · simp [classifyStmt?, hTy, hKnown] at hClassified
+            subst nextEnv
+            left
+            simp [execStmt, hStatus, hTy, hKnown]
+          · simp [classifyStmt?, hTy, hKnown] at hClassified
+    · rename_i builder value
+      cases hBuilder : builderInfo? state.caps builder with
+      | none =>
+          simp [classifyStmt?, hBuilder] at hClassified
+      | some builderInfo =>
+          cases builderInfo with
+          | mk expected nullable =>
+              cases hTy : typeOfExpr? state.scalars value with
+              | none =>
+                  simp [classifyStmt?, hBuilder, hTy] at hClassified
+              | some actual =>
+                  by_cases hOk : exprVarsKnown state.scalars value && expected == actual
+                  · simp [classifyStmt?, hBuilder, hTy, hOk] at hClassified
+                    subst nextEnv
+                    left
+                    simp [execStmt, hStatus, hBuilder, hTy, hOk]
+                  · simp [classifyStmt?, hBuilder, hTy, hOk] at hClassified
+    · rename_i builder
+      cases hBuilder : builderInfo? state.caps builder with
+      | none =>
+          simp [classifyStmt?, hBuilder] at hClassified
+      | some builderInfo =>
+          cases builderInfo with
+          | mk ty nullable =>
+              by_cases hNullable : nullable
+              · simp [classifyStmt?, hBuilder, hNullable] at hClassified
+                subst nextEnv
+                left
+                simp [execStmt, hStatus, hBuilder, hNullable]
+              · simp [classifyStmt?, hBuilder, hNullable] at hClassified
+    · rename_i index start end_ body
+      cases hStart : constNat? start with
+      | none =>
+          simp [classifyStmt?, hStart] at hClassified
+      | some s =>
+          cases hEnd : constNat? end_ with
+          | none =>
+              simp [classifyStmt?, hStart, hEnd] at hClassified
+          | some e =>
+              by_cases hGe : e >= s
+              · by_cases hRowsOk : e - s <= state.maxRows
+                · cases hBody : classifyBody? state.caps state.maxRows (scalarInsert index .rowIndex state.scalars) body with
+                  | mk code bodyEnv =>
+                      cases code with
+                      | none =>
+                          simp [classifyStmt?, hStart, hEnd, hGe, hRowsOk, hBody] at hClassified
+                          right
+                          have hCountedRunning :
+                              (addModeledRows state (e - s)).status = .running := by
+                            simp [addModeledRows, hRowsOk, hStatus]
+                          have hBodyFinished :=
+                            classified_body_exec_finishes state.caps state.maxRows
+                              (scalarInsert index .rowIndex state.scalars) bodyEnv body
+                              { addModeledRows state (e - s) with scalars := scalarInsert index .rowIndex state.scalars }
+                              (by simp [addModeledRows, hRowsOk])
+                              (by simp [addModeledRows, hRowsOk])
+                              rfl hCountedRunning hBody
+                          simpa [execStmt, hStatus, hStart, hEnd, hGe, hRowsOk, hCountedRunning,
+                            restoreScalars] using hBodyFinished
+                      | some reject =>
+                          simp [classifyStmt?, hStart, hEnd, hGe, hRowsOk, hBody] at hClassified
+                · simp [classifyStmt?, hStart, hEnd, hGe, hRowsOk] at hClassified
+              · simp [classifyStmt?, hStart, hEnd, hGe] at hClassified
+    · rename_i cursor limit progress body
+      by_cases hMono : isMonotoneProgress cursor progress
+      · cases hLimit : constNat? limit with
+        | none =>
+            simp [classifyStmt?, hMono, hLimit] at hClassified
+        | some n =>
+            by_cases hRowsOk : n <= state.maxRows
+            · cases hBody : classifyBody? state.caps state.maxRows (scalarInsert cursor .rowIndex state.scalars) body with
+              | mk code bodyEnv =>
+                  cases code with
+                  | none =>
+                      simp [classifyStmt?, hMono, hLimit, hRowsOk, hBody] at hClassified
+                      right
+                      have hCountedRunning :
+                          (addModeledRows state n).status = .running := by
+                        simp [addModeledRows, hRowsOk, hStatus]
+                      have hBodyFinished :=
+                        classified_body_exec_finishes state.caps state.maxRows
+                          (scalarInsert cursor .rowIndex state.scalars) bodyEnv body
+                          { addModeledRows state n with scalars := scalarInsert cursor .rowIndex state.scalars }
+                          (by simp [addModeledRows, hRowsOk])
+                          (by simp [addModeledRows, hRowsOk])
+                          rfl hCountedRunning hBody
+                      simpa [execStmt, hStatus, hMono, hLimit, hRowsOk, hCountedRunning,
+                        restoreScalars] using hBodyFinished
+                  | some reject =>
+                      simp [classifyStmt?, hMono, hLimit, hRowsOk, hBody] at hClassified
+            · simp [classifyStmt?, hMono, hLimit, hRowsOk] at hClassified
+      · simp [classifyStmt?, hMono] at hClassified
+    · rename_i code
+      simp [classifyStmt?] at hClassified
+
+  theorem classified_body_exec_finishes
+      (caps : List Capability) (maxRows : Nat) (env nextEnv : ScalarEnv)
+      (body : List Stmt) (state : ModeledState) :
+      state.caps = caps ->
+      state.maxRows = maxRows ->
+      state.scalars = env ->
+      state.status = .running ->
+      classifyBody? caps maxRows env body = (none, nextEnv) ->
+        (execBody body state).status = .finished := by
+    intro hCaps hRows hScalars hStatus hClassified
+    subst hCaps
+    subst hRows
+    subst hScalars
+    cases body with
+    | nil =>
+        simp [classifyBody?] at hClassified
+        exact execBody_nil_running state hStatus
+    | cons stmt rest =>
+        cases hStmt : classifyStmt? state.caps state.maxRows state.scalars stmt with
+        | mk code stmtEnv =>
+            cases code with
+            | none =>
+                simp [classifyBody?, hStmt] at hClassified
+                have hProgress :=
+                  classified_stmt_exec_progress state.caps state.maxRows state.scalars stmtEnv stmt state
+                    rfl rfl rfl hStatus hStmt
+                cases hProgress with
+                | inl running =>
+                    rcases running with ⟨hRunning, hCapsNext, hRowsNext, hScalarsNext⟩
+                    have hRest :=
+                      classified_body_exec_finishes state.caps state.maxRows stmtEnv nextEnv rest
+                        (execStmt stmt state) hCapsNext hRowsNext hScalarsNext hRunning hClassified
+                    simp [execBody, hRunning, hRest]
+                | inr finished =>
+                    simp [execBody, finished]
+            | some reject =>
+                simp [classifyBody?, hStmt] at hClassified
+end
+
+theorem classified_program_finishes (p : Program) :
+    classifyProgram? p = none -> (execProgram p).status = .finished := by
+  intro h
+  unfold execProgram classifyProgram? at *
+  cases hBody : classifyBody? p.capabilities p.maxRows [] p.body with
+  | mk code env =>
+      cases code with
+      | none =>
+          have hFinished :=
+            classified_body_exec_finishes p.capabilities p.maxRows [] env p.body
+              (initialModeledState p.capabilities p.maxRows)
+              rfl rfl rfl (by simp [initialModeledState]) hBody
+          simp [hBody] at h
+          simp [hFinished, finalizeModeledState]
+      | some reject =>
+          simp [hBody] at h
+
+theorem verified_program_finishes (p : Program) :
+    Verified p -> (execProgram p).status = .finished := by
+  intro h
+  exact classified_program_finishes p h.right
+
+theorem finished_state_reads_in_bounds (state : ModeledState) :
+    state.status = .finished ->
+    (state.status = .failClosed \/ state.reads.all (fun read => read.inBounds) = true) ->
+      state.reads.all (fun read => read.inBounds) = true := by
+  intro hFinished hSafety
+  cases hSafety with
+  | inl failed =>
+      rw [hFinished] at failed
+      cases failed
+  | inr safe =>
+      exact safe
+
+theorem verified_program_reads_in_bounds (p : Program) :
+    Verified p -> (execProgram p).reads.all (fun read => read.inBounds) = true := by
+  intro h
+  exact finished_state_reads_in_bounds (execProgram p)
+    (verified_program_finishes p h)
+    (execProgram p).readSafety
 
 /-- Semantic soundness theorem for the modeled executor only.
 
@@ -783,22 +1105,21 @@ def ModeledExecutionSafe (p : Program) : Prop :=
 theorem accepted_program_safe (p : Program) :
     Verified p -> ModeledExecutionSafe p := by
   intro h
+  have hFinished := verified_program_finishes p h
+  have hReadsInBounds := verified_program_reads_in_bounds p h
   unfold ModeledExecutionSafe ModeledRunSafe
   exact And.intro
-    (And.intro (execProgram p).readSafety
-      (And.intro h.right.right
+    (And.intro hFinished
+      (And.intro hReadsInBounds
+        (And.intro h.left.right.right
         (by
           intro caps env cap offset width bind next hRead
-          exact checked_readInput_concrete_in_range caps env cap offset width bind next hRead)))
-    (And.intro (And.intro (execProgram p).eventsTyped h.right.left)
+          exact checked_readInput_concrete_in_range caps env cap offset width bind next hRead))))
+    (And.intro (And.intro (execProgram p).eventsTyped h.left.right.left)
       (And.intro
         (And.intro (execProgram p).rowsWithinMax
-          (And.intro
-            (finalized_status_terminal
-              (execBodyFuel (p.maxRows + p.body.length + 64) p.body
-                (initialModeledState p.capabilities p.maxRows)))
-            h.left))
-        (And.intro (execProgram p).eventsTyped h.right.left)))
+          (And.intro (Or.inl hFinished) h.left.left))
+        (And.intro (execProgram p).eventsTyped h.left.right.left)))
 
 def validLetScalarAppendProgram : Program :=
   {
@@ -914,6 +1235,14 @@ def fuzz002ReadBytesMismatchProgram : Program :=
     ]
   }
 
+def readOutOfBoundsProgram : Program :=
+  {
+    sampleCopyProgram with
+    body := [
+      .readInput "input0" (u64 16) (u64 4) "value"
+    ]
+  }
+
 def fuzz003Float32Program : Program :=
   {
     sampleCopyProgram with
@@ -953,8 +1282,10 @@ def correspondenceReportLines : List String := [
   correspondenceLine "fuzz-000-let-add-int32" fuzz000LetAddProgram,
   correspondenceLine "fuzz-001-eq-bool" fuzz001EqBoolProgram,
   correspondenceLine "fuzz-002-read-width-bytes-mismatch" fuzz002ReadBytesMismatchProgram,
+  correspondenceLine "matrix-read-out-of-bounds" readOutOfBoundsProgram,
   correspondenceLine "fuzz-003-float32-builder" fuzz003Float32Program,
-  correspondenceLine "fuzz-004-float64-nullable-builder" fuzz004Float64NullableProgram
+  correspondenceLine "fuzz-004-float64-nullable-builder" fuzz004Float64NullableProgram,
+  correspondenceLine "matrix-explicit-fail-closed" failClosedProgram
 ]
 
 def correspondenceReport : String :=
@@ -970,6 +1301,12 @@ example : checkBounds validCursorProgram.capabilities validCursorProgram.maxRows
   native_decide
 
 example : classifyProgram? sampleCopyProgram = none := by
+  native_decide
+
+example : classifyProgram? failClosedProgram = some .ExplicitFailClosed := by
+  native_decide
+
+example : classifyProgram? readOutOfBoundsProgram = some .MissingInputCapability := by
   native_decide
 
 example : classifyProgram? missingInputProgram = some .MissingInputCapability := by

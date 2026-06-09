@@ -57,7 +57,10 @@ fi
 for marker in \
     "accepted_program_safe" \
     "ModeledExecutionSafe" \
-    "(execProgram p).readSafety" \
+    "classified_program_finishes" \
+    "verified_program_finishes" \
+    "verified_program_reads_in_bounds" \
+    "hFinished := verified_program_finishes p h" \
     "inBounds := false" \
     "appendModeledReadOutOfBoundsFailed" \
     "checked_readInput_concrete_in_range" \
@@ -65,6 +68,9 @@ for marker in \
     rg -q -F "${marker}" "${LEAN_FILE}" \
         || fail "Lean modeled soundness marker missing: ${marker}"
 done
+if rg -n -F "And.intro (execProgram p).readSafety" "${LEAN_FILE}"; then
+    fail "accepted_program_safe must not use readSafety directly as the accepted-program dynamic safety result"
+fi
 rg -q -F "exact checked_readInput_concrete_in_range" "${LEAN_FILE}" \
     || fail "accepted_program_safe must carry the static read-boundary bridge theorem"
 ok "Lean modeled executor evidence"
