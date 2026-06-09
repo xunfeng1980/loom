@@ -5,6 +5,7 @@ edition = "2021"
 description = "Isolated real Vortex file ingress bridge for Loom"
 
 [dependencies]
+arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 loom-core = { path = "../loom-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }

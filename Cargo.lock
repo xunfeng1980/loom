@@ -3610,6 +3610,7 @@ name = "loom-vortex-ingress"
 version = "0.1.0"
 dependencies = [
  "arrow",
+ "arrow-array",
  "arrow-schema",
  "loom-core",
  "loom-source-ingress",

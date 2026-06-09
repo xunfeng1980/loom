@@ -44,6 +44,7 @@ info "Running core LMA1 and source full-schema tests..."
 cargo test -p loom-core --test arrow_semantic
 cargo test -p loom-parquet-ingress --test full_arrow_schema_compatibility
 cargo test -p loom-lance-ingress --test full_arrow_schema_compatibility
+cargo test -p loom-vortex-ingress --test full_arrow_dtype_semantic_compatibility
 ok "full Arrow semantic source tests"
 
 info "Running source handoff regression tests..."

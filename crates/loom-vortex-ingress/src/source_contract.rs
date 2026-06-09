@@ -5,7 +5,12 @@
 //! authorize `.loom` bytes.
 
 use std::path::Path;
+use std::sync::Arc;
 
+use arrow_array::RecordBatch;
+use arrow_schema::Schema;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
@@ -15,6 +20,10 @@ use loom_source_ingress::{
     SourceOracleEvidence, SourceOracleStrategy, SourceSchemaFact, SourceSegmentFact,
     SourceSplitFact,
 };
+use vortex_array::arrow::ArrowSessionExt;
+use vortex_array::stream::ArrayStreamExt;
+use vortex_array::VortexSessionExecute;
+use vortex_io::runtime::BlockingRuntime;
 
 use crate::{
     emit_supported_lmc1_from_vortex_buffer, opened_buffer_or_report,
@@ -129,6 +138,182 @@ pub fn emit_source_ingress_lmc1_from_vortex_buffer(
         bytes: artifact_bytes,
         report,
     })
+}
+
+/// Emit `LMA1` from a Vortex buffer after Vortex materializes the source as
+/// Arrow and Loom verifies the semantic payload.
+pub fn emit_source_ingress_lma1_from_vortex_buffer(
+    bytes: &[u8],
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    let reader_facts =
+        reader_facts_from_vortex_buffer(bytes).map_err(source_report_from_vortex_ingress_report)?;
+    let batches = vortex_arrow_oracle_batches_from_buffer(bytes).map_err(|report| {
+        let diagnostic =
+            report.diagnostics.first().cloned().unwrap_or_else(|| {
+                source_oracle_unavailable_diagnostic("Vortex Arrow oracle failed")
+            });
+        source_oracle_failed_report(&reader_facts, diagnostic)
+    })?;
+    let schema = batches.first().map(RecordBatch::schema).ok_or_else(|| {
+        source_oracle_failed_report(
+            &reader_facts,
+            source_oracle_unavailable_diagnostic("Vortex Arrow oracle produced no batches"),
+        )
+    })?;
+    let semantic_batches = batches
+        .iter()
+        .map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| {
+            source_oracle_failed_report(
+                &reader_facts,
+                SourceDiagnostic::new(
+                    SourceDiagnosticCode::UnsupportedConversion,
+                    "$.payload",
+                    format!("failed to build Vortex Arrow semantic batches: {err}"),
+                ),
+            )
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic_batches).map_err(|err| {
+        source_oracle_failed_report(
+            &reader_facts,
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.payload",
+                format!("failed to build Vortex Arrow semantic payload: {err}"),
+            ),
+        )
+    })?;
+    let artifact_bytes = encode_arrow_semantic_payload(&payload).map_err(|err| {
+        source_oracle_failed_report(
+            &reader_facts,
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.payload",
+                format!("failed to encode Vortex LMA1 payload: {err}"),
+            ),
+        )
+    })?;
+
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
+    if verification.status() != ArtifactVerificationStatus::Accepted {
+        return Err(source_verification_failed_report_with_kind(
+            &reader_facts,
+            "LMA1",
+            verification.status().as_str(),
+        ));
+    }
+
+    let artifact_facts = verification
+        .facts()
+        .expect("accepted artifact verification exposes facts");
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(
+        artifact_bytes.len(),
+        format!(
+            "{} verifier accepted {}",
+            artifact_facts.artifact_kind,
+            artifact_facts
+                .payload_kind
+                .as_deref()
+                .unwrap_or("unknown payload")
+        ),
+    );
+    let oracle_evidence = arrow_oracle_evidence_from_batches(&batches)
+        .map_err(|diagnostic| source_oracle_failed_report(&reader_facts, diagnostic))?;
+    let mut source_facts = source_facts_from_vortex_reader_facts(&reader_facts);
+    if let Some(coverage) = source_facts.coverage.as_mut() {
+        coverage.support = SourceIngressStatus::Accepted;
+        coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
+        coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
+        coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
+        coverage
+            .notes
+            .push("Vortex source materialized as Arrow for LMA1 semantic emission".to_string());
+    }
+
+    let mut report = SourceIngressReport::accepted(
+        source_facts,
+        SourceEmissionKind::ArrowSemantic,
+        SourceEmissionDisposition::SemanticArrow,
+        SourceLoweringDisposition::InterpreterOnly,
+        artifact_summary,
+        oracle_evidence,
+    )
+    .expect("accepted Vortex semantic facts map to an accepted source report");
+    report.diagnostics = reader_facts
+        .diagnostics
+        .iter()
+        .map(source_diagnostic_from_vortex_reader_diagnostic)
+        .collect();
+
+    Ok(SourceIngressAcceptedArtifact {
+        bytes: artifact_bytes,
+        report,
+    })
+}
+
+/// Materialize a Vortex buffer through the Vortex Arrow executor.
+pub fn vortex_arrow_oracle_batches_from_buffer(
+    bytes: &[u8],
+) -> Result<Vec<RecordBatch>, SourceIngressReport> {
+    let file = opened_buffer_or_report(bytes).map_err(source_report_from_vortex_ingress_report)?;
+    let facts = || crate::facts_from_file(&file, VortexIngressSourceKind::Buffer);
+    let array = crate::RUNTIME
+        .block_on(async {
+            let stream = file
+                .scan()
+                .map_err(|err| format!("failed to create Vortex Arrow scan: {err}"))?
+                .into_array_stream()
+                .map_err(|err| format!("failed to create Vortex Arrow array stream: {err}"))?;
+            stream
+                .read_all()
+                .await
+                .map_err(|err| format!("failed to scan Vortex Arrow rows: {err}"))
+        })
+        .map_err(|message| {
+            source_report_from_vortex_ingress_report(VortexIngressReport::unsupported(
+                Some(facts()),
+                VortexIngressDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                message,
+            ))
+        })?;
+    let mut ctx = file.session().create_execution_ctx();
+    let field = file
+        .session()
+        .arrow()
+        .to_arrow_field("value", file.dtype())
+        .map_err(|err| {
+            source_report_from_vortex_ingress_report(VortexIngressReport::unsupported(
+                Some(facts()),
+                VortexIngressDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                format!("failed to derive Vortex Arrow field: {err}"),
+            ))
+        })?;
+    let arrow_array = file
+        .session()
+        .arrow()
+        .execute_arrow(array, Some(&field), &mut ctx)
+        .map_err(|err| {
+            source_report_from_vortex_ingress_report(VortexIngressReport::unsupported(
+                Some(facts()),
+                VortexIngressDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                format!("failed to materialize Vortex rows as Arrow: {err}"),
+            ))
+        })?;
+    let batch = RecordBatch::try_new(Arc::new(Schema::new(vec![field])), vec![arrow_array])
+        .map_err(|err| {
+            source_report_from_vortex_ingress_report(VortexIngressReport::unsupported(
+                Some(facts()),
+                VortexIngressDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                format!("failed to build Vortex Arrow record batch: {err}"),
+            ))
+        })?;
+    Ok(vec![batch])
 }
 
 /// Convert rich reader facts into the generic source fact contract.
@@ -433,14 +618,44 @@ fn source_verification_failed_report(
     facts: &VortexReaderFacts,
     status: &str,
 ) -> SourceIngressReport {
+    source_verification_failed_report_with_kind(facts, "LMC1", status)
+}
+
+fn source_verification_failed_report_with_kind(
+    facts: &VortexReaderFacts,
+    artifact_kind: &str,
+    status: &str,
+) -> SourceIngressReport {
     SourceIngressReport::unsupported(
         Some(source_facts_from_vortex_reader_facts(facts)),
         SourceDiagnostic::new(
             SourceDiagnosticCode::VerificationFailed,
             "$.verification",
-            format!("emitted LMC1 was not accepted by Loom artifact verifier: {status}"),
+            format!("emitted {artifact_kind} was not accepted by Loom artifact verifier: {status}"),
         ),
     )
+}
+
+fn arrow_oracle_evidence_from_batches(
+    batches: &[RecordBatch],
+) -> Result<SourceOracleEvidence, SourceDiagnostic> {
+    let row_count = batches.iter().try_fold(0u64, |sum, batch| {
+        sum.checked_add(batch.num_rows() as u64).ok_or_else(|| {
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::OracleUnavailable,
+                "$.oracle.rows",
+                "Vortex Arrow oracle row count overflowed u64",
+            )
+        })
+    })?;
+    let mut evidence =
+        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    evidence.nulls_checked = true;
+    evidence.notes.push(
+        "Vortex Arrow materialization is source-native oracle evidence; Loom artifact verification/decode remains the acceptance path"
+            .to_string(),
+    );
+    Ok(evidence)
 }
 
 fn source_oracle_failed_report(

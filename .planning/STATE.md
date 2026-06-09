@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: ready
-stopped_at: Phase 31 plans 31-03 and 31-04 complete; 31-05 next
-last_updated: "2026-06-09T02:01:00Z"
-last_activity: 2026-06-09 -- Phase 31 plans 31-03 and 31-04 completed with Parquet/Lance LMA1 semantic emission
+stopped_at: Phase 31 plan 31-05 complete; 31-06 next
+last_updated: "2026-06-09T02:09:00Z"
+last_activity: 2026-06-09 -- Phase 31 plan 31-05 completed with Vortex LMA1 semantic materialization
 progress:
   total_phases: 31
   completed_phases: 29
   total_plans: 133
-  completed_plans: 129
+  completed_plans: 130
   percent: 94
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 31
-Plan: 31-05 next; 31-01 through 31-04 complete
+Plan: 31-06 next; 31-01 through 31-05 complete
 Status: Phase 31 in progress; Phase 30 dual-query remains partial/deferred and is not blocking the source-compatibility reset
-Last activity: 2026-06-09 -- Phase 31 plans 31-03 and 31-04 completed
+Last activity: 2026-06-09 -- Phase 31 plan 31-05 completed
 
 Progress: 94%
 
 ## Progress Snapshot
 
 - Completed phases: 29 / 31
-- Completed executable plans: 129 / 133
+- Completed executable plans: 130 / 133
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 31 in progress: Parquet and Lance now emit verifier-accepted `LMA1` semantic artifacts; Vortex semantic materialization is next
+- Current position: Phase 31 in progress: Parquet, Lance, and Vortex now have verifier-accepted `LMA1` semantic emission; final gate/docs are next
 - Last verified gate: `RUSTC_WRAPPER= bash scripts/mvp0-verify.sh` passed with Phase 28 wired before Phase 29 Iceberg binding
 
 **Completed phase plan counts:**
@@ -62,7 +62,7 @@ Progress: 94%
 | 28 | Full Lance + Parquet + Vortex semantic compatibility | 5/5 complete |
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
 | 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
-| 31 | Full Arrow Semantic Source Compatibility | 4/6 complete; 31-05 next |
+| 31 | Full Arrow Semantic Source Compatibility | 5/6 complete; 31-06 next |
 
 Historical per-plan timing estimates were removed because they had drifted from the frontmatter and were no longer a reliable planning signal.
 
@@ -141,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase 31]: 31-02 added an IPC-backed `LMA1` codec that verifies Arrow semantic payloads before encode and after decode; Arrow IPC is the carrier, not the trust boundary.
 - [Phase 31]: 31-03 and 31-04 changed Parquet and Lance accepted emission from narrow `LMC1(LMP1/LMT1)` raw/table artifacts to verifier-accepted `LMA1` Arrow semantic artifacts with source Arrow equality tests.
 - [Phase 31]: Current tradeoff: `LMA1` direct verifier acceptance is implemented; `LMC2` container wrapping remains a Phase 31 finalization item rather than a blocker for Parquet/Lance semantic e2e evidence.
+- [Phase 31]: 31-05 added Vortex Arrow executor materialization into verifier-accepted `LMA1` semantic artifacts; legacy Vortex `LMC1` helper remains for older narrow raw/table tests while the Phase 31 path uses `emit_source_ingress_lma1_from_vortex_buffer`.
 
 ### Pending Todos
 
