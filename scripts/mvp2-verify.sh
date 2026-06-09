@@ -31,5 +31,9 @@ info "Running Phase 42 verified/native coverage expansion gate..."
 bash scripts/verified-native-coverage-expansion-test.sh
 ok "scripts/verified-native-coverage-expansion-test.sh"
 
+info "Running Phase 43 StarRocks live runtime integration gate..."
+bash scripts/starrocks-live-runtime-test.sh
+ok "scripts/starrocks-live-runtime-test.sh"
+
 echo ""
 echo "${GRN}=== MVP2 release gate PASSED ===${RST}"

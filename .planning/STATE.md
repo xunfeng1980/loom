@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 43 43-02 complete; executing 43-03
+stopped_at: Phase 43 plans complete; blocked on live StarRocks runtime evidence
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase 43 IN PROGRESS: StarRocks Live Runtime Integration
 Plan: 0 of 0
-Status: Phase 43 43-02 complete; executing 43-03 ABI findings and gate wiring
+Status: Phase 43 plans complete; pending live StarRocks runtime evidence before completion
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 42 is complete; Phase 43 is in progress with 2/3 plans complete
+Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented but cannot close `ENGINE-01` without live StarRocks runtime rows
 
 ## Progress Snapshot
 
@@ -279,6 +279,7 @@ None yet.
 - Phase 43 planning complete: added context, discussion log, and three execution plans for runtime evidence contract, cross-engine equivalence/fail-closed gate, and ABI findings. Local workstation currently lacks `docker`, `mysql`, and `mariadb`; live runtime evidence must remain pending unless explicit StarRocks env/client inputs are provided.
 - Phase 43 43-01 complete: added typed StarRocks runtime evidence/status structs, validation that accepts only identity-bound descriptor output matching oracle/DuckDB rows or scalars, explicit missing-runtime/unsupported non-acceptance evidence, and focused runtime contract tests. No live StarRocks query claim is made by 43-01.
 - Phase 43 43-02 complete: added `scripts/starrocks-live-runtime-test.sh` and `43-STARROCKS-RUNTIME-REPORT.md`. Default local contract mode passes while explicitly reporting missing live StarRocks runtime evidence as non-accepted; strict live mode fails closed without StarRocks env/client inputs. `ENGINE-03` is complete; `ENGINE-01` remains incomplete until actual live runtime rows are collected.
+- Phase 43 43-03 complete: added `43-ABI-FINDINGS.md`, wired `scripts/starrocks-live-runtime-test.sh` into `scripts/mvp2-verify.sh`, and preserved the blocker that actual live StarRocks rows are still required for `ENGINE-01`. Phase 44 must not start until live evidence is provided.
 
 ### Quick Tasks Completed
 
