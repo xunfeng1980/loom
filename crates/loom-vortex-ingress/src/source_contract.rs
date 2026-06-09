@@ -58,19 +58,21 @@ pub fn source_facts_from_vortex_path(path: &Path) -> Result<SourceFacts, SourceI
 }
 
 /// Build a generic source report from an in-memory Vortex buffer.
+///
+/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
 pub fn source_ingress_report_from_vortex_buffer(bytes: &[u8]) -> SourceIngressReport {
-    match reader_facts_from_vortex_buffer(bytes) {
-        Ok(facts) => source_report_from_vortex_reader_facts(&facts),
-        Err(report) => source_report_from_vortex_ingress_report(report),
-    }
+    emit_source_ingress_lma1_from_vortex_buffer(bytes)
+        .map(|artifact| artifact.report)
+        .unwrap_or_else(|report| report)
 }
 
 /// Build a generic source report from a local Vortex path.
+///
+/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
 pub fn source_ingress_report_from_vortex_path(path: &Path) -> SourceIngressReport {
-    match reader_facts_from_vortex_path(path) {
-        Ok(facts) => source_report_from_vortex_reader_facts(&facts),
-        Err(report) => source_report_from_vortex_ingress_report(report),
-    }
+    emit_source_ingress_lma1_from_vortex_path(path)
+        .map(|artifact| artifact.report)
+        .unwrap_or_else(|report| report)
 }
 
 /// Emit `LMC1` from a Vortex buffer only after Loom artifact verification accepts it.
@@ -251,6 +253,21 @@ pub fn emit_source_ingress_lma1_from_vortex_buffer(
         bytes: artifact_bytes,
         report,
     })
+}
+
+/// Emit `LMA1` from a local Vortex path after Vortex materializes the source as
+/// Arrow and Loom verifies the semantic payload.
+pub fn emit_source_ingress_lma1_from_vortex_path(
+    path: &Path,
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    let bytes = std::fs::read(path).map_err(|err| {
+        source_report_from_vortex_ingress_report(VortexIngressReport::rejected(
+            VortexIngressDiagnosticCode::OpenFailed,
+            "$.path",
+            format!("failed to read Vortex path: {err}"),
+        ))
+    })?;
+    emit_source_ingress_lma1_from_vortex_buffer(&bytes)
 }
 
 /// Materialize a Vortex buffer through the Vortex Arrow executor.

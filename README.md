@@ -24,7 +24,8 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
 | DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage |
-| Vortex ingress | Narrow real `.vortex` ingress slice emits verified `LMC1` for supported non-null primitive/table cases |
+| Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMA1` semantic artifacts |
+| Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
 | Native lowering | Verifier-gated textual MLIR / decode-dialect evidence and raw primitive lowering preparation |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
@@ -132,6 +133,18 @@ cargo run --bin loom -- verify-artifact /tmp/int32-flat.loom
 Unsupported Vortex layouts are expected to report diagnostics and fail closed,
 not silently emit invalid Loom artifacts.
 
+### 6. Run the full Arrow semantic source gate
+
+```bash
+bash scripts/full-arrow-semantic-compatibility-test.sh
+```
+
+This verifies the Phase 31 semantic path: source readers materialize Arrow
+batches, Loom encodes them as `LMA1`, the artifact verifier accepts the bytes,
+and decoded `LMA1` batches compare equal to the source/oracle Arrow batches.
+This is a source compatibility claim, not a claim that DuckDB SQL or native
+lowering supports every Arrow nested or logical type.
+
 ## Repository Map
 
 | Path | Purpose |
@@ -185,6 +198,7 @@ bash scripts/artifact-verifier-test.sh
 bash scripts/complete-vortex-reader-test.sh
 bash scripts/solver-verifier-test.sh
 bash scripts/production-native-lowering-test.sh
+bash scripts/full-arrow-semantic-compatibility-test.sh
 ```
 
 The broad release-style gate is:

@@ -168,7 +168,7 @@ fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
 }
 
 #[test]
-fn parquet_classifies_supported_and_unsupported_shapes() {
+fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
     let temp = TempDir::new().expect("tempdir");
 
     let supported_cases = [
@@ -206,14 +206,14 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
         let facts = parquet_source_facts_from_path(&path).expect("supported facts");
         let coverage = facts.coverage.as_ref().expect("coverage");
         assert_eq!(coverage.support, SourceIngressStatus::Accepted);
-        assert_eq!(coverage.emission_kind, SourceEmissionKind::Lmp1);
+        assert_eq!(coverage.emission_kind, SourceEmissionKind::ArrowSemantic);
         assert_eq!(
             coverage.emission_disposition,
-            SourceEmissionDisposition::CanonicalRaw
+            SourceEmissionDisposition::SemanticArrow
         );
         assert_eq!(
             coverage.lowering_disposition,
-            SourceLoweringDisposition::ProductionLoweringSupported
+            SourceLoweringDisposition::InterpreterOnly
         );
     }
 
@@ -221,10 +221,13 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
         parquet_source_facts_from_path(&supported_table_path(&temp)).expect("table facts");
     let table_coverage = table_facts.coverage.as_ref().expect("table coverage");
     assert_eq!(table_coverage.support, SourceIngressStatus::Accepted);
-    assert_eq!(table_coverage.emission_kind, SourceEmissionKind::Lmt1);
+    assert_eq!(
+        table_coverage.emission_kind,
+        SourceEmissionKind::ArrowSemantic
+    );
     assert_eq!(
         table_coverage.emission_disposition,
-        SourceEmissionDisposition::CanonicalTable
+        SourceEmissionDisposition::SemanticArrow
     );
 
     let nested_field = Arc::new(Field::new("nested_id", DataType::Int32, false));
@@ -240,81 +243,60 @@ fn parquet_classifies_supported_and_unsupported_shapes() {
         .into_iter()
         .collect(),
     );
-    let unsupported_cases = [
-        (
-            parquet_path_for_column(
-                &temp,
-                "nullable_i32",
-                DataType::Int32,
-                true,
-                Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
-            ),
-            SourceDiagnosticCode::UnsupportedSchema,
+    let semantic_cases = [
+        parquet_path_for_column(
+            &temp,
+            "nullable_i32",
+            DataType::Int32,
+            true,
+            Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
         ),
-        (
-            parquet_path_for_column(
-                &temp,
-                "name",
-                DataType::Utf8,
-                false,
-                Arc::new(StringArray::from(vec!["a", "b", "c"])),
-            ),
-            SourceDiagnosticCode::UnsupportedConversion,
+        parquet_path_for_column(
+            &temp,
+            "name",
+            DataType::Utf8,
+            false,
+            Arc::new(StringArray::from(vec!["a", "b", "c"])),
         ),
-        (
-            parquet_path_for_column(
-                &temp,
-                "nested",
-                DataType::Struct(vec![nested_field].into()),
-                false,
-                nested_array,
-            ),
-            SourceDiagnosticCode::UnsupportedSchema,
+        parquet_path_for_column(
+            &temp,
+            "nested",
+            DataType::Struct(vec![nested_field].into()),
+            false,
+            nested_array,
         ),
-        (
-            parquet_path_for_column(
-                &temp,
-                "day",
-                DataType::Date32,
-                false,
-                Arc::new(Date32Array::from(vec![0, 1, 2])),
-            ),
-            SourceDiagnosticCode::UnsupportedConversion,
+        parquet_path_for_column(
+            &temp,
+            "day",
+            DataType::Date32,
+            false,
+            Arc::new(Date32Array::from(vec![0, 1, 2])),
         ),
-        (
-            parquet_path_for_field(
-                &temp,
-                "ext_i32",
-                extension_field,
-                Arc::new(Int32Array::from(vec![1, 2, 3])),
-            ),
-            SourceDiagnosticCode::UnsupportedSchema,
+        parquet_path_for_field(
+            &temp,
+            "ext_i32",
+            extension_field,
+            Arc::new(Int32Array::from(vec![1, 2, 3])),
         ),
     ];
 
-    for (path, expected_code) in unsupported_cases {
+    for path in semantic_cases {
         let report = source_ingress_report_from_parquet_path(&path);
-        assert_eq!(report.status, SourceIngressStatus::Unsupported);
+        assert_eq!(report.status, SourceIngressStatus::Accepted);
         assert!(report.facts.is_some());
-        assert_eq!(report.emission_kind, SourceEmissionKind::None);
-        assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+        assert_eq!(report.emission_kind, SourceEmissionKind::ArrowSemantic);
+        assert_eq!(
+            report.emission_disposition,
+            SourceEmissionDisposition::SemanticArrow
+        );
         assert_eq!(
             report.lowering_disposition,
-            SourceLoweringDisposition::FailClosedDeferred
+            SourceLoweringDisposition::InterpreterOnly
         );
-        assert_eq!(
-            report.artifact_verification,
-            SourceArtifactVerificationSummary::not_applicable()
-        );
-        assert!(report.oracle_evidence.is_none());
-        assert!(
-            report
-                .diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.code == expected_code),
-            "expected unsupported diagnostic {expected_code:?}, got {:?}",
-            report.diagnostics
-        );
+        assert!(report.artifact_verification.required);
+        assert!(report.artifact_verification.accepted);
+        assert!(report.oracle_evidence.is_some());
+        assert!(report.diagnostics.is_empty(), "{:?}", report.diagnostics);
     }
 }
 

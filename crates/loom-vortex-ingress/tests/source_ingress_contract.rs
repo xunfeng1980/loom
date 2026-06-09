@@ -244,7 +244,7 @@ fn malformed_buffer_maps_to_rejected_source_report_without_facts() {
 }
 
 #[test]
-fn unsupported_valid_source_report_keeps_facts_without_artifact_or_oracle() {
+fn materializable_vortex_source_report_is_arrow_semantic_accepted() {
     let rows = [Some("a"), Some("b"), Some("c")];
     let bytes = vortex_file_bytes(VarBinArray::from_iter(
         rows,
@@ -252,19 +252,20 @@ fn unsupported_valid_source_report_keeps_facts_without_artifact_or_oracle() {
     ));
     let report = source_ingress_report_from_vortex_buffer(&bytes);
 
-    assert_eq!(report.status, SourceIngressStatus::Unsupported);
+    assert_eq!(report.status, SourceIngressStatus::Accepted);
     assert!(report.facts.is_some());
-    assert_eq!(report.emission_kind, SourceEmissionKind::None);
-    assert_eq!(report.emission_disposition, SourceEmissionDisposition::None);
+    assert_eq!(report.emission_kind, SourceEmissionKind::ArrowSemantic);
+    assert_eq!(
+        report.emission_disposition,
+        SourceEmissionDisposition::SemanticArrow
+    );
     assert_eq!(
         report.lowering_disposition,
-        SourceLoweringDisposition::FailClosedDeferred
+        SourceLoweringDisposition::InterpreterOnly
     );
-    assert_eq!(
-        report.artifact_verification,
-        SourceArtifactVerificationSummary::not_applicable()
-    );
-    assert!(report.oracle_evidence.is_none());
+    assert!(report.artifact_verification.required);
+    assert!(report.artifact_verification.accepted);
+    assert!(report.oracle_evidence.is_some());
 }
 
 #[test]

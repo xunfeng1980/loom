@@ -89,18 +89,14 @@ pub async fn lance_source_facts_from_path(path: &Path) -> Result<SourceFacts, So
     Ok(source_facts_from_dataset(path, &dataset, &schema, row_count as u64).await)
 }
 
-/// Build a byte-free source ingress report for a local Lance dataset.
+/// Build a source ingress report for a local Lance dataset.
 ///
-/// Plan 27-03 classifies supported Lance shapes in `SourceCoverage`, but does
-/// not emit artifact bytes or construct accepted reports.
+/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
 pub async fn source_ingress_report_from_lance_path(path: &Path) -> SourceIngressReport {
-    match lance_source_facts_from_path(path).await {
-        Ok(facts) => {
-            let diagnostic = diagnostic_for_facts(&facts);
-            SourceIngressReport::unsupported(Some(facts), diagnostic)
-        }
-        Err(report) => report,
-    }
+    emit_source_ingress_lma1_from_lance_path(path)
+        .await
+        .map(|artifact| artifact.report)
+        .unwrap_or_else(|report| report)
 }
 
 /// Read a local Lance dataset through Lance's native scan path.
@@ -141,7 +137,7 @@ async fn lance_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIn
     Ok(Arc::new(Schema::from(dataset.schema())))
 }
 
-/// Emit verifier-accepted `LMC1` bytes for the supported Lance slice.
+/// Emit verifier-accepted `LMA1` bytes for a Lance source materialized as Arrow.
 pub async fn emit_source_ingress_lma1_from_lance_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {

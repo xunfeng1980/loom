@@ -72,18 +72,13 @@ pub fn parquet_source_facts_from_path(path: &Path) -> Result<SourceFacts, Source
     ))
 }
 
-/// Build a byte-free source ingress report for a local Parquet file.
+/// Build a source ingress report for a local Parquet file.
 ///
-/// Plan 27-02 classifies supported Parquet shapes in `SourceCoverage`, but does
-/// not emit artifact bytes or construct accepted reports.
+/// Accepted reports are backed by verifier-accepted `LMA1` semantic emission.
 pub fn source_ingress_report_from_parquet_path(path: &Path) -> SourceIngressReport {
-    match parquet_source_facts_from_path(path) {
-        Ok(facts) => {
-            let diagnostic = diagnostic_for_facts(&facts);
-            SourceIngressReport::unsupported(Some(facts), diagnostic)
-        }
-        Err(report) => report,
-    }
+    emit_source_ingress_lma1_from_parquet_path(path)
+        .map(|artifact| artifact.report)
+        .unwrap_or_else(|report| report)
 }
 
 /// Read a local Parquet file through the official Arrow scan path.
@@ -158,7 +153,7 @@ fn parquet_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngres
         })
 }
 
-/// Emit verifier-accepted `LMC1` bytes for the supported Parquet slice.
+/// Emit verifier-accepted `LMA1` bytes for a Parquet source materialized as Arrow.
 pub fn emit_source_ingress_lma1_from_parquet_path(
     path: &Path,
 ) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
