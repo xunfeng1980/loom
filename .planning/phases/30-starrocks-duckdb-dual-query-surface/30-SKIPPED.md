@@ -1,7 +1,7 @@
 # Phase 30: StarRocks + DuckDB Dual Query Surface - Superseded Skip Note
 
 **Date:** 2026-06-09
-**Status:** Superseded by DuckDB executable slice restart
+**Status:** Superseded by bounded Phase 30 closeout
 
 ## Historical Decision
 
@@ -22,24 +22,24 @@ full skip:
   `scripts/dual-query-surface-test.sh`.
 - The evidence uses Phase 29 accepted binding bytes and existing public
   `loom_scan(path)` SQL.
-- Full StarRocks + DuckDB dual-surface completion remains pending/deferred until
-  `30-04` and `30-05` are completed or explicitly bypassed.
+- Plans `30-04` and `30-05` later completed the negative matrix, optional
+  runtime-smoke semantics, main release-gate wiring, and final report.
+- Phase 30 is now complete as bounded DuckDB executable plus
+  StarRocks-compatible offline descriptor evidence.
 
 ## Artifacts Kept
 
 - `30-CONTEXT.md` records the bounded recommended approach for a future restart.
 - `30-RESEARCH.md` records the offline StarRocks-compatible descriptor research.
 - `30-PATTERNS.md` records existing code patterns and the recommended gate shape.
-- `30-01-SUMMARY.md`, `30-02-SUMMARY.md`, and `30-03-SUMMARY.md` record the
-  completed DuckDB executable slice.
+- `30-01-SUMMARY.md` through `30-05-SUMMARY.md` record the bounded closeout.
+- `30-DUAL-QUERY-SURFACE-REPORT.md` records the final evidence and non-goals.
 
-The completed DuckDB slice is implementation evidence only for DuckDB execution;
-it is not complete StarRocks runtime or full dual-engine evidence.
+The completed phase is still not live StarRocks runtime integration; runtime
+smoke is optional, env-gated, and supplemental.
 
 ## Current-Phase Tradeoff
 
-Phase 30 now has strong DuckDB evidence and weaker dual-surface evidence. The
-practical tradeoff is accepted for momentum: DuckDB real execution was completed
-first, while StarRocks runtime smoke, negative-scope hardening, main release-gate
-wiring, and final report closeout remain to be finished before Phase 30 can be
-cited as a complete dual-query-surface proof.
+Phase 30 now has strong DuckDB evidence and bounded StarRocks-compatible
+descriptor evidence. The practical tradeoff remains: reproducible offline
+contract over required live cluster integration.

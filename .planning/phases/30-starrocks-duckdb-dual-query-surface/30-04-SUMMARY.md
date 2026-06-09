@@ -3,7 +3,7 @@ phase: 30-starrocks-duckdb-dual-query-surface
 plan: 04
 status: complete
 completed_at: "2026-06-09T05:35:00Z"
-implementation_commit: ee943bd
+implementation_commit: bbdd2fc
 type: summary
 ---
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: review-complete
-stopped_at: Phase 32 complete
-last_updated: "2026-06-09T04:45:00Z"
-last_activity: 2026-06-09 -- Completed Phase 32 bounded MVP1 readiness closeout
+status: complete
+stopped_at: Phase 30 complete after Phase 32 review closeout
+last_updated: "2026-06-09T05:55:00Z"
+last_activity: 2026-06-09 -- Completed Phase 30 bounded dual query-surface closeout
 progress:
   total_phases: 32
-  completed_phases: 31
+  completed_phases: 32
   total_plans: 138
-  completed_plans: 136
-  percent: 99
+  completed_plans: 138
+  percent: 100
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and the current Parquet/Lance/Vortex source-backed single-column `LMA1` e2e artifacts, and get expected row/aggregate results.
-**Current focus:** Phase 32 complete; Phase 30 deferred StarRocks/full dual-surface work remains explicitly incomplete
+**Current focus:** All planned MVP1 phases are complete. Phase 30 is complete as a bounded DuckDB executable plus StarRocks-compatible offline descriptor proof; live StarRocks runtime remains optional/non-canonical.
 
 ## Current Position
 
-Phase: 32 complete
-Plan: 32-05 complete
-Status: Phase 32 closed with bounded MVP1 GO readiness; Phase 30 dual-query remains partial/deferred
-Last activity: 2026-06-09 -- Completed Phase 32 bounded MVP1 readiness closeout
+Phase: 30 complete after Phase 32 review closeout
+Plan: 30-05 complete
+Status: All roadmap phases complete; live StarRocks runtime remains a non-default optional smoke path, not canonical evidence
+Last activity: 2026-06-09 -- Completed Phase 30 bounded dual query-surface closeout
 
-Progress: 99%
+Progress: 100%
 
 ## Progress Snapshot
 
-- Completed phases: 31 / 32
-- Completed executable plans: 136 / 138
+- Completed phases: 32 / 32
+- Completed executable plans: 138 / 138
 - Current milestone stage: MVP1 / v3 distribution and verification track
-- Current position: Phase 32 complete: MVP1 architecture/code review closed with bounded release readiness and explicit non-claims/deferred work
-- Last verified gate: `bash scripts/mvp1-review-audit-test.sh` and `RUSTC_WRAPPER= bash scripts/mvp1-verify.sh` passed; `scripts/mvp1-verify.sh` wraps `scripts/mvp0-verify.sh` plus the DuckDB source e2e gate
+- Current position: All planned phases complete: Phase 30 closed after Phase 32 with bounded dual query-surface evidence and release-gate wiring
+- Last verified gate: `LOOM_ALLOW_NATIVE_TOOL_SKIP=1 bash scripts/mvp0-verify.sh` passed with Phase 30 wired after Phase 29 and before DuckDB smoke
 
 **Completed phase plan counts:**
 
@@ -61,7 +61,7 @@ Progress: 99%
 | 27 | Lance + Parquet archival readability / dataset ingress | 5/5 complete |
 | 28 | Full Lance + Parquet + Vortex semantic compatibility | 5/5 complete |
 | 29 | Iceberg Ref/Table Binding | 5/5 complete |
-| 30 | StarRocks + DuckDB Dual Query Surface | 3/5 complete; DuckDB executable slice complete, full dual-surface pending |
+| 30 | StarRocks + DuckDB Dual Query Surface | 5/5 complete; DuckDB executable plus StarRocks-compatible offline descriptor proof |
 | 31 | Full Arrow Semantic Source Compatibility | 6/6 complete |
 | 32 | MVP1 Architecture and Code Review | 5/5 complete |
 
@@ -154,6 +154,8 @@ Recent decisions affecting current work:
 - [Phase 32 P04]: Code review found no high-severity production bug in the reviewed slice; medium residual risks remain around narrow direct `LMA1` FFI/DuckDB support, hand-maintained internal DuckDB header drift, and test-assisted native facts.
 - [Phase 32 P05]: MVP1 readiness is GO only for the bounded baseline: verifier-backed source-to-Arrow semantic `LMA1` compatibility, DuckDB SQL over legacy tables and current single-column source-backed `LMA1` e2e fixtures, bounded native route/cache/fallback/fail-closed hardening, source SDK isolation, and a narrow public `loom.h`.
 - [Phase 32 P05]: MVP1 readiness is explicitly not a GO for broad production-native execution, arbitrary DuckDB `LMA1` SQL, implemented `LMC2`, or Phase 30 StarRocks/full dual-surface completion.
+- [Phase 30 P04]: Query-surface negative coverage now rejects descriptor identity/result drift, Phase 29 binding drift, sidecar-only/manifest-only/stale evidence, forged oracle evidence, and unsupported query features without accepted descriptor or binding bytes.
+- [Phase 30 P05]: Phase 30 is complete as bounded dual query-surface evidence: executable DuckDB `loom_scan(path)` rows/aggregates plus deterministic StarRocks-compatible offline descriptors over one accepted Phase 29 binding. Optional live StarRocks runtime smoke is env-gated and supplemental only.
 
 ### Pending Todos
 
@@ -236,8 +238,8 @@ None yet.
 - Phase 29 executing: 29-02 added typed local Iceberg metadata and Loom sidecar parsing into descriptive facts, byte-free unsupported source reports, rejected diagnostics for malformed/missing identity, and parser fixture coverage in the focused gate.
 - Phase 29 executing: 29-04 added the fail-closed mismatch matrix, stale source and forged decoded-row/oracle evidence fixtures, the final binding evidence report, and focused gate checks for report markers plus metadata-only trust wording.
 - Phase 29 complete: 29-05 finalized and wired `scripts/iceberg-binding-test.sh` into the main release verifier after Phase 28 semantic compatibility and before DuckDB smoke, recorded closeout evidence, and kept Iceberg binding out of public query/API/catalog/credential surfaces.
-- Phase 30 partial completion on 2026-06-09: DuckDB executable evidence over Phase 29 accepted bytes is implemented and verified through `scripts/dual-query-surface-test.sh`.
-- Phase 30 remaining work: StarRocks runtime-smoke semantics, fail-closed negative matrix expansion, main release-gate wiring, and final dual-surface report are not complete and must not be cited as completed dual-engine evidence.
+- Phase 30 complete on 2026-06-09: bounded dual query-surface evidence is implemented and verified through `scripts/dual-query-surface-test.sh` and wired into `scripts/mvp0-verify.sh` after Phase 29 and before DuckDB smoke.
+- Phase 30 caveat: StarRocks-compatible evidence is offline descriptor/query evidence by default; optional live runtime smoke is supplemental and requires explicit `STARROCKS_*` env inputs.
 - Phase 32 added: MVP1 Architecture and Code Review, focused on whole-system design/code audit and remediation planning before further feature expansion.
 - Phase 32 complete: 32-05 produced the MVP1 readiness report, finalized the review audit gate, passed `RUSTC_WRAPPER= bash scripts/mvp1-verify.sh`, and closed with a bounded GO decision while preserving Phase 30 partial/deferred status.
 
@@ -299,12 +301,12 @@ None yet.
 | v3 ingress | Lance + Parquet archival readability / dataset ingress | Complete | Phase 27 |
 | v3 compatibility | Full Lance + Parquet + Vortex semantic compatibility | Active | Phase 28 |
 | v3 table | Iceberg ref/table binding | Complete | Phase 29 |
-| v3 engine | StarRocks + DuckDB dual query surface | DuckDB executable slice complete; full dual-surface pending/deferred | Phase 30 |
+| v3 engine | StarRocks + DuckDB dual query surface | Complete as bounded DuckDB executable plus StarRocks-compatible offline descriptor proof; live runtime optional | Phase 30 |
 
 ## Session Continuity
 
-Last session: 2026-06-09T02:50:45.638Z
-Stopped at: Phase 32 context gathered
+Last session: 2026-06-09T05:55:00Z
+Stopped at: all planned phases complete
 
 Phase 17 handoff:
 

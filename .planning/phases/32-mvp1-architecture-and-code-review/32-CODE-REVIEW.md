@@ -43,7 +43,7 @@ payload kinds, while `verify_arrow_semantic_artifact` records
 | Direct `LMA1` FFI rejection for multi-column and multi-batch payloads is not separately named in tests. | Medium | Positive single-column `LMA1` FFI roundtrip exists in `crates/loom-ffi/tests/roundtrip.rs`; runtime fallback for `LMA1` exists in `duckdb_runtime.rs` tests. | Add focused negative tests that assert multi-column/multi-batch direct `loom_decode` returns `DecodeFailed` until a broader FFI surface exists. |
 | DuckDB `LMA1` source e2e covers only one non-null Int32 column named `value`. | Medium | `scripts/duckdb-source-e2e-test.sh` asserts `7,-1,42` and aggregate `3,48,-1,42` for Parquet/Lance/Vortex. | Add explicit unsupported nested/multi-column DuckDB `LMA1` tests if docs continue to emphasize full Arrow semantic source compatibility. |
 | Internal DuckDB header drift coverage is marker-based. | Medium | Rust tests verify public header leakage and runtime FFI behavior; Phase 32 audit script checks internal markers. | Generate internal header or add compile-time signature checks before changing `loom_duckdb_internal.h`. |
-| Phase 30 StarRocks/full dual-surface negative matrix remains outside MVP1 gates. | High, but deferred by roadmap | ROADMAP/STATE and claim ledger mark it partial/deferred. | Keep out of readiness claims until Phase 30 resumes or a replacement phase explicitly closes it. |
+| Live StarRocks runtime remains outside MVP1 gates. | High, but deferred by roadmap | Phase 30 now covers DuckDB executable evidence plus StarRocks-compatible offline descriptors; runtime smoke is optional and env-gated. | Keep live runtime integration out of readiness claims unless supplemental smoke is run and reported. |
 | Native `LMA1` semantics have no positive test because code intentionally rejects the path. | High, but non-goal | `arrow_semantic_lma1_uses_interpreter_fallback` verifies fallback and empty native buffers. | Treat true native source semantic execution as future feature work, not Phase 32 remediation. |
 
 ## Ownership And Error Handling Review
@@ -89,4 +89,3 @@ cargo fmt --check
 bash scripts/mvp1-review-audit-test.sh
 git diff --check
 ```
-

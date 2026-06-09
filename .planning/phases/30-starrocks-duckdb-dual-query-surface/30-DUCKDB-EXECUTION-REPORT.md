@@ -31,7 +31,8 @@ executing the SQL, so this is not descriptor-only evidence.
 
 ## Current-Phase Tradeoff
 
-DuckDB execution is fully proven for the bounded query matrix. Full Phase 30 is
-not complete: StarRocks runtime-smoke semantics, expanded fail-closed negative
-coverage, main release-gate wiring, and the final dual-query-surface report
-remain pending/deferred.
+DuckDB execution is fully proven for the bounded query matrix. Plans 30-04 and
+30-05 later completed the bounded Phase 30 closeout with fail-closed negative
+coverage, optional StarRocks runtime-smoke semantics, main release-gate wiring,
+and `30-DUAL-QUERY-SURFACE-REPORT.md`. Live StarRocks runtime integration
+remains optional and supplemental rather than canonical evidence.

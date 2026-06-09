@@ -26,8 +26,9 @@ hardening, dependency isolation, and public/internal ABI separation.
 
 The readiness report explicitly keeps these as non-claims or deferred work:
 native `LMA1` Arrow semantic execution, arbitrary DuckDB nested/logical or
-multi-column `LMA1` SQL, implemented `LMC2`, and Phase 30 StarRocks/full
-dual-surface completion.
+multi-column `LMA1` SQL, implemented `LMC2`, and live StarRocks runtime
+integration. Phase 30 was later resumed and completed only as bounded DuckDB
+executable plus StarRocks-compatible offline descriptor evidence.
 
 ## Verification
 
@@ -45,5 +46,6 @@ e2e gate.
 
 ## Handoff
 
-Phase 32 is complete. Phase 30 remains partial/deferred and must not be cited as
-completed dual-engine evidence without a resumed or replacement phase.
+Phase 32 is complete. Phase 30 was later resumed and may be cited as bounded
+dual query-surface evidence, but not as default live StarRocks runtime
+integration.

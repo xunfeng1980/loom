@@ -126,7 +126,8 @@ ok "scripts/native-hardening-test.sh"
 # Phase 26 source ingress contract -> Phase 27 Lance/Parquet ingress ->
 # Phase 28 Lance/Parquet/Vortex semantic compatibility ->
 # Phase 31 full Arrow semantic source compatibility ->
-# Phase 29 Iceberg binding -> DuckDB SQL smoke.
+# Phase 29 Iceberg binding -> Phase 30 dual query surface ->
+# DuckDB SQL smoke.
 info "Running Phase 26 source ingress contract gate..."
 bash scripts/source-ingress-contract-test.sh
 ok "scripts/source-ingress-contract-test.sh"
@@ -146,6 +147,10 @@ ok "scripts/full-arrow-semantic-compatibility-test.sh"
 info "Running Phase 29 Iceberg binding gate..."
 bash scripts/iceberg-binding-test.sh
 ok "scripts/iceberg-binding-test.sh"
+
+info "Running Phase 30 dual query surface gate..."
+bash scripts/dual-query-surface-test.sh
+ok "scripts/dual-query-surface-test.sh"
 
 info "Running DuckDB SQL smoke test..."
 bash scripts/duckdb-smoke-test.sh

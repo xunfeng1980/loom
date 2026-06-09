@@ -49,6 +49,7 @@ check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-04-PLAN.m
 check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-01-SUMMARY.md"
 check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-02-SUMMARY.md"
 check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-03-SUMMARY.md"
+check_file ".planning/phases/30-starrocks-duckdb-dual-query-surface/30-04-SUMMARY.md"
 ok "Phase 30 artifacts are present"
 
 info "Running adapter-local Rust tests..."
