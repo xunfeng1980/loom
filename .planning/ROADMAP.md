@@ -27,7 +27,9 @@ now closes a bounded Lance, Parquet, and Vortex semantic compatibility matrix be
 source-family claims. Phase 29 binds Loom artifacts to local Iceberg table/ref metadata, and Phase 30 is the partial StarRocks + DuckDB
 dual-query surface, with DuckDB executable evidence complete and StarRocks/full dual-surface closeout deferred. Phase 31 completed the source
 compatibility reset around full Arrow semantic artifacts (`LMA1`, with `LMC2` still documented as the future wrapper) so arbitrary Lance/Parquet schemas and materialized Vortex dtypes
-can be accepted by verifier-backed Arrow schema/value/null roundtrip evidence rather than narrow canonical raw layouts.
+can be accepted by verifier-backed Arrow schema/value/null roundtrip evidence rather than narrow canonical raw layouts. Phase 32 pauses feature expansion for an end-to-end
+architecture and code review across the completed MVP1 path, with explicit attention to true execution evidence, overclaim boundaries, ABI/FFI safety, dependency isolation,
+release-gate fidelity, and cleanup recommendations.
 
 ## Phases
 
@@ -69,6 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 29: Iceberg Ref/Table Binding** - Bind verifier-backed Loom artifacts to local Iceberg table/reference metadata with schema/snapshot identity, sidecar/reference evidence, and fail-closed mismatch handling before query-surface work (completed 2026-06-09)
 - [ ] **Phase 30: StarRocks + DuckDB Dual Query Surface** - In progress; DuckDB executable evidence slice is complete through real `loom_scan(path)` SQL over Phase 29 accepted bytes, while StarRocks/full dual-surface closeout remains deferred
 - [x] **Phase 31: Full Arrow Semantic Source Compatibility** - Replace the bounded source-ingress raw/table slice with verifier-backed Arrow semantic artifacts for arbitrary Lance/Parquet schemas and materialized Vortex dtypes (completed 2026-06-09)
+- [ ] **Phase 32: MVP1 Architecture and Code Review** - Audit the full MVP1 design and implementation for architectural consistency, true execution evidence, ABI/FFI safety, release-gate fidelity, dependency boundaries, code quality, and overclaim cleanup before further feature expansion
 
 ## Phase Details
 
@@ -807,6 +810,7 @@ Plans:
 **Plans:** 5/5 plans complete
 
 Plans:
+
 - [x] 28-01-PLAN.md - Semantic compatibility matrix contract and row validation (PHASE-28)
 - [x] 28-02-PLAN.md - Executable matrix drift/no-overclaim gate seed (PHASE-28)
 - [x] 28-03-PLAN.md - Nullable primitive semantic compatibility closure or explicit deferral (PHASE-28)
@@ -851,6 +855,7 @@ Plans:
 **Plans:** 3/5 plans complete for the DuckDB executable slice; 2/5 remain pending/deferred.
 
 Plans:
+
 - [x] 30-01-PLAN.md - Adapter-local dual query-surface crate and boundary contract (PHASE-30)
 - [x] 30-02-PLAN.md - Accepted binding query matrix and StarRocks-compatible descriptor validation (PHASE-30)
 - [x] 30-03-PLAN.md - Executable DuckDB `loom_scan(path)` evidence and focused gate seed (PHASE-30)
@@ -858,6 +863,7 @@ Plans:
 - [ ] 30-05-PLAN.md - Focused gate wiring, final report, release evidence, and milestone handoff (PHASE-30; pending/deferred)
 
 Current tradeoff:
+
 - DuckDB real execution is now strong evidence for the shared Phase 29 accepted artifact and existing public `loom_scan(path)` surface.
 - Full dual-engine evidence is still incomplete until the StarRocks-compatible negative matrix, optional runtime-smoke semantics, release-gate wiring, and final report are finished.
 - Phase 30 must not cite the StarRocks runtime path as complete until the remaining plans complete or a new explicit bypass is recorded.
@@ -872,6 +878,7 @@ Current tradeoff:
 **Plans:** 6/6 plans complete.
 
 Plans:
+
 - [x] 31-01-PLAN.md - Contract reset, abandoned `NullableRaw` WIP cleanup, and Arrow semantic module scaffolding (PHASE-31)
 - [x] 31-02-PLAN.md - `LMA1` Arrow semantic payload model, codec, verifier, and core roundtrip matrix (PHASE-31)
 - [x] 31-03-PLAN.md - Parquet arbitrary Arrow schema semantic emission and equality tests (PHASE-31)
@@ -879,10 +886,23 @@ Plans:
 - [x] 31-05-PLAN.md - Vortex arbitrary DType semantic materialization and Arrow equality tests (PHASE-31)
 - [x] 31-06-PLAN.md - Full compatibility gate, final report, docs, and no-overclaim release wiring (PHASE-31)
 
+### Phase 32: MVP1 Architecture and Code Review
+
+**Status:** Not planned. This phase is intentionally review-first and should not add new source formats, query surfaces, native features, or artifact formats unless required to fix a review finding.
+**Depends on:** Phase 31. Phase 30's StarRocks/full dual-surface work remains partial/deferred and should be reviewed as such rather than silently marked complete.
+**Goal:** Produce an end-to-end design and code review of the MVP1 implementation, covering artifact contracts, source-ingress semantics, DuckDB execution evidence, native/runtime claims, ABI/FFI boundaries, dependency isolation, release gates, documentation truthfulness, and concrete remediation items.
+**Requirements:** PHASE-32
+**Ordering decision:** Pause feature expansion after the MVP1 source compatibility and DuckDB source e2e gate so the project can separate proven value from scaffolding, fallback-only paths, and deferred claims. This phase should read the code and executable gates directly, classify findings by severity, update design/code review reports, and propose or apply narrow fixes only when a defect is unambiguous. It must not resume StarRocks integration, broaden DuckDB SQL support, redesign `LMA1`/`LMC2`, or expand native MLIR execution scope.
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 32 to break down)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -917,3 +937,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 29. Iceberg Ref/Table Binding | 5/5 | Complete    | 2026-06-09 |
 | 30. StarRocks + DuckDB Dual Query Surface | 3/5 | In Progress | - |
 | 31. Full Arrow Semantic Source Compatibility | 6/6 | Complete | 2026-06-09 |
+| 32. MVP1 Architecture and Code Review | 0/0 | Not Planned | - |
