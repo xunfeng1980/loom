@@ -380,6 +380,25 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
         );
     }
 
+    if let Err(diagnostic) = validate_arrow_semantic_jit_metadata(&support, &jit_output) {
+        let status = fallback_or_fail_closed(policy);
+        return ArrowSemanticCodegenProductionRouteReport {
+            status,
+            support,
+            jit_output: Some(jit_output),
+            execution: None,
+            runtime_decision: None,
+            replay_evidence: None,
+            cacheable: false,
+            resource_evidence: arrow_semantic_resource_evidence(
+                &["support-extracted", "jit-executed"],
+                None,
+                None,
+            ),
+            diagnostics: vec![diagnostic],
+        };
+    }
+
     let execution = validate_native_arrow_semantic_codegen_output(
         bytes,
         &support,
@@ -389,10 +408,11 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
     let runtime_decision =
         decide_validated_native_arrow_semantic_codegen_runtime(&execution, policy);
 
-    let replay_evidence = native_arrow_semantic_codegen_replay_evidence(
+    let replay_result = native_arrow_semantic_codegen_replay_evidence(
         bytes, &support, &execution, projection, predicate, split, policy,
-    )
-    .ok();
+    );
+    let replay_diagnostic = replay_result.as_ref().err().cloned();
+    let replay_evidence = replay_result.ok();
 
     let cacheable = replay_evidence.is_some()
         && runtime_decision.decision == RuntimeExecutionDecision::NativeCandidate;
@@ -411,7 +431,17 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
                 diagnostic.message.clone(),
             )
         })
-        .collect();
+        .collect::<Vec<_>>();
+    let mut diagnostics = diagnostics;
+    if execution.diagnostics().is_empty() {
+        if let Some(diagnostic) = replay_diagnostic {
+            diagnostics.push(NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::InvalidBackendArtifact,
+                diagnostic.path,
+                diagnostic.message,
+            ));
+        }
+    }
     let resource_evidence = arrow_semantic_resource_evidence(
         &["support-extracted", "jit-executed", "validated"],
         None,
@@ -429,6 +459,58 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
         resource_evidence,
         diagnostics,
     }
+}
+
+fn validate_arrow_semantic_jit_metadata(
+    support: &NativeArrowSemanticCodegenSupportReport,
+    jit_output: &ArrowSemanticCodegenJitOutput,
+) -> Result<(), NativeBackendDiagnostic> {
+    if jit_output.entry_symbol != ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::JitSymbolMissing,
+            "$.jit.arrow_semantic.entry_symbol",
+            format!(
+                "production Arrow semantic JIT returned entry symbol '{}', expected '{}'",
+                jit_output.entry_symbol, ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL
+            ),
+        ));
+    }
+
+    if jit_output.row_count != support.row_count {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.arrow_semantic.row_count",
+            format!(
+                "production Arrow semantic JIT returned row count {}, expected {}",
+                jit_output.row_count, support.row_count
+            ),
+        ));
+    }
+
+    if jit_output.column_count != support.column_count {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::InvalidBackendArtifact,
+            "$.jit.arrow_semantic.column_count",
+            format!(
+                "production Arrow semantic JIT returned column count {}, expected {}",
+                jit_output.column_count, support.column_count
+            ),
+        ));
+    }
+
+    if jit_output.columns.len() != support.column_count {
+        return Err(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::NativeOutputMismatch,
+            "$.jit.arrow_semantic.columns",
+            format!(
+                "production Arrow semantic JIT returned {} output column(s), expected {}",
+                jit_output.columns.len(),
+                support.column_count
+            ),
+        ));
+    }
+
+    Ok(())
 }
 
 fn cancelled_arrow_semantic_codegen_route(

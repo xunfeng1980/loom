@@ -469,7 +469,7 @@ pub fn phase42_vortex_verified_native_coverage_report() -> VortexSemanticCompati
                 "vortex-arrow-oracle-batches",
                 "artifact-verifier-accepted",
                 "verified-lineage-record",
-                "native-execution-engine-output",
+                "native-arrow-semantic-codegen-output",
                 "native-model-validation",
             ],
         ),
@@ -657,7 +657,7 @@ pub fn validate_semantic_compatibility_row(row: &VortexSemanticCompatibilityRow)
         && !row
             .evidence_notes
             .iter()
-            .any(|note| note.contains("native-execution-engine-output"))
+            .any(|note| note.contains("native-arrow-semantic-codegen-output"))
     {
         diagnostics.push(format!("{}:native-evidence-missing", row.shape_id));
     }

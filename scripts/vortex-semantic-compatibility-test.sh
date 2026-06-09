@@ -81,7 +81,7 @@ cargo test -p loom-vortex-ingress --test bitpack_for_coverage
 ok "real shape coverage tests"
 
 info "Checking native ExecutionEngine evidence boundary..."
-rg -q "native-execution-engine-output" crates/loom-ffi scripts \
+rg -q "native-arrow-semantic-codegen-output" crates/loom-ffi scripts \
     || fail "missing native ExecutionEngine output evidence marker"
 if rg -n "native-raw-copy-output" crates/loom-ffi crates/loom-native-melior scripts \
     -g '!vortex-semantic-compatibility-test.sh' >/dev/null; then
@@ -107,7 +107,7 @@ if [ -f "${REPORT}" ]; then
     if rg -n "StarRocks evidence complete|dual-query evidence complete" "${REPORT}" >/dev/null; then
         fail "report overclaims deferred Phase 30 evidence"
     fi
-    rg -q "native-execution-engine-output" "${REPORT}" \
+    rg -q "native-arrow-semantic-codegen-output" "${REPORT}" \
         || fail "report missing native ExecutionEngine evidence marker"
     ok "Phase 28 report is bounded"
 else

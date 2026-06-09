@@ -12,7 +12,7 @@ decoder. Its job is to classify current evidence honestly:
   not preserve original structured encoding semantics;
 - unsupported and rejected rows produce no accepted bytes;
 - native disposition is evidence-bearing only when production lowering and
-  `native-execution-engine-output` evidence exist.
+  `native-arrow-semantic-codegen-output` evidence exist.
 
 ## Accepted Matrix
 
@@ -65,7 +65,7 @@ marked as full structured semantics without shape-oracle evidence.
 Native support is not inferred from route labels, fallback, skipped toolchains,
 or raw-copy placeholders. A row may use native language only when the evidence
 chain reaches the MLIR ExecutionEngine path and includes
-`native-execution-engine-output`.
+`native-arrow-semantic-codegen-output`.
 
 Rows marked `ExecutionEngineValidated` without that marker fail with
 `native-evidence-missing`. Rows outside the current production native slice

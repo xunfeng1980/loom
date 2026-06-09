@@ -28,6 +28,14 @@ async fn run() -> Result<(), String> {
     let source_path = out_dir.join("source.lance");
     let loom_path = out_dir.join("lance.loom");
     let duckdb_bridge_path = out_dir.join("lance-duckdb-bridge-lma1.loom");
+    if source_path.exists() {
+        if source_path.is_dir() {
+            fs::remove_dir_all(&source_path)
+        } else {
+            fs::remove_file(&source_path)
+        }
+        .map_err(|err| format!("remove existing {}: {err}", source_path.display()))?;
+    }
     let schema = Arc::new(Schema::new(vec![Field::new(
         "value",
         DataType::Int32,

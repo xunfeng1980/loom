@@ -12,6 +12,8 @@ use loom_core::native_arrow_semantic::prepare_native_arrow_semantic_codegen_supp
 use loom_core::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeFallbackPolicy, RuntimeSafetyPolicy, SplitDescriptor,
 };
+#[cfg(feature = "melior")]
+use loom_core::runtime_abi::{PredicateOperator, ProjectionColumn};
 use loom_native_melior::backend::{NativeBackendCancellation, NativeBackendDiagnosticCode};
 #[cfg(feature = "melior")]
 use loom_native_melior::jit::{
@@ -98,6 +100,133 @@ fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() 
     assert!(fallback.replay_evidence.is_none());
 }
 
+#[cfg(feature = "melior")]
+#[test]
+fn non_full_query_shapes_fail_closed_or_fallback_without_cache_admission() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+
+    for (name, projection, predicate, split, expected_path) in [
+        (
+            "projection",
+            ProjectionSet::Columns(vec![ProjectionColumn {
+                source_index: 1,
+                output_index: 0,
+            }]),
+            PredicateEnvelope::None,
+            SplitDescriptor::FullScan { row_count: 9 },
+            "$.runtime.projection",
+        ),
+        (
+            "predicate",
+            ProjectionSet::All,
+            PredicateEnvelope::PrimitiveComparison {
+                column_index: 1,
+                op: PredicateOperator::GtEq,
+                literal_i64: 0,
+            },
+            SplitDescriptor::FullScan { row_count: 9 },
+            "$.runtime.predicate",
+        ),
+        (
+            "range split",
+            ProjectionSet::All,
+            PredicateEnvelope::None,
+            SplitDescriptor::RowRange { start: 0, end: 4 },
+            "$.runtime.split",
+        ),
+        (
+            "wrong full-scan row count",
+            ProjectionSet::All,
+            PredicateEnvelope::None,
+            SplitDescriptor::FullScan { row_count: 4 },
+            "$.runtime.split.row_count",
+        ),
+    ] {
+        let strict = execute_arrow_semantic_codegen_production_route(
+            &bytes,
+            &NativeBackendCancellation::default(),
+            projection.clone(),
+            predicate.clone(),
+            split.clone(),
+            RuntimeSafetyPolicy::default(),
+        );
+        assert_eq!(
+            strict.status,
+            ArrowSemanticCodegenRouteStatus::FailClosed,
+            "{name}"
+        );
+        assert!(!strict.cacheable, "{name}");
+        assert!(strict.replay_evidence.is_none(), "{name}");
+        assert!(
+            strict.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == NativeBackendDiagnosticCode::InvalidBackendArtifact
+                    && diagnostic.path == expected_path
+            }),
+            "{name}: {:?}",
+            strict.diagnostics
+        );
+
+        let mut fallback_policy = RuntimeSafetyPolicy::default();
+        fallback_policy.fallback = RuntimeFallbackPolicy::AllowInterpreter;
+        let fallback = execute_arrow_semantic_codegen_production_route(
+            &bytes,
+            &NativeBackendCancellation::default(),
+            projection,
+            predicate,
+            split,
+            fallback_policy,
+        );
+        assert_eq!(
+            fallback.status,
+            ArrowSemanticCodegenRouteStatus::InterpreterFallback,
+            "{name}"
+        );
+        assert!(!fallback.cacheable, "{name}");
+        assert!(fallback.replay_evidence.is_none(), "{name}");
+    }
+}
+
+#[cfg(feature = "melior")]
+#[test]
+fn route_jit_metadata_drift_fails_closed_before_cache_admission() {
+    let batch = full_primitive_nullable_batch();
+    let bytes = encode_lmc2(&batch);
+    let support = prepare_native_arrow_semantic_codegen_support(&bytes);
+    let jit = execute_arrow_semantic_codegen_jit(&support, &NativeBackendCancellation::default())
+        .expect("real JIT output");
+
+    let mut wrong_symbol = jit.clone();
+    wrong_symbol.entry_symbol = "wrong_entry".to_string();
+    assert_metadata_drift_fails_closed(
+        &bytes,
+        support.clone(),
+        wrong_symbol,
+        NativeBackendDiagnosticCode::JitSymbolMissing,
+        "$.jit.arrow_semantic.entry_symbol",
+    );
+
+    let mut wrong_rows = jit.clone();
+    wrong_rows.row_count += 1;
+    assert_metadata_drift_fails_closed(
+        &bytes,
+        support.clone(),
+        wrong_rows,
+        NativeBackendDiagnosticCode::InvalidBackendArtifact,
+        "$.jit.arrow_semantic.row_count",
+    );
+
+    let mut wrong_columns = jit;
+    wrong_columns.column_count += 1;
+    assert_metadata_drift_fails_closed(
+        &bytes,
+        support,
+        wrong_columns,
+        NativeBackendDiagnosticCode::InvalidBackendArtifact,
+        "$.jit.arrow_semantic.column_count",
+    );
+}
+
 #[test]
 fn unsupported_route_fails_closed_or_falls_back_without_jit_or_cache() {
     let bytes = encode_lmc2(&utf8_batch());
@@ -154,6 +283,33 @@ fn route_cancellation_is_distinct_and_non_cacheable() {
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.code == NativeBackendDiagnosticCode::Cancelled));
+}
+
+#[cfg(feature = "melior")]
+fn assert_metadata_drift_fails_closed(
+    bytes: &[u8],
+    support: loom_core::native_arrow_semantic::NativeArrowSemanticCodegenSupportReport,
+    jit: loom_native_melior::jit::ArrowSemanticCodegenJitOutput,
+    expected_code: NativeBackendDiagnosticCode,
+    expected_path: &str,
+) {
+    let route = validate_arrow_semantic_codegen_production_route_output(
+        bytes,
+        support,
+        jit,
+        ProjectionSet::All,
+        PredicateEnvelope::None,
+        SplitDescriptor::FullScan { row_count: 9 },
+        RuntimeSafetyPolicy::default(),
+    );
+    assert_eq!(route.status, ArrowSemanticCodegenRouteStatus::FailClosed);
+    assert!(!route.cacheable);
+    assert!(route.execution.is_none());
+    assert!(route.runtime_decision.is_none());
+    assert!(route.replay_evidence.is_none());
+    let diagnostic = route.diagnostics.first().expect("diagnostic");
+    assert_eq!(diagnostic.code, expected_code);
+    assert_eq!(diagnostic.path, expected_path);
 }
 
 #[cfg(not(feature = "melior"))]

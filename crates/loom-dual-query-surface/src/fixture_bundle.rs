@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrow_schema::DataType;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
@@ -18,6 +19,7 @@ pub const SCHEMA_ID: i32 = 7;
 pub const SNAPSHOT_ID: i64 = 314159;
 pub const ROW_VALUES: [i32; 3] = [7, -1, 42];
 const VALUES_SHA256: &str = "82b7236a02334902a5e27c157bcc767f1451246e11959dc13f5c56e028da8d58";
+static FIXTURE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug)]
 pub struct AcceptedFixtureBundle {
@@ -32,9 +34,11 @@ pub struct AcceptedFixtureBundle {
 }
 
 pub fn accepted_fixture_bundle() -> Result<AcceptedFixtureBundle, IcebergBindingReport> {
+    let counter = FIXTURE_COUNTER.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "loom-dual-query-surface-{}-{}",
+        "loom-dual-query-surface-{}-{}-{}",
         std::process::id(),
+        counter,
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|duration| duration.as_nanos())

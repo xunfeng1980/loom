@@ -44,7 +44,7 @@ fn native_vortex_row_requires_execution_engine_and_lineage_evidence() {
     assert!(primitive
         .evidence_notes
         .iter()
-        .any(|note| note.contains("native-execution-engine-output")));
+        .any(|note| note.contains("native-arrow-semantic-codegen-output")));
     assert!(primitive
         .evidence_notes
         .iter()

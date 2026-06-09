@@ -321,9 +321,8 @@ static std::shared_ptr<LoomDuckDbPlanHolder> CreateRuntimePlan(const vector<uint
                                                               bool allow_interpreter_fallback) {
     LoomDuckDbPlan *plan = nullptr;
     const auto *payload_ptr = payload.empty() ? nullptr : payload.data();
-    const bool use_test_native_facts = TestEnvEnabled("LOOM_DUCKDB_TEST_USE_NATIVE_FACTS", false);
     RequireDuckDbRuntimeOk(
-        loom_duckdb_plan_create(payload_ptr, payload.size(), allow_interpreter_fallback, use_test_native_facts, &plan),
+        loom_duckdb_plan_create(payload_ptr, payload.size(), allow_interpreter_fallback, &plan),
         "loom_duckdb_plan_create");
     return std::make_shared<LoomDuckDbPlanHolder>(plan);
 }
@@ -344,14 +343,12 @@ static std::shared_ptr<LoomDuckDbPlanHolder> CreateProjectedRuntimePlan(const ve
     LoomDuckDbPlan *plan = nullptr;
     const auto *payload_ptr = payload.empty() ? nullptr : payload.data();
     const auto *projection_ptr = projection.empty() ? nullptr : projection.data();
-    const bool use_test_native_facts = TestEnvEnabled("LOOM_DUCKDB_TEST_USE_NATIVE_FACTS", false);
     RequireDuckDbRuntimeOk(
         loom_duckdb_plan_create_projected(payload_ptr,
                                           payload.size(),
                                           projection_ptr,
                                           projection.size(),
                                           allow_interpreter_fallback,
-                                          use_test_native_facts,
                                           &plan),
         "loom_duckdb_plan_create_projected");
     return std::make_shared<LoomDuckDbPlanHolder>(plan);
@@ -975,11 +972,7 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
                                                  state->route_diagnostics).c_str());
     }
 
-    if (bind_data.arrow_semantic && state->route_decision == "native-candidate") {
-        state->route_decision = "interpreter-fallback";
-    }
-
-    if (!bind_data.arrow_semantic && state->route_decision == "native-candidate" && state->output_column_count > 0) {
+    if (state->route_decision == "native-candidate" && state->output_column_count > 0) {
         const bool cancelled = TestEnvEnabled("LOOM_DUCKDB_TEST_CANCEL_PREPARE", false);
         auto prepared = CreatePreparedRoute(*runtime_plan.runtime_plan, cancelled);
         auto prepared_route = ReadPreparedRoute(prepared);
@@ -1160,6 +1153,8 @@ static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
     }
 }
 
+static bool NativeValueIsValid(const LoomDuckDbNativeBuffer &buffer, idx_t i, idx_t count);
+
 template <class T>
 static void FillFixedWidthNativeBytes(const LoomDuckDbNativeBuffer &buffer,
                                       Vector &vec,
@@ -1177,15 +1172,56 @@ static void FillFixedWidthNativeBytes(const LoomDuckDbNativeBuffer &buffer,
     }
 
     auto *out_data = FlatVector::GetData<T>(vec);
+    auto &validity = FlatVector::Validity(vec);
     for (idx_t i = 0; i < count; i++) {
+        if (!NativeValueIsValid(buffer, i, count)) {
+            validity.SetInvalid(i);
+            continue;
+        }
         T value;
         std::memcpy(&value, buffer.value_ptr + (i * sizeof(T)), sizeof(T));
         out_data[i] = value;
     }
 }
 
+static bool NativeValueIsValid(const LoomDuckDbNativeBuffer &buffer, idx_t i, idx_t count) {
+    if (buffer.validity_ptr == nullptr || buffer.validity_len == 0) {
+        return true;
+    }
+    const auto expected_len = (count + 7) / 8;
+    if (buffer.validity_len != expected_len) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers.validity message=native validity buffer has %llu bytes, expected exactly %llu",
+                          static_cast<unsigned long long>(buffer.validity_len),
+                          static_cast<unsigned long long>(expected_len));
+    }
+    return ((buffer.validity_ptr[i / 8] >> (i % 8)) & 1u) != 0u;
+}
+
+static void FillBooleanNativeBitmap(const LoomDuckDbNativeBuffer &buffer, Vector &vec, idx_t count) {
+    const auto expected_len = (count + 7) / 8;
+    if (buffer.value_ptr == nullptr) {
+        throw IOException("loom_scan: native Boolean values buffer is null");
+    }
+    if (buffer.value_len != expected_len) {
+        throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native Boolean buffer has %llu bytes, expected exactly %llu",
+                          static_cast<unsigned long long>(buffer.value_len),
+                          static_cast<unsigned long long>(expected_len));
+    }
+    auto *out_data = FlatVector::GetData<bool>(vec);
+    auto &validity = FlatVector::Validity(vec);
+    for (idx_t i = 0; i < count; i++) {
+        if (!NativeValueIsValid(buffer, i, count)) {
+            validity.SetInvalid(i);
+            continue;
+        }
+        out_data[i] = ((buffer.value_ptr[i / 8] >> (i % 8)) & 1u) != 0u;
+    }
+}
+
 static const char *NativeArrowTypeForKind(LoomValueKind kind) {
     switch (kind) {
+    case LoomValueKind::BOOL:
+        return "Boolean";
     case LoomValueKind::I32:
         return "Int32";
     case LoomValueKind::I64:
@@ -1194,7 +1230,6 @@ static const char *NativeArrowTypeForKind(LoomValueKind kind) {
         return "Float32";
     case LoomValueKind::F64:
         return "Float64";
-    case LoomValueKind::BOOL:
     case LoomValueKind::UTF8:
         throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
     }
@@ -1203,6 +1238,8 @@ static const char *NativeArrowTypeForKind(LoomValueKind kind) {
 
 static LogicalTypeId NativeDuckDbTypeForKind(LoomValueKind kind) {
     switch (kind) {
+    case LoomValueKind::BOOL:
+        return LogicalTypeId::BOOLEAN;
     case LoomValueKind::I32:
         return LogicalTypeId::INTEGER;
     case LoomValueKind::I64:
@@ -1211,22 +1248,6 @@ static LogicalTypeId NativeDuckDbTypeForKind(LoomValueKind kind) {
         return LogicalTypeId::FLOAT;
     case LoomValueKind::F64:
         return LogicalTypeId::DOUBLE;
-    case LoomValueKind::BOOL:
-    case LoomValueKind::UTF8:
-        throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
-    }
-    throw InternalException("unknown LoomValueKind");
-}
-
-static idx_t NativeTypeWidth(LoomValueKind kind) {
-    switch (kind) {
-    case LoomValueKind::I32:
-    case LoomValueKind::F32:
-        return 4;
-    case LoomValueKind::I64:
-    case LoomValueKind::F64:
-        return 8;
-    case LoomValueKind::BOOL:
     case LoomValueKind::UTF8:
         throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
     }
@@ -1240,14 +1261,7 @@ static idx_t NativeRowCount(const LoomScanState &state) {
     if (state.native_buffers.empty()) {
         return 0;
     }
-    if (state.column_kinds.empty()) {
-        return 0;
-    }
-    const auto width = NativeTypeWidth(state.column_kinds[0]);
-    if (width == 0) {
-        return 0;
-    }
-    return static_cast<idx_t>(NativeBufferForOutput(state, 0).value_len / width);
+    return static_cast<idx_t>(NativeBufferForOutput(state, 0).row_count);
 }
 
 static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &state,
@@ -1273,6 +1287,9 @@ static void FillNativeBufferIntoVector(const LoomDuckDbNativeBuffer &buffer,
     }
 
     switch (kind) {
+    case LoomValueKind::BOOL:
+        FillBooleanNativeBitmap(buffer, vec, count);
+        break;
     case LoomValueKind::I32:
         FillFixedWidthNativeBytes<int32_t>(buffer, vec, count, "Int32");
         break;
@@ -1285,7 +1302,6 @@ static void FillNativeBufferIntoVector(const LoomDuckDbNativeBuffer &buffer,
     case LoomValueKind::F64:
         FillFixedWidthNativeBytes<double>(buffer, vec, count, "Float64");
         break;
-    case LoomValueKind::BOOL:
     case LoomValueKind::UTF8:
         throw IOException("loom_scan[D-12/unsupported-native-output]: diagnostic code=unsupported-native-output path=$.native.buffers message=native route returned unsupported DuckDB output type");
     }

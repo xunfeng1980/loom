@@ -19,7 +19,7 @@ fi
 info() { echo "${YLW}[mvp2-verify]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 
-echo "=== Loom MVP2 release gate ==="
+echo "=== Loom MVP2 local coverage gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
@@ -31,7 +31,7 @@ info "Running Phase 42 verified/native coverage expansion gate..."
 bash scripts/verified-native-coverage-expansion-test.sh
 ok "scripts/verified-native-coverage-expansion-test.sh"
 
-info "Running Phase 43 StarRocks live runtime integration gate..."
+info "Running Phase 43 StarRocks local/strict runtime integration gate..."
 bash scripts/starrocks-live-runtime-test.sh
 ok "scripts/starrocks-live-runtime-test.sh"
 
@@ -44,4 +44,5 @@ bash scripts/production-native-codegen-stabilization-test.sh
 ok "scripts/production-native-codegen-stabilization-test.sh"
 
 echo ""
-echo "${GRN}=== MVP2 release gate PASSED ===${RST}"
+echo "${GRN}=== MVP2 local coverage gate PASSED ===${RST}"
+echo "Note: live StarRocks runtime evidence is required only when LOOM_REQUIRE_STARROCKS_LIVE=1 and remains a pre-GA blocker otherwise."

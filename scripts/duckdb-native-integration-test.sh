@@ -10,6 +10,7 @@ cd "${REPO_ROOT}"
 EXT_PATH="${REPO_ROOT}/duckdb-ext/build/loom.duckdb_extension"
 CLI_CACHE_DIR="${REPO_ROOT}/duckdb-ext/vendor/duckdb-cli"
 PAYLOAD_DIR="${REPO_ROOT}/target/loom-duckdb-fixtures"
+ARROW_FIXTURE_DIR="${REPO_ROOT}/target/loom-duckdb-lmc2-sql"
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
     GRN="$(tput setaf 2)"
@@ -39,7 +40,8 @@ echo ""
 
 info "Generating deterministic DuckDB payloads..."
 cargo run -p loom-fixtures --bin emit_duckdb_payloads >/dev/null
-for payload_name in native-primitives-table mixed-table fsst-utf8 bitpack-i32; do
+cargo run -p loom-fixtures --bin emit_arrow_semantic_lmc2_sql_fixture -- "${ARROW_FIXTURE_DIR}" >/dev/null
+for payload_name in mixed-table fsst-utf8 bitpack-i32; do
     test -f "${PAYLOAD_DIR}/${payload_name}.loom" || fail "missing ${payload_name}.loom"
     magic="$(dd if="${PAYLOAD_DIR}/${payload_name}.loom" bs=4 count=1 2>/dev/null)"
     [ "${magic}" = "LMC1" ] || fail "${payload_name}.loom is not LMC1"
@@ -124,34 +126,32 @@ require_report() {
     }
 }
 
-native_payload="${PAYLOAD_DIR}/native-primitives-table.loom"
+native_payload="${ARROW_FIXTURE_DIR}/native-primitives-lmc2.loom"
 fallback_payload="${PAYLOAD_DIR}/fsst-utf8.loom"
 bitpack_payload="${PAYLOAD_DIR}/bitpack-i32.loom"
 
 info "Checking native primitive table SQL rows and route diagnostics..."
 export LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK=0
-export LOOM_DUCKDB_TEST_USE_NATIVE_FACTS=1
 unset LOOM_DUCKDB_TEST_CANCEL_PREPARE
 native_out="${TMP_DIR}/native-agg.csv"
-sql_to_file "SELECT COUNT(*), SUM(i32_col), SUM(i64_col) FROM loom_scan('${native_payload}')" "${native_out}"
-[ "$(cat "${native_out}")" = "4,10,100" ] || fail "native primitive aggregate mismatch: $(cat "${native_out}")"
+sql_to_file "SELECT * FROM loom_scan('${native_payload}')" "${native_out}"
+[ "$(cat "${native_out}")" = $'1,true,10,1.5\n2,,20,2.5\n3,false,30,3.5\n4,true,40,4.5\n5,false,50,5.5' ] || fail "native primitive rows mismatch: $(cat "${native_out}")"
 require_report 'route=native-candidate'
-require_report 'native-execution-engine-output'
+require_report 'native-arrow-semantic-codegen-output'
 if rg -q 'interpreter-fallback|toolchain-skipped|toolchain-failed' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
     echo "Route report:" >&2
     cat "${LOOM_DUCKDB_TEST_ROUTE_REPORT}" >&2
     fail "native primitive query must not pass through fallback or toolchain skip"
 fi
 ok "native primitive table SQL and route diagnostics"
+unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
 
 info "Checking projection order over public loom_scan(path)..."
 projection_out="${TMP_DIR}/projection.csv"
-sql_to_file "SELECT f64_col, i32_col FROM loom_scan('${native_payload}')" "${projection_out}"
-awk -F, 'NF == 2 && (($1 == "0.25" && $2 == "1") || ($1 == "1.25" && $2 == "2") || ($1 == "2.25" && $2 == "3") || ($1 == "3.25" && $2 == "4")) { ok++ } END { exit ok == 4 ? 0 : 1 }' \
+sql_to_file "SELECT ratio, id FROM loom_scan('${native_payload}')" "${projection_out}"
+awk -F, 'NF == 2 && (($1 == "1.5" && $2 == "1") || ($1 == "2.5" && $2 == "2") || ($1 == "3.5" && $2 == "3") || ($1 == "4.5" && $2 == "4") || ($1 == "5.5" && $2 == "5")) { ok++ } END { exit ok == 5 ? 0 : 1 }' \
     "${projection_out}" || fail "projection output column order mismatch"
 require_report 'projection=columns:3>0,0>1'
-unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
-unset LOOM_DUCKDB_TEST_USE_NATIVE_FACTS
 ok "projection preserves requested column order"
 
 info "Checking policy-controlled interpreter fallback..."
@@ -177,13 +177,11 @@ unset LOOM_DUCKDB_TEST_ALLOW_INTERPRETER_FALLBACK
 ok "strict fail-closed error includes code/path diagnostics"
 
 info "Checking cancellation path through test-only adapter control..."
-export LOOM_DUCKDB_TEST_USE_NATIVE_FACTS=1
 export LOOM_DUCKDB_TEST_CANCEL_PREPARE=1
 cancel_err="${TMP_DIR}/cancel.err"
 sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${native_payload}');" "${cancel_err}"
 cat "${cancel_err}" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 require_report 'cancelled'
-unset LOOM_DUCKDB_TEST_USE_NATIVE_FACTS
 unset LOOM_DUCKDB_TEST_CANCEL_PREPARE
 ok "cancelled route visible"
 
@@ -194,17 +192,17 @@ bad_err="${TMP_DIR}/bad.err"
 sql_expect_failure "SELECT COUNT(*) FROM loom_scan('${bad_payload}');" "${bad_err}"
 release_out="${TMP_DIR}/post-error.csv"
 sql_to_file "SELECT COUNT(*) FROM loom_scan('${native_payload}')" "${release_out}"
-[ "$(cat "${release_out}")" = "4" ] || fail "valid scan failed after malformed artifact error"
+[ "$(cat "${release_out}")" = "5" ] || fail "valid scan failed after malformed artifact error"
 ok "malformed artifact path fails without crashing later scans"
 
 info "Checking helper-level native mismatch and cancellation tests..."
 LOOM_ALLOW_NATIVE_TOOL_SKIP="${LOOM_ALLOW_NATIVE_TOOL_SKIP:-1}" \
-    cargo test -p loom-ffi --test duckdb_runtime native_output_mismatch_fails_closed_without_interpreter_fallback
-echo "native-output-mismatch: helper test passed" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
+    cargo test -p loom-ffi --test duckdb_runtime lmc1_raw_copy_no_longer_enters_duckdb_native_route
+echo "lmc1-raw-copy-native-removed: helper test passed" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
 LOOM_ALLOW_NATIVE_TOOL_SKIP="${LOOM_ALLOW_NATIVE_TOOL_SKIP:-1}" \
-    cargo test -p loom-ffi --test duckdb_runtime cancelled_prepare_returns_cancelled_diagnostic_and_no_native_buffers
+    cargo test -p loom-ffi --test duckdb_runtime cancelled_arrow_semantic_prepare_returns_cancelled_without_buffers
 echo "cancelled: helper test passed" >>"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
-require_report 'native-output-mismatch'
+require_report 'lmc1-raw-copy-native-removed'
 ok "native mismatch and cancellation helpers passed"
 
 info "Checking repeated scan and single-worker/single-batch adapter evidence..."
@@ -212,7 +210,7 @@ first_count="${TMP_DIR}/first-count.csv"
 second_count="${TMP_DIR}/second-count.csv"
 sql_to_file "SELECT COUNT(*) FROM loom_scan('${native_payload}')" "${first_count}"
 sql_to_file "SELECT COUNT(*) FROM loom_scan('${native_payload}')" "${second_count}"
-[ "$(cat "${first_count}")" = "4" ] && [ "$(cat "${second_count}")" = "4" ] || \
+[ "$(cat "${first_count}")" = "5" ] && [ "$(cat "${second_count}")" = "5" ] || \
     fail "repeated scan counts were not stable"
 rg -q 'MaxThreads\(\) const override' duckdb-ext/loom_extension.cpp || fail "missing single-worker guard"
 rg -q 'batch_emitted' duckdb-ext/loom_extension.cpp || fail "missing single-batch guard"

@@ -128,13 +128,11 @@ require_fixed "SELECT COUNT(*), SUM(value), MIN(value), MAX(value) FROM loom_sca
 ok "duckdb source e2e checks LMA1 magic and SQL rows/aggregates"
 
 require_regex "route=native-candidate" "${NATIVE_HARDENING}"
-require_regex "native-execution-engine-output" "${NATIVE_HARDENING}"
+require_regex "native-arrow-semantic-codegen-output" "${NATIVE_HARDENING}"
 require_regex "interpreter-fallback" "${NATIVE_HARDENING}"
-require_regex "toolchain-skipped|toolchain-failed" "${NATIVE_HARDENING}"
 require_regex "fail-closed" "${NATIVE_HARDENING}"
-require_regex "cache-miss" "${NATIVE_HARDENING}"
-require_regex "cache-hit" "${NATIVE_HARDENING}"
-ok "native hardening route/fallback/skip markers"
+require_regex "lmc1_raw_copy_no_longer_enters_duckdb_native_route" "${NATIVE_HARDENING}"
+ok "native hardening route/fallback/fail-closed markers"
 
 core_forbidden_count="$(cargo tree -p loom-core | awk '/vortex|fastlanes|parquet|lance|iceberg/{c++} END{print c+0}')"
 if [ "${core_forbidden_count}" != "0" ]; then

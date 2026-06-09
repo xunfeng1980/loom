@@ -23,10 +23,10 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
 | Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
-| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts over the Phase 34 primitive/nullable SQL surface |
+| DuckDB | C++ extension exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage, mixed `LMC1` table payloads, and default `LMC2(LMA1)` Arrow semantic artifacts; full-projection primitive/nullable `LMC2(LMA1)` scans now route through production native codegen by default when the MLIR/JIT backend is available |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Legacy narrow `.vortex` ingress can still emit verified `LMC1` for supported non-null primitive/table cases |
-| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts; the bounded matrix has deterministic replay, adversarial validation, soak/resource evidence, and Phase 40 native/model validation before cache admission |
+| Native execution | Production MLIR/LLVM/JIT native codegen now produces Arrow value/validity buffers and RecordBatch output for verifier-accepted `LMC2(LMA1)` / direct `LMA1` one-batch nullable fixed-width primitive artifacts under full projection, no predicate, and full-scan split only; DuckDB no longer has a `LMC1` raw-copy native branch or test-facts route |
 | Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical

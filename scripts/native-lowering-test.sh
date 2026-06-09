@@ -82,8 +82,9 @@ elif [ "${tool_status}" -ne 0 ]; then
 else
     export PATH="${llvm_bin_dir}:${PATH}"
     info "Running managed mlir-opt parse validation..."
-    tmp_mlir="$(mktemp "${TMPDIR:-/tmp}/loom-native-lowering.XXXXXX.mlir")"
-    trap 'rm -f "${tmp_mlir}"' EXIT
+    tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/loom-native-lowering-XXXXXX")"
+    tmp_mlir="${tmp_dir}/sample.mlir"
+    trap 'rm -rf "${tmp_dir}"' EXIT
     cat >"${tmp_mlir}" <<'MLIR'
 module {
   func.func @loom_l2core_copy_i32(%input: memref<?xi32>, %output: memref<?xi32>, %rows: index) {

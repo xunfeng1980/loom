@@ -64,7 +64,7 @@ fn replay_evidence_is_deterministic_for_lmc2_and_direct_lma1() {
 }
 
 #[test]
-fn replay_evidence_detects_projection_predicate_split_backend_and_artifact_drift() {
+fn replay_evidence_detects_backend_and_artifact_drift() {
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let base = replay_evidence_for(
@@ -74,56 +74,6 @@ fn replay_evidence_detects_projection_predicate_split_backend_and_artifact_drift
         PredicateEnvelope::None,
         SplitDescriptor::FullScan { row_count: 9 },
     );
-
-    let projected = replay_evidence_for(
-        &bytes,
-        "melior-jit:test-pipeline",
-        ProjectionSet::Columns(vec![ProjectionColumn {
-            source_index: 1,
-            output_index: 0,
-        }]),
-        PredicateEnvelope::None,
-        SplitDescriptor::FullScan { row_count: 9 },
-    );
-    assert_ne!(
-        projected.runtime_cache_canonical_input,
-        base.runtime_cache_canonical_input
-    );
-    assert_ne!(projected.replay_fingerprint, base.replay_fingerprint);
-
-    let predicated = replay_evidence_for(
-        &bytes,
-        "melior-jit:test-pipeline",
-        ProjectionSet::All,
-        PredicateEnvelope::PrimitiveComparison {
-            column_index: 1,
-            op: PredicateOperator::GtEq,
-            literal_i64: 0,
-        },
-        SplitDescriptor::FullScan { row_count: 9 },
-    );
-    assert_ne!(
-        predicated.runtime_cache_canonical_input,
-        base.runtime_cache_canonical_input
-    );
-    assert!(predicated
-        .runtime_cache_canonical_input
-        .contains("predicate=cmp:1:gt-eq:0"));
-
-    let split = replay_evidence_for(
-        &bytes,
-        "melior-jit:test-pipeline",
-        ProjectionSet::All,
-        PredicateEnvelope::None,
-        SplitDescriptor::RowRange { start: 2, end: 7 },
-    );
-    assert_ne!(
-        split.runtime_cache_canonical_input,
-        base.runtime_cache_canonical_input
-    );
-    assert!(split
-        .runtime_cache_canonical_input
-        .contains("split=range:2:7"));
 
     let backend = replay_evidence_for(
         &bytes,
@@ -206,7 +156,7 @@ fn unsupported_and_divergent_outputs_cannot_produce_replay_evidence() {
 }
 
 #[test]
-fn shape_aware_cache_key_records_predicate_and_split_drift() {
+fn non_full_query_shapes_do_not_seed_codegen_cache_or_replay() {
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let support = prepare_native_arrow_semantic_codegen_support(&bytes);
@@ -227,36 +177,78 @@ fn shape_aware_cache_key_records_predicate_and_split_drift() {
         RuntimeSafetyPolicy::default(),
     )
     .expect("full scan key");
-    let ranged = validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
-        &bytes,
-        &execution,
-        ProjectionSet::All,
-        PredicateEnvelope::None,
-        SplitDescriptor::RowRange { start: 0, end: 4 },
-        RuntimeSafetyPolicy::default(),
-    )
-    .expect("range key");
-    assert_ne!(full.canonical_input, ranged.canonical_input);
     assert!(full.canonical_input.contains("split=full:9"));
-    assert!(ranged.canonical_input.contains("split=range:0:4"));
 
-    let predicated = validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
-        &bytes,
-        &execution,
-        ProjectionSet::All,
-        PredicateEnvelope::PrimitiveComparison {
-            column_index: 1,
-            op: PredicateOperator::Lt,
-            literal_i64: 100,
-        },
-        SplitDescriptor::FullScan { row_count: 9 },
-        RuntimeSafetyPolicy::default(),
-    )
-    .expect("predicate key");
-    assert_ne!(full.canonical_input, predicated.canonical_input);
-    assert!(predicated
-        .canonical_input
-        .contains("predicate=cmp:1:lt:100"));
+    for (name, projection, predicate, split, expected_path) in [
+        (
+            "projection",
+            ProjectionSet::Columns(vec![ProjectionColumn {
+                source_index: 1,
+                output_index: 0,
+            }]),
+            PredicateEnvelope::None,
+            SplitDescriptor::FullScan { row_count: 9 },
+            "$.runtime.projection",
+        ),
+        (
+            "predicate",
+            ProjectionSet::All,
+            PredicateEnvelope::PrimitiveComparison {
+                column_index: 1,
+                op: PredicateOperator::Lt,
+                literal_i64: 100,
+            },
+            SplitDescriptor::FullScan { row_count: 9 },
+            "$.runtime.predicate",
+        ),
+        (
+            "range split",
+            ProjectionSet::All,
+            PredicateEnvelope::None,
+            SplitDescriptor::RowRange { start: 0, end: 4 },
+            "$.runtime.split",
+        ),
+        (
+            "wrong full-scan row count",
+            ProjectionSet::All,
+            PredicateEnvelope::None,
+            SplitDescriptor::FullScan { row_count: 4 },
+            "$.runtime.split.row_count",
+        ),
+    ] {
+        let cache_err = validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
+            &bytes,
+            &execution,
+            projection.clone(),
+            predicate.clone(),
+            split.clone(),
+            RuntimeSafetyPolicy::default(),
+        )
+        .expect_err(name);
+        assert_eq!(
+            cache_err.code,
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "{name}"
+        );
+        assert_eq!(cache_err.path, expected_path, "{name}");
+
+        let replay_err = native_arrow_semantic_codegen_replay_evidence(
+            &bytes,
+            &support,
+            &execution,
+            projection,
+            predicate,
+            split,
+            RuntimeSafetyPolicy::default(),
+        )
+        .expect_err(name);
+        assert_eq!(
+            replay_err.code,
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "{name}"
+        );
+        assert_eq!(replay_err.path, expected_path, "{name}");
+    }
 }
 
 fn replay_evidence_for(

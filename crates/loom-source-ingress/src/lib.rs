@@ -447,7 +447,7 @@ pub fn validate_source_verified_native_coverage_row(
     if row.native_disposition == SourceVerifiedNativeDisposition::NativeSupported
         && !row.evidence_notes.iter().any(|note| {
             note.contains("native-model-validation")
-                || note.contains("native-execution-engine-output")
+                || note.contains("native-arrow-semantic-codegen-output")
         })
     {
         diagnostics.push(format!("{}:native-evidence-missing", row.shape_id));

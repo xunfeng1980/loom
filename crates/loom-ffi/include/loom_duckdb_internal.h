@@ -31,14 +31,16 @@ typedef struct LoomDuckDbDiagnostic {
 typedef struct LoomDuckDbNativeBuffer {
     const char *builder_id;
     const char *arrow_type;
+    uint64_t row_count;
     const uint8_t *value_ptr;
     uintptr_t value_len;
+    const uint8_t *validity_ptr;
+    uintptr_t validity_len;
 } LoomDuckDbNativeBuffer;
 
 int32_t loom_duckdb_plan_create(const uint8_t *artifact_ptr,
                                 uintptr_t artifact_len,
                                 bool allow_interpreter_fallback,
-                                bool use_test_native_facts,
                                 LoomDuckDbPlan **out_plan);
 
 int32_t loom_duckdb_plan_create_projected(const uint8_t *artifact_ptr,
@@ -46,7 +48,6 @@ int32_t loom_duckdb_plan_create_projected(const uint8_t *artifact_ptr,
                                           const uint32_t *projection_ptr,
                                           uintptr_t projection_len,
                                           bool allow_interpreter_fallback,
-                                          bool use_test_native_facts,
                                           LoomDuckDbPlan **out_plan);
 
 int32_t loom_duckdb_plan_destroy(LoomDuckDbPlan *plan);

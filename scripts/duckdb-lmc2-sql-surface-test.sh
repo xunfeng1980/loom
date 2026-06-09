@@ -49,14 +49,20 @@ rm -rf "${FIXTURE_DIR}"
 cargo run -p loom-fixtures --bin emit_arrow_semantic_lmc2_sql_fixture -- "${FIXTURE_DIR}" >/dev/null
 LMC2_PAYLOAD="${FIXTURE_DIR}/multi-column-lmc2.loom"
 LMA1_PAYLOAD="${FIXTURE_DIR}/multi-column-direct-lma1.loom"
+NATIVE_LMC2_PAYLOAD="${FIXTURE_DIR}/native-primitives-lmc2.loom"
+NATIVE_LMA1_PAYLOAD="${FIXTURE_DIR}/native-primitives-direct-lma1.loom"
 LOGICAL_PAYLOAD="${FIXTURE_DIR}/logical-date32-lmc2.loom"
 NESTED_PAYLOAD="${FIXTURE_DIR}/nested-struct-lmc2.loom"
 test -f "${LMC2_PAYLOAD}" || fail "missing ${LMC2_PAYLOAD}"
 test -f "${LMA1_PAYLOAD}" || fail "missing ${LMA1_PAYLOAD}"
+test -f "${NATIVE_LMC2_PAYLOAD}" || fail "missing ${NATIVE_LMC2_PAYLOAD}"
+test -f "${NATIVE_LMA1_PAYLOAD}" || fail "missing ${NATIVE_LMA1_PAYLOAD}"
 test -f "${LOGICAL_PAYLOAD}" || fail "missing ${LOGICAL_PAYLOAD}"
 test -f "${NESTED_PAYLOAD}" || fail "missing ${NESTED_PAYLOAD}"
 assert_magic "${LMC2_PAYLOAD}" "LMC2"
 assert_magic "${LMA1_PAYLOAD}" "LMA1"
+assert_magic "${NATIVE_LMC2_PAYLOAD}" "LMC2"
+assert_magic "${NATIVE_LMA1_PAYLOAD}" "LMA1"
 assert_magic "${LOGICAL_PAYLOAD}" "LMC2"
 assert_magic "${NESTED_PAYLOAD}" "LMC2"
 ok "generated default LMC2, direct LMA1 regression, logical, and nested fixtures"
@@ -109,6 +115,9 @@ fi
 test -x "${DUCKDB_BIN}" || fail "DuckDB CLI not executable at ${DUCKDB_BIN}"
 ok "DuckDB CLI ready"
 
+export LOOM_DUCKDB_TEST_ROUTE_REPORT="${TMP_DIR}/route-report.tsv"
+: >"${LOOM_DUCKDB_TEST_ROUTE_REPORT}"
+
 sql_to_file() {
     local sql="$1"
     local out="$2"
@@ -157,6 +166,18 @@ assert_query_fails() {
     fi
     ok "${name}"
 }
+
+assert_query \
+    "native-primitives-lmc2-default-route" \
+    "SELECT * FROM loom_scan('${NATIVE_LMC2_PAYLOAD}')" \
+    $'1,true,10,1.5\n2,,20,2.5\n3,false,30,3.5\n4,true,40,4.5\n5,false,50,5.5'
+if ! rg -q 'route=native-candidate' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}" ||
+   ! rg -q 'native-arrow-semantic-codegen-output' "${LOOM_DUCKDB_TEST_ROUTE_REPORT}"; then
+    echo "Route report:" >&2
+    cat "${LOOM_DUCKDB_TEST_ROUTE_REPORT}" >&2
+    fail "native primitive LMC2 did not use the default production native route"
+fi
+ok "native-primitives-lmc2-default-route uses production native route"
 
 assert_query \
     "default-lmc2-project-filter" \

@@ -50,6 +50,7 @@ pub enum NativeArrowSemanticDiagnosticCode {
     UnsupportedPayload,
     UnsupportedBatchShape,
     UnsupportedType,
+    UnsupportedQueryShape,
     NativeOutputMismatch,
     NativeModelTraceMismatch,
 }
@@ -62,6 +63,7 @@ impl NativeArrowSemanticDiagnosticCode {
             Self::UnsupportedPayload => "unsupported-payload",
             Self::UnsupportedBatchShape => "unsupported-batch-shape",
             Self::UnsupportedType => "unsupported-type",
+            Self::UnsupportedQueryShape => "unsupported-query-shape",
             Self::NativeOutputMismatch => "native-output-mismatch",
             Self::NativeModelTraceMismatch => "native-model-trace-mismatch",
         }
@@ -696,6 +698,7 @@ pub fn validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
             ),
         ));
     }
+    validate_supported_codegen_query_shape(execution, &projection, &predicate, &split)?;
 
     let validation = execution
         .validation()
@@ -810,6 +813,46 @@ pub fn native_arrow_semantic_codegen_replay_evidence(
         runtime_cache_canonical_input: cache_key.canonical_input,
         replay_fingerprint,
     })
+}
+
+fn validate_supported_codegen_query_shape(
+    execution: &NativeArrowSemanticCodegenExecutionReport,
+    projection: &ProjectionSet,
+    predicate: &PredicateEnvelope,
+    split: &SplitDescriptor,
+) -> Result<(), NativeArrowSemanticDiagnostic> {
+    if !matches!(projection, ProjectionSet::All) {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "$.runtime.projection",
+            "production native Arrow semantic codegen currently supports full projection only",
+        ));
+    }
+
+    if !matches!(predicate, PredicateEnvelope::None) {
+        return Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "$.runtime.predicate",
+            "production native Arrow semantic codegen currently supports unfiltered scans only",
+        ));
+    }
+
+    match split {
+        SplitDescriptor::FullScan { row_count } if *row_count == execution.row_count => Ok(()),
+        SplitDescriptor::FullScan { row_count } => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "$.runtime.split.row_count",
+            format!(
+                "production native Arrow semantic codegen full-scan row count {row_count} does not match execution row count {}",
+                execution.row_count
+            ),
+        )),
+        SplitDescriptor::RowRange { .. } => Err(NativeArrowSemanticDiagnostic::new(
+            NativeArrowSemanticDiagnosticCode::UnsupportedQueryShape,
+            "$.runtime.split",
+            "production native Arrow semantic codegen currently supports full-scan splits only",
+        )),
+    }
 }
 
 pub fn verify_native_arrow_semantic_equivalence(
