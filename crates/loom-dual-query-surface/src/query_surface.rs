@@ -15,6 +15,16 @@ pub enum QuerySurfaceStatus {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum StarRocksRuntimeStatus {
+    Accepted,
+    MissingRuntime,
+    Unsupported,
+    Rejected,
+    Mismatch,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum QueryKind {
     OrderedRows,
     Projection,
@@ -82,6 +92,16 @@ pub struct StarRocksQueryDescriptor {
     pub expected_result_digest: String,
     pub expected_values: Vec<i64>,
     pub expected_scalar: Option<i64>,
+    pub diagnostics: Vec<DualQuerySurfaceDiagnostic>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StarRocksRuntimeEvidence {
+    pub status: StarRocksRuntimeStatus,
+    pub descriptor: StarRocksQueryDescriptor,
+    pub observed_values: Vec<i64>,
+    pub observed_scalar: Option<i64>,
+    pub observed_result_digest: Option<String>,
     pub diagnostics: Vec<DualQuerySurfaceDiagnostic>,
 }
 
@@ -195,6 +215,83 @@ pub fn validate_starrocks_descriptor(
     Ok(())
 }
 
+pub fn validate_starrocks_runtime_output(
+    accepted: &IcebergBindingAcceptedArtifact,
+    descriptor: &StarRocksQueryDescriptor,
+    observed_values: Vec<i64>,
+    observed_scalar: Option<i64>,
+) -> StarRocksRuntimeEvidence {
+    let mut evidence = runtime_evidence(
+        StarRocksRuntimeStatus::Rejected,
+        descriptor.clone(),
+        observed_values,
+        observed_scalar,
+        None,
+        Vec::new(),
+    );
+
+    if let Err(diagnostic) = validate_starrocks_descriptor(accepted, descriptor) {
+        evidence.diagnostics.push(diagnostic);
+        return evidence;
+    }
+
+    let observed_digest = runtime_result_digest(
+        descriptor.query_kind,
+        &evidence.observed_values,
+        evidence.observed_scalar,
+    );
+    evidence.observed_result_digest = Some(observed_digest.clone());
+    if evidence.observed_values != descriptor.expected_values
+        || evidence.observed_scalar != descriptor.expected_scalar
+        || observed_digest != descriptor.expected_result_digest
+    {
+        evidence.status = StarRocksRuntimeStatus::Mismatch;
+        evidence
+            .diagnostics
+            .push(DualQuerySurfaceDiagnostic::rejected(
+                "StarRocks runtime output does not match accepted Loom/DuckDB/oracle evidence",
+            ));
+        return evidence;
+    }
+
+    evidence.status = StarRocksRuntimeStatus::Accepted;
+    evidence
+}
+
+pub fn missing_starrocks_runtime_evidence(
+    descriptor: &StarRocksQueryDescriptor,
+    missing_inputs: &[&str],
+) -> StarRocksRuntimeEvidence {
+    runtime_evidence(
+        StarRocksRuntimeStatus::MissingRuntime,
+        descriptor.clone(),
+        Vec::new(),
+        None,
+        None,
+        vec![DualQuerySurfaceDiagnostic::unsupported(format!(
+            "live StarRocks runtime evidence missing required inputs: {}",
+            missing_inputs.join(", ")
+        ))],
+    )
+}
+
+pub fn unsupported_starrocks_runtime_evidence(
+    descriptor: &StarRocksQueryDescriptor,
+    feature: UnsupportedQueryFeature,
+) -> StarRocksRuntimeEvidence {
+    runtime_evidence(
+        StarRocksRuntimeStatus::Unsupported,
+        descriptor.clone(),
+        Vec::new(),
+        None,
+        None,
+        vec![DualQuerySurfaceDiagnostic::unsupported(format!(
+            "unsupported StarRocks live runtime feature: {}",
+            feature.as_str()
+        ))],
+    )
+}
+
 pub fn plan_unsupported_query_feature(
     feature: UnsupportedQueryFeature,
 ) -> Result<StarRocksQueryDescriptor, DualQuerySurfaceDiagnostic> {
@@ -259,6 +356,24 @@ fn starrocks_table_name(name: &str) -> Result<String, DualQuerySurfaceDiagnostic
     Ok(format!("`{database}`.`{table}`"))
 }
 
+fn runtime_evidence(
+    status: StarRocksRuntimeStatus,
+    descriptor: StarRocksQueryDescriptor,
+    observed_values: Vec<i64>,
+    observed_scalar: Option<i64>,
+    observed_result_digest: Option<String>,
+    diagnostics: Vec<DualQuerySurfaceDiagnostic>,
+) -> StarRocksRuntimeEvidence {
+    StarRocksRuntimeEvidence {
+        status,
+        descriptor,
+        observed_values,
+        observed_scalar,
+        observed_result_digest,
+        diagnostics,
+    }
+}
+
 fn decode_single_i32_id_column(
     accepted: &IcebergBindingAcceptedArtifact,
 ) -> Result<Vec<i32>, DualQuerySurfaceDiagnostic> {
@@ -307,6 +422,13 @@ fn canonical_scalar(kind: QueryKind, scalar: i64) -> CanonicalQueryResult {
         values: Vec::new(),
         scalar: Some(scalar),
         digest,
+    }
+}
+
+fn runtime_result_digest(kind: QueryKind, values: &[i64], scalar: Option<i64>) -> String {
+    match scalar {
+        Some(scalar) => stable_digest(&format!("{kind:?}|scalar|{scalar}")),
+        None => stable_digest(&format!("{kind:?}|values|{values:?}")),
     }
 }
 

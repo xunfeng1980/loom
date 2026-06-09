@@ -14,8 +14,9 @@ pub use fixture_bundle::{
     accepted_fixture_bundle, write_accepted_fixture_bundle, AcceptedFixtureBundle,
 };
 pub use query_surface::{
-    canonical_query_matrix, plan_unsupported_query_feature, starrocks_descriptors,
-    validate_starrocks_descriptor, BindingIdentityEvidence, CanonicalQueryResult,
+    canonical_query_matrix, missing_starrocks_runtime_evidence, plan_unsupported_query_feature,
+    starrocks_descriptors, unsupported_starrocks_runtime_evidence, validate_starrocks_descriptor,
+    validate_starrocks_runtime_output, BindingIdentityEvidence, CanonicalQueryResult,
     DualQuerySurfaceDiagnostic, QueryKind, QuerySurfaceStatus, StarRocksQueryDescriptor,
-    UnsupportedQueryFeature,
+    StarRocksRuntimeEvidence, StarRocksRuntimeStatus, UnsupportedQueryFeature,
 };

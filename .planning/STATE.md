@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 43 planning complete; executing 43-01
+stopped_at: Phase 43 43-01 complete; executing 43-02
 last_updated: "2026-06-09T10:30:00.000Z"
 last_activity: 2026-06-09 -- Phase 41 complete with verified-lineage gate, artifact lineage records, docs, and non-claim boundaries
 progress:
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase 43 IN PROGRESS: StarRocks Live Runtime Integration
 Plan: 0 of 0
-Status: Phase 43 context/plans complete; executing 43-01 runtime evidence contract
+Status: Phase 43 43-01 complete; executing 43-02 cross-engine equivalence and runtime gate
 Last activity: 2026-06-09 -- Phase 41 added `scripts/verified-lineage-test.sh`, `loom_core::verified_lineage`, record tests, docs, and closeout state
 
-Progress: Phase 42 is complete; Phase 43 is in progress with 0/3 plans complete
+Progress: Phase 42 is complete; Phase 43 is in progress with 1/3 plans complete
 
 ## Progress Snapshot
 
@@ -277,6 +277,7 @@ None yet.
 - Phase 42 42-02 complete: added source-neutral verified/native coverage row vocabulary plus Parquet and Lance schema matrix tests for native-supported fixed-width primitive `LMC2(LMA1)` rows and interpreter-only Utf8/List/Struct rows.
 - Phase 42 complete: added `scripts/verified-native-coverage-expansion-test.sh`, `scripts/mvp2-verify.sh`, closed COV2-03, and finalized the Vortex/Lance/Parquet living coverage matrix for Phase 43/44 handoff.
 - Phase 43 planning complete: added context, discussion log, and three execution plans for runtime evidence contract, cross-engine equivalence/fail-closed gate, and ABI findings. Local workstation currently lacks `docker`, `mysql`, and `mariadb`; live runtime evidence must remain pending unless explicit StarRocks env/client inputs are provided.
+- Phase 43 43-01 complete: added typed StarRocks runtime evidence/status structs, validation that accepts only identity-bound descriptor output matching oracle/DuckDB rows or scalars, explicit missing-runtime/unsupported non-acceptance evidence, and focused runtime contract tests. No live StarRocks query claim is made by 43-01.
 
 ### Quick Tasks Completed
 
