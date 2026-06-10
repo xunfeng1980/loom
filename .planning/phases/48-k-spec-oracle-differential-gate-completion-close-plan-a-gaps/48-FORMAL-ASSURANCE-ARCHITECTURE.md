@@ -1,7 +1,7 @@
 # Phase 48 Formal Assurance Architecture
 
 **Date:** 2026-06-10  
-**Scope:** Post-48 narrowed Plan-A — no Rust interpreter leg, no exhaustive corpus, no four-place sync.
+**Scope:** Post-48 narrowed Plan-A — no Rust interpreter leg; all deferred items P1–P5 closed.
 
 ---
 
@@ -17,13 +17,14 @@
 | strict skip 接线（kloom-diff.sh / CI 无 skip env var） | ✅ |
 | LLVM backend 可行性脚本 + findings doc | ✅ |
 | contrib/kloom 文档同步（v4 覆盖表 + 四态分类法） | ✅ |
-| Rust reference interpreter leg（三路对账） | ❌ deferred |
-| Near-exhaustive L2Core corpus generation | ❌ deferred |
-| L2Core four-place sync checklist（kloom.k / interpreter / native / Lean） | ❌ deferred |
-| Real Min/Max K semantic rules in kloom.k | ❌ deferred |
-| Persistent cross-process disable store | ❌ deferred |
+| **P1** Real Min/Max K semantic rules in kloom.k | ✅ |
+| **P3** Persistent cross-process disable store（JSON + 原子写入 + env 覆盖） | ✅ |
+| **P4** Equivalence-class corpus generator（loom-fixtures::corpus） | ✅ |
+| **P5** L2Core three-place sync checklist（kloom.k / Rust / Lean） | ✅ |
+| Rust reference interpreter leg（三路对账） | ❌ deferred indefinitely |
+| Extract LLVM backend interpreter into production | ❌ deferred indefinitely |
 
-**结论：** Phase 48 在 narrowed scope 下**完全实现**。
+**结论：** Phase 48 在 narrowed scope 下**完全实现**，包括 base 交付物（48-01/02/03）和所有 deferred items P1/P3/P4/P5。P2（LLVM interpreter in production）明确保留为 deferred indefinitely。
 
 ---
 
@@ -203,6 +204,8 @@ if has_divergence {
 
 **预检查**（fast-fallback）：在 JIT 执行之前，如果 `is_shape_disabled(schema_fingerprint)`，直接返回 fallback，不运行 JIT，不调用 krun。
 
+**持久化**（Phase 48 P3）：禁用状态通过 `DisableStore` JSON 持久化到磁盘（默认 `$XDG_CACHE_HOME/loom/disabled-shapes.json`，可通过 `LOOM_DISABLE_STORE_PATH` 覆盖），支持原子写入（temp → rename）和进程重启后自动加载。`disabled_shapes_registry()` 在 `OnceLock` 初始化时从磁盘读取已有记录。
+
 ---
 
 ## 5. Lean ↔ K ↔ Native 的分工
@@ -214,7 +217,7 @@ if has_divergence {
 | **验证时机** | 离线 / CI | 运行时（Phase 40/48） | 运行时（production） |
 | **验证对象** | 静态结构 | builder-event 序列 | Arrow buffer 内容 |
 | ** fail-close** | N/A（离线） | 分歧 → disable shape | 分歧 → fallback |
-| **当前状态** | `StaticVerified` / `Safe` 定理 | kloom v4，无 Min/Max 规则 | 生产默认路径 |
+| **当前状态** | `StaticVerified` / `Safe` 定理 | kloom v4，含 Min/Max EvalConst + TypeOf 规则 | 生产默认路径 |
 | **与 Rust 的连接** | Phase 37 AST 对应 | Phase 40/48 trace 比较 | 同一代码库 |
 
 ### 为什么 Lean 不参与运行时对账？
@@ -257,4 +260,6 @@ Lean modeled executor trace
 | Lean modeled executor | `formal/lean/LoomCore.lean` (lines 711-864) |
 | K spec definition | `contrib/kloom/kloom.k` |
 | K diff script | `contrib/kloom/scripts/kloom-diff.sh` |
-| Feasibility findings | `.planning/phases/48-k-spec-oracle-differential-gate-completion-close-plan-a-gaps/48-LLVM-BACKEND-FEASIBILITY-FINDINGS.md` |
+| Equivalence-class corpus generator | `crates/loom-fixtures/src/corpus.rs` |
+| AST sync checklist (kloom.k / Rust / Lean) | `scripts/l2core-sync-checklist.py` |
+| Feasibility findings | `contrib/kloom/docs/LLVM-BACKEND-FEASIBILITY.md` |
