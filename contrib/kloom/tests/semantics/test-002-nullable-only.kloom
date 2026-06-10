@@ -1,0 +1,15 @@
+// test-002: all-null column (nullable builder)
+// Expected trace:
+//   append-null:col0:int32
+//   append-null:col0:int32
+//   append-null:col0:int32
+//   terminal:finished
+
+program
+  input src0:int32,
+  builder col0:int32 nullable
+body
+  appendNull(col0);
+  appendNull(col0);
+  appendNull(col0)
+maxRows 3

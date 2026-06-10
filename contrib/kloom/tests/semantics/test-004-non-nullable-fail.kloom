@@ -1,0 +1,11 @@
+// test-004: appendNull on non-nullable builder → failClosed
+// Expected: status = failClosed, no append-null events for col0
+
+program
+  input src0:int32,
+  builder col0:int32,
+  builder col1:int32 nullable
+body
+  appendNull(col1);
+  appendNull(col0)
+maxRows 3

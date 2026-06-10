@@ -1,0 +1,10 @@
+// test-003: appendValue on undeclared builder → failClosed
+// Expected: status = failClosed, no append-value events
+
+program
+  input src0:int32,
+  builder col0:int32
+body
+  appendValue(col0, 7);
+  appendValue(unknown, 42)
+maxRows 3

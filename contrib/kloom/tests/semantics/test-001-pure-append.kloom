@@ -1,0 +1,23 @@
+// test-001: pure-append program, 3 rows, 2 columns (int32 + int64 nullable)
+// Expected trace:
+//   append-value:col0:int32
+//   append-value:col1:int64
+//   append-value:col0:int32
+//   append-null:col1:int64
+//   append-value:col0:int32
+//   append-value:col1:int64
+//   terminal:finished
+
+program
+  input src0:int32,
+  input src1:int64,
+  builder col0:int32,
+  builder col1:int64 nullable
+body
+  appendValue(col0, 7);
+  appendValue(col1, 42);
+  appendValue(col0, -1);
+  appendNull(col1);
+  appendValue(col0, 3);
+  appendValue(col1, 99)
+maxRows 6

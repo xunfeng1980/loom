@@ -1,0 +1,5 @@
+# K Framework build artifacts
+.build/
+.build-*/
+kore-exec.tar.gz
+*.kore
