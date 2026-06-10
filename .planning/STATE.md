@@ -184,6 +184,7 @@ None yet.
 
 ### Roadmap Evolution
 
+- Phase 48 added (2026-06-10): K Spec-Oracle Differential Gate Completion (方案 A) — close remaining Plan-A gaps on top of landed kloom v4: krun-absent skip semantics, per-shape native-route disable on K divergence, three-way K/interpreter/native per-event differential gate, kloom Min/Max semantic hole fix, generated near-exhaustive corpus, L2Core four-place sync checklist gate. Depends on Phase 43.2 + commit 77d1bc4; independent of Phases 44-47.
 - Phases 36-37 added as PARKED placeholders under a new "MVP1.5 — Verified Lineage" future milestone: Lean Stage B (close L2Core abstraction gap via ScalarExpr/LetScalar) and Lean Stage C (operational semantics + soundness theorem). Not started, not expanded, off the MVP1 critical path; deferred per the "Defer full future-IR formal proof" decision. Activation triggers recorded in ROADMAP.md.
 - Phase 9 complete: Verifier and Safety Boundary MVP implemented with typed diagnostics, decode/FFI/CLI routing, negative release gate coverage, and docs.
 - Phase 10 complete: ALP Float32/Float64 has core kernel support, fixtures and Vortex primitive oracle comparisons, FFI roundtrips, CLI inspect/decode output, DuckDB SQL smoke coverage, documentation, and full release-gate verification.

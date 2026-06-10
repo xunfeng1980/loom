@@ -1309,3 +1309,16 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
 | 47. Production Hardening and GA Gate | 0/0 | Planned (MVP2) | - |
+| 48. K Spec-Oracle Differential Gate Completion (方案 A) | 0/0 | Planned (MVP2) | - |
+
+### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
+
+**Goal:** Complete the Plan-A formal assurance scheme on top of the landed kloom v4 K spec-oracle: the differential gate treats K semantics as the spec baseline and both the Rust interpreter and native codegen output as systems-under-test, with per-builder-event three-way reconciliation, fail-closed adjudication, krun-absent skip semantics that never block the production gate, per-shape native-route disable on native↔K divergence, a generated near-exhaustive corpus over the kloom-modeled L2Core matrix, and a script-enforced L2Core four-place sync checklist (kloom.k / Rust interpreter / native codegen / Lean theorem).
+**Requirements**: TBD
+**Depends on:** Phase 43.2 (production native codegen evidence) and the landed kloom v4 spec-oracle (commit 77d1bc4). Independent of Phases 44–47; may run before ABI freeze.
+**Non-goals:** K never enters the production path or `loom-core`'s dependency graph beyond invoking external `krun` from test/CI harness code; native remains the only default execution route; no K reachability-logic proofs (future option); Lean `accepted_program_safe` is retained with minimal sync only; no correctness claims — safety/well-formedness and divergence detection only.
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 48 to break down)
