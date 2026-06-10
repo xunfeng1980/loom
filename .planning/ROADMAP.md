@@ -1317,8 +1317,10 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 **Requirements**: TBD
 **Depends on:** Phase 43.2 (production native codegen evidence) and the landed kloom v4 spec-oracle (commit 77d1bc4). Independent of Phases 44–47; may run before ABI freeze.
 **Non-goals:** K never enters the production path or `loom-core`'s dependency graph beyond invoking external `krun` from test/CI harness code; native remains the only default execution route; no K reachability-logic proofs (future option); Lean `accepted_program_safe` is retained with minimal sync only; no correctness claims — safety/well-formedness and divergence detection only.
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 48 to break down)
+- [ ] 48-01-PLAN.md — Typed KOracleOutcome enum + ENOENT/timeout skip + garbled-output hard-fail + Min/Max/Bytes unsupported predicate in kloom_harness, threaded through native_arrow_semantic
+- [ ] 48-02-PLAN.md — Per-shape native-route disable registry in jit.rs (disable on K↔native divergence, fast-fallback pre-check, no cache seeding) + negative tests
+- [ ] 48-03-PLAN.md — Strict skip-convention wiring (kloom-diff.sh/CI/consistency script) + skip-aware LLVM-backend feasibility script & findings doc + contrib/kloom doc sync + STATE/ROADMAP closeout
