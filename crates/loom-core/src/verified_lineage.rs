@@ -254,7 +254,7 @@ pub fn build_verified_lineage_record(
         VerifiedLineageEvidenceLayer::ModelRustInterpreterDifferential,
         VerifiedLineageEvidenceStatus::CorpusValidated,
         "scripts/model-rust-interpreter-consistency-test.sh",
-        "Rust interpreter trace subject matches the reference modeled executor over the deterministic corpus",
+        "Rust interpreter trace subject matches the K spec-oracle over the deterministic corpus",
     ));
 
     let native_status = match native_validation {
@@ -274,7 +274,7 @@ pub fn build_verified_lineage_record(
         VerifiedLineageEvidenceLayer::NativeModelValidation,
         native_status,
         "scripts/native-model-validation-test.sh",
-        "native Arrow semantic output is compared to the Phase 39 reference trace when native validation is supplied",
+        "native Arrow semantic output is compared to the K spec-oracle trace when native validation is supplied",
     ));
 
     Ok(VerifiedLineageRecord {

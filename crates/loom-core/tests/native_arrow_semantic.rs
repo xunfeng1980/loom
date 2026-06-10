@@ -161,11 +161,11 @@ fn native_model_validation_matches_reference_trace_for_lmc2_supported_matrix() {
     assert!(validation
         .reference_trace()
         .iter()
-        .any(|line| line == "append-value:col3:ratio:float32"));
+        .any(|line| line == "append-value:col3_ratio:float32"));
     assert!(validation
         .reference_trace()
         .iter()
-        .any(|line| line == "append-value:col4:score:float64"));
+        .any(|line| line == "append-value:col4_score:float64"));
 }
 
 #[test]

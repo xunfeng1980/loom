@@ -6,7 +6,7 @@
 //   terminal:finished
 
 program
-  input src0:int32,
+  input src0:int32 0 0,
   builder col0:int32 nullable
 body
   appendNull(col0);

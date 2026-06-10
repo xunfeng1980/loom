@@ -28,8 +28,6 @@ The verification stack is layered:
   resource-bound obligations through an internal constraint IR.
 - `Lean/Rocq` defines the core syntax, static semantics, dynamic semantics, and
   accepted-program soundness theorem scaffold.
-- `TLA+` models artifact lifecycle and pipeline invariants such as
-  parse-before-verify and verify-before-lower.
 
 Phase 13 does not implement MLIR/native lowering or real Vortex ingress. Those
 remain later roadmap phases. Phase 13 emits verifier facts and obligations that
@@ -267,9 +265,7 @@ exist:
 - all checked arithmetic/range/resource constraints have been represented,
 - all output writes are typed Arrow builder events,
 - `VerifiedArtifactFacts` include output schema, resource bounds, builder event
-  types, and proof-obligation IDs,
-- the TLA+ lifecycle model preserves the invariant that lowering cannot occur
-  before verifier acceptance.
+  types, and proof-obligation IDs.
 
 Phase 13 does not lower to MLIR, native code, SIMD kernels, or an external
 runtime. It only defines the evidence those later paths must require.
@@ -291,5 +287,4 @@ Phase 13 excludes:
 
 These exclusions keep Phase 13 focused on the full-verifier foundation: a tiny
 `L2Core` language, executable Rust verifier path, SMT-ready obligations,
-Lean/Rocq soundness scaffold, TLA+ lifecycle invariants, and stable lowering
-facts.
+Lean/Rocq soundness scaffold, and stable lowering facts.

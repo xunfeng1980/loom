@@ -277,7 +277,7 @@ impl OutputBuilder {
 /// This solves seam 2a (post-hoc trace reconstruction). Instead of inferring a
 /// trace from the final [`RecordBatch`], the trace is emitted *inside* the
 /// builder API as each append happens. The trace format aligns with the Phase
-/// 39 reference executor:
+/// K spec-oracle:
 ///
 /// - `append-value:{builder_id}:{type_name}`
 /// - `append-null:{builder_id}:{type_name}`

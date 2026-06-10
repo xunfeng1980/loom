@@ -3,3 +3,7 @@
 
 # Project-local downloaded tool artifacts.
 /.tools
+
+# K Framework generated artifacts and temp files.
+/contrib/kloom/.build
+/contrib/kloom/.tmp

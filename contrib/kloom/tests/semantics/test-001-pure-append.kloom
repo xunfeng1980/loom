@@ -9,8 +9,8 @@
 //   terminal:finished
 
 program
-  input src0:int32,
-  input src1:int64,
+  input src0:int32 0 0,
+  input src1:int64 0 0,
   builder col0:int32,
   builder col1:int64 nullable
 body

@@ -134,7 +134,7 @@ Deferred beyond Phase 17:
 - stable external `L2Core` artifact codec/parser;
 - deeper value-dependent semantic checks beyond static verification and runtime
   guards;
-- publishable Lean/Rocq/TLA proof depth;
+- publishable Lean/Rocq proof depth;
 - complete Vortex reader support, owned by Phase 18;
 - production MLIR decode dialect, Arrow/raw-buffer native writes, vectorization,
   and broad native kernel expansion, owned by Phase 19;

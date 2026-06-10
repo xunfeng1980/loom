@@ -1,0 +1,15 @@
+// test-010: cursorLoop with monotone progress
+// Expected trace:
+//   read:src0:expr:expr:true (x4)
+//   append-value:col0:int32 (x4)
+//   terminal:finished
+
+program
+  input src0:int32 0 16,
+  builder col0:int32
+body
+  cursorLoop(cursor, 4, add(cursor, 1),
+    readInput(src0, add(cursor, 0), 4, value);
+    appendValue(col0, value)
+  )
+maxRows 8

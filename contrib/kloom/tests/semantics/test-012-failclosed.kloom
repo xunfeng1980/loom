@@ -1,0 +1,9 @@
+// test-012: explicit failClosed
+// Expected: fail-closed : "user-error"
+
+program
+  builder col0:int32
+body
+  failClosed("user-error");
+  appendValue(col0, 1)
+maxRows 1

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # full-verifier-test.sh - Phase 13 full Loom verifier foundation gate.
+#
+# Note: TLA+ lifecycle model removed (Phase 40+). K Framework now owns the
+# operational semantics; Lean owns the static verifier scaffold. The trivial
+# lifecycle state machine (Raw→Parsed→Verified→Lowerable→Lowered) is enforced
+# by Rust code structure and does not warrant a separate formalism.
 
 set -euo pipefail
 
@@ -36,17 +41,13 @@ PHASE_DIR=".planning/phases/13-full-loom-verifier"
 SPEC="${PHASE_DIR}/13-VERIFIER-SPEC.md"
 OBLIGATIONS="${PHASE_DIR}/13-PROOF-OBLIGATIONS.md"
 LEAN_FILE="formal/lean/LoomCore.lean"
-TLA_FILE="specs/tla/LoomVerifierPipeline.tla"
-TLA_CFG="specs/tla/LoomVerifierPipeline.cfg"
-TLC_META_DIR="$(mktemp -d "${TMPDIR:-/tmp}/loom-tlc.XXXXXX")"
-trap 'rm -rf "${TLC_META_DIR}"' EXIT
 
 echo "=== Loom Phase 13 full-verifier gate ==="
 echo "Repository: ${REPO_ROOT}"
 echo ""
 
 info "Checking Phase 13 verifier documents and formal artifacts..."
-for file in "${SPEC}" "${OBLIGATIONS}" "${LEAN_FILE}" "${TLA_FILE}" "${TLA_CFG}"; do
+for file in "${SPEC}" "${OBLIGATIONS}" "${LEAN_FILE}"; do
     if [ ! -f "${file}" ]; then
         fail "required verifier artifact missing: ${file}"
     fi
@@ -125,10 +126,6 @@ if [ -n "${SORRY_LINES}" ]; then
         fail "Lean proof contains unexpected sorry (not marked PHASE2-DEFERRED): ${UNEXPECTED_SORRY}"
     fi
 fi
-rg -q "LoweredImpliesVerified" "${TLA_FILE}" \
-    || fail "TLA model missing LoweredImpliesVerified"
-rg -q "LoweredImpliesVerified" "${TLA_CFG}" \
-    || fail "TLA cfg missing LoweredImpliesVerified invariant"
 ok "formal scaffold names are present"
 
 if [ -f crates/loom-core/tests/l2_core_model.rs ]; then
@@ -157,23 +154,6 @@ ok "lean ${LEAN_FILE}"
 info "Running verified-lineage closeout gate..."
 bash scripts/verified-lineage-test.sh
 ok "scripts/verified-lineage-test.sh"
-
-if ! command -v tlc >/dev/null 2>&1 && [ -f "${REPO_ROOT}/.tools/tla2tools.jar" ]; then
-    info "Running TLC lifecycle model check..."
-    if command -v mise >/dev/null 2>&1; then
-        mise exec -- java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
-        ok "mise exec -- java -jar .tools/tla2tools.jar ${TLA_FILE}"
-    else
-        require_cmd java "Run: mise install && mise run formal-tools"
-        java -jar "${REPO_ROOT}/.tools/tla2tools.jar" -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
-        ok "java -jar .tools/tla2tools.jar ${TLA_FILE}"
-    fi
-else
-    require_cmd tlc "Run: mise run formal-tools"
-    info "Running TLC lifecycle model check..."
-    tlc -metadir "${TLC_META_DIR}" -config "${TLA_CFG}" "${TLA_FILE}"
-    ok "tlc ${TLA_FILE}"
-fi
 
 echo ""
 echo "${GRN}=== Phase 13 full-verifier gate PASSED ===${RST}"

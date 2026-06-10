@@ -1,0 +1,9 @@
+// test-011: cursorLoop non-monotone → failClosed
+
+program
+  builder col0:int32
+body
+  cursorLoop(cursor, 4, cursor,
+    appendValue(col0, cursor)
+  )
+maxRows 4

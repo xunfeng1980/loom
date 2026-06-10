@@ -232,14 +232,14 @@ jobs:
       - name: kompile kloom.k
         run: |
           cd contrib/kloom
-          kompile src/kloom.k --backend llvm -o .build
+          kompile src/kloom.k --backend haskell -o .build
 
       - name: Run kloom semantics tests
         run: |
           cd contrib/kloom
           for test in tests/semantics/*.kloom; do
             echo "=== $test ==="
-            krun "$test" --definition .build
+            krun "$test" --definition .build --output pretty
           done
 
       - name: Run kloom differential gate (K vs Rust)

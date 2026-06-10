@@ -16,7 +16,6 @@ The delivered foundation is deliberately layered:
 - SMT-ready local constraints for arithmetic, ranges, overflow, progress, and
   resource obligations.
 - Lean scaffold for core semantics and accepted-program safety theorem names.
-- TLA+ lifecycle model for verify-before-lower invariants.
 - `VerifiedArtifactFacts` as the Phase 14 lowering-precondition handoff.
 
 ## What Is Complete
@@ -95,19 +94,6 @@ The current load-bearing evidence is:
 - the Rust executable verifier and artifact verifier diagnostics/facts, and
 - Phase 19 Bitwuzla-backed discharge of solver obligations.
 
-### TLA+
-
-`specs/tla/LoomVerifierPipeline.tla` models lifecycle states and the
-`LoweredImpliesVerified` invariant. It is scoped to workflow invariants:
-
-- raw artifact must be parsed before verification,
-- lowering must require verifier acceptance,
-- required features must be accepted,
-- resources must be bounded,
-- verifier facts must be present.
-
-TLA+ is not used as the L2 type-soundness proof.
-
 ### VerifiedArtifactFacts
 
 `VerifiedArtifactFacts` is the Phase 14 handoff. It records artifact version,
@@ -160,9 +146,9 @@ git diff --check
 ```
 
 `scripts/full-verifier-test.sh` checks Phase 13 documents, `VERIFIER-01` through
-`VERIFIER-10`, Rust model/verifier tests, CLI visibility, managed Lean, and
-managed TLC. Install the required formal tools with `mise install && mise run
-formal-tools`; missing Lean or TLC is a gate failure, not skipped evidence.
+`VERIFIER-10`, Rust model/verifier tests, CLI visibility, and managed Lean.
+Install the required formal tools with `mise install && mise run formal-tools`;
+missing Lean is a gate failure, not skipped evidence.
 
 ## Requirement Closure
 
@@ -181,5 +167,5 @@ formal-tools`; missing Lean or TLC is a gate failure, not skipped evidence.
 - `VERIFIER-09`: Complete as scaffold only. Lean theorem names compile, but
   substantive semantic predicates are `True` placeholders; this is not
   load-bearing proof evidence.
-- `VERIFIER-10`: Complete. `VerifiedArtifactFacts` and TLA lowering lifecycle
+- `VERIFIER-10`: Complete. `VerifiedArtifactFacts` and lowering readiness
   evidence exist for Phase 14 preconditions.

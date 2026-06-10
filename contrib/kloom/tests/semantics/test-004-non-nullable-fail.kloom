@@ -2,7 +2,7 @@
 // Expected: status = failClosed, no append-null events for col0
 
 program
-  input src0:int32,
+  input src0:int32 0 0,
   builder col0:int32,
   builder col1:int32 nullable
 body

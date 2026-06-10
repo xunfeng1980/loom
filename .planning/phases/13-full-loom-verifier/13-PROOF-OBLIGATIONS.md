@@ -16,7 +16,6 @@ whole verifier:
   obligations.
 - `Lean/Rocq` gives the core language semantics and accepted-program soundness
   scaffold.
-- `TLA+` covers lifecycle and pipeline invariants.
 - `Gate` ties source evidence and executable evidence into release checks.
 
 ## Obligation Matrix
@@ -32,7 +31,7 @@ whole verifier:
 | VERIFIER-07 | Local arithmetic, range, overflow, loop-variant, and resource-bound obligations are represented as SMT-ready constraints. | SMT/Rust | `crates/loom-core/src/l2_core/constraints.rs`; `crates/loom-core/src/full_verifier.rs` | `cargo test -p loom-core --test full_verifier` checks `AddNoOverflow`, `InRange`, and `Decreases` proof traces | `scripts/full-verifier-test.sh` | Complete | Solver integration remains intentionally deferred. |
 | VERIFIER-08 | Verifier diagnostics and proof-obligation traces are stable enough for reviewer-facing rejection reports. | Rust | `FullVerificationCode` and `ProofObligationTrace` in `crates/loom-core/src/full_verifier.rs` | `cargo test -p loom-core --test full_verifier`; `cargo run --bin loom -- verify-l2core --sample` | `scripts/full-verifier-test.sh` | Complete | Final production UX can expand beyond the sample CLI path. |
 | VERIFIER-09 | A Lean or Rocq proof scaffold defines core syntax and states the accepted-program safety theorem target. | Lean/Rocq | `formal/lean/LoomCore.lean` defines `builder_events_well_formed` and `accepted_program_safe` | `bash scripts/full-verifier-test.sh` checks Lean theorem names and runs managed Lean | `scripts/full-verifier-test.sh` | Complete as scaffold only | `builder_events_typed` and `no_ambient_authority` are currently `True` placeholders, so `accepted_program_safe` is not load-bearing safety evidence; complete final Loom soundness remains future work. |
-| VERIFIER-10 | Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions. | Gate/Rust/TLA+ | `VerifiedArtifactFacts`; `verify_l2_core`; `LoweredImpliesVerified`; `13-VERIFIER-REPORT.md` | `cargo test -p loom-core --test full_verifier`; `cargo run --bin loom -- verify-l2core --sample`; managed TLC model check | `scripts/full-verifier-test.sh` | Complete | Phase 14 must implement and prove actual lowering separately. |
+| VERIFIER-10 | Phase 13 emits verifier facts/proof obligations that Phase 14 can use as native-lowering preconditions. | Gate/Rust | `VerifiedArtifactFacts`; `verify_l2_core`; `13-VERIFIER-REPORT.md` | `cargo test -p loom-core --test full_verifier`; `cargo run --bin loom -- verify-l2core --sample` | `scripts/full-verifier-test.sh` | Complete | Phase 14 must implement and prove actual lowering separately. |
 
 ## Phase 14 Handoff
 

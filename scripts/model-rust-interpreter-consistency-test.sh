@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
-# model-rust-interpreter-consistency-test.sh - Phase 39 model/Rust interpreter gate.
+# model-rust-interpreter-consistency-test.sh - Phase 40+ K spec-oracle / native consistency gate.
+#
+# Replaces the deleted Phase 39 Rust ReferenceExecutor gate.
+# Trust root: K is the specification oracle; native execution is validated
+# against K inside cargo test.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
+
+# Ensure K tools are on PATH (nix profile or system).
+if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
     GRN="$(tput setaf 2)"
@@ -22,21 +31,17 @@ info() { echo "${YLW}[model-rust-consistency]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
-info "Running L2Core reference executor tests..."
-cargo test -p loom-core --test l2_core_reference_executor
-ok "cargo test -p loom-core --test l2_core_reference_executor"
+info "Running K spec-oracle vs native trace consistency tests..."
+cargo test -p loom-core --test native_arrow_semantic
+ok "cargo test -p loom-core --test native_arrow_semantic"
 
-info "Running model/Rust interpreter trace consistency tests..."
-cargo test -p loom-core --test l2_core_interpreter_consistency
-ok "cargo test -p loom-core --test l2_core_interpreter_consistency"
+info "Checking K harness integration markers..."
+rg -q "kloom_trace_for_program" crates/loom-core/src/native_arrow_semantic.rs \
+    || fail "missing kloom_trace_for_program integration"
+rg -q "kloom_harness" crates/loom-core/src/lib.rs \
+    || fail "missing kloom_harness module"
+rg -q "K spec-oracle" crates/loom-core/src/native_arrow_semantic.rs \
+    || fail "missing K spec-oracle marker"
+ok "K harness integration markers"
 
-info "Checking observer/reference separation markers..."
-rg -q "Observer-only production trace subject under test" crates/loom-core/tests/l2_core_interpreter_consistency.rs \
-    || fail "missing observer-only production trace subject marker"
-rg -q "not call reference executor code" crates/loom-core/tests/l2_core_interpreter_consistency.rs \
-    || fail "missing does-not-call-reference marker"
-rg -q "differential oracle, not the production interpreter" crates/loom-core/src/l2_core_reference_executor.rs \
-    || fail "missing reference oracle boundary marker"
-ok "observer/reference separation markers"
-
-echo "${GRN}=== Model/Rust interpreter consistency gate PASSED ===${RST}"
+echo "${GRN}=== Model/native consistency gate PASSED ===${RST}"

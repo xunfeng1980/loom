@@ -1,0 +1,12 @@
+// test-007: letScalar with add expression
+// Expected trace:
+//   append-value:col0:int32
+//   terminal:finished
+
+program
+  builder col0:int32
+body
+  letScalar(x, 7);
+  letScalar(y, add(x, 1));
+  appendValue(col0, y)
+maxRows 1

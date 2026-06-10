@@ -29,7 +29,7 @@ use crate::l2_core::{
     Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
     ScalarValue,
 };
-use crate::l2_core_reference_executor::{execute_reference, ReferenceStatus};
+use crate::kloom_harness::kloom_trace_for_program;
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::runtime_abi::{
     decide_runtime_execution, PredicateEnvelope, ProjectionSet, RuntimeAbiVersion,
@@ -459,7 +459,7 @@ pub fn execute_verified_native_arrow_semantic(
 /// API rather than reconstructed from the output [`RecordBatch`].
 ///
 /// Returns the execution report together with the internal trace. The trace
-/// format aligns with the Phase 39 reference executor:
+/// format aligns with the K spec-oracle (Phase 40+):
 /// `append-value:{builder_id}:{type_name}` / `append-null:{builder_id}:{type_name}`
 /// followed by `terminal:finished`.
 pub fn execute_verified_native_arrow_semantic_with_internal_trace(
@@ -1094,7 +1094,7 @@ pub fn verify_native_arrow_semantic_model_output(
 ///
 /// This is the entry point for the transitioned trace path. It executes the
 /// artifact through [`execute_verified_native_arrow_semantic_with_internal_trace`],
-/// then validates the internal trace against the reference model trace.
+/// then validates the internal trace against the K spec-oracle trace.
 pub fn verify_native_arrow_semantic_model_with_internal_trace(
     bytes: &[u8],
 ) -> NativeArrowSemanticModelValidationReport {
@@ -1310,7 +1310,7 @@ fn verify_native_arrow_semantic_model_for_output(
         diagnostics.push(NativeArrowSemanticDiagnostic::new(
             NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
             "$.native.model_trace",
-            "native Arrow semantic output trace does not match reference executor trace",
+            "native Arrow semantic output trace does not match K spec-oracle trace",
         ));
     }
     if !value_equivalent {
@@ -1947,15 +1947,13 @@ fn reference_model_trace_for_batch(
     batch: &RecordBatch,
 ) -> Result<Vec<String>, NativeArrowSemanticDiagnostic> {
     let program = reference_program_for_batch(batch)?;
-    let report = execute_reference(&program);
-    if report.status != ReferenceStatus::Finished {
-        return Err(NativeArrowSemanticDiagnostic::new(
+    kloom_trace_for_program(&program).map_err(|e| {
+        NativeArrowSemanticDiagnostic::new(
             NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch,
             "$.reference.trace",
-            "reference executor failed closed while building native/model trace",
-        ));
-    }
-    Ok(report.trace_lines())
+            format!("kloom harness error: {e}"),
+        )
+    })
 }
 
 fn reference_program_for_batch(
@@ -2002,7 +2000,7 @@ fn reference_program_for_batch(
             max_input_bytes_read: 0,
             max_scratch_bytes: 0,
             max_builder_events: total_events,
-            max_rows: row_count,
+            max_rows: total_events,
             max_constraint_count: 0,
         },
         body,
@@ -2031,14 +2029,14 @@ fn native_model_trace_for_batch(
 }
 
 fn model_builder_id(column_index: usize, name: &str) -> String {
-    format!("col{column_index}:{name}")
+    format!("col{column_index}_{name}")
 }
 
 // ---------------------------------------------------------------------------
 // Phase 2: lightweight independent trace checker
 // ---------------------------------------------------------------------------
 
-/// Check a native model trace independently of the reference executor.
+/// Check a native model trace independently of the K spec-oracle.
 ///
 /// This mirrors Lean `checkAppendTrace` at the Rust level: validates that
 /// every event targets a declared builder with matching type and nullability,

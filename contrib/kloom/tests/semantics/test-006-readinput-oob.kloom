@@ -1,0 +1,10 @@
+// test-006: readInput out-of-bounds → failClosed
+// Expected: fail-closed : read-out-of-bounds
+
+program
+  input src0:int32 0 16,
+  builder col0:int32
+body
+  readInput(src0, 20, 4, value);
+  appendValue(col0, value)
+maxRows 1

@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
-# kloom-diff.sh — Differential validation gate: K spec-oracle vs Rust vs native.
+# kloom-diff.sh — Differential validation gate: K spec-oracle vs native.
 #
-# This script is the Phase A differential gate. It:
-#   1. kompiles kloom.k (if not already)
+# This script is the Phase 40+ differential gate. It:
+#   1. kompiles kloom.k (Haskell backend) if needed
 #   2. Runs krun on the semantics test corpus, extracting K trace
-#   3. Runs the Rust reference executor on the same programs, extracting Rust trace
-#   4. Runs native Arrow semantic execution, extracting native trace
-#   5. Compares all three; any divergence → fail-closed (exit non-zero)
+#   3. Runs loom-core tests (which exercise K harness vs native trace)
+#   4. Any divergence → fail-closed (exit non-zero)
 #
 # Environment:
 #   KLOOM_DEF: path to kompiled kloom definition (default: contrib/kloom/.build)
 #   KLOOM_SRC: path to kloom.k (default: contrib/kloom/src/kloom.k)
 #
-# Trust model: K is the specification baseline. Rust and native are
-# implementations under test. This script is part of CI, not production.
+# Trust model: K is the specification baseline. Native execution is
+# validated against K inside cargo test. This script is part of CI,
+# not production.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
+
+# Ensure K tools are on PATH (nix profile or system).
+if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi
 
 KLOOM_DIR="${REPO_ROOT}/contrib/kloom"
 KLOOM_SRC="${KLOOM_DIR}/src/kloom.k"
@@ -56,8 +61,8 @@ fi
 # Step 1: kompile kloom.k if needed
 # ---------------------------------------------------------------------------
 if [ ! -d "${KLOOM_DEF}" ] || [ "${KLOOM_SRC}" -nt "${KLOOM_DEF}/timestamp" ]; then
-    info "kompile ${KLOOM_SRC} ..."
-    kompile "${KLOOM_SRC}" --backend llvm -o "${KLOOM_DEF}"
+    info "kompile ${KLOOM_SRC} (Haskell backend) ..."
+    kompile "${KLOOM_SRC}" --backend haskell -o "${KLOOM_DEF}"
     touch "${KLOOM_DEF}/timestamp"
     ok "kompile"
 else
@@ -76,13 +81,28 @@ for testfile in "${TEST_DIR}"/*.kloom; do
     ktrace="${TMPDIR}/${basename}.k.trace"
 
     if krun "$testfile" --definition "${KLOOM_DEF}" \
-        --output json \
-        > "${TMPDIR}/${basename}.krun.json" 2>/dev/null; then
-        # Extract trace from <events> cell in krun JSON output.
-        # TODO: implement precise JSON extraction once krun output format is stable.
-        echo "# ${basename} K trace (placeholder)" > "$ktrace"
-        ok "${basename} — krun"
-        K_OK=$((K_OK + 1))
+        --output pretty \
+        > "${TMPDIR}/${basename}.krun.out" 2>/dev/null; then
+        # Extract trace from <events> cell in pretty output.
+        awk '
+            /<events>/{in_events=1; next}
+            /<\/events>/{in_events=0; next}
+            in_events {
+                gsub(/^ *ListItem \( /, "");
+                gsub(/ \)$/, "");
+                gsub(/ : /, ":");
+                print;
+            }
+        ' "${TMPDIR}/${basename}.krun.out" > "$ktrace"
+
+        # Verify we got at least one event or an explicit empty trace.
+        if [ -s "$ktrace" ] || grep -q '<events>' "${TMPDIR}/${basename}.krun.out"; then
+            ok "${basename} — krun (${K_OK} ok so far)"
+            K_OK=$((K_OK + 1))
+        else
+            fail "${basename} — krun produced no events"
+            K_FAIL=$((K_FAIL + 1))
+        fi
     else
         fail "${basename} — krun failed"
         K_FAIL=$((K_FAIL + 1))
@@ -93,45 +113,24 @@ info "krun results: ${K_OK} passed, ${K_FAIL} failed"
 [ "$K_FAIL" -eq 0 ] || fail "kloom semantics tests failed"
 
 # ---------------------------------------------------------------------------
-# Step 3: Run Rust reference executor on corresponding programs, extract trace
+# Step 3: Run loom-core tests (K harness vs native trace)
 # ---------------------------------------------------------------------------
-info "Running Rust reference executor ..."
-# The Rust reference executor trace is already exercised by
-# scripts/model-rust-interpreter-consistency-test.sh.
-# For kloom differential, we need to invoke it programmatically or via a
-# dedicated Rust binary that emits trace for a given L2Core program.
-#
-# TODO: add a loom-cli subcommand or dedicated test harness that:
-#   - takes an L2Core program (JSON or binary)
-#   - runs the Rust ReferenceExecutor
-#   - outputs the trace in the same format as kloom
-ok "Rust reference trace extraction — TODO (needs harness)"
+info "Running loom-core differential tests (K harness vs native) ..."
+
+# Ensure krun is on PATH for the test subprocesses.
+if ! cargo test -p loom-core --test native_arrow_semantic 2>&1; then
+    fail "loom-core differential tests failed"
+fi
+ok "loom-core differential tests passed"
 
 # ---------------------------------------------------------------------------
-# Step 4: Run native Arrow semantic execution, extract trace
+# Step 4: Full loom-core test suite
 # ---------------------------------------------------------------------------
-info "Running native Arrow semantic execution ..."
-# Native trace is already emitted by TracedOutputBuilder.
-# For kloom differential, we need to pipe a known artifact through
-# execute_verified_native_arrow_semantic_with_internal_trace and capture trace.
-#
-# TODO: add a test harness or script that:
-#   - takes a known-good LMC2/LMA1 artifact
-#   - runs native execution with TracedOutputBuilder
-#   - outputs the internal trace
-ok "Native trace extraction — TODO (needs harness)"
-
-# ---------------------------------------------------------------------------
-# Step 5: Three-way diff
-# ---------------------------------------------------------------------------
-info "Three-way differential validation ..."
-# TODO: implement trace comparison once all three traces are available.
-# The comparison logic should:
-#   1. Normalize all three traces to a canonical form
-#   2. Compare K (baseline) vs Rust
-#   3. Compare K (baseline) vs Native
-#   4. Any divergence → report with diff + exit non-zero
-ok "Differential gate — skeleton ready, awaits harness integration"
+info "Running full loom-core test suite ..."
+if ! cargo test -p loom-core 2>&1; then
+    fail "loom-core full test suite failed"
+fi
+ok "loom-core full test suite passed"
 
 echo ""
 echo "${GRN}=== kloom differential gate completed ===${RST}"

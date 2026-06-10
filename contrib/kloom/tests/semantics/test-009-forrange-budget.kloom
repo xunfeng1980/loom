@@ -1,0 +1,9 @@
+// test-009: forRange exceeds budget → failClosed
+
+program
+  builder col0:int32
+body
+  forRange(i, 0, 10,
+    appendValue(col0, i)
+  )
+maxRows 4

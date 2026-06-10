@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Additional L2 Kernels and Numeric Compression Coverage** - Extend the L2 kernel path beyond FSST with ALP Float32/Float64 coverage for COV-01 (complete)
 - [x] **Phase 11: Distribution Container v0** - Introduce a versioned `LMC1` container with feature flags and a section directory around existing `LMP1`/`LMT1` payloads (complete)
 - [x] **Phase 12: Formal Verifier / Safety Proof MVP** - Turn the current verifier/container/decode boundary into a documented and executable safety-proof MVP (complete)
-- [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, Lean/Rocq semantics, and TLA+ pipeline invariants (complete)
+- [x] **Phase 13: Full Loom Verifier** - Build the verifier foundation for future Loom distribution IR and L2 total-function language using Rust abstract interpretation, SMT obligations, and Lean/Rocq semantics (complete)
 - [x] **Phase 14: MLIR/Native Lowering Spike** - Prove a verifier-gated textual MLIR/native lowering spike over a tiny `L2Core` slice (complete)
 - [x] **Phase 15: Real Vortex File/Container Ingress** - Narrow real Vortex ingress boundary: isolated `vortex-file` use, Loom-owned facts/diagnostics, and one supported `.vortex` -> `LMC1` slice before production native backend work (complete)
 - [x] **Phase 16: Full melior/LLVM/JIT Backend Integration** - Optional verifier-gated programmatic MLIR/LLVM/JIT backend evidence over the bounded Int32 copy slice, with managed LLVM/MLIR tooling and no production native-compiler claim (complete)
@@ -403,7 +403,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 13: Full Loom Verifier
 
 **Status:** Complete.
-**Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, mechanized Lean/Rocq soundness scaffolding, and TLA+ lifecycle/pipeline invariants.
+**Goal:** Establish the full Loom verifier foundation for the future distribution IR and L2 total-function language, with a tiny `L2Core` vertical slice that combines an executable Rust verifier, local SMT obligations, and mechanized Lean/Rocq soundness scaffolding.
 **Proof status note:** Phase 13 Lean is a scaffold only: its current semantic predicates are `True` placeholders, so theorem names such as `accepted_program_safe` are not load-bearing proof evidence. Current load-bearing verifier evidence comes from the Rust verifier and, after Phase 19, Bitwuzla-backed SMT discharge.
 **Depends on:** Phase 12
 **Requirements:** VERIFIER-01, VERIFIER-02, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-09, VERIFIER-10
@@ -415,7 +415,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A Rust verifier prototype or architecture in `loom-core` uses type/effect checking plus abstract interpretation to reject unsafe `L2Core` artifacts.
   3. Local arithmetic/range/loop/resource obligations are represented as explicit verifier constraints, with an SMT-ready path.
   4. A Lean or Rocq proof scaffold defines core syntax/static semantics/dynamic semantics and states an accepted-program safety theorem target; current predicates are placeholders, so this is not load-bearing proof evidence.
-  5. A TLA+ lifecycle model captures parse/verify/lower/cache transitions and the invariant that lowering cannot occur before verifier acceptance.
+  5. The artifact verifier pipeline enforces parse-before-verify and verify-before-lower ordering; lowering readiness is a fail-closed decision over the unified verification report.
   6. Phase 13 emits verifier facts/proof obligations that Phase 14 can consume as native-lowering preconditions.
 
 **Plans:** 5 plans across 4 waves
@@ -431,7 +431,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 3** *(blocked on required prior artifacts)*
 
 - [x] 13-03-PLAN.md - Implement the Rust abstract-interpreting `L2Core` verifier with diagnostics, facts, tests, and optional CLI visibility (VERIFIER-04, VERIFIER-06, VERIFIER-07, VERIFIER-08, VERIFIER-10)
-- [x] 13-04-PLAN.md - Add Lean soundness scaffold, TLA+ lifecycle model, and full-verifier gate script (VERIFIER-01, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-09, VERIFIER-10)
+- [x] 13-04-PLAN.md - Add Lean soundness scaffold and full-verifier gate script (VERIFIER-01, VERIFIER-03, VERIFIER-04, VERIFIER-05, VERIFIER-09, VERIFIER-10)
 
 **Wave 4** *(blocked on Waves 1-3 completion)*
 

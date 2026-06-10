@@ -1,0 +1,13 @@
+// test-005: readInput with in-bounds access
+// Expected trace:
+//   read:src0:expr:expr:true
+//   append-value:col0:int32
+//   terminal:finished
+
+program
+  input src0:int32 0 16,
+  builder col0:int32
+body
+  readInput(src0, 0, 4, value);
+  appendValue(col0, value)
+maxRows 1
