@@ -35,6 +35,7 @@ extern "C" {
 #include "../crates/loom-ffi/include/loom_duckdb_internal.h"
 }
 
+#include <algorithm>
 #include <cstdint>
 #include <cstddef>
 #include <cstdlib>
@@ -876,7 +877,8 @@ struct LoomScanState : GlobalTableFunctionState {
     string route_cache_input;
     vector<LoomRouteDiagnostic> route_diagnostics;
     vector<LoomDuckDbNativeBuffer> native_buffers;
-    bool batch_emitted = false;      // true after the single batch is delivered
+    idx_t rows_emitted = 0;
+    bool batch_emitted = false;      // true after the final batch is delivered
 
     idx_t MaxThreads() const override {
         return 1;
@@ -1082,12 +1084,41 @@ static unique_ptr<GlobalTableFunctionState> LoomInit(
 // we read the Arrow buffers directly. The arrow_scan/stream path is deferred to
 // Phase 3 (tracked) where the decoder emits a record-batch-shaped output.
 //
-static bool ArrowValueIsValid(const ArrowArray &arr, idx_t i) {
+static idx_t ArrowArrayLength(const ArrowArray &arr, const char *kind) {
+    if (arr.length < 0) {
+        throw IOException("loom_scan: decoded Arrow %s length is negative", kind);
+    }
+    return static_cast<idx_t>(arr.length);
+}
+
+static idx_t ArrowPhysicalIndex(const ArrowArray &arr, idx_t logical_index, const char *kind) {
+    if (arr.offset < 0) {
+        throw IOException("loom_scan: decoded Arrow %s offset is negative", kind);
+    }
+    return static_cast<idx_t>(arr.offset) + logical_index;
+}
+
+static idx_t NextScanChunkCount(idx_t total_count, idx_t rows_emitted, idx_t capacity) {
+    if (rows_emitted > total_count) {
+        throw IOException("loom_scan: emitted row count exceeds decoded row count");
+    }
+    const auto remaining = total_count - rows_emitted;
+    if (remaining == 0) {
+        return 0;
+    }
+    if (capacity == 0) {
+        throw IOException("loom_scan: DuckDB output vector capacity is zero");
+    }
+    return std::min(remaining, capacity);
+}
+
+static bool ArrowValueIsValid(const ArrowArray &arr, idx_t logical_index, const char *kind) {
     const auto *validity_buf = static_cast<const uint8_t *>(arr.buffers[0]);
     if (validity_buf == nullptr) {
         return true;
     }
-    return ((validity_buf[i / 8] >> (i % 8)) & 1u) != 0u;
+    const auto physical_index = ArrowPhysicalIndex(arr, logical_index, kind);
+    return ((validity_buf[physical_index / 8] >> (physical_index % 8)) & 1u) != 0u;
 }
 
 static void RequireArrowBuffers(const ArrowArray &arr, int64_t min_buffers, const char *kind) {
@@ -1100,7 +1131,11 @@ static void RequireArrowBuffers(const ArrowArray &arr, int64_t min_buffers, cons
 }
 
 template <class T>
-static void FillFixedWidthVector(const ArrowArray &arr, Vector &vec, idx_t count, const char *kind) {
+static void FillFixedWidthVector(const ArrowArray &arr,
+                                 Vector &vec,
+                                 idx_t source_offset,
+                                 idx_t count,
+                                 const char *kind) {
     RequireArrowBuffers(arr, 2, kind);
     auto *out_data = FlatVector::GetData<T>(vec);
     auto &validity = FlatVector::Validity(vec);
@@ -1110,15 +1145,17 @@ static void FillFixedWidthVector(const ArrowArray &arr, Vector &vec, idx_t count
     }
 
     for (idx_t i = 0; i < count; i++) {
-        if (!ArrowValueIsValid(arr, i)) {
+        const auto logical_index = source_offset + i;
+        if (!ArrowValueIsValid(arr, logical_index, kind)) {
             validity.SetInvalid(i);
             continue;
         }
-        out_data[i] = values_buf[i];
+        validity.SetValid(i);
+        out_data[i] = values_buf[ArrowPhysicalIndex(arr, logical_index, kind)];
     }
 }
 
-static void FillBooleanVector(const ArrowArray &arr, Vector &vec, idx_t count) {
+static void FillBooleanVector(const ArrowArray &arr, Vector &vec, idx_t source_offset, idx_t count) {
     RequireArrowBuffers(arr, 2, "Boolean");
     auto *out_data = FlatVector::GetData<bool>(vec);
     auto &validity = FlatVector::Validity(vec);
@@ -1128,15 +1165,18 @@ static void FillBooleanVector(const ArrowArray &arr, Vector &vec, idx_t count) {
     }
 
     for (idx_t i = 0; i < count; i++) {
-        if (!ArrowValueIsValid(arr, i)) {
+        const auto logical_index = source_offset + i;
+        if (!ArrowValueIsValid(arr, logical_index, "Boolean")) {
             validity.SetInvalid(i);
             continue;
         }
-        out_data[i] = ((values_buf[i / 8] >> (i % 8)) & 1u) != 0u;
+        validity.SetValid(i);
+        const auto physical_index = ArrowPhysicalIndex(arr, logical_index, "Boolean");
+        out_data[i] = ((values_buf[physical_index / 8] >> (physical_index % 8)) & 1u) != 0u;
     }
 }
 
-static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
+static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t source_offset, idx_t count) {
     RequireArrowBuffers(arr, 3, "Utf8");
     auto *out_data = FlatVector::GetData<string_t>(vec);
     auto &validity = FlatVector::Validity(vec);
@@ -1147,12 +1187,15 @@ static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
     }
 
     for (idx_t i = 0; i < count; i++) {
-        if (!ArrowValueIsValid(arr, i)) {
+        const auto logical_index = source_offset + i;
+        if (!ArrowValueIsValid(arr, logical_index, "Utf8")) {
             validity.SetInvalid(i);
             continue;
         }
-        const auto start = offsets[i];
-        const auto end = offsets[i + 1];
+        validity.SetValid(i);
+        const auto physical_index = ArrowPhysicalIndex(arr, logical_index, "Utf8");
+        const auto start = offsets[physical_index];
+        const auto end = offsets[physical_index + 1];
         if (start < 0 || end < start) {
             throw IOException("loom_scan: decoded Arrow Utf8 offsets are invalid");
         }
@@ -1163,12 +1206,14 @@ static void FillUtf8Vector(const ArrowArray &arr, Vector &vec, idx_t count) {
 template <class T>
 static void FillFixedWidthNativeBytes(const LoomDuckDbNativeBuffer &buffer,
                                       Vector &vec,
+                                      idx_t source_offset,
                                       idx_t count,
+                                      idx_t total_count,
                                       const char *kind) {
     if (buffer.value_ptr == nullptr) {
         throw IOException("loom_scan: native %s values buffer is null", kind);
     }
-    const auto expected_len = count * sizeof(T);
+    const auto expected_len = total_count * sizeof(T);
     if (buffer.value_len != expected_len) {
         throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers message=native %s buffer has %llu bytes, expected exactly %llu",
                           kind,
@@ -1177,9 +1222,10 @@ static void FillFixedWidthNativeBytes(const LoomDuckDbNativeBuffer &buffer,
     }
 
     auto *out_data = FlatVector::GetData<T>(vec);
+    FlatVector::Validity(vec).SetAllValid(count);
     for (idx_t i = 0; i < count; i++) {
         T value;
-        std::memcpy(&value, buffer.value_ptr + (i * sizeof(T)), sizeof(T));
+        std::memcpy(&value, buffer.value_ptr + ((source_offset + i) * sizeof(T)), sizeof(T));
         out_data[i] = value;
     }
 }
@@ -1262,7 +1308,9 @@ static const LoomDuckDbNativeBuffer &NativeBufferForOutput(const LoomScanState &
 static void FillNativeBufferIntoVector(const LoomDuckDbNativeBuffer &buffer,
                                        LoomValueKind kind,
                                        Vector &vec,
-                                       idx_t count) {
+                                       idx_t source_offset,
+                                       idx_t count,
+                                       idx_t total_count) {
     const auto *expected_arrow_type = NativeArrowTypeForKind(kind);
     if (buffer.arrow_type == nullptr || std::strcmp(buffer.arrow_type, expected_arrow_type) != 0) {
         throw IOException("loom_scan[D-08/native-output-mismatch]: diagnostic code=native-output-mismatch path=$.native.buffers.arrow_type message=native buffer Arrow type does not match projected DuckDB column kind");
@@ -1274,16 +1322,16 @@ static void FillNativeBufferIntoVector(const LoomDuckDbNativeBuffer &buffer,
 
     switch (kind) {
     case LoomValueKind::I32:
-        FillFixedWidthNativeBytes<int32_t>(buffer, vec, count, "Int32");
+        FillFixedWidthNativeBytes<int32_t>(buffer, vec, source_offset, count, total_count, "Int32");
         break;
     case LoomValueKind::I64:
-        FillFixedWidthNativeBytes<int64_t>(buffer, vec, count, "Int64");
+        FillFixedWidthNativeBytes<int64_t>(buffer, vec, source_offset, count, total_count, "Int64");
         break;
     case LoomValueKind::F32:
-        FillFixedWidthNativeBytes<float>(buffer, vec, count, "Float32");
+        FillFixedWidthNativeBytes<float>(buffer, vec, source_offset, count, total_count, "Float32");
         break;
     case LoomValueKind::F64:
-        FillFixedWidthNativeBytes<double>(buffer, vec, count, "Float64");
+        FillFixedWidthNativeBytes<double>(buffer, vec, source_offset, count, total_count, "Float64");
         break;
     case LoomValueKind::BOOL:
     case LoomValueKind::UTF8:
@@ -1324,13 +1372,25 @@ static void LoomScan(
                                                      state.route_diagnostics).c_str());
         }
 
-        const auto count = NativeRowCount(state);
+        const auto total_count = NativeRowCount(state);
+        const auto count = NextScanChunkCount(total_count, state.rows_emitted, output.GetCapacity());
+        if (count == 0) {
+            output.SetCardinality(0);
+            state.batch_emitted = true;
+            return;
+        }
         for (idx_t col = 0; col < state.output_column_count; col++) {
             const auto &buffer = NativeBufferForOutput(state, col);
-            FillNativeBufferIntoVector(buffer, state.column_kinds[col], output.data[col], count);
+            FillNativeBufferIntoVector(buffer,
+                                       state.column_kinds[col],
+                                       output.data[col],
+                                       state.rows_emitted,
+                                       count,
+                                       total_count);
         }
         output.SetCardinality(count);
-        state.batch_emitted = true;
+        state.rows_emitted += count;
+        state.batch_emitted = state.rows_emitted >= total_count;
         AppendTestRouteReport("scan",
                               state.route_decision,
                               state.route_diagnostics,
@@ -1345,7 +1405,8 @@ static void LoomScan(
     }
 
     const auto &arr = state.arrow_arrays[0];
-    const idx_t count = static_cast<idx_t>(arr.length);  // = 4 for Phase 2
+    const idx_t total_count = ArrowArrayLength(arr, "first projected column");
+    const idx_t count = NextScanChunkCount(total_count, state.rows_emitted, output.GetCapacity());
 
     if (count == 0) {
         output.SetCardinality(0);
@@ -1355,28 +1416,28 @@ static void LoomScan(
 
     for (idx_t col = 0; col < state.output_column_count; col++) {
         const auto &col_arr = state.arrow_arrays[col];
-        if (static_cast<idx_t>(col_arr.length) != count) {
+        if (ArrowArrayLength(col_arr, "projected column") != total_count) {
             throw IOException("loom_scan: decoded column length mismatch");
         }
         auto &vec = output.data[col];
         switch (state.column_kinds[col]) {
         case LoomValueKind::BOOL:
-            FillBooleanVector(col_arr, vec, count);
+            FillBooleanVector(col_arr, vec, state.rows_emitted, count);
             break;
         case LoomValueKind::I32:
-            FillFixedWidthVector<int32_t>(col_arr, vec, count, "Int32");
+            FillFixedWidthVector<int32_t>(col_arr, vec, state.rows_emitted, count, "Int32");
             break;
         case LoomValueKind::I64:
-            FillFixedWidthVector<int64_t>(col_arr, vec, count, "Int64");
+            FillFixedWidthVector<int64_t>(col_arr, vec, state.rows_emitted, count, "Int64");
             break;
         case LoomValueKind::UTF8:
-            FillUtf8Vector(col_arr, vec, count);
+            FillUtf8Vector(col_arr, vec, state.rows_emitted, count);
             break;
         case LoomValueKind::F32:
-            FillFixedWidthVector<float>(col_arr, vec, count, "Float32");
+            FillFixedWidthVector<float>(col_arr, vec, state.rows_emitted, count, "Float32");
             break;
         case LoomValueKind::F64:
-            FillFixedWidthVector<double>(col_arr, vec, count, "Float64");
+            FillFixedWidthVector<double>(col_arr, vec, state.rows_emitted, count, "Float64");
             break;
         }
     }
@@ -1384,8 +1445,10 @@ static void LoomScan(
     output.SetCardinality(count);
 
     // The array stays owned by LoomScanState and is released in ~LoomScanState()
-    // on every teardown path (DUCK-03). We only mark the batch as delivered.
-    state.batch_emitted = true;
+    // on every teardown path (DUCK-03). We only mark the scan finished after
+    // all chunks have been delivered.
+    state.rows_emitted += count;
+    state.batch_emitted = state.rows_emitted >= total_count;
     AppendTestRouteReport("scan",
                           state.route_decision,
                           state.route_diagnostics,
