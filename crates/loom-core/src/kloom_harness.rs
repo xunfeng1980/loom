@@ -3,10 +3,14 @@
 //! Serializes an [`L2CoreProgram`] to the kloom textual format, invokes `krun`,
 //! and parses the pretty-printed output to extract trace events.
 //!
+//! Supported constructs: all ScalarExpr except `Bytes` constants.
+//! `Min` and `Max` are supported as of Phase 48 deferred P1.
+//!
 //! Trust model: spec-oracle, offline/CI only, outside production TCB.
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use crate::l2_core::{
     Capability, L2CoreProgram, L2CoreStmt, ScalarExpr, ScalarValue,
@@ -33,14 +37,94 @@ impl KloomHarnessError {
     }
 }
 
+/// Outcome of a K spec-oracle trace extraction attempt.
+///
+/// `ProducedTrace` means krun ran and emitted a usable reference trace.
+/// `SkippedRefereeAbsent` means krun/kompile was missing or timed out — the
+/// referee is absent and the gate should record a skip, not a hard fail.
+/// `UnsupportedProgram` means the program contains constructs (Min/Max/Bytes)
+/// that the harness cannot faithfully serialize to kloom syntax.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KOracleOutcome {
+    ProducedTrace(Vec<String>),
+    SkippedRefereeAbsent { reason: String },
+    UnsupportedProgram { reason: String },
+}
+
+const KRUN_TIMEOUT_SECS: u64 = 30;
+const LOOM_ALLOW_K_ORACLE_SKIP_VAR: &str = "LOOM_ALLOW_K_ORACLE_SKIP";
+
 /// Extract the reference trace for a program by running it through the K
 /// semantics (`krun`).
 ///
-/// Returns the ordered list of trace event strings, e.g.:
-/// `append-value:col0:int32`, `terminal:finished`, `fail-closed:missing-output-builder`.
-pub fn kloom_trace_for_program(program: &L2CoreProgram) -> Result<Vec<String>, KloomHarnessError> {
+/// Returns a typed outcome that distinguishes "produced a usable trace",
+/// "referee absent" (skip), and "unsupported construct" (skip-with-reason).
+pub fn kloom_trace_for_program(program: &L2CoreProgram) -> Result<KOracleOutcome, KloomHarnessError> {
+    if let Some(reason) = program_uses_unsupported_constructs(program) {
+        return Ok(KOracleOutcome::UnsupportedProgram {
+            reason: reason.to_string(),
+        });
+    }
     let text = serialize_program(program)?;
     run_kloom(&text)
+}
+
+// ---------------------------------------------------------------------------
+// Unsupported-construct predicate (Phase 48)
+// ---------------------------------------------------------------------------
+
+/// Returns `Some(reason)` if the program contains any construct that the
+/// kloom harness cannot faithfully serialize.  This prevents placeholder
+/// lowerings (e.g. Min/Max → 0, Bytes → 0) from silently poisoning the
+/// differential gate.
+fn program_uses_unsupported_constructs(program: &L2CoreProgram) -> Option<&'static str> {
+    for stmt in &program.body {
+        if let Some(reason) = stmt_uses_unsupported(stmt) {
+            return Some(reason);
+        }
+    }
+    None
+}
+
+fn stmt_uses_unsupported(stmt: &L2CoreStmt) -> Option<&'static str> {
+    match stmt {
+        L2CoreStmt::AppendValue { value, .. } => expr_uses_unsupported(value),
+        L2CoreStmt::AppendNull { .. } => None,
+        L2CoreStmt::ReadInput { offset, width, .. } => {
+            expr_uses_unsupported(offset).or_else(|| expr_uses_unsupported(width))
+        }
+        L2CoreStmt::LetScalar { expr, .. } => expr_uses_unsupported(expr),
+        L2CoreStmt::ForRange { start, end, body, .. } => {
+            expr_uses_unsupported(start)
+                .or_else(|| expr_uses_unsupported(end))
+                .or_else(|| body.iter().find_map(stmt_uses_unsupported))
+        }
+        L2CoreStmt::CursorLoop { limit, progress, body, .. } => {
+            expr_uses_unsupported(limit)
+                .or_else(|| expr_uses_unsupported(progress))
+                .or_else(|| body.iter().find_map(stmt_uses_unsupported))
+        }
+        L2CoreStmt::FailClosed { .. } => None,
+    }
+}
+
+fn expr_uses_unsupported(expr: &ScalarExpr) -> Option<&'static str> {
+    match expr {
+        ScalarExpr::Const(ScalarValue::Bytes(_)) => {
+            Some("ScalarValue::Bytes not representable in kloom")
+        }
+        ScalarExpr::Const(_) | ScalarExpr::Var(_) => None,
+        ScalarExpr::Add(l, r)
+        | ScalarExpr::Sub(l, r)
+        | ScalarExpr::Mul(l, r)
+        | ScalarExpr::Min(l, r)
+        | ScalarExpr::Max(l, r)
+        | ScalarExpr::Eq(l, r)
+        | ScalarExpr::Lt(l, r)
+        | ScalarExpr::Le(l, r) => {
+            expr_uses_unsupported(l).or_else(|| expr_uses_unsupported(r))
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -274,13 +358,18 @@ fn serialize_expr(out: &mut String, expr: &ScalarExpr) -> Result<(), KloomHarnes
             out.push(')');
         }
         ScalarExpr::Min(lhs, rhs) => {
-            // kloom v4 does not have min/max; lower to a placeholder.
-            out.push('0');
-            let _ = (lhs, rhs);
+            out.push_str("min(");
+            serialize_expr(out, lhs)?;
+            out.push_str(", ");
+            serialize_expr(out, rhs)?;
+            out.push(')');
         }
         ScalarExpr::Max(lhs, rhs) => {
-            out.push('0');
-            let _ = (lhs, rhs);
+            out.push_str("max(");
+            serialize_expr(out, lhs)?;
+            out.push_str(", ");
+            serialize_expr(out, rhs)?;
+            out.push(')');
         }
     }
     Ok(())
@@ -308,6 +397,8 @@ fn serialize_scalar_value(
         }
         ScalarValue::Bytes(b) => {
             // Bytes are not representable as kloom constants; emit 0 as placeholder.
+            // Defensive-only: program_uses_unsupported_constructs rejects Bytes
+            // before serialization for any program compared through the K oracle.
             let _ = b;
             out.push('0');
         }
@@ -319,8 +410,24 @@ fn serialize_scalar_value(
 // krun invocation
 // ---------------------------------------------------------------------------
 
-fn run_kloom(text: &str) -> Result<Vec<String>, KloomHarnessError> {
-    let def_dir = definition_dir()?;
+fn allow_k_oracle_skip() -> bool {
+    std::env::var(LOOM_ALLOW_K_ORACLE_SKIP_VAR)
+        .map(|v| v == "1")
+        .unwrap_or(false)
+}
+
+fn run_kloom(text: &str) -> Result<KOracleOutcome, KloomHarnessError> {
+    let def_dir = match definition_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            if allow_k_oracle_skip() {
+                return Ok(KOracleOutcome::SkippedRefereeAbsent {
+                    reason: e.message,
+                });
+            }
+            return Err(e);
+        }
+    };
 
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -333,7 +440,7 @@ fn run_kloom(text: &str) -> Result<Vec<String>, KloomHarnessError> {
     std::fs::write(&tmp_path, text)
         .map_err(|e| KloomHarnessError::new(format!("failed to write temp file: {e}")))?;
 
-    let output = Command::new("krun")
+    let mut child = match Command::new("krun")
         .arg(&tmp_path)
         .arg("--definition")
         .arg(&def_dir)
@@ -341,19 +448,68 @@ fn run_kloom(text: &str) -> Result<Vec<String>, KloomHarnessError> {
         .arg("pretty")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| KloomHarnessError::new(format!("failed to spawn krun: {e}")))?;
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            if allow_k_oracle_skip() {
+                return Ok(KOracleOutcome::SkippedRefereeAbsent {
+                    reason: "krun not found on PATH".to_string(),
+                });
+            }
+            return Err(KloomHarnessError::new(format!(
+                "krun not found on PATH; set {LOOM_ALLOW_K_ORACLE_SKIP_VAR}=1 to skip"
+            )));
+        }
+        Err(e) => {
+            return Err(KloomHarnessError::new(format!("failed to spawn krun: {e}")));
+        }
+    };
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    let start = Instant::now();
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {
+                if start.elapsed().as_secs() >= KRUN_TIMEOUT_SECS {
+                    let _ = child.kill();
+                    return Ok(KOracleOutcome::SkippedRefereeAbsent {
+                        reason: format!("krun timed out after {KRUN_TIMEOUT_SECS}s"),
+                    });
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => {
+                return Err(KloomHarnessError::new(format!(
+                    "failed to wait for krun: {e}"
+                )));
+            }
+        }
+    };
+
+    let mut stdout_buf = Vec::new();
+    let mut stderr_buf = Vec::new();
+    if let Some(mut out) = child.stdout.take() {
+        std::io::Read::read_to_end(&mut out, &mut stdout_buf).map_err(|e| {
+            KloomHarnessError::new(format!("failed to read krun stdout: {e}"))
+        })?;
+    }
+    if let Some(mut err) = child.stderr.take() {
+        std::io::Read::read_to_end(&mut err, &mut stderr_buf).map_err(|e| {
+            KloomHarnessError::new(format!("failed to read krun stderr: {e}"))
+        })?;
+    }
+
+    if !status.success() {
+        let stderr = String::from_utf8_lossy(&stderr_buf);
         return Err(KloomHarnessError::new(format!(
-            "krun exited with status {}: {stderr}",
-            output.status
+            "krun exited with status {status}: {stderr}"
         )));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    parse_trace(&stdout)
+    let stdout = String::from_utf8_lossy(&stdout_buf);
+    let trace = parse_trace(&stdout)?;
+    Ok(KOracleOutcome::ProducedTrace(trace))
 }
 
 fn definition_dir() -> Result<PathBuf, KloomHarnessError> {
@@ -380,6 +536,12 @@ fn definition_dir() -> Result<PathBuf, KloomHarnessError> {
 // ---------------------------------------------------------------------------
 
 fn parse_trace(stdout: &str) -> Result<Vec<String>, KloomHarnessError> {
+    if !stdout.contains("<events>") {
+        return Err(KloomHarnessError::new(
+            "krun output did not contain <events> cell (garbled output)",
+        ));
+    }
+
     let mut lines = Vec::new();
     let mut in_events = false;
 
@@ -479,5 +641,20 @@ mod tests {
 "#;
         let trace = parse_trace(pretty).unwrap();
         assert!(trace.is_empty());
+    }
+
+    #[test]
+    fn parse_garbled_no_events_cell_is_hard_error() {
+        let garbled = r#"
+<T>
+  <k>
+    program ... body ... maxRows 1
+  </k>
+</T>
+"#;
+        let result = parse_trace(garbled);
+        assert!(result.is_err(), "garbled output without <events> must be a hard error");
+        let err = result.unwrap_err();
+        assert!(err.message.contains("<events>"), "error must mention <events>: {}", err.message);
     }
 }

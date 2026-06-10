@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 43.2 complete; next is Phase 44 ABI Freeze and Compatibility Contract
-last_updated: "2026-06-09T15:05:00.000Z"
-last_activity: 2026-06-09 -- DuckDB default full-projection Arrow semantic scans now route through production native codegen; LMC1 raw-copy native/test-facts route removed
+stopped_at: Phase 48 complete; next is Phase 44 ABI Freeze and Compatibility Contract
+last_updated: "2026-06-10T09:30:00.000Z"
+last_activity: 2026-06-10 -- K spec-oracle differential gate completed under narrowed Plan-A scope: typed KOracleOutcome, krun-absent skip semantics, garbled-output hard-fail, per-shape native-route disable on K divergence, strict skip wiring in kloom-diff.sh/CI, LLVM-backend feasibility script with findings doc, and contrib/kloom doc sync
 progress:
   total_phases: 49
-  completed_phases: 45
-  total_plans: 173
-  completed_plans: 173
-  percent: 92
+  completed_phases: 48
+  total_plans: 176
+  completed_plans: 176
+  percent: 98
 ---
 
 # Project State
@@ -297,6 +297,14 @@ None yet.
 - [Phase 43.2 P05]: Closed production native-codegen stabilization with `scripts/production-native-codegen-stabilization-test.sh`, MVP2 gate wiring, `43.2-ABI-FREEZE-DOSSIER.md`, `43.2-VERIFICATION.md`, and README/README-zh updates. CODEGEN-STABLE-01 through CODEGEN-STABLE-05 are complete; Phase 44 is ready to start from stabilized native-codegen evidence. `ENGINE-01` remains suspended/pre-GA and is not closed.
 - [Phase 43.2 review fix]: Production native codegen cache/replay admission is now restricted to full projection, no predicate, and full-scan splits with matching row count. Non-full query shapes fail closed or fall back without replay/cache evidence, route validation now rejects drifted JIT entry-symbol/row-count/column-count metadata, and `scripts/mvp2-verify.sh` is labeled as a local coverage gate so missing live StarRocks evidence is not mistaken for a closed `ENGINE-01`.
 - [Phase 43.2 DuckDB default route fix]: Removed the DuckDB `LMC1` raw-copy native/test-facts path and internal preparation cache controls. DuckDB now attempts production Arrow semantic codegen for verifier-accepted `LMC2(LMA1)` / direct `LMA1` full-projection primitive artifacts by default, hands value/validity buffers through the internal native buffer ABI, and falls back/fails closed for projected, Utf8/logical/nested, LMC1, cancellation, or unavailable-native cases.
+- [Phase 48]: Complete on 2026-06-10. All deferred items P1–P5 closed:
+  - **P1** Real Min/Max K semantic rules: `EvalConst(min/max)` and `TypeOfMin/MaxCheck` rules added to `kloom.k` v4; `kloom_harness.rs` Min/Max serialization is faithful (Bytes remains UnsupportedProgram); `test-013-min-max.kloom` and Rust skip-semantics tests pass.
+  - **P2** Extract LLVM backend interpreter into production mode: deferred indefinitely; LLVM interpreter remains a research artifact.
+  - **P3** Persistent cross-process disable store: JSON store (`DisableStore`) with atomic write-to-temp-rename, `$XDG_CACHE_HOME/loom/disabled-shapes.json` default, `LOOM_DISABLE_STORE_PATH` env override, version field, `last_updated_secs` audit field; integrated into `jit.rs` `disable_shape()` / `disabled_shapes_registry()` load-on-init; tested with round-trip, missing-file, env-override, and XDG-path unit tests.
+  - **P4** Equivalence-class corpus generator: `loom-fixtures::corpus::CorpusBuilder` generates deterministic L2Core programs across schema shape × expression depth × statement mix (AppendValue, ForRange, CursorLoop); includes `include_min_max` toggle; produces valid `ResourceBudget` via `body_max_events()`; doc-tested.
+  - **P5** L2Core↔kloom.k↔Lean AST sync checklist: `scripts/l2core-sync-checklist.py` (and `.sh` wrapper) checks 22 mapped constructs across all three artifacts plus Phase 48 P1/P3/P4 completion flags; exits 0 on consistency.
+  - Base deliverables (from prior session): typed `KOracleOutcome` enum with `ProducedTrace`/`SkippedRefereeAbsent`/`UnsupportedProgram`; recursive unsupported-construct predicate; `LOOM_ALLOW_K_ORACLE_SKIP` env-gated skip; per-shape native-route disable registry with pre-check fast-fallback and post-validation divergence hook; strict skip convention; doc sync.
+- [Phase 48 scope caveat]: The Rust reference-interpreter leg was deleted per narrowed Plan-A; K is both spec-oracle and sole reference executor. Extracting LLVM backend interpreter into production mode (P2) remains deferred indefinitely.
 
 ### Quick Tasks Completed
 

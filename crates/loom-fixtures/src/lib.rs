@@ -13,5 +13,6 @@
 //! - [`oracle`] — decodes the same array via Vortex's own `execute` path,
 //!   returning plain Rust values for row-for-row comparison against `loom-core`.
 
+pub mod corpus;
 pub mod oracle;
 pub mod vortex_reader;

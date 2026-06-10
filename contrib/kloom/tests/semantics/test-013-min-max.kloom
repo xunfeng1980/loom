@@ -1,0 +1,14 @@
+// test-013: min/max expressions in appendValue
+// Expected trace:
+//   append-value:col0:int32   (min(3, 5) = 3)
+//   append-value:col0:int32   (min(7, 2) = 2)
+//   append-value:col0:int32   (max(1, 9) = 9)
+//   terminal:finished
+
+program
+  builder col0:int32
+body
+  appendValue(col0, min(3, 5));
+  appendValue(col0, min(7, 2));
+  appendValue(col0, max(1, 9))
+maxRows 3

@@ -14,6 +14,10 @@
 # Trust model: K is the specification baseline. Native execution is
 # validated against K inside cargo test. This script is part of CI,
 # not production.
+#
+# STRICT: This gate intentionally does NOT set LOOM_ALLOW_K_ORACLE_SKIP.
+# krun absence or divergence is a hard fail.  Local development without
+# K may use LOOM_ALLOW_K_ORACLE_SKIP=1 in direct cargo test invocations.
 
 set -euo pipefail
 

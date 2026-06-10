@@ -32,6 +32,8 @@ ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; exit 1; }
 
 info "Running K spec-oracle vs native trace consistency tests..."
+# Strict by default: krun absence → hard fail.
+# For local development without K installed, set LOOM_ALLOW_K_ORACLE_SKIP=1
 cargo test -p loom-core --test native_arrow_semantic
 ok "cargo test -p loom-core --test native_arrow_semantic"
 

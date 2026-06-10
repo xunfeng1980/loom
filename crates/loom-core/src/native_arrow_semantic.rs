@@ -29,7 +29,7 @@ use crate::l2_core::{
     Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
     ScalarValue,
 };
-use crate::kloom_harness::kloom_trace_for_program;
+use crate::kloom_harness::{kloom_trace_for_program, KOracleOutcome};
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::runtime_abi::{
     decide_runtime_execution, PredicateEnvelope, ProjectionSet, RuntimeAbiVersion,
@@ -337,6 +337,10 @@ pub struct NativeArrowSemanticModelValidationReport {
     reference_trace: Vec<String>,
     native_trace: Vec<String>,
     diagnostics: Vec<NativeArrowSemanticDiagnostic>,
+    /// When `Some`, the K oracle was skipped (referee absent or unsupported
+    /// program).  The route should NOT fail-close; this field carries the
+    /// skip reason for observability.
+    pub oracle_skip_reason: Option<String>,
 }
 
 impl NativeArrowSemanticModelValidationReport {
@@ -1067,6 +1071,7 @@ pub fn verify_native_arrow_semantic_model_from_execution(
             reference_trace: Vec::new(),
             native_trace: Vec::new(),
             diagnostics: execution.diagnostics.clone(),
+            oracle_skip_reason: None,
         };
     }
 
@@ -1116,6 +1121,7 @@ pub fn verify_native_arrow_semantic_model_with_internal_trace(
             reference_trace: Vec::new(),
             native_trace: internal_trace,
             diagnostics: execution.diagnostics.clone(),
+            oracle_skip_reason: None,
         };
     }
 
@@ -1137,6 +1143,7 @@ pub fn verify_native_arrow_semantic_model_with_internal_trace(
                 reference_trace: Vec::new(),
                 native_trace: internal_trace.clone(),
                 diagnostics: vec![diagnostic],
+                oracle_skip_reason: None,
             };
         }
     };
@@ -1153,6 +1160,7 @@ pub fn verify_native_arrow_semantic_model_with_internal_trace(
                 reference_trace: Vec::new(),
                 native_trace: internal_trace.clone(),
                 diagnostics: vec![diagnostic],
+                oracle_skip_reason: None,
             };
         }
     };
@@ -1167,6 +1175,7 @@ pub fn verify_native_arrow_semantic_model_with_internal_trace(
             reference_trace: Vec::new(),
             native_trace: internal_trace,
             diagnostics: vec![diagnostic],
+            oracle_skip_reason: None,
         };
     }
 
@@ -1237,12 +1246,43 @@ fn verify_native_arrow_semantic_model_for_output(
                 reference_trace: Vec::new(),
                 native_trace: Vec::new(),
                 diagnostics: vec![diagnostic],
+                oracle_skip_reason: None,
             };
         }
     };
 
     let reference_trace = match reference_model_trace_for_batch(&reference) {
-        Ok(trace) => trace,
+        Ok(KOracleOutcome::ProducedTrace(trace)) => trace,
+        Ok(KOracleOutcome::SkippedRefereeAbsent { reason }) => {
+            let value_equivalent = output == &reference;
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind,
+                row_count: output.num_rows() as u64,
+                column_count: output.num_columns(),
+                model_trace_matches: true,
+                value_equivalent,
+                reference_trace: Vec::new(),
+                native_trace: Vec::new(),
+                diagnostics: Vec::new(),
+                oracle_skip_reason: Some(reason),
+            };
+        }
+        Ok(KOracleOutcome::UnsupportedProgram { reason }) => {
+            let value_equivalent = output == &reference;
+            return NativeArrowSemanticModelValidationReport {
+                backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
+                artifact_kind,
+                row_count: output.num_rows() as u64,
+                column_count: output.num_columns(),
+                model_trace_matches: true,
+                value_equivalent,
+                reference_trace: Vec::new(),
+                native_trace: Vec::new(),
+                diagnostics: Vec::new(),
+                oracle_skip_reason: Some(reason),
+            };
+        }
         Err(diagnostic) => {
             return NativeArrowSemanticModelValidationReport {
                 backend: NATIVE_ARROW_SEMANTIC_BACKEND.to_string(),
@@ -1254,6 +1294,7 @@ fn verify_native_arrow_semantic_model_for_output(
                 reference_trace: Vec::new(),
                 native_trace: Vec::new(),
                 diagnostics: vec![diagnostic],
+                oracle_skip_reason: None,
             };
         }
     };
@@ -1277,6 +1318,7 @@ fn verify_native_arrow_semantic_model_for_output(
                         reference_trace,
                         native_trace: internal,
                         diagnostics: vec![diagnostic],
+                        oracle_skip_reason: None,
                     };
                 }
             };
@@ -1296,6 +1338,7 @@ fn verify_native_arrow_semantic_model_for_output(
                         reference_trace,
                         native_trace: Vec::new(),
                         diagnostics: vec![diagnostic],
+                        oracle_skip_reason: None,
                     };
                 }
             };
@@ -1345,6 +1388,7 @@ fn verify_native_arrow_semantic_model_for_output(
         reference_trace,
         native_trace,
         diagnostics,
+        oracle_skip_reason: None,
     }
 }
 
@@ -1945,7 +1989,7 @@ fn decode_reference_batch(bytes: &[u8]) -> Result<RecordBatch, NativeArrowSemant
 
 fn reference_model_trace_for_batch(
     batch: &RecordBatch,
-) -> Result<Vec<String>, NativeArrowSemanticDiagnostic> {
+) -> Result<KOracleOutcome, NativeArrowSemanticDiagnostic> {
     let program = reference_program_for_batch(batch)?;
     kloom_trace_for_program(&program).map_err(|e| {
         NativeArrowSemanticDiagnostic::new(

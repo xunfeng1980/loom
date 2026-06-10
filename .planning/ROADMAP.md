@@ -1309,18 +1309,22 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
 | 47. Production Hardening and GA Gate | 0/0 | Planned (MVP2) | - |
-| 48. K Spec-Oracle Differential Gate Completion (方案 A) | 0/0 | Planned (MVP2) | - |
+| 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
 
-**Goal:** Complete the Plan-A formal assurance scheme on top of the landed kloom v4 K spec-oracle: the differential gate treats K semantics as the spec baseline and both the Rust interpreter and native codegen output as systems-under-test, with per-builder-event three-way reconciliation, fail-closed adjudication, krun-absent skip semantics that never block the production gate, per-shape native-route disable on native↔K divergence, a generated near-exhaustive corpus over the kloom-modeled L2Core matrix, and a script-enforced L2Core four-place sync checklist (kloom.k / Rust interpreter / native codegen / Lean theorem).
+**Goal:** Under narrowed Plan-A scope, close the remaining kloom v4 spec-oracle differential gaps: typed `KOracleOutcome` with `ProducedTrace`/`SkippedRefereeAbsent`/`UnsupportedProgram` variants; krun-absent skip semantics (`LOOM_ALLOW_K_ORACLE_SKIP` env-gated, 30s timeout) that never block the production gate; garbled-output hard-fail; recursive unsupported-construct predicate for `Min`/`Max`/`Bytes`; per-shape native-route disable registry in `jit.rs` (pre-check fast-fallback, post-validation divergence hook gated by `oracle_skip_reason.is_none()`); strict skip convention in `kloom-diff.sh` and CI (no skip env var); skip-aware LLVM-backend feasibility script with findings doc; and `contrib/kloom` doc sync to v4 coverage and four-state taxonomy.
 **Requirements**: TBD
 **Depends on:** Phase 43.2 (production native codegen evidence) and the landed kloom v4 spec-oracle (commit 77d1bc4). Independent of Phases 44–47; may run before ABI freeze.
-**Non-goals:** K never enters the production path or `loom-core`'s dependency graph beyond invoking external `krun` from test/CI harness code; native remains the only default execution route; no K reachability-logic proofs (future option); Lean `accepted_program_safe` is retained with minimal sync only; no correctness claims — safety/well-formedness and divergence detection only.
+**Non-goals:** K never enters the production path or `loom-core`'s dependency graph beyond invoking external `krun` from test/CI harness code; native remains the only default execution route; no K reachability-logic proofs (future option); Lean `accepted_program_safe` is retained with minimal sync only; no correctness claims — safety/well-formedness and divergence detection only. Rust interpreter leg and extracting LLVM backend interpreter into production mode remain deferred indefinitely.
 **Plans:** 3 plans
 
 Plans:
 
-- [ ] 48-01-PLAN.md — Typed KOracleOutcome enum + ENOENT/timeout skip + garbled-output hard-fail + Min/Max/Bytes unsupported predicate in kloom_harness, threaded through native_arrow_semantic
-- [ ] 48-02-PLAN.md — Per-shape native-route disable registry in jit.rs (disable on K↔native divergence, fast-fallback pre-check, no cache seeding) + negative tests
-- [ ] 48-03-PLAN.md — Strict skip-convention wiring (kloom-diff.sh/CI/consistency script) + skip-aware LLVM-backend feasibility script & findings doc + contrib/kloom doc sync + STATE/ROADMAP closeout
+- [x] 48-01-PLAN.md — Typed KOracleOutcome enum + ENOENT/timeout skip + garbled-output hard-fail + Min/Max/Bytes unsupported predicate in kloom_harness, threaded through native_arrow_semantic
+- [x] 48-02-PLAN.md — Per-shape native-route disable registry in jit.rs (disable on K↔native divergence, fast-fallback pre-check, no cache seeding) + negative tests
+- [x] 48-03-PLAN.md — Strict skip-convention wiring (kloom-diff.sh/CI/consistency script) + skip-aware LLVM-backend feasibility script & findings doc + contrib/kloom doc sync + STATE/ROADMAP closeout
+- [x] 48-P1-PLAN.md — Real Min/Max K semantic rules: `EvalConst(min/max)` + `TypeOfMin/MaxCheck` in kloom.k v4; faithful Min/Max serialization in kloom_harness.rs; `test-013-min-max.kloom` + Rust skip-semantics tests
+- [x] 48-P3-PLAN.md — Persistent cross-process disable store: `DisableStore` JSON with atomic temp-rename, `$XDG_CACHE_HOME` default, `LOOM_DISABLE_STORE_PATH` env override, load-on-init in `disabled_shapes_registry()`, unit tests in jit.rs
+- [x] 48-P4-PLAN.md — Equivalence-class corpus generator: `loom-fixtures::corpus::CorpusBuilder` with schema shape × expr depth × stmt mix determinism, `include_min_max` toggle, valid `ResourceBudget`
+- [x] 48-P5-PLAN.md — L2Core↔kloom.k↔Lean AST sync checklist: `scripts/l2core-sync-checklist.py` checking 22 mapped constructs across three artifacts + Phase 48 completion flags

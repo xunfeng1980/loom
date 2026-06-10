@@ -8,29 +8,26 @@ rewriting rules.  Every K cell has a corresponding Lean `ModeledState` field:
 | K Cell | Lean Field | Purpose |
 |--------|-----------|---------|
 | `<caps>` | `caps : List Capability` | Declared input columns and output builders |
-| `<scalars>` | `scalars : Map String ScalarValue` | Variable environment (v0 empty) |
+| `<scalars>` | `scalars : List (String × L2Ty)` | Variable environment |
 | `<events>` | `events : List ModeledEvent` | Builder-event trace (the oracle output) |
-| `<reads>` | `reads : List ModeledRead` | Input read log (v0 empty) |
+| `<reads>` | `reads : List ModeledRead` | Input read log |
 | `<rows>` | `rowsUsed : Nat` | Events emitted so far (budget counter) |
 | `<maxRows>` | `maxRows : Nat` | Budget from `Program` structure |
-| `<status>` | `status : ModeledStatus` | `running` / `finished` / `failClosed` |
+| `<status>` | `status : ExecutionStatus` | `running` / `finished` / `failClosed` |
 
 ## 2. Design Decisions
 
-### 2.1 `maxRows` as event budget in v0
+### 2.1 `maxRows` as event budget in v0, loop bound in v1+
 
 In Lean, `maxRows` bounds **loop iterations** (`forRange`, `cursorLoop`).  In
-kloom v0 there are no loops, so `maxRows` is interpreted as the **builder-event
-budget** for the pure-append slice.  This aligns with `checkAppendTrace`'s
-`trace.length ≤ maxRows` check.
-
-**Future (v1+)**: When loops are added, `maxRows` will revert to its Lean
-semantics (loop-iteration bound), and a separate `<maxBuilderEvents>` cell will
-be introduced for the event budget.
+kloom v0 (pure-append only) there were no loops, so `maxRows` was interpreted as
+the **builder-event budget**.  kloom v4 reverts to the Lean semantics:
+`maxRows` bounds loop iterations, while the event budget is implicit in the
+builder rules' `requires R <Int MaxR` check.
 
 ### 2.2 `input` and `builder` capabilities share the same `<caps>` map
 
-In Lean, `Capability` is a single inductive type with `inputColumn` and
+In Lean, `Capability` is a single inductive type with `inputSlice` and
 `outputBuilder` constructors.  kloom mirrors this: both declarations are stored
 in `<caps>` under the same Id key.  `appendValue`/`appendNull` lookup only
 matches `builder(_,_)` patterns, so an `input` declaration does not interfere
@@ -46,7 +43,7 @@ kloom `TraceEvent` syntax is designed to be **byte-for-byte compatible** with
 `TracedOutputBuilder` output:
 
 ```
-K:   append-value : col0 : int32
+K:    append-value : col0 : int32
 Rust: append-value:col0:id:int32
 ```
 
@@ -60,17 +57,21 @@ Every divergence from the declared capability schema or budget produces
 `<status>failClosed</status>` and **stops emitting events**.  This mirrors
 Lean's `modeledFailClosed` behavior.
 
-## 3. Known Limitations (v0)
+## 3. Coverage Matrix (v4)
 
-| Feature | Lean | kloom v0 | Plan |
-|---------|------|----------|------|
-| `readInput` | ✅ | ❌ | v1 |
-| `letScalar` | ✅ | ❌ | v1 |
-| `forRange` | ✅ | ❌ | v2 |
-| `cursorLoop` | ✅ | ❌ | v3 |
-| Scalar expressions (arithmetic, comparisons) | ✅ | constants only | v4 |
-| `failClosed` with user code | ✅ | implicit only | v5 |
-| Float/bool scalar values | ✅ | integers only | v0.1 |
+| Feature | Lean | kloom v4 | Notes |
+|---------|------|----------|-------|
+| `appendValue` / `appendNull` | ✅ | ✅ | Builder existence + type + nullable checked |
+| `readInput` | ✅ | ✅ | In-bounds / out-of-bounds / unknown-constants rules per type |
+| `letScalar` | ✅ | ✅ | TypeOf-driven scalar environment update |
+| `forRange` | ✅ | ✅ | Constant bounds, row budget pre-check, body iteration |
+| `cursorLoop` | ✅ | ✅ | Monotone progress check (`cursor + N`), limit budget |
+| `failClosed` | ✅ | ✅ | Explicit user-code fail-closed |
+| Scalar expressions (add/sub/mul/eq/lt/le) | ✅ | ✅ | `EvalConst` for constants; `TypeOf` for type derivation |
+| Float/bool scalar values | ✅ | ✅ | Bit-pattern integers for float; `true`/`false` for bool |
+| `Min` / `Max` | ✅ | ❌ | Not modelled in kloom; Rust harness classifies UnsupportedProgram |
+| `Bytes` constants | ✅ | ❌ | Not representable in kloom syntax; UnsupportedProgram |
+| `UInt32` / `UInt64` / `RowIndex` | ✅ | ⚠️ | Syntax declared; rule coverage partial |
 
 ## 4. Trust Boundary
 

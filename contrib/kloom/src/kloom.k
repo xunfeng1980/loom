@@ -38,6 +38,8 @@ module LOOMCORE-SYNTAX
                       | "add" "(" ScalarExpr "," ScalarExpr ")"
                       | "sub" "(" ScalarExpr "," ScalarExpr ")"
                       | "mul" "(" ScalarExpr "," ScalarExpr ")"
+                      | "min" "(" ScalarExpr "," ScalarExpr ")"
+                      | "max" "(" ScalarExpr "," ScalarExpr ")"
                       | "eq"  "(" ScalarExpr "," ScalarExpr ")"
                       | "lt"  "(" ScalarExpr "," ScalarExpr ")"
                       | "le"  "(" ScalarExpr "," ScalarExpr ")"
@@ -108,6 +110,14 @@ module LOOMCORE
   rule EvalConst(add(E1, E2)) => EvalConst(E1) +Int EvalConst(E2)
   rule EvalConst(sub(E1, E2)) => EvalConst(E1) -Int EvalConst(E2)
   rule EvalConst(mul(E1, E2)) => EvalConst(E1) *Int EvalConst(E2)
+  rule EvalConst(min(E1, E2)) => EvalConst(E1)
+       requires EvalConst(E1) <=Int EvalConst(E2)
+  rule EvalConst(min(E1, E2)) => EvalConst(E2)
+       requires EvalConst(E2) <Int EvalConst(E1)
+  rule EvalConst(max(E1, E2)) => EvalConst(E1)
+       requires EvalConst(E1) >=Int EvalConst(E2)
+  rule EvalConst(max(E1, E2)) => EvalConst(E2)
+       requires EvalConst(E2) >Int EvalConst(E1)
   rule EvalConst(_) => -1 [owise]
 
   // -------------------------------------------------------------------------
@@ -118,6 +128,8 @@ module LOOMCORE
                  | TypeOfAddSecond(ScalarExpr)
                  | TypeOfSubSecond(ScalarExpr)
                  | TypeOfMulSecond(ScalarExpr)
+                 | TypeOfMinSecond(ScalarExpr)
+                 | TypeOfMaxSecond(ScalarExpr)
                  | TypeOfEqSecond(ScalarExpr)
                  | TypeOfLtSecond(ScalarExpr)
                  | TypeOfLeSecond(ScalarExpr)
@@ -125,6 +137,8 @@ module LOOMCORE
   syntax TypeOfAddCheck
   syntax TypeOfSubCheck
   syntax TypeOfMulCheck
+  syntax TypeOfMinCheck
+  syntax TypeOfMaxCheck
   syntax TypeOfEqCheck
   syntax TypeOfLtCheck
   syntax TypeOfLeCheck
@@ -151,6 +165,12 @@ module LOOMCORE
   syntax KItem ::= typeOfMulCheck(ScalarType)
   rule <k> TypeOfResult(_) ~> typeOfMulCheck(T) => TypeOfResult(T) ... </k>
 
+  syntax KItem ::= typeOfMinCheck(ScalarType)
+  rule <k> TypeOfResult(_) ~> typeOfMinCheck(T) => TypeOfResult(T) ... </k>
+
+  syntax KItem ::= typeOfMaxCheck(ScalarType)
+  rule <k> TypeOfResult(_) ~> typeOfMaxCheck(T) => TypeOfResult(T) ... </k>
+
   rule <k> TypeOf(eq(E1, E2)) => TypeOf(E1) ~> TypeOfEqSecond(E2) ... </k>
   rule <k> TypeOfResult(_) ~> TypeOfEqSecond(E2) => TypeOf(E2) ~> typeOfEqCheck() ... </k>
   syntax KItem ::= typeOfEqCheck()
@@ -165,6 +185,16 @@ module LOOMCORE
   rule <k> TypeOfResult(_) ~> TypeOfLeSecond(E2) => TypeOf(E2) ~> typeOfLeCheck() ... </k>
   syntax KItem ::= typeOfLeCheck()
   rule <k> TypeOfResult(_) ~> typeOfLeCheck() => TypeOfResult(boolTy) ... </k>
+
+  rule <k> TypeOf(min(E1, E2)) => TypeOf(E1) ~> TypeOfMinSecond(E2) ... </k>
+  rule <k> TypeOfResult(T) ~> TypeOfMinSecond(E2) => TypeOf(E2) ~> typeOfMinCheck(T) ... </k>
+  syntax KItem ::= typeOfMinCheck(ScalarType)
+  rule <k> TypeOfResult(_) ~> typeOfMinCheck(T) => TypeOfResult(T) ... </k>
+
+  rule <k> TypeOf(max(E1, E2)) => TypeOf(E1) ~> TypeOfMaxSecond(E2) ... </k>
+  rule <k> TypeOfResult(T) ~> TypeOfMaxSecond(E2) => TypeOf(E2) ~> typeOfMaxCheck(T) ... </k>
+  syntax KItem ::= typeOfMaxCheck(ScalarType)
+  rule <k> TypeOfResult(_) ~> typeOfMaxCheck(T) => TypeOfResult(T) ... </k>
 
   // -------------------------------------------------------------------------
   // Helper: scalar environment

@@ -20,12 +20,14 @@ use loom_native_melior::jit::{
     execute_arrow_semantic_codegen_jit, validate_arrow_semantic_codegen_production_route_output,
 };
 use loom_native_melior::jit::{
-    execute_arrow_semantic_codegen_production_route, ArrowSemanticCodegenRouteStatus,
+    execute_arrow_semantic_codegen_production_route, reset_disabled_shapes,
+    ArrowSemanticCodegenRouteStatus,
 };
 
 #[cfg(feature = "melior")]
 #[test]
 fn positive_route_uses_real_jit_validation_replay_and_cache_admission() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let route = execute_arrow_semantic_codegen_production_route(
@@ -56,6 +58,7 @@ fn positive_route_uses_real_jit_validation_replay_and_cache_admission() {
 #[cfg(feature = "melior")]
 #[test]
 fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let support = prepare_native_arrow_semantic_codegen_support(&bytes);
@@ -103,6 +106,7 @@ fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() 
 #[cfg(feature = "melior")]
 #[test]
 fn non_full_query_shapes_fail_closed_or_fallback_without_cache_admission() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
 
@@ -190,6 +194,7 @@ fn non_full_query_shapes_fail_closed_or_fallback_without_cache_admission() {
 #[cfg(feature = "melior")]
 #[test]
 fn route_jit_metadata_drift_fails_closed_before_cache_admission() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let support = prepare_native_arrow_semantic_codegen_support(&bytes);
@@ -229,6 +234,7 @@ fn route_jit_metadata_drift_fails_closed_before_cache_admission() {
 
 #[test]
 fn unsupported_route_fails_closed_or_falls_back_without_jit_or_cache() {
+    reset_disabled_shapes();
     let bytes = encode_lmc2(&utf8_batch());
     let strict = execute_arrow_semantic_codegen_production_route(
         &bytes,
@@ -266,6 +272,7 @@ fn unsupported_route_fails_closed_or_falls_back_without_jit_or_cache() {
 
 #[test]
 fn route_cancellation_is_distinct_and_non_cacheable() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let route = execute_arrow_semantic_codegen_production_route(
@@ -315,6 +322,7 @@ fn assert_metadata_drift_fails_closed(
 #[cfg(not(feature = "melior"))]
 #[test]
 fn default_route_requires_melior_feature_and_cannot_seed_cache() {
+    reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let route = execute_arrow_semantic_codegen_production_route(

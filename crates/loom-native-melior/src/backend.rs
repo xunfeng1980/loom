@@ -209,6 +209,7 @@ pub enum NativeBackendDiagnosticCode {
     JitUnavailable,
     JitSymbolMissing,
     NativeOutputMismatch,
+    NativeShapeDisabled,
 }
 
 impl NativeBackendDiagnosticCode {
@@ -227,6 +228,7 @@ impl NativeBackendDiagnosticCode {
             Self::JitUnavailable => "jit-unavailable",
             Self::JitSymbolMissing => "jit-symbol-missing",
             Self::NativeOutputMismatch => "native-output-mismatch",
+            Self::NativeShapeDisabled => "native-shape-disabled",
         }
     }
 }

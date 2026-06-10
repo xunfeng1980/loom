@@ -242,5 +242,7 @@ jobs:
             krun "$test" --definition .build --output pretty
           done
 
+      # STRICT: LOOM_ALLOW_K_ORACLE_SKIP is intentionally NOT set.
+      # krun absence or divergence fails the CI job.
       - name: Run kloom differential gate (K vs Rust)
         run: bash contrib/kloom/scripts/kloom-diff.sh

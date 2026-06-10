@@ -16,7 +16,7 @@ use loom_core::native_arrow_semantic::{
     native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
     validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
-    NativeArrowSemanticCodegenSupportReport,
+    NativeArrowSemanticCodegenSupportReport, NativeArrowSemanticDiagnosticCode,
 };
 use loom_core::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
@@ -39,6 +39,125 @@ use loom_core::runtime_abi::{
 
 pub const PRODUCTION_JIT_ENTRY_SYMBOL: &str = "loom_decode_build_buffers";
 pub const ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL: &str = "loom_arrow_semantic_codegen_buffers";
+
+// ---------------------------------------------------------------------------
+// Per-shape native-route disable registry (Phase 48)  —  persistent store
+// ---------------------------------------------------------------------------
+
+use std::collections::HashSet;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
+
+use serde::{Deserialize, Serialize};
+
+const DISABLE_STORE_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct DisableStore {
+    version: u32,
+    #[serde(default)]
+    disabled_shapes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last_updated_secs: Option<u64>,
+}
+
+impl DisableStore {
+    fn load_or_default(path: &std::path::Path) -> Self {
+        if !path.exists() {
+            return Self::default();
+        }
+        match fs::read_to_string(path) {
+            Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
+            Err(_) => Self::default(),
+        }
+    }
+
+    fn save(&self, path: &std::path::Path) -> Result<(), String> {
+        let dir = path.parent().ok_or("disable store path has no parent")?;
+        fs::create_dir_all(dir).map_err(|e| format!("create dir: {e}"))?;
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| format!("serialize: {e}"))?;
+        let mut tmp = path.as_os_str().to_os_string();
+        tmp.push(".tmp");
+        let tmp_path = PathBuf::from(tmp);
+        {
+            let mut file = fs::File::create(&tmp_path)
+                .map_err(|e| format!("create temp: {e}"))?;
+            file.write_all(json.as_bytes())
+                .map_err(|e| format!("write temp: {e}"))?;
+            file.sync_all().map_err(|e| format!("sync temp: {e}"))?;
+        }
+        fs::rename(&tmp_path, path).map_err(|e| format!("rename: {e}"))?;
+        Ok(())
+    }
+}
+
+fn disable_store_path() -> PathBuf {
+    if let Ok(env) = std::env::var("LOOM_DISABLE_STORE_PATH") {
+        return PathBuf::from(env);
+    }
+    if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
+        return PathBuf::from(xdg).join("loom").join("disabled-shapes.json");
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        return PathBuf::from(home)
+            .join(".cache")
+            .join("loom")
+            .join("disabled-shapes.json");
+    }
+    // Fallback to current-dir (should never happen on normal OS)
+    PathBuf::from("disabled-shapes.json")
+}
+
+static NATIVE_ROUTE_DISABLED_SHAPES: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+fn disabled_shapes_registry() -> &'static Mutex<HashSet<String>> {
+    NATIVE_ROUTE_DISABLED_SHAPES.get_or_init(|| {
+        let path = disable_store_path();
+        let store = DisableStore::load_or_default(&path);
+        let set: HashSet<String> = store.disabled_shapes.into_iter().collect();
+        Mutex::new(set)
+    })
+}
+
+pub fn is_shape_disabled(schema_fingerprint: &str) -> bool {
+    disabled_shapes_registry().lock().unwrap().contains(schema_fingerprint)
+}
+
+pub fn disable_shape(schema_fingerprint: &str) {
+    let mut guard = disabled_shapes_registry().lock().unwrap();
+    let inserted = guard.insert(schema_fingerprint.to_string());
+    drop(guard);
+    if inserted {
+        let path = disable_store_path();
+        let store = DisableStore {
+            version: DISABLE_STORE_VERSION,
+            disabled_shapes: disabled_shapes_registry().lock().unwrap().iter().cloned().collect(),
+            last_updated_secs: Some(epoch_now_secs()),
+        };
+        // Best-effort persistence; failures are non-fatal.
+        let _ = store.save(&path);
+    }
+}
+
+fn epoch_now_secs() -> u64 {
+    use std::time::SystemTime;
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+/// Clear the disabled-shapes registry **and** delete the persistent store.
+/// Exposed for integration-test cleanup.  Never called in production code.
+#[doc(hidden)]
+pub fn reset_disabled_shapes() {
+    disabled_shapes_registry().lock().unwrap().clear();
+    let path = disable_store_path();
+    let _ = fs::remove_file(&path);
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProductionJitOptions {
@@ -274,6 +393,36 @@ fn execute_arrow_semantic_codegen_production_route_inner(
         };
     }
 
+    // Phase 48 pre-check: if this shape has already been disabled because of a
+    // prior native↔K trace divergence, short-circuit to fallback without running
+    // the JIT or invoking the K oracle.
+    let schema_fingerprint = support.schema_fingerprint.clone();
+    if is_shape_disabled(&schema_fingerprint) {
+        let status = fallback_or_fail_closed(policy);
+        return ArrowSemanticCodegenProductionRouteReport {
+            status,
+            support,
+            jit_output: None,
+            execution: None,
+            runtime_decision: None,
+            replay_evidence: None,
+            cacheable: false,
+            resource_evidence: arrow_semantic_resource_evidence(
+                &["support-extracted", "shape-disabled"],
+                None,
+                None,
+            ),
+            diagnostics: vec![NativeBackendDiagnostic::new(
+                NativeBackendDiagnosticCode::NativeShapeDisabled,
+                "$.codegen.shape",
+                format!(
+                    "native route disabled for schema fingerprint {} due to prior divergence",
+                    schema_fingerprint
+                ),
+            )],
+        };
+    }
+
     let before_jit_cancellation;
     let jit_cancellation =
         if checkpoint == Some(ArrowSemanticCodegenCancellationCheckpoint::BeforeJit) {
@@ -405,6 +554,17 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
         jit_output.backend_identity.clone(),
         jit_output.columns.clone(),
     );
+
+    // Phase 48 post-validation: genuine divergence (NativeModelTraceMismatch)
+    // disables the shape for the process lifetime.  Skip/unsupported outcomes
+    // must NOT disable.
+    let has_divergence = execution.validation().is_some_and(|v| {
+        v.oracle_skip_reason.is_none()
+            && v.diagnostics().iter().any(|d| {
+                d.code == NativeArrowSemanticDiagnosticCode::NativeModelTraceMismatch
+            })
+    });
+
     let runtime_decision =
         decide_validated_native_arrow_semantic_codegen_runtime(&execution, policy);
 
@@ -414,14 +574,25 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
     let replay_diagnostic = replay_result.as_ref().err().cloned();
     let replay_evidence = replay_result.ok();
 
-    let cacheable = replay_evidence.is_some()
-        && runtime_decision.decision == RuntimeExecutionDecision::NativeCandidate;
-    let status = if cacheable {
-        ArrowSemanticCodegenRouteStatus::NativeCandidate
+    let (cacheable, status, replay_evidence) = if has_divergence {
+        disable_shape(&execution.schema_fingerprint);
+        (
+            false,
+            fallback_or_fail_closed(policy),
+            None,
+        )
     } else {
-        fallback_or_fail_closed(policy)
+        let cacheable = replay_evidence.is_some()
+            && runtime_decision.decision == RuntimeExecutionDecision::NativeCandidate;
+        let status = if cacheable {
+            ArrowSemanticCodegenRouteStatus::NativeCandidate
+        } else {
+            fallback_or_fail_closed(policy)
+        };
+        (cacheable, status, replay_evidence)
     };
-    let diagnostics = execution
+
+    let mut diagnostics: Vec<NativeBackendDiagnostic> = execution
         .diagnostics()
         .iter()
         .map(|diagnostic| {
@@ -431,9 +602,18 @@ pub fn validate_arrow_semantic_codegen_production_route_output_with_cancellation
                 diagnostic.message.clone(),
             )
         })
-        .collect::<Vec<_>>();
-    let mut diagnostics = diagnostics;
-    if execution.diagnostics().is_empty() {
+        .collect();
+    if has_divergence {
+        diagnostics.push(NativeBackendDiagnostic::new(
+            NativeBackendDiagnosticCode::NativeShapeDisabled,
+            "$.codegen.shape",
+            format!(
+                "native route disabled for schema fingerprint {} due to trace divergence",
+                execution.schema_fingerprint
+            ),
+        ));
+    }
+    if !has_divergence && execution.diagnostics().is_empty() {
         if let Some(diagnostic) = replay_diagnostic {
             diagnostics.push(NativeBackendDiagnostic::new(
                 NativeBackendDiagnosticCode::InvalidBackendArtifact,
@@ -1954,5 +2134,77 @@ mod tests {
             MeliorBackendDiagnosticCode::JitSymbolMissing
         );
         assert_eq!(err.diagnostics[0].code.as_str(), "jit-symbol-missing");
+    }
+
+    // -----------------------------------------------------------------------
+    // Persistent disable-store tests (Phase 48 P3)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn disable_store_round_trip() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let store = DisableStore {
+            version: 1,
+            disabled_shapes: vec!["fp-a".to_string(), "fp-b".to_string()],
+            last_updated_secs: Some(42),
+        };
+        store.save(path).unwrap();
+        let loaded = DisableStore::load_or_default(path);
+        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.disabled_shapes.len(), 2);
+        assert!(loaded.disabled_shapes.contains(&"fp-a".to_string()));
+        assert!(loaded.disabled_shapes.contains(&"fp-b".to_string()));
+        assert_eq!(loaded.last_updated_secs, Some(42));
+    }
+
+    #[test]
+    fn disable_store_missing_file_returns_default() {
+        let path = std::path::Path::new("/nonexistent/path/disabled-shapes.json");
+        let store = DisableStore::load_or_default(path);
+        assert_eq!(store.version, 0);
+        assert!(store.disabled_shapes.is_empty());
+    }
+
+    #[test]
+    fn disable_store_path_env_override() {
+        let prev = std::env::var("LOOM_DISABLE_STORE_PATH").ok();
+        std::env::set_var("LOOM_DISABLE_STORE_PATH", "/tmp/custom.json");
+        assert_eq!(disable_store_path(), std::path::PathBuf::from("/tmp/custom.json"));
+        match prev {
+            Some(v) => std::env::set_var("LOOM_DISABLE_STORE_PATH", v),
+            None => std::env::remove_var("LOOM_DISABLE_STORE_PATH"),
+        }
+    }
+
+    #[test]
+    fn disable_store_path_xdg_cache() {
+        let prev_loom = std::env::var("LOOM_DISABLE_STORE_PATH").ok();
+        let prev_xdg = std::env::var("XDG_CACHE_HOME").ok();
+        std::env::remove_var("LOOM_DISABLE_STORE_PATH");
+        std::env::set_var("XDG_CACHE_HOME", "/xdg_cache");
+        assert_eq!(
+            disable_store_path(),
+            std::path::PathBuf::from("/xdg_cache/loom/disabled-shapes.json")
+        );
+        match prev_loom {
+            Some(v) => std::env::set_var("LOOM_DISABLE_STORE_PATH", v),
+            None => std::env::remove_var("LOOM_DISABLE_STORE_PATH"),
+        }
+        match prev_xdg {
+            Some(v) => std::env::set_var("XDG_CACHE_HOME", v),
+            None => std::env::remove_var("XDG_CACHE_HOME"),
+        }
+    }
+
+    #[test]
+    fn registry_disable_and_check() {
+        reset_disabled_shapes();
+        assert!(!is_shape_disabled("fp-test-1"));
+        disable_shape("fp-test-1");
+        assert!(is_shape_disabled("fp-test-1"));
+        assert!(!is_shape_disabled("fp-test-2"));
+        reset_disabled_shapes();
+        assert!(!is_shape_disabled("fp-test-1"));
     }
 }

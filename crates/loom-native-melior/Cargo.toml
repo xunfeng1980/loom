@@ -13,3 +13,8 @@ arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 loom-core = { path = "../loom-core" }
 melior = { version = "=0.27.0", optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

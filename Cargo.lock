@@ -3560,6 +3560,9 @@ dependencies = [
  "arrow-schema",
  "loom-core",
  "melior",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
