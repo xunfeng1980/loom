@@ -1449,16 +1449,93 @@ def isPureAppendBody : List Stmt -> Bool
 -- produces a trace that passes checkAppendTrace.  This bridges the
 -- independent executor back to the proven safety invariants.
 --
--- PHASE2-DEFERRED: full inductive proof deferred.  The definition is
--- load-bearing (native trace checking relies on it), but the formal proof
--- requires execAppendBody/execAppendStmt structural induction that is
--- kept outside the Phase 13 gate to avoid regressing existing theorems.
+-- Proof: each AppendValue/AppendNull stmt adds an event whose type matches
+-- builderInfo?.  The trace length is bounded by body.length which is <= maxRows.
+-- Together, checkAppendTrace evaluates to true.
+
+theorem execAppendStmt_checkEvent
+    (caps : List Capability) (stmt : Stmt) (events : List ModeledEvent)
+    (hPure : isPureAppendStmt stmt = true) :
+    (execAppendStmt caps stmt events).all (checkAppendEvent caps) =
+    events.all (checkAppendEvent caps) := by
+  unfold isPureAppendStmt at hPure
+  split at hPure <;> simp_all
+  · rename_i builder value
+    cases hInfo : builderInfo? caps builder with
+    | none =>         simp [execAppendStmt, hInfo]
+    | some info =>
+        cases info with | mk expected nullable =>
+        simp [execAppendStmt, hInfo, checkAppendEvent, List.all_append]
+  · rename_i builder
+    cases hInfo : builderInfo? caps builder with
+    | none =>         simp [execAppendStmt, hInfo]
+    | some info =>
+        cases info with | mk ty nullable =>
+        by_cases hNull : nullable
+        · simp [execAppendStmt, hInfo, hNull, checkAppendEvent]
+        · simp [execAppendStmt, hInfo, hNull]
+
+theorem execAppendBody_events_preserved
+    (caps : List Capability) (body : List Stmt) (events : List ModeledEvent)
+    (hPure : isPureAppendBody body = true) :
+    (execAppendBody caps body events).all (checkAppendEvent caps) =
+    events.all (checkAppendEvent caps) := by
+  induction body generalizing events with
+  | nil => simp [execAppendBody]
+  | cons stmt rest ih =>
+      simp [isPureAppendBody] at hPure
+      rcases hPure with ⟨hStmt, hRest⟩
+      rw [execAppendBody]
+      have hStep := execAppendStmt_checkEvent caps stmt events hStmt
+      have hRest' := ih (execAppendStmt caps stmt events) hRest
+      simpa [execAppendBody, hStep] using hRest'
+
+theorem execAppendStmt_length_adds_at_most_one
+    (caps : List Capability) (stmt : Stmt) (events : List ModeledEvent) :
+    (execAppendStmt caps stmt events).length <= events.length + 1 := by
+  unfold execAppendStmt
+  cases stmt <;> simp
+  · rename_i builder value
+    cases h : builderInfo? caps builder <;> simp
+  · rename_i builder
+    cases h : builderInfo? caps builder <;> simp
+    rename_i info; cases info; rename_i ty nullable
+    split <;> simp
+
+theorem execAppendStmt_length_bound
+    (caps : List Capability) (stmt : Stmt) (events : List ModeledEvent) :
+    (execAppendStmt caps stmt events).length <= 1 + events.length := by
+  have h := execAppendStmt_length_adds_at_most_one caps stmt events
+  omega
+
+theorem execAppendBody_length_bound
+    (caps : List Capability) (body : List Stmt) (events : List ModeledEvent) :
+    (execAppendBody caps body events).length <= body.length + events.length := by
+  induction body generalizing events with
+  | nil => simp [execAppendBody]
+  | cons stmt rest ih =>
+      rw [execAppendBody]
+      have hStep := execAppendStmt_length_bound caps stmt events
+      have hRest := ih (execAppendStmt caps stmt events)
+      simp at hStep hRest ⊢
+      omega
 
 theorem execAppendProgram_checkAppendTrace
     (p : Program)
     (hPure : isPureAppendBody p.body = true)
     (hRows : p.body.length <= p.maxRows) :
     checkAppendTrace p.capabilities p.maxRows (execAppendProgram p) = true := by
-  sorry
+  unfold execAppendProgram
+  have hEvents :
+    (execAppendBody p.capabilities p.body []).all (checkAppendEvent p.capabilities) = true := by
+    rw [execAppendBody_events_preserved p.capabilities p.body [] hPure]
+    simp
+  have hLength :
+    (execAppendBody p.capabilities p.body []).length <= p.maxRows := by
+    have hBound := execAppendBody_length_bound p.capabilities p.body []
+    simp at hBound
+    omega
+  unfold checkAppendTrace
+  simp [hEvents, hLength]
 
 #eval IO.println correspondenceReport

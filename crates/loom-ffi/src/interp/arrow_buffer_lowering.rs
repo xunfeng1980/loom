@@ -315,12 +315,6 @@ pub fn lower_arrow_raw_copy_to_standard_mlir(
     Ok(text)
 }
 
-/// Deprecated zeroed-reference helper removed from production path.
-#[doc(hidden)]
-pub fn reference_zeroed_value_bytes(plan: &ArrowColumnBufferPlan) -> Vec<u8> {
-    vec![0u8; plan.primitive.value_buffer_bytes as usize]
-}
-
 fn plan_column(
     row_count: u64,
     column: &ProductionColumnShape,

@@ -84,19 +84,19 @@ check_marker "pub struct ChunkBinding" crates/loom-ir-core/src/sidecar.rs "chunk
     fail_section "MARKERS" "ChunkBinding type not found"
     exit 1
 }
-check_marker "pub fn extract_sidecar_from_parquet_metadata" ingress/loom-parquet-ingress/src/sidecar_parquet.rs "parquet extract" || {
+check_marker "pub fn extract_sidecar_from_parquet_metadata" crates/loom-parquet-ingress/src/sidecar_parquet.rs "parquet extract" || {
     fail_section "MARKERS" "Parquet extract function not found"
     exit 1
 }
-check_marker "pub fn embed_sidecar_into_key_value_metadata" ingress/loom-parquet-ingress/src/sidecar_parquet.rs "parquet embed" || {
+check_marker "pub fn embed_sidecar_into_key_value_metadata" crates/loom-parquet-ingress/src/sidecar_parquet.rs "parquet embed" || {
     fail_section "MARKERS" "Parquet embed function not found"
     exit 1
 }
-check_marker "pub fn extract_sidecar_from_vortex_buffer" ingress/loom-vortex-ingress/src/sidecar_vortex.rs "vortex extract" || {
+check_marker "pub fn extract_sidecar_from_vortex_buffer" crates/loom-vortex-ingress/src/sidecar_vortex.rs "vortex extract" || {
     fail_section "MARKERS" "Vortex extract function not found"
     exit 1
 }
-check_marker "pub fn extract_sidecar_from_lance_dataset" ingress/loom-lance-ingress/src/sidecar_lance.rs "lance extract" || {
+check_marker "pub fn extract_sidecar_from_lance_dataset" crates/loom-lance-ingress/src/sidecar_lance.rs "lance extract" || {
     fail_section "MARKERS" "Lance extract function not found"
     exit 1
 }
@@ -141,7 +141,7 @@ else
 fi
 
 # Verify the extract function returns None gracefully (format limitation)
-if grep -q "format limitation\|format does not\|graceful" ingress/loom-vortex-ingress/src/sidecar_vortex.rs; then
+if grep -q "format limitation\|format does not\|graceful" crates/loom-vortex-ingress/src/sidecar_vortex.rs; then
     info "  Vortex format limitation documented"
 else
     fail_section "VORTEX_SIDECAR_MARKER" "Vortex format limitation not documented"
@@ -159,7 +159,7 @@ else
 fi
 
 # Verify the extract function returns None gracefully (format limitation)
-if grep -q "format limitation\|format does not\|graceful" ingress/loom-lance-ingress/src/sidecar_lance.rs; then
+if grep -q "format limitation\|format does not\|graceful" crates/loom-lance-ingress/src/sidecar_lance.rs; then
     info "  Lance format limitation documented"
 else
     fail_section "LANCE_SIDECAR_MARKER" "Lance format limitation not documented"
@@ -174,7 +174,7 @@ info "Checking strippable overlay invariant..."
 # The Parquet sidecar embed/extract roundtrip test already proves this in
 # sidecar_parquet.rs tests (embed_preserves_non_loom_keys, etc.).
 # Check for the marker in the test code.
-check_marker "embed_preserves_non_loom_keys" ingress/loom-parquet-ingress/src/sidecar_parquet.rs "strippable test" || {
+check_marker "embed_preserves_non_loom_keys" crates/loom-parquet-ingress/src/sidecar_parquet.rs "strippable test" || {
     fail_section "STRIPPABLE_OVERLAY" "strippable overlay test not found"
 }
 pass_section "STRIPPABLE_OVERLAY"
