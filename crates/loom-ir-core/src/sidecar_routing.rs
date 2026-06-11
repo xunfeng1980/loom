@@ -24,7 +24,7 @@
 
 use std::fmt;
 
-use crate::sidecar::{ChunkBinding, SidecarOverlay};
+use crate::sidecar::{ChunkBinding, HashVerificationResult, SidecarOverlay};
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -45,19 +45,9 @@ pub struct SidecarRoutingInput {
 
 /// Result of verifying one granule's content-hash binding against host data.
 ///
-/// Defined here for the routing module; moved to [`crate::sidecar`] in a
-/// follow-up task so that hash-related types live together.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HashVerificationResult {
-    /// Identifier for this granule (column name, fragment id, etc.).
-    pub granule_id: String,
-    /// The original binding from the sidecar.
-    pub binding: ChunkBinding,
-    /// The hash recomputed from actual host data bytes.
-    pub recomputed_hash: String,
-    /// Whether `recomputed_hash` equals `binding.content_hash`.
-    pub matches: bool,
-}
+/// Re-exported from [`crate::sidecar::HashVerificationResult`] where
+/// hash-related types live together with hash computation.
+pub use crate::sidecar::HashVerificationResult;
 
 // ---------------------------------------------------------------------------
 // Decision types

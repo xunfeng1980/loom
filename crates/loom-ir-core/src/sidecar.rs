@@ -27,6 +27,7 @@
 //! produces identical bytes.
 
 use std::fmt;
+use std::hash::Hasher;
 
 use crate::l2core_codec;
 
@@ -89,6 +90,63 @@ impl fmt::Display for SidecarCodecError {
 }
 
 impl std::error::Error for SidecarCodecError {}
+
+// ---------------------------------------------------------------------------
+// Hash verification types
+// ---------------------------------------------------------------------------
+
+/// Result of verifying one granule's content-hash binding against host data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HashVerificationResult {
+    /// Identifier for this granule (column name, fragment id, etc.).
+    pub granule_id: String,
+    /// The original binding from the sidecar.
+    pub binding: ChunkBinding,
+    /// The hash recomputed from actual host data bytes.
+    pub recomputed_hash: String,
+    /// Whether `recomputed_hash` equals `binding.content_hash`.
+    pub matches: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Content-hash computation
+// ---------------------------------------------------------------------------
+
+/// Compute the FNV-1a 64-bit content-hash of raw host data bytes.
+///
+/// Uses the same FNV-1a algorithm as [`l2core_codec::l2core_program_hash`]
+/// but operates on raw data bytes directly (no L2Core IR encoding). The hash
+/// is formatted as `"l2ir:<hex>"` where hex is the lowercase 64-bit hash
+/// zero-padded to 16 characters.
+///
+/// This is a **non-cryptographic** hash (per RESEARCH.md A2): it provides
+/// content-hash identity for accidental-corruption detection. Cryptographic
+/// hashing (SHA-256) is deferred to a later phase.
+pub fn compute_chunk_hash(data: &[u8]) -> String {
+    let mut hasher = fnv::FnvHasher::default();
+    hasher.write(data);
+    let hash = hasher.finish();
+    format!("l2ir:{hash:016x}")
+}
+
+/// Verify a single [`ChunkBinding`] against actual host data bytes.
+///
+/// Recomputes the FNV-1a hash of `host_data` and compares it with
+/// `binding.content_hash`. Returns a [`HashVerificationResult`] with
+/// the granule id, binding, recomputed hash, and match status.
+pub fn verify_chunk_binding(
+    binding: &ChunkBinding,
+    host_data: &[u8],
+) -> HashVerificationResult {
+    let recomputed_hash = compute_chunk_hash(host_data);
+    let matches = recomputed_hash == binding.content_hash;
+    HashVerificationResult {
+        granule_id: binding.granule_id.clone(),
+        binding: binding.clone(),
+        recomputed_hash,
+        matches,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Encode
