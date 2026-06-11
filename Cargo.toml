@@ -5,7 +5,7 @@ members = [
     "crates/loom-ir-core",
     "crates/loom-common",
     "crates/loom-fixtures",
-    "crates/loom-cli",
+    "contrib/loom-cli",
     "crates/loom-sidecar-ffi",
     "ingress/loom-vortex-ingress",
     "ingress/loom-source-ingress",
