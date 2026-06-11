@@ -1330,6 +1330,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–52) a
 | 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete  | 2026-06-11 |
 | 52. Container Split — loom-common Core + contrib/loom-container Legacy | 1/2 | In Progress|  |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
+| 101. Retain only Loom sidecar mode | 0/1 | Planned (Repositioning cleanup) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
 
@@ -1450,11 +1451,11 @@ Plans:
 
 ### Phase 101: Retain only Loom sidecar mode — remove container path, legacy codecs, native .loom IO, and full FFI
 
-**Goal:** [To be planned]
+**Goal:** Strip the Loom project to the sidecar-only model: delete four container-path crates (loom-container, loom-self-ingress, loom-ffi, loom-iceberg-binding), remove container re-exports from loom-core, clean up loom-fixtures container-dependent code, hardcode LOOM_SIDECAR_ONLY as the sole DuckDB extension path, and update release scripts so the workspace compiles with only the sidecar execution track (host files → sidecar overlay → 4-gate routing → Loom-native or host-native-reader fallback).
 **Requirements**: TBD
-**Depends on:** Phase 100
-**Plans:** 0 plans
+**Depends on:** Phase 51 (sidecar-DuckDB decoupling), Phase 52 (container split), Phase 50 (sidecar overlay model), Phase 50.1 (container demotion)
+**Plans:** 1 plan
 
-Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 101 to break down)
+- [ ] 101-01-PLAN.md — Delete 4 crates, clean up loom-core/fixtures/duckdb-ext, update scripts, verify build
