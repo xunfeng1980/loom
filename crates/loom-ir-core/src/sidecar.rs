@@ -154,11 +154,31 @@ pub fn verify_chunk_binding(
 
 impl SidecarOverlay {
     /// Encode this sidecar overlay into its deterministic binary representation.
+    ///
+    /// # Pre-conditions
+    ///
+    /// * `ir_bytes.len()` must not exceed `u32::MAX` (4 GiB) — panic otherwise.
+    /// * Every [`ChunkBinding`] `granule_id`, `content_hash`, and `ir_identity`
+    ///   string must be ≤ 255 bytes in UTF-8 — panic otherwise.
+    ///
+    /// These limits are structural to the binary encoding (u32 length prefix
+    /// for IR bytes, u8 length prefix for string fields). To avoid a panic,
+    /// either validate these pre-conditions before calling `encode`, or use the
+    /// `SidecarOverlay::decode` return-`Result` style instead (future API).
     pub fn encode(&self) -> Vec<u8> {
         let mut buf = Vec::new();
 
         // ir_bytes: u32 length prefix + raw bytes
-        l2core_codec::write_u32(&mut buf, self.ir_bytes.len() as u32);
+        // Fail-closed: IR bytes larger than u32::MAX cannot be encoded
+        // in this format; silent truncation would produce a corrupt prefix.
+        let ir_len = self.ir_bytes.len();
+        let ir_len_u32 = u32::try_from(ir_len).unwrap_or_else(|_| {
+            panic!(
+                "sidecar IR bytes exceed u32::MAX ({} bytes); encoding not supported",
+                ir_len
+            )
+        });
+        l2core_codec::write_u32(&mut buf, ir_len_u32);
         buf.extend_from_slice(&self.ir_bytes);
 
         // bindings: u16 count
