@@ -27,14 +27,9 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use arrow_schema::DataType;
-use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
-use loom_core::layout_codec::encode_layout_payload;
-use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
-use vortex_array::arrays::struct_::StructArrayExt;
 use vortex_array::arrays::PrimitiveArray;
-use vortex_array::arrays::StructArray;
 use vortex_array::dtype::{DType, Nullability, PType};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
@@ -1541,63 +1536,6 @@ pub fn reader_facts_from_vortex_path(
         })
 }
 
-/// Emit a verifier-compatible Loom `LMC1` container for the supported reader slice.
-///
-/// Phase 18 supports an explicit fail-closed matrix: non-null primitive
-/// single-column files emit wrapped `LMP1`, and non-null struct files whose
-/// fields all match that matrix emit wrapped `LMT1`.
-///
-/// This is an internal helper retained for coverage tests; new code should
-/// use the verifier-routed `emit_source_ingress_lmc2_from_vortex_buffer` path.
-#[doc(hidden)]
-pub fn emit_supported_lmc1_from_vortex_buffer(
-    bytes: &[u8],
-) -> Result<Vec<u8>, VortexIngressReport> {
-    let file = opened_buffer_or_report(bytes)?;
-    let mut facts = facts_from_file(&file, VortexIngressSourceKind::Buffer);
-
-    if let Ok(table) = scan_supported_table(&file) {
-        facts.supported_loom_payload = true;
-        let payload = encode_table_payload(&table).map_err(|err| {
-            VortexIngressReport::unsupported(
-                Some(facts.clone()),
-                VortexIngressDiagnosticCode::UnsupportedConversion,
-                "$.payload",
-                format!("failed to encode supported Loom table payload: {err}"),
-            )
-        })?;
-        return wrap_table_payload(&payload).map_err(|err| {
-            VortexIngressReport::unsupported(
-                Some(facts),
-                VortexIngressDiagnosticCode::UnsupportedConversion,
-                "$.payload",
-                format!("failed to wrap supported Loom table payload: {err}"),
-            )
-        });
-    }
-
-    let desc = scan_supported_single_column_layout(&file).map_err(|message| {
-        facts.supported_loom_payload = false;
-        VortexIngressReport::unsupported(
-            Some(facts.clone()),
-            VortexIngressDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            message,
-        )
-    })?;
-
-    facts.supported_loom_payload = true;
-    let payload = encode_layout_payload(&desc);
-    wrap_layout_payload(&payload).map_err(|err| {
-        VortexIngressReport::unsupported(
-            Some(facts),
-            VortexIngressDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to wrap supported Loom payload: {err}"),
-        )
-    })
-}
-
 /// Scan the supported real Vortex slice through Vortex and return Loom-owned rows.
 ///
 /// This is oracle evidence for tests and diagnostics; it does not expose Vortex
@@ -1689,93 +1627,9 @@ fn single_column_support_for_dtype(dtype: &DType) -> Result<SingleColumnSupport,
     }
 }
 
-fn reader_emission_kind(file: &VortexFile) -> VortexReaderEmissionKind {
-    if table_support(file).is_ok() {
-        VortexReaderEmissionKind::Lmt1
-    } else if single_column_support(file).is_ok() {
-        VortexReaderEmissionKind::Lmp1
-    } else {
-        VortexReaderEmissionKind::None
-    }
-}
-
-fn table_support(file: &VortexFile) -> Result<Vec<(String, SingleColumnSupport)>, String> {
-    let DType::Struct(fields, Nullability::NonNullable) = file.dtype() else {
-        return Err(format!(
-            "supported table matrix requires non-null struct rows, found {:?}",
-            file.dtype()
-        ));
-    };
-
-    let mut supported = Vec::with_capacity(fields.nfields());
-    for idx in 0..fields.nfields() {
-        let name = fields
-            .field_name(idx)
-            .map(|name| name.to_string())
-            .unwrap_or_else(|| format!("field_{idx}"));
-        let dtype = fields
-            .field_by_index(idx)
-            .ok_or_else(|| format!("failed to inspect struct field {name}"))?;
-        supported.push((name, single_column_support_for_dtype(&dtype)?));
-    }
-
-    Ok(supported)
-}
-
-fn scan_supported_table(file: &VortexFile) -> Result<TableDescription, String> {
-    let support = table_support(file)?;
-    let array = RUNTIME.block_on(async {
-        let stream = file
-            .scan()
-            .map_err(|err| format!("failed to create Vortex table scan: {err}"))?
-            .into_array_stream()
-            .map_err(|err| format!("failed to create Vortex table array stream: {err}"))?;
-        stream
-            .read_all()
-            .await
-            .map_err(|err| format!("failed to scan Vortex table rows: {err}"))
-    })?;
-
-    let mut ctx = file.session().create_execution_ctx();
-    let struct_array = array
-        .execute::<StructArray>(&mut ctx)
-        .map_err(|err| format!("supported table matrix requires struct rows: {err}"))?;
-
-    if has_nulls(&struct_array.struct_validity(), struct_array.len()) {
-        return Err("supported table matrix requires non-null struct rows".to_string());
-    }
-
-    let fields = struct_array.unmasked_fields();
-    if fields.len() != support.len() {
-        return Err(format!(
-            "supported table matrix field count mismatch: {} != {}",
-            fields.len(),
-            support.len()
-        ));
-    }
-
-    let mut columns = Vec::with_capacity(support.len());
-    for ((name, support), field) in support.into_iter().zip(fields.iter()) {
-        let canonical = field
-            .clone()
-            .execute::<PrimitiveArray>(&mut ctx)
-            .map_err(|err| {
-                format!("supported table field {name} requires primitive rows: {err}")
-            })?;
-        let layout = primitive_array_to_layout(canonical, &support)?;
-        columns.push(TableColumn { name, layout });
-    }
-
-    Ok(TableDescription {
-        row_count: struct_array.len(),
-        columns,
-    })
-}
-
-fn scan_supported_single_column_layout(file: &VortexFile) -> Result<LayoutDescription, String> {
-    let support = single_column_support(file)?;
-    let canonical = scan_supported_primitive_array(file, &support)?;
-    primitive_array_to_layout(canonical, &support)
+fn reader_emission_kind(_file: &VortexFile) -> VortexReaderEmissionKind {
+    // Phase 101: sidecar-only mode — no LMC1 emission.
+    VortexReaderEmissionKind::None
 }
 
 fn primitive_array_to_layout(
@@ -1972,8 +1826,9 @@ mod tests {
     fn real_buffer_reports_vortex_facts_and_supported_slice() {
         let bytes = simple_vortex_file_bytes();
         let report = inspect_vortex_buffer(&bytes);
-        assert_eq!(report.status, VortexIngressStatus::Accepted);
-        assert!(report.diagnostics.is_empty());
+        // Phase 101: sidecar-only — LMC1 emission no longer supported; file still opens
+        // Phase 101: sidecar-only — LMC1 emission no longer supported; file still opens
+        assert_eq!(report.status, VortexIngressStatus::Unsupported);
 
         let facts = report.facts.expect("facts for opened Vortex file");
         assert_eq!(facts.source_kind, VortexIngressSourceKind::Buffer);
@@ -1982,6 +1837,7 @@ mod tests {
         assert!(facts.dtype_summary.contains("I32"));
         assert!(!facts.layout_summary.is_empty());
         assert_eq!(facts.segment_count, facts.segment_ranges.len());
-        assert!(facts.supported_loom_payload);
+        // Phase 101: sidecar-only — LMC1 emission no longer supported
+        assert!(!facts.supported_loom_payload);
     }
 }

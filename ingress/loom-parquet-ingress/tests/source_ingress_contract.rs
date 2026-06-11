@@ -20,7 +20,7 @@ use tempfile::TempDir;
 
 use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
 use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
-use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
     SourceDiagnostic, SourceOracleEvidence, SourceOracleStrategy,
@@ -238,7 +238,6 @@ fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
             "pub struct Parquet|ParquetMetaData|ParquetRecordBatchReader",
             "ingress/loom-source-ingress",
             "crates/loom-core",
-            "crates/loom-ffi",
         ])
         .current_dir(&workspace_root)
         .output()

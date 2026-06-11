@@ -4,17 +4,13 @@ members = [
     "crates/loom-core",
     "crates/loom-ir-core",
     "crates/loom-common",
-    "crates/loom-ffi",
     "crates/loom-fixtures",
     "crates/loom-cli",
     "crates/loom-sidecar-ffi",
-    "ingress/loom-self-ingress",
     "ingress/loom-vortex-ingress",
     "ingress/loom-source-ingress",
     "ingress/loom-lance-ingress",
     "ingress/loom-parquet-ingress",
-    "contrib/loom-iceberg-binding",
-    "contrib/loom-container",
     "crates/loom-native-melior",
 ]
 

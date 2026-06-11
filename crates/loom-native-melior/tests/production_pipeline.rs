@@ -1,7 +1,7 @@
 use loom_core::arrow_buffer_lowering::{
     lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
-use loom_core::artifact_verifier::{
+use loom_core::artifact_types::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};

@@ -1,8 +1,8 @@
 //! `loom-core` — re-export shim.
 //!
-//! This crate is a thin wrapper that re-exports `loom-ir-core`,
-//! `loom-common`, and `loom-container`. All modules live in those
-//! crates. Existing consumers continue to `use loom_core::*` without changes.
+//! This crate is a thin wrapper that re-exports `loom-ir-core` and
+//! `loom-common`. All modules live in those crates. Existing consumers
+//! continue to `use loom_core::*` without changes.
 
 #![forbid(unsafe_code)]
 
@@ -34,18 +34,6 @@ pub use loom_common::production_native_lowering;
 pub use loom_common::runtime_abi;
 pub use loom_common::verify_layout_types;
 
-// --- Container layer (from loom-container-legacy) ---
-pub use loom_container_legacy::container_codec;
-pub use loom_container_legacy::descriptor;
-pub use loom_container_legacy::layout_codec;
-pub use loom_container_legacy::table_codec;
-pub use loom_container_legacy::verified_lineage;
-// artifact_verifier and verifier modules contain container-dependent
-// functions (verify_artifact LMC1 path, verify_container, artifact_verifier
-// pipeline) — re-exported from loom-container-legacy.
-pub use loom_container_legacy::artifact_verifier;
-pub use loom_container_legacy::verifier;
-
 // --- Re-export key dependency crates that downstream code may use ---
 pub use arrow;
 pub use arrow_array;
@@ -53,7 +41,6 @@ pub use arrow_buffer;
 pub use arrow_schema;
 pub use arrow_data;
 pub use arrow_ipc;
-pub use fsst;
 pub use ron;
 pub use serde;
 pub use fnv;

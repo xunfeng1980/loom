@@ -13,7 +13,7 @@ use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
 use loom_core::arrow_semantic_codec::{
     decode_arrow_semantic_container_payload, encode_arrow_semantic_container_payload,
 };
-use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{

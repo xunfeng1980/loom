@@ -4,7 +4,7 @@ use loom_core::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
     reference_zeroed_value_bytes, ArrowValidityPlan, PrimitiveArrowType,
 };
-use loom_core::artifact_verifier::{
+use loom_core::artifact_types::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};

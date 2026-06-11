@@ -24,10 +24,6 @@ arrow-array      = { workspace = true }
 arrow-schema     = { workspace = true }
 
 [[bin]]
-name = "emit_duckdb_payloads"
-path = "src/bin/emit_duckdb_payloads.rs"
-
-[[bin]]
 name = "loom_fixture_timing"
 path = "src/bin/loom_fixture_timing.rs"
 

@@ -7,7 +7,7 @@ use arrow_array::RecordBatch;
 use arrow_schema::Schema;
 use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
 use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
-use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
@@ -16,7 +16,7 @@ use loom_source_ingress::{
     SourceLoweringDisposition, SourceOracleEvidence, SourceOracleStrategy,
 };
 use loom_vortex_ingress::{
-    emit_supported_lmc1_from_vortex_buffer, inspect_vortex_buffer, reader_facts_from_vortex_buffer,
+    inspect_vortex_buffer, reader_facts_from_vortex_buffer,
     source_coverage_from_vortex_coverage, source_diagnostic_from_vortex_ingress_diagnostic,
     source_diagnostic_from_vortex_reader_diagnostic, source_facts_from_vortex_buffer,
     source_facts_from_vortex_reader_facts, source_report_from_vortex_ingress_report,
@@ -392,8 +392,6 @@ fn old_vortex_api_and_new_source_helpers_compile_together() {
 
     let legacy_inspect = inspect_vortex_buffer(&bytes);
     let legacy_facts = reader_facts_from_vortex_buffer(&bytes).expect("legacy reader facts");
-    let legacy_artifact =
-        emit_supported_lmc1_from_vortex_buffer(&bytes).expect("legacy artifact emission");
 
     let source_facts = source_facts_from_vortex_buffer(&bytes).expect("source facts");
     let source_report = source_report_from_vortex_reader_facts(&legacy_facts);
@@ -413,8 +411,8 @@ fn old_vortex_api_and_new_source_helpers_compile_together() {
 
     assert_eq!(legacy_inspect.status, VortexIngressStatus::Accepted);
     assert_eq!(legacy_facts.support, VortexReaderSupport::Accepted);
-    assert_eq!(legacy_facts.emission_kind, VortexReaderEmissionKind::Lmp1);
-    assert!(!legacy_artifact.is_empty());
+    // Phase 101: sidecar-only — emission kind is always None
+    assert_eq!(legacy_facts.emission_kind, VortexReaderEmissionKind::None);
     assert_eq!(source_facts.row_count, legacy_facts.row_count);
     assert_eq!(source_report.status, SourceIngressStatus::Accepted);
     assert_eq!(source_coverage.emission_kind, SourceEmissionKind::Lmp1);

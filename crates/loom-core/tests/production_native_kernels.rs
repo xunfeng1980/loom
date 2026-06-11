@@ -1,6 +1,6 @@
 use arrow_schema::DataType;
 use loom_core::arrow_buffer_lowering::plan_arrow_buffers_from_decode_dialect;
-use loom_core::artifact_verifier::{
+use loom_core::artifact_types::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::decode_dialect::emit_decode_dialect_text;

@@ -1,4 +1,4 @@
-use loom_core::artifact_verifier::{
+use loom_core::artifact_types::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};

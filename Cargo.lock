@@ -3485,13 +3485,8 @@ dependencies = [
 name = "loom-cli"
 version = "0.1.0"
 dependencies = [
- "arrow",
- "arrow-data",
- "arrow-schema",
- "loom-core",
  "loom-ir-core",
  "loom-parquet-ingress",
- "loom-vortex-ingress",
 ]
 
 [[package]]
@@ -3512,24 +3507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "loom-container-legacy"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "arrow-array",
- "arrow-buffer",
- "arrow-data",
- "arrow-ipc",
- "arrow-schema",
- "fnv",
- "fsst-rs",
- "loom-common",
- "loom-ir-core",
- "ron",
- "serde",
-]
-
-[[package]]
 name = "loom-core"
 version = "0.1.0"
 dependencies = [
@@ -3540,22 +3517,10 @@ dependencies = [
  "arrow-ipc",
  "arrow-schema",
  "fnv",
- "fsst-rs",
  "loom-common",
- "loom-container-legacy",
  "loom-ir-core",
  "ron",
  "serde",
-]
-
-[[package]]
-name = "loom-ffi"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "cbindgen",
- "loom-core",
- "loom-native-melior",
 ]
 
 [[package]]
@@ -3573,10 +3538,6 @@ dependencies = [
  "vortex-fsst",
  "vortex-session",
 ]
-
-[[package]]
-name = "loom-iceberg-binding"
-version = "0.1.0"
 
 [[package]]
 name = "loom-ir-core"
@@ -3624,14 +3585,6 @@ dependencies = [
  "loom-source-ingress",
  "parquet",
  "tempfile",
-]
-
-[[package]]
-name = "loom-self-ingress"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "loom-container-legacy",
 ]
 
 [[package]]

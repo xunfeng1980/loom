@@ -1,4 +1,4 @@
-use loom_core::artifact_verifier::{ArtifactVerificationStatus};
+use loom_core::artifact_types::{ArtifactVerificationStatus};
 use loom_core::runtime_abi::{
     decide_runtime_execution, plan_split, ConcurrencyPolicy, RuntimeDecisionInput,
     RuntimeDiagnosticCode, RuntimeEmissionDisposition, RuntimeExecutionDecision,

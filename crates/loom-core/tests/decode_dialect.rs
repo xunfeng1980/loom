@@ -1,5 +1,5 @@
 use arrow_schema::DataType;
-use loom_core::artifact_verifier::{ArtifactVerificationFacts, ArtifactVerificationReport};
+use loom_core::artifact_types::{ArtifactVerificationFacts, ArtifactVerificationReport};
 use loom_core::decode_dialect::{arrow_type_name, emit_decode_dialect_text, DecodeDialectOp};
 use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{

@@ -1,6 +1,6 @@
 //! Production-core artifact verification types.
 //!
-//! Extracted from `loom-container::artifact_verifier` — zero dependency on
+//! Extracted from `loom-container::artifact_types` — zero dependency on
 //! the legacy container packaging layer.
 
 use loom_ir_core::l2_core::VerifiedArtifactFacts;
