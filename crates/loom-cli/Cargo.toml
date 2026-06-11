@@ -9,5 +9,5 @@ name = "loom"
 path = "src/main.rs"
 
 [dependencies]
-loom-ir-core = { path = "../../crates/loom-ir-core" }
-loom-parquet-ingress = { path = "../../ingress/loom-parquet-ingress" }
+loom-ir-core = { path = "../loom-ir-core" }
+loom-parquet-ingress = { path = "../loom-parquet-ingress" }

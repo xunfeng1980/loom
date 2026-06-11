@@ -3,11 +3,11 @@ resolver = "2"
 members = [
     "crates/loom-ir-core",
     "crates/loom-ffi",
-    "contrib/loom-cli",
-    "ingress/loom-vortex-ingress",
-    "ingress/loom-source-ingress",
-    "ingress/loom-lance-ingress",
-    "ingress/loom-parquet-ingress",
+    "crates/loom-cli",
+    "crates/loom-vortex-ingress",
+    "crates/loom-source-ingress",
+    "crates/loom-lance-ingress",
+    "crates/loom-parquet-ingress",
 ]
 
 # Shared dependency versions — all downstream crates reference these via `.workspace = true`.

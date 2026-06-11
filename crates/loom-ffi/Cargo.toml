@@ -13,7 +13,7 @@ melior = ["dep:melior"]
 
 [dependencies]
 loom-ir-core = { path = "../loom-ir-core" }
-loom-parquet-ingress = { path = "../../ingress/loom-parquet-ingress" }
+loom-parquet-ingress = { path = "../loom-parquet-ingress" }
 arrow         = { workspace = true }
 arrow-array   = { workspace = true }
 arrow-buffer  = { workspace = true }
