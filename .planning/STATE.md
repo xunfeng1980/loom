@@ -4,13 +4,13 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Phase 40 complete; ready for Phase 41
-last_updated: "2026-06-11T08:45:52.595Z"
+last_updated: "2026-06-11T08:56:43.940Z"
 last_activity: 2026-06-11 -- Phase 50 execution started
 progress:
   total_phases: 51
   completed_phases: 43
   total_plans: 191
-  completed_plans: 173
+  completed_plans: 174
   percent: 84
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase: 50 (sidecar-overlay-model-and-host-native-reader-fallback) — EXECUTING
 Phase 44 MVP1.5 Closeout and Milestone Archive PLACEHOLDER: (spec before planning — see /gsd-spec-phase 44)
 Phase 51 ABI Freeze and Compatibility Contract: (moved from original Phase 44; 2 planned waves)
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-06-11 -- Phase 50 execution started
 
@@ -178,6 +178,9 @@ Recent decisions affecting current work:
 - [Phase ?]: verifier.rs kept in loom-container (not ir-core) — depends on container-layer modules
 - [Phase ?]: runtime_abi.rs kept in loom-container (not ir-core) — imports ArtifactVerificationStatus from artifact_verifier
 - [Phase ?]: L2DataType local enum defined in l2_core.rs to satisfy zero-Arrow constraint in loom-ir-core; maps 1:1 with supported Arrow subset (Boolean, Int32, Int64, Float32, Float64, Utf8)
+- [Phase ?]: HashVerificationResult defined in sidecar.rs alongside hash computation, re-imported by sidecar_routing.rs
+- [Phase ?]: Sidecar routing is exhaustive: every code path returns LoomNative or HostNativeReader with typed reason (4-gate: engine → sidecar → hash → encoding)
+- [Phase ?]: FNV-1a via fnv::FnvHasher for content-hash — matches l2core_program_hash algorithm family
 
 ### Pending Todos
 
@@ -381,7 +384,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T08:45:47.604Z
+Last session: 2026-06-11T08:56:28.257Z
 Stopped at: Phase 40 complete; ready for Phase 41
 
 Phase 17 handoff:
@@ -452,3 +455,4 @@ Resume file: .planning/ROADMAP.md
 | Phase 29-iceberg-ref-table-binding P05 | ~30min | 3 tasks | 5 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P00 | 13min | 2 tasks | 34 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P02 | 9 min | 3 tasks | 7 files |
+| Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P03 | 7min | 3 tasks | 4 files |
