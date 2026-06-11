@@ -2,19 +2,19 @@ use std::fs;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::arrow_buffer_lowering::{
+use crate::interp::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 
-use crate::backend::{
+use super::backend::{
     validate_backend_request, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
     NativeBackendReport, NativeBackendRequest, NativeBackendRequestInput, NativeBackendStatus,
 };
-use crate::builder::MeliorModuleArtifact;
-use crate::report::{
+use super::builder::MeliorModuleArtifact;
+use super::report::{
     MeliorBackendDiagnosticCode, MeliorBackendReport, MlirToolKind, MlirToolStatus,
 };
-use crate::toolchain::{probe_toolchain, require_compatible_toolchain};
+use super::toolchain::{probe_toolchain, require_compatible_toolchain};
 
 pub const PRODUCTION_MLIR_VALIDATION_PIPELINE_ID: &str = "phase23-production-mlir-validation-v0";
 pub const PRODUCTION_LLVM_LOWERING_PIPELINE_ID: &str = "phase23-llvm-lowering-v0";
@@ -658,7 +658,7 @@ mod tests {
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };
 
-    use crate::builder::build_melior_module;
+    use super::builder::build_melior_module;
 
     use super::*;
 

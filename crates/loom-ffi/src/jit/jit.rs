@@ -1,38 +1,38 @@
 
 use arrow_schema::DataType;
 
-use crate::arrow_buffer_lowering::{
+use crate::interp::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
-use crate::arrow_buffer_lowering::{
+use crate::interp::arrow_buffer_lowering::{
     plan_arrow_buffers_from_decode_dialect, ArrowTableBufferPlan,
 };
 use crate::full_verifier::FullVerificationReport;
 use crate::l2_core::L2CoreProgram;
 
-use crate::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
-use crate::native_arrow_semantic::{
+use crate::interp::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
+use crate::interp::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
     validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
     NativeArrowSemanticCodegenSupportReport, NativeArrowSemanticDiagnosticCode,
 };
-use crate::native_lowering::{
+use crate::interp::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
-use crate::backend::{
+use super::backend::{
     NativeBackendCancellation, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
     NativeBackendReport, NativeBackendStatus,
 };
-use crate::builder::{build_melior_module, MeliorModuleArtifact};
+use super::builder::{build_melior_module, MeliorModuleArtifact};
 
-use crate::pipeline::LLVM_LOWERING_PIPELINE;
-use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
-use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
-use crate::toolchain::probe_toolchain;
-use crate::runtime_abi::{
+use super::pipeline::LLVM_LOWERING_PIPELINE;
+use super::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
+use super::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use super::toolchain::probe_toolchain;
+use crate::interp::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
 };

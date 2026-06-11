@@ -9,11 +9,11 @@ use std::fmt;
 
 use arrow_schema::DataType;
 
-use crate::artifact_types::{
+use super::artifact_types::{
     ArtifactVerificationReport, ArtifactVerificationStatus,
 };
-use crate::decode_dialect::{emit_decode_dialect_text, DecodeDialectTextArtifact};
-use crate::l1_model::{LayoutDescription, LayoutNode};
+use super::decode_dialect::{emit_decode_dialect_text, DecodeDialectTextArtifact};
+use super::l1_model::{LayoutDescription, LayoutNode};
 use loom_ir_core::l2_core::OutputSchemaFact;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

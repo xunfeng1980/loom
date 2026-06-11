@@ -7,8 +7,8 @@ use std::fmt;
 
 use arrow_schema::DataType;
 
-use crate::decode_dialect::arrow_type_name;
-use crate::production_native_lowering::{ProductionColumnShape, ProductionLoweringFacts};
+use super::decode_dialect::arrow_type_name;
+use super::production_native_lowering::{ProductionColumnShape, ProductionLoweringFacts};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrimitiveArrowType {

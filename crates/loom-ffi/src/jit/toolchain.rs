@@ -2,7 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::report::{
+use super::report::{
     MeliorBackendDiagnosticCode, MeliorBackendReport, MlirToolFact, MlirToolKind, MlirToolStatus,
     MlirToolchainFacts,
 };

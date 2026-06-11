@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use crate::artifact_types::ArtifactVerificationStatus;
+use super::artifact_types::ArtifactVerificationStatus;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RuntimeAbiVersion {

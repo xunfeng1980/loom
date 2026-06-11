@@ -16,12 +16,12 @@ use arrow_buffer::{BooleanBuffer, Buffer, NullBuffer};
 use arrow_data::ArrayData;
 use arrow_schema::{DataType, Field};
 
-use crate::arrow_builder_output::OutputBuilder;
-use crate::arrow_semantic_codec::{
+use super::arrow_builder_output::OutputBuilder;
+use super::arrow_semantic_codec::{
     decode_arrow_semantic_container_payload, decode_arrow_semantic_payload,
     is_arrow_semantic_container, is_arrow_semantic_payload,
 };
-use crate::artifact_types::{
+use super::artifact_types::{
     verify_artifact, ArtifactVerificationOptions, ArtifactVerificationReport,
     ArtifactVerificationStatus,
 };
@@ -29,9 +29,9 @@ use loom_ir_core::l2_core::{
     Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
     ScalarValue,
 };
-use crate::kloom_harness::{kloom_trace_for_program, KOracleOutcome};
-use crate::l2_kernel_registry::L2KernelRegistry;
-use crate::runtime_abi::{
+use super::kloom_harness::{kloom_trace_for_program, KOracleOutcome};
+use super::l2_kernel_registry::L2KernelRegistry;
+use super::runtime_abi::{
     decide_runtime_execution, PredicateEnvelope, ProjectionSet, RuntimeAbiVersion,
     RuntimeBackendIdentity, RuntimeCacheKey, RuntimeCacheKeyInput, RuntimeDiagnosticCode,
     RuntimeEmissionDisposition, RuntimeExecutionDecision, RuntimeFallbackPolicy,
@@ -2381,7 +2381,7 @@ fn copy_boolean_column_traced(
     builder_id: &str,
     type_name: &str,
 ) -> Result<(ArrayRef, Vec<String>), NativeArrowSemanticDiagnostic> {
-    use crate::arrow_builder_output::TracedOutputBuilder;
+    use super::arrow_builder_output::TracedOutputBuilder;
     let Some(values) = column.as_any().downcast_ref::<BooleanArray>() else {
         return Err(downcast_diagnostic(column, 0));
     };
@@ -2406,7 +2406,7 @@ fn copy_primitive_column_traced<T>(
 where
     T: arrow_array::types::ArrowPrimitiveType,
 {
-    use crate::arrow_builder_output::TracedOutputBuilder;
+    use super::arrow_builder_output::TracedOutputBuilder;
     let Some(values) = column.as_any().downcast_ref::<PrimitiveArray<T>>() else {
         return Err(downcast_diagnostic(column, 0));
     };

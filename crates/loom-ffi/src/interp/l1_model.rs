@@ -25,10 +25,10 @@ use arrow::array::{
 use arrow_data::ArrayData;
 use arrow_schema::DataType;
 
-use crate::arrow_builder_output::OutputBuilder;
+use super::arrow_builder_output::OutputBuilder;
 use loom_ir_core::error::LoomDecodeError;
-use crate::l2_kernel_registry::L2KernelRegistry;
-use crate::verify_layout_types::verify_layout;
+use super::l2_kernel_registry::L2KernelRegistry;
+use super::verify_layout_types::verify_layout;
 
 // ---------------------------------------------------------------------------
 // LayoutNode — pure-data physical layout description (D-04)
@@ -813,8 +813,8 @@ fn data_type_name(data_type: &DataType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arrow_builder_output::OutputBuilder;
-    use crate::fsst_params::FsstParams;
+    use super::arrow_builder_output::OutputBuilder;
+    use super::fsst_params::FsstParams;
 
     use arrow::array::Array;
 

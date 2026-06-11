@@ -1,10 +1,10 @@
 use crate::full_verifier::FullVerificationReport;
 use crate::l2_core::L2CoreProgram;
-use crate::native_lowering::{
+use crate::interp::native_lowering::{
     check_lowering_support, lower_to_textual_mlir, LoweringDiagnosticCode,
 };
 
-use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use super::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MeliorModuleArtifact {

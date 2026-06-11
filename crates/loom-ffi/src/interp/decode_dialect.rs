@@ -8,7 +8,7 @@ use std::fmt;
 
 use arrow_schema::DataType;
 
-use crate::production_native_lowering::{
+use super::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringFacts, ProductionLoweringShape,
 };
 

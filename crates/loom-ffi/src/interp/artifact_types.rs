@@ -293,7 +293,7 @@ impl ArtifactVerificationReport {
 // In plan 52-01, paths 1+2 are available here. Path 3 is handled by
 // loom-container which re-exports this function plus its own LMC1 path.
 
-use crate::arrow_semantic_codec::{
+use super::arrow_semantic_codec::{
     arrow_semantic_container_feature_names, decode_arrow_semantic_container,
     decode_arrow_semantic_payload, is_arrow_semantic_container, is_arrow_semantic_payload,
 };

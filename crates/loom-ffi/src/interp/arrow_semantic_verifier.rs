@@ -1,6 +1,6 @@
 //! Verifier scaffold for Arrow semantic artifacts.
 
-use crate::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use super::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrowSemanticVerificationStatus {

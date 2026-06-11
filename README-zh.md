@@ -47,12 +47,27 @@ cargo test --workspace
 bash scripts/sidecar-overlay-test.sh
 ```
 
+## 正确性模型
+
+```
+kloom (K 语义 + krun) ──离线差分──→ Rust 解码器 (ground truth)
+                                          │
+                                    JIT (melior/LLVM) ──在线对比──→ 解码器输出
+                                          │
+                                    一致？→ JIT 结果
+                                    不一致？→ 丢弃，回退宿主 native reader
+```
+
+- **kloom** — 离线，K 形式化语义 + krun 执行，trace 逐条对齐，证明解码器实现正确
+- **解码器** — 在线，纯 Rust L1/L2 解码器，被 kloom 验证过的 ground truth
+- **JIT** — 在线，每次执行后和解码器逐行对比，不一致则丢弃
+
 ## 仓库结构
 
 | 路径 | 用途 |
 |------|------|
 | `crates/loom-ir-core` | 零依赖解码 IR — L2Core 程序模型、sidecar overlay、内容哈希标识、4 关路由、验证器 |
-| `crates/loom-ffi` | 生产核心 + C ABI — Arrow 物化、L1/L2 解码管线、sidecar 提取/验证/路由、melior/LLVM JIT 加速 |
+| `crates/loom-ffi` | 生产核心 + C ABI — `interp/` Rust 解码器（kloom 验证）、`jit/` melior/LLVM 加速、sidecar C ABI |
 | `crates/loom-parquet-ingress` | Parquet 入口适配器 — 通过 KeyValue 元数据实现 sidecar 提取/嵌入 |
 | `crates/loom-vortex-ingress` | Vortex 入口适配器 + oracle 测试夹具 |
 | `crates/loom-lance-ingress` | Lance 入口适配器（sidecar 暂缓 — 7.0.0 manifest 缺乏可写元数据） |

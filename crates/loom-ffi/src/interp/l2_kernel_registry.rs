@@ -9,9 +9,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use arrow::array::{Array, Float32Builder, Float64Builder, StringBuilder};
 use arrow_data::ArrayData;
 
-use crate::alp_params::{AlpOutputType, AlpParams};
+use super::alp_params::{AlpOutputType, AlpParams};
 use loom_ir_core::error::LoomDecodeError;
-use crate::fsst_params::FsstParams;
+use super::fsst_params::FsstParams;
 
 /// Total-function L2 kernel.
 pub trait L2Kernel {

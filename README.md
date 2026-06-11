@@ -51,12 +51,27 @@ cargo test --workspace
 bash scripts/sidecar-overlay-test.sh
 ```
 
+## Correctness Model
+
+```
+kloom (K spec + krun) ──离线差分──→ Rust interp (ground truth)
+                                          │
+                                    JIT (melior/LLVM) ──在线对比──→ interp 输出
+                                          │
+                                    一致？→ JIT 结果
+                                    不一致？→ 丢弃，回退宿主 native reader
+```
+
+- **kloom** — 离线，K 形式化语义 + krun 执行，trace 逐条对齐，证明 interp 实现正确
+- **interp** — 在线，纯 Rust L1/L2 解码器，被 kloom 验证过的 ground truth
+- **JIT** — 在线，每次执行后和 interp 逐行对比，不一致则丢弃
+
 ## Repository Map
 
 | Path | Purpose |
 |------|---------|
 | `crates/loom-ir-core` | Zero-dependency decode IR — L2Core program model, sidecar overlay, content-hash identity, 4-gate routing, verifier |
-| `crates/loom-ffi` | Production core + C ABI — Arrow materialization, L1/L2 decode pipeline, sidecar extract/verify/route, melior/LLVM JIT acceleration |
+| `crates/loom-ffi` | Production core + C ABI — `interp/` Rust decoder (verified by kloom), `jit/` melior/LLVM acceleration, sidecar C ABI |
 | `crates/loom-parquet-ingress` | Parquet ingress adapter — sidecar extract/embed via KeyValue metadata |
 | `crates/loom-vortex-ingress` | Vortex ingress adapter + oracle fixtures |
 | `crates/loom-lance-ingress` | Lance ingress adapter (sidecar deferred — 7.0.0 manifest lacks writable metadata) |

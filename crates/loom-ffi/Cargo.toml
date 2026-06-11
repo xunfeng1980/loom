@@ -26,3 +26,6 @@ melior        = "=0.27.0"
 
 [build-dependencies]
 cbindgen = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

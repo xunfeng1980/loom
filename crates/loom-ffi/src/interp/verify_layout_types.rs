@@ -8,11 +8,11 @@ use std::fmt;
 
 use arrow_schema::DataType;
 
-use crate::alp_params::AlpParams;
-use crate::fsst_params::FsstParams;
-use crate::l1_model::bitpack;
-use crate::l1_model::{LayoutDescription, LayoutNode};
-use crate::l2_kernel_registry::L2KernelRegistry;
+use super::alp_params::AlpParams;
+use super::fsst_params::FsstParams;
+use super::l1_model::bitpack;
+use super::l1_model::{LayoutDescription, LayoutNode};
+use super::l2_kernel_registry::L2KernelRegistry;
 use loom_ir_core::error::LoomDecodeError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

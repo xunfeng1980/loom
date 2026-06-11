@@ -6,15 +6,15 @@
 
 use std::fmt;
 
-use crate::production_native_lowering::{
+use crate::interp::production_native_lowering::{
     ProductionLoweringBackend, ProductionLoweringFacts, ProductionNativeKernel,
 };
-use crate::runtime_abi::{
+use crate::interp::runtime_abi::{
     RuntimeAbiVersion, RuntimeCacheKey, RuntimeExecutionDecision, RuntimePlan,
 };
 
-use crate::report::MlirToolchainFacts;
-use crate::toolchain::EXPECTED_MLIR_MAJOR;
+use super::report::MlirToolchainFacts;
+use super::toolchain::EXPECTED_MLIR_MAJOR;
 
 pub const NATIVE_BACKEND_NAME: &str = "loom-ffi";
 pub const PRODUCTION_BACKEND_PIPELINE_ID: &str = "phase23-preflight-v0";

@@ -10,8 +10,8 @@ use std::io::Cursor;
 use arrow_ipc::reader::StreamReader;
 use arrow_ipc::writer::StreamWriter;
 
-use crate::arrow_semantic::{ArrowSemanticPayload, LMA1_MAGIC, LMC2_MAGIC};
-use crate::arrow_semantic_verifier::verify_arrow_semantic_payload;
+use super::arrow_semantic::{ArrowSemanticPayload, LMA1_MAGIC, LMC2_MAGIC};
+use super::arrow_semantic_verifier::verify_arrow_semantic_payload;
 use loom_ir_core::error::LoomDecodeError;
 
 const LMA1_VERSION: u16 = 1;

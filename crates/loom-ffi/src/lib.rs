@@ -1,14 +1,15 @@
 //! `loom-ffi` — Loom sidecar FFI staticlib.
 //!
-//! This crate combines the production-core types and codecs (formerly `loom-common`)
-//! with the sidecar extract/verify/routing C ABI (formerly `loom-sidecar-ffi`).
+//! # Structure
+//!
+//! - `interp/` — Rust interpreter (ground truth, verified by kloom offline)
+//! - `jit/`   — JIT acceleration (melior/LLVM, verified against interpreter online)
+//! - `ffi.rs` — C ABI entry points
 //!
 //! # Safety boundary
 //!
-//! All `unsafe` code lives in `ffi.rs` at the `extern "C"` entry points, wrapped
-//! in `std::panic::catch_unwind(AssertUnwindSafe(...))` to prevent panics from
-//! unwinding across the C ABI. The `ffi` module uses `#![allow(unsafe_code)]`;
-//! all other modules are free of `unsafe` code.
+//! All `unsafe` code lives in `ffi.rs` at the `extern "C"` entry points,
+//! wrapped in `std::panic::catch_unwind(AssertUnwindSafe(...))`.
 
 use std::alloc::System;
 
@@ -41,29 +42,42 @@ pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
     }
 }
 
-// --- Production-core modules (from loom-common) ---
-pub mod artifact_types;
-pub mod verify_layout_types;
-pub mod fsst_params;
-pub mod alp_params;
-pub mod arrow_builder_output;
-pub mod arrow_semantic;
-pub mod arrow_semantic_codec;
-pub mod arrow_semantic_verifier;
-pub mod native_lowering;
-pub mod production_native_lowering;
-pub mod decode_dialect;
-pub mod arrow_buffer_lowering;
-pub mod runtime_abi;
-pub mod native_arrow_semantic;
-pub mod l1_model;
-pub mod l2_kernel_registry;
-pub mod kloom_harness;
+// --- Internal modules ---
+pub mod interp;
+pub mod jit;
 
-// --- FFI surface (from loom-sidecar-ffi) ---
+// --- Re-export interp modules at crate root (backward-compatible) ---
+pub use interp::alp_params;
+pub use interp::arrow_buffer_lowering;
+pub use interp::arrow_builder_output;
+pub use interp::arrow_semantic;
+pub use interp::arrow_semantic_codec;
+pub use interp::arrow_semantic_verifier;
+pub use interp::artifact_types;
+pub use interp::decode_dialect;
+pub use interp::fsst_params;
+pub use interp::kloom_harness;
+pub use interp::l1_model;
+pub use interp::l2_kernel_registry;
+pub use interp::native_arrow_semantic;
+pub use interp::native_lowering;
+pub use interp::production_native_lowering;
+pub use interp::runtime_abi;
+pub use interp::verify_layout_types;
+
+// --- Re-export jit modules at crate root (backward-compatible) ---
+pub use jit::backend;
+pub use jit::builder;
+pub use jit::decode_dialect_manifest;
+pub use jit::jit as jit_mod;
+pub use jit::pipeline;
+pub use jit::report;
+pub use jit::toolchain;
+
+// --- C ABI surface ---
 pub mod ffi;
 
-// --- Re-export loom-ir-core modules for convenience ---
+// --- Re-export loom-ir-core modules ---
 pub use loom_ir_core::error;
 pub use loom_ir_core::full_verifier;
 pub use loom_ir_core::l2_core;
@@ -81,12 +95,3 @@ pub use arrow_ipc;
 pub use ron;
 pub use serde;
 pub use fnv;
-
-// --- melior/LLVM/JIT backend ---
-pub mod backend;
-pub mod decode_dialect_manifest;
-pub mod report;
-pub mod toolchain;
-pub mod builder;
-pub mod jit;
-pub mod pipeline;
