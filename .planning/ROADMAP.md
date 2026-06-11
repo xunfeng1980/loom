@@ -1189,11 +1189,11 @@ Plans:
   5. Full workspace build and test pass with the new dependency boundaries enforced (no accidental `loom-container` leak into the sidecar-DuckDB path).
 
 **Non-goals:** No changes to the `.loom` container format itself. No changes to the MLIR/LLVM native lowering path. The existing DuckDB `LMC2(LMA1)` Arrow semantic path through `loom-ffi` → `loom-container` remains functional but is now one of two paths (the `loom-container`-heavy path for `.loom` files, and the lean sidecar path for sidecar-embedded host files).
-**Plans:** 3 plans across 3 waves
+**Plans:** 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 51-01-PLAN.md — Lean sidecar FFI crate (`loom-sidecar-ffi`) + parquet-ingress dependency cleanup (SC-1, SC-5)
+- [x] 51-01-PLAN.md — Lean sidecar FFI crate (`loom-sidecar-ffi`) + parquet-ingress dependency cleanup (SC-1, SC-5)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -1301,7 +1301,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) a
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
-| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 0/3 | Planned | - |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 1/3 | In Progress|  |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
