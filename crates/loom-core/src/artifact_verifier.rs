@@ -167,6 +167,17 @@ pub struct ArtifactVerificationFacts {
     /// for this artifact. Never gates a production fact.
     pub spec_oracle_trace_validated: bool,
     pub lowering_ready: ArtifactLoweringReadiness,
+
+    /// TCB status of the artifact kind. "in-tcb" for L2Core IR artifacts;
+    /// "out-of-tcb" for LMC2/LMA1 (demoted to dev-time packaging in Phase 50.1).
+    /// None for LMC1 artifacts (inherits default: L1 structural only).
+    pub tcb_status: Option<String>,
+
+    /// Production role of the artifact kind.
+    /// "dev-time-reference-packaging" for LMC2/LMA1;
+    /// "distribution-container" for LMC1 (backward compat);
+    /// None when unspecified.
+    pub artifact_role: Option<String>,
 }
 
 impl ArtifactVerificationFacts {
@@ -187,6 +198,8 @@ impl ArtifactVerificationFacts {
             constraints_discharged: false,
             spec_oracle_trace_validated: false,
             lowering_ready: ArtifactLoweringReadiness::default(),
+            tcb_status: None,
+            artifact_role: None,
         }
     }
 }
@@ -408,6 +421,9 @@ fn verify_arrow_semantic_container_artifact(
         );
     }
 
+    facts.tcb_status = Some("out-of-tcb".to_string());
+    facts.artifact_role = Some("dev-time-reference-packaging".to_string());
+
     ArtifactVerificationReport::accepted(facts)
 }
 
@@ -443,6 +459,9 @@ fn verify_arrow_semantic_artifact(
             ),
         );
     }
+
+    facts.tcb_status = Some("out-of-tcb".to_string());
+    facts.artifact_role = Some("dev-time-reference-packaging".to_string());
 
     ArtifactVerificationReport::accepted(facts)
 }
