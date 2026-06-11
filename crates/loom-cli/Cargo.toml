@@ -8,10 +8,15 @@ description = "Reviewer CLI for inspecting and decoding Loom MVP0 payloads"
 name = "loom"
 path = "src/main.rs"
 
+[features]
+default = ["full"]
+full = ["dep:loom-core", "dep:arrow", "dep:arrow-data", "dep:arrow-schema", "dep:loom-vortex-ingress"]
+
 [dependencies]
-arrow = { workspace = true }
-arrow-data = { workspace = true }
-arrow-schema = { workspace = true }
-loom-core = { path = "../loom-core" }
+loom-ir-core = { path = "../loom-ir-core" }
 loom-parquet-ingress = { path = "../../ingress/loom-parquet-ingress" }
-loom-vortex-ingress = { path = "../../ingress/loom-vortex-ingress" }
+loom-core = { path = "../loom-core", optional = true }
+arrow = { workspace = true, optional = true }
+arrow-data = { workspace = true, optional = true }
+arrow-schema = { workspace = true, optional = true }
+loom-vortex-ingress = { path = "../../ingress/loom-vortex-ingress", optional = true }

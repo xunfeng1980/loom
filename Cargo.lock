@@ -3489,6 +3489,7 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "loom-core",
+ "loom-ir-core",
  "loom-parquet-ingress",
  "loom-vortex-ingress",
 ]

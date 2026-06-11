@@ -2,35 +2,52 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
+// Always-available imports (lean path — only ir-core + parquet-ingress, no container)
+use loom_ir_core::full_verifier::verify_l2_core;
+use loom_ir_core::l2_core::{
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr,
+};
+use loom_ir_core::l2core_codec::{decode_l2core_program, encode_l2core_program, l2core_program_hash};
+use loom_ir_core::sidecar::SidecarOverlay;
+use loom_parquet_ingress::sidecar_parquet::embed_sidecar_into_parquet_file;
+
+// Full-feature imports (container-dependent — only available with `--features full`)
+#[cfg(feature = "full")]
 use arrow::array::{
     Array, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, StringArray,
 };
+#[cfg(feature = "full")]
 use arrow_schema::DataType;
+#[cfg(feature = "full")]
 use loom_core::alp_params::AlpParams;
+#[cfg(feature = "full")]
 use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationReport, ArtifactVerificationStatus,
 };
+#[cfg(feature = "full")]
 use loom_core::container_codec::{
     decode_container, decode_layout_payload_maybe_container, decode_table_payload_maybe_container,
     extract_wrapped_payload, feature_names, is_container_payload, unknown_feature_bits,
     ContainerDescription, SectionKind, WrappedPayload,
 };
+#[cfg(feature = "full")]
 use loom_core::descriptor::{from_descriptor_text, payload_to_descriptor_text};
+#[cfg(feature = "full")]
 use loom_core::error::LoomDecodeError;
+#[cfg(feature = "full")]
 use loom_core::fsst_params::FsstParams;
-use loom_core::full_verifier::verify_l2_core;
+#[cfg(feature = "full")]
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
-use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
-    OutputBuilderCapability, ResourceBudget, ScalarExpr,
-};
+#[cfg(feature = "full")]
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_core::l2core_codec::{decode_l2core_program, encode_l2core_program, l2core_program_hash};
+#[cfg(feature = "full")]
 use loom_core::layout_codec::decode_layout_payload;
-use loom_core::sidecar::SidecarOverlay;
+#[cfg(feature = "full")]
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
+#[cfg(feature = "full")]
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
-use loom_parquet_ingress::sidecar_parquet::embed_sidecar_into_parquet_file;
+#[cfg(feature = "full")]
 use loom_vortex_ingress::{
     inspect_vortex_path, reader_facts_from_vortex_path,
     source_facts_from_vortex_buffer, VortexIngressReport, VortexReaderEmissionKind,
@@ -48,6 +65,32 @@ fn run() -> Result<(), String> {
     let command = args.next().ok_or_else(usage)?;
 
     match command.as_str() {
+        "sidecar" => {
+            let mode = args.next().ok_or_else(|| sidecar_usage())?;
+            sidecar(&mode, args.collect())
+        }
+        "verify-l2core" => {
+            let mode = args.next().ok_or_else(usage)?;
+            if args.next().is_some() {
+                return Err(usage());
+            }
+            verify_l2core(&mode)
+        }
+        "-h" | "--help" | "help" => {
+            println!("{}", usage());
+            Ok(())
+        }
+        cmd => run_full_commands(cmd, args),
+    }
+}
+
+/// Dispatch for commands that require the `full` Cargo feature.
+///
+/// When `full` is enabled, all container-dependent commands are available:
+/// inspect, decode, verify-artifact, and ingest-vortex.
+#[cfg(feature = "full")]
+fn run_full_commands(cmd: &str, mut args: impl Iterator<Item = String>) -> Result<(), String> {
+    match cmd {
         "inspect" => {
             let input = args.next().ok_or_else(usage)?;
             if args.next().is_some() {
@@ -62,28 +105,21 @@ fn run() -> Result<(), String> {
             }
             decode(Path::new(&input))
         }
-        "verify-l2core" => {
-            let mode = args.next().ok_or_else(usage)?;
-            if args.next().is_some() {
-                return Err(usage());
-            }
-            verify_l2core(&mode)
-        }
         "verify-artifact" => verify_artifact_cli(args.collect()),
         "ingest-vortex" => {
             let mode = args.next().ok_or_else(usage)?;
             ingest_vortex(&mode, args.collect())
         }
-        "sidecar" => {
-            let mode = args.next().ok_or_else(|| sidecar_usage())?;
-            sidecar(&mode, args.collect())
-        }
-        "-h" | "--help" | "help" => {
-            println!("{}", usage());
-            Ok(())
-        }
         other => Err(format!("unknown command '{other}'\n{}", usage())),
     }
+}
+
+/// Lean-mode stub: all container-dependent commands produce a clear error.
+#[cfg(not(feature = "full"))]
+fn run_full_commands(cmd: &str, _args: impl Iterator<Item = String>) -> Result<(), String> {
+    Err(format!(
+        "command '{cmd}' requires full feature (rebuild without --no-default-features)"
+    ))
 }
 
 fn usage() -> String {
@@ -189,6 +225,7 @@ fn sidecar_embed_parquet(source: &Path, ir: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn verify_artifact_cli(args: Vec<String>) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{}", usage());
@@ -218,6 +255,7 @@ fn verify_artifact_cli(args: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
     match mode {
         "--inspect" => {
@@ -275,6 +313,7 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
     }
 }
 
+#[cfg(feature = "full")]
 fn print_reader_artifact_verification(
     path: &Path,
     emission_kind: VortexReaderEmissionKind,
@@ -379,6 +418,7 @@ fn sample_l2core_program() -> L2CoreProgram {
     }
 }
 
+#[cfg(feature = "full")]
 fn inspect(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
     if is_container_payload(&bytes) {
@@ -431,6 +471,7 @@ fn inspect(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn decode(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
     if is_table_payload(&bytes) || container_wraps_table(&bytes)? {
@@ -505,6 +546,7 @@ fn decode(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn decode_table(bytes: &[u8]) -> Result<(), String> {
     let table = decode_table_payload_maybe_container(bytes).map_err(display_decode_error)?;
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -530,6 +572,7 @@ fn decode_table(bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn print_cell(
     data: &arrow_data::ArrayData,
     data_type: &DataType,
@@ -589,6 +632,7 @@ fn print_cell(
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn load_layout(bytes: &[u8]) -> Result<LayoutDescription, String> {
     if is_binary_payload(bytes) {
         return decode_layout_payload_maybe_container(bytes).map_err(display_decode_error);
@@ -598,10 +642,12 @@ fn load_layout(bytes: &[u8]) -> Result<LayoutDescription, String> {
     from_descriptor_text(input).map_err(display_decode_error)
 }
 
+#[cfg(feature = "full")]
 fn is_binary_payload(bytes: &[u8]) -> bool {
     bytes.starts_with(b"LMP1") || is_container_payload(bytes)
 }
 
+#[cfg(feature = "full")]
 fn container_wraps_table(bytes: &[u8]) -> Result<bool, String> {
     if !is_container_payload(bytes) {
         return Ok(false);
@@ -612,6 +658,7 @@ fn container_wraps_table(bytes: &[u8]) -> Result<bool, String> {
     }
 }
 
+#[cfg(feature = "full")]
 fn inspect_container(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let container = decode_container(bytes).map_err(display_decode_error)?;
     println!("input: {}", path.display());
@@ -656,6 +703,7 @@ fn inspect_container(path: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 fn print_vortex_ingress_report(report: &VortexIngressReport) {
     println!("ingress: vortex");
     println!("status: {}", report.status.as_str());
@@ -694,6 +742,7 @@ fn print_vortex_ingress_report(report: &VortexIngressReport) {
     }
 }
 
+#[cfg(feature = "full")]
 fn print_container_summary(container: &ContainerDescription) {
     println!("container: LMC1");
     println!("container_version: {}", container.version);
@@ -727,6 +776,7 @@ fn print_container_summary(container: &ContainerDescription) {
     );
 }
 
+#[cfg(feature = "full")]
 fn feature_list(bits: u64) -> String {
     let mut names = feature_names(bits);
     let unknown = unknown_feature_bits(bits);
@@ -742,10 +792,12 @@ fn feature_list(bits: u64) -> String {
     }
 }
 
+#[cfg(feature = "full")]
 fn section_kind_name(kind: SectionKind) -> &'static str {
     kind.as_str()
 }
 
+#[cfg(feature = "full")]
 fn print_node(node: &LayoutNode, depth: usize, data_type: &DataType) {
     let indent = "  ".repeat(depth);
     match node {
@@ -808,6 +860,7 @@ fn print_node(node: &LayoutNode, depth: usize, data_type: &DataType) {
     }
 }
 
+#[cfg(feature = "full")]
 fn data_type_name(data_type: &DataType) -> &'static str {
     match data_type {
         DataType::Boolean => "Boolean",
@@ -820,6 +873,7 @@ fn data_type_name(data_type: &DataType) -> &'static str {
     }
 }
 
+#[cfg(feature = "full")]
 fn kernel_escape_summary(
     indent: &str,
     kernel_id: u32,
@@ -868,10 +922,12 @@ fn kernel_escape_summary(
     }
 }
 
+#[cfg(feature = "full")]
 fn display_decode_error(err: LoomDecodeError) -> String {
     err.to_string()
 }
 
+#[cfg(feature = "full")]
 fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
     let status = match report.status() {
         ArtifactVerificationStatus::Accepted => "pass",
@@ -973,6 +1029,7 @@ fn print_artifact_verification_report(report: &ArtifactVerificationReport) {
     }
 }
 
+#[cfg(feature = "full")]
 fn print_verification(report: &VerificationReport) {
     if report.is_ok() {
         println!("verification: pass");
