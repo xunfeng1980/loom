@@ -3,17 +3,22 @@
 //! This crate is the only workspace crate that may depend on `vortex-file`.
 //! It translates real Vortex file/container metadata into Loom-owned facts and
 //! diagnostics so `loom-core` and `loom-ffi` remain Vortex-free.
+//!
+//! Phase 50.1: Degraded to thin host adapter — mount + extract facts + sidecar stubs.
+//! Arrow materialization and LMC2/LMA1 emission removed from public API.
 
 pub mod source_contract;
 pub use source_contract::{
-    emit_source_ingress_lmc2_from_vortex_buffer,
-    emit_source_ingress_lmc2_from_vortex_path, source_coverage_from_vortex_coverage,
+    bind_content_hash_to_vortex_data,
+    extract_sidecar_bytes_from_vortex_buffer,
+    source_coverage_from_vortex_coverage,
     source_diagnostic_from_vortex_ingress_diagnostic,
-    source_diagnostic_from_vortex_reader_diagnostic, source_facts_from_vortex_buffer,
-    source_facts_from_vortex_path, source_facts_from_vortex_reader_facts,
-    source_ingress_report_from_vortex_buffer, source_ingress_report_from_vortex_path,
-    source_report_from_vortex_ingress_report, source_report_from_vortex_reader_facts,
-    vortex_arrow_oracle_batches_from_buffer, SourceIngressAcceptedArtifact,
+    source_diagnostic_from_vortex_reader_diagnostic,
+    source_facts_from_vortex_buffer,
+    source_facts_from_vortex_path,
+    source_facts_from_vortex_reader_facts,
+    source_report_from_vortex_ingress_report,
+    source_report_from_vortex_reader_facts,
 };
 
 use std::fmt;
