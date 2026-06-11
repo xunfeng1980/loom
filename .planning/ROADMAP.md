@@ -1176,7 +1176,7 @@ Plans:
 
 ### Phase 51: Sidecar-DuckDB Decoupling and Loom Self-Ingress
 
-**Status:** Planned.
+**Status:** Complete. (3/3 plans executed.)
 **Goal:** Decouple the DuckDB sidecar path from `loom-container` so that DuckDB can read Parquet files with embedded Loom IR sidecars using only `loom-ir-core`. Reposition `loom-container` as the exclusive handler of the Loom native `.loom` format, and introduce `loom-self-ingress` as its IO boundary.
 **Depends on:** Phase 50 (sidecar overlay model), Phase 50.1 (container demotion / thin host adapters).
 **Requirements:** SC-1, SC-2, SC-3, SC-4, SC-5
@@ -1202,6 +1202,23 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 51-03-PLAN.md — DuckDB extension lean build path (CMake option) + workspace integration gate (SC-2, SC-5)
+
+### Phase 52: Container Split — loom-common Core + contrib/loom-container Legacy
+
+**Status:** Not started.
+**Goal:** Split `crates/loom-container` into `crates/loom-common` (production core: Arrow semantic, native codegen, runtime ABI, verifier) and `contrib/loom-container` (legacy: container_codec, layout_codec, table_codec, descriptor, verified_lineage, fsst/alp params). After the split, the DuckDB extension and native codegen path depend only on `loom-common` — the legacy `.loom` container format lives in `contrib/`.
+**Depends on:** Phase 51 (sidecar-DuckDB decoupling + self-ingress).
+**Requirements:** TBD
+**Success Criteria** (what must be TRUE):
+
+  1. `crates/loom-common` contains the 13 production-core modules (`arrow_semantic*`, `native_arrow_semantic`, `arrow_buffer_lowering`, `native_lowering`, `production_native_lowering`, `decode_dialect`, `runtime_abi`, `artifact_verifier`, `l1_model`, `l2_kernel_registry`, `verifier`) with zero dependency on container_codec/layout_codec/table_codec.
+  2. `contrib/loom-container` contains the 6 legacy modules (`container_codec`, `layout_codec`, `table_codec`, `descriptor`, `verified_lineage`, `kloom_harness`, `fsst_params`, `alp_params`, `arrow_builder_output`) and depends on `loom-common`.
+  3. `loom-core` depends on `loom-common` instead of `loom-container`; all existing production paths (`loom-ffi`, `loom-native-melior`, DuckDB extension) compile and pass tests.
+  4. `ingress/loom-self-ingress`, `ingress/loom-vortex-ingress` (`.loom` emission), and `loom-cli --features full` optionally depend on `contrib/loom-container`.
+  5. `cargo tree` confirms zero `contrib/loom-container` in the transitive deps of `loom-sidecar-ffi`, `loom-ffi`, and `loom-native-melior`.
+
+**Non-goals:** No module renaming or internal refactoring beyond the split boundary. No changes to the `.loom` format. No changes to MLIR/LLVM toolchain.
+**Plans:** 2 plans across 2 waves.
 
 ### Phase 100: ABI Freeze and Compatibility Contract
 
@@ -1238,8 +1255,8 @@ MVP1.5 P36–41 ──> verified-lineage record ─┐
 MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P100 ABI freeze
       P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before GA
 
-Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P50.1 container demotion ──> P50 sidecar overlay ──> P51 sidecar-DuckDB decoupling + self-ingress
-       (P48–51 run independent of MVP2 chain; P49 is the substrate for future artifact-level hash)
+Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P50.1 container demotion ──> P50 sidecar overlay ──> P51 sidecar-DuckDB decoupling + self-ingress ──> P52 container split (loom-common + contrib/loom-container)
+       (P48–52 run independent of MVP2 chain; P49 is the substrate for future artifact-level hash)
 ```
 
 ## Progress
@@ -1247,7 +1264,7 @@ Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P5
 **Execution Order:**
 MVP1 phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
 
-MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) are active with a non-linear dependency graph — see the "Milestone dependency summary" above.
+MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–52) are active with a non-linear dependency graph — see the "Milestone dependency summary" above.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -1301,7 +1318,8 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) a
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
-| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete    | 2026-06-11 |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete  | 2026-06-11 |
+| 52. Container Split — loom-common Core + contrib/loom-container Legacy | 0/0 | Planned | - |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
