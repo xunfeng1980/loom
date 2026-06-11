@@ -3607,6 +3607,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-sidecar-ffi"
+version = "0.1.0"
+dependencies = [
+ "cbindgen",
+ "loom-ir-core",
+ "loom-parquet-ingress",
+ "parquet",
+]
+
+[[package]]
 name = "loom-source-ingress"
 version = "0.1.0"
 
