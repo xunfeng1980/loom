@@ -3,6 +3,9 @@
 //! This module is the source-compatibility substrate for `LMA1`/`LMC2`.
 //! It intentionally models Arrow `ArrayData` trees instead of adding one
 //! Loom-specific layout node per Arrow type.
+//!
+//! **Phase 50.1: LMA1/LMC2 magic constants are out-of-TCB — retained for
+//! backward-compatible decode of existing test fixtures only.**
 
 use std::sync::Arc;
 

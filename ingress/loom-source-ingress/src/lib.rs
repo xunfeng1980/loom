@@ -553,6 +553,7 @@ pub struct SourceIngressReport {
 ///
 /// This wrapper is intentionally source-neutral: adapters may return bytes only
 /// together with the accepted source-ingress report that justifies them.
+#[deprecated(since = "0.1.0", note = "LMC2/LMA1 demoted to dev-time packaging in Phase 50.1; production paths use sidecar overlay")]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SourceIngressAcceptedArtifact {
     pub bytes: Vec<u8>,

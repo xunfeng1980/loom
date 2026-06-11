@@ -398,6 +398,9 @@ pub fn execute_verified_native_arrow_semantic(
         ));
     };
 
+    // Phase 50.1: LMC2/LMA1 kept for backward compat with existing test fixtures.
+    // Phase 50 will re-anchor native execution to sidecar overlay.
+    // DO NOT remove LMC2/LMA1 acceptance until sidecar-native track is production-ready.
     if !matches!(facts.artifact_kind.as_str(), "LMC2" | "LMA1") {
         return NativeArrowSemanticExecutionReport::rejected(NativeArrowSemanticDiagnostic::new(
             NativeArrowSemanticDiagnosticCode::UnsupportedArtifact,
@@ -492,6 +495,9 @@ pub fn execute_verified_native_arrow_semantic_with_internal_trace(
         return (report, Vec::new());
     };
 
+    // Phase 50.1: LMC2/LMA1 kept for backward compat with existing test fixtures.
+    // Phase 50 will re-anchor native execution to sidecar overlay.
+    // DO NOT remove LMC2/LMA1 acceptance until sidecar-native track is production-ready.
     if !matches!(facts.artifact_kind.as_str(), "LMC2" | "LMA1") {
         let report = NativeArrowSemanticExecutionReport::rejected(
             NativeArrowSemanticDiagnostic::new(
@@ -620,6 +626,9 @@ pub fn prepare_verified_native_arrow_semantic_codegen_support(
         );
     };
 
+    // Phase 50.1: LMC2/LMA1 kept for backward compat with existing test fixtures.
+    // Phase 50 will re-anchor native execution to sidecar overlay.
+    // DO NOT remove LMC2/LMA1 acceptance until sidecar-native track is production-ready.
     if !matches!(facts.artifact_kind.as_str(), "LMC2" | "LMA1") {
         return NativeArrowSemanticCodegenSupportReport::rejected(
             NativeArrowSemanticDiagnostic::new(
