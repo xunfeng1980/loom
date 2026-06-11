@@ -26,7 +26,7 @@ Spec oracle: kloom (K)         Impl oracle: native output
 kloom v4 covers the full L2Core surface exercised by the verifier and the
 native codegen path:
 
-- **Types**: `int32`, `int64`, `float32`, `float64`, `bool`
+- **Types**: `int32`, `int64`, `float32`, `float64`, `bool`, `bytes`
 - **Capabilities**: `input` columns, `output` builders (with nullable flag)
 - **Statements**:
   - `appendValue(builder, scalarExpr)`
@@ -36,7 +36,7 @@ native codegen path:
   - `forRange(index, start, end, body)`
   - `cursorLoop(cursor, limit, progress, body)`
   - `failClosed(code)`
-- **Expressions**: constants, variables, `add`, `sub`, `mul`, `eq`, `lt`, `le`
+- **Expressions**: constants (including `bytesConst`), variables, `add`, `sub`, `mul`, `min`, `max`, `eq`, `lt`, `le`
 - **Program**: `program <caps> body <stmts> maxRows <n>`
 - **Output**: builder-event trace (`append-value:builder:type`, `append-null:builder:type`,
   `terminal:finished`)
@@ -49,7 +49,7 @@ The Rust harness that invokes krun returns one of four typed outcomes:
 |---------|---------|--------------|
 | `ProducedTrace` | krun ran and emitted a reference trace | Compared against native trace |
 | `SkippedRefereeAbsent` | krun/kompile missing or timed out | Recorded skip; route proceeds |
-| `UnsupportedProgram` | Program contains unmodelled constructs (Min/Max/Bytes) | Recorded skip; route proceeds |
+| `UnsupportedProgram` | Reserved for unmodelled constructs the harness cannot serialize. With `Min`/`Max` and `Bytes` now modelled, no construct currently triggers it — kept as a forward guard. | Recorded skip; route proceeds |
 | Hard error (garbled / non-zero exit) | K present but output unusable | Fail-closed |
 
 - `SkippedRefereeAbsent` and `UnsupportedProgram` do **not** disable the native

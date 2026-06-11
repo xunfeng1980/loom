@@ -3,8 +3,8 @@
 //! Serializes an [`L2CoreProgram`] to the kloom textual format, invokes `krun`,
 //! and parses the pretty-printed output to extract trace events.
 //!
-//! Supported constructs: all ScalarExpr except `Bytes` constants.
-//! `Min` and `Max` are supported as of Phase 48 deferred P1.
+//! Supported constructs: the full ScalarExpr language, including `Min`/`Max`
+//! and `Bytes` constants (modelled via the kloom `bytesConst` literal).
 //!
 //! Trust model: spec-oracle, offline/CI only, outside production TCB.
 
@@ -42,8 +42,10 @@ impl KloomHarnessError {
 /// `ProducedTrace` means krun ran and emitted a usable reference trace.
 /// `SkippedRefereeAbsent` means krun/kompile was missing or timed out — the
 /// referee is absent and the gate should record a skip, not a hard fail.
-/// `UnsupportedProgram` means the program contains constructs (`Bytes`
-/// constants) that the harness cannot faithfully serialize to kloom syntax.
+/// `UnsupportedProgram` is reserved for constructs the harness cannot faithfully
+/// serialize to kloom syntax. As of Bytes support, every modelled construct
+/// serializes cleanly, so this outcome currently has no triggers — it is
+/// retained as a forward guard for future unmodelled additions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KOracleOutcome {
     ProducedTrace(Vec<String>),
@@ -74,9 +76,10 @@ pub fn kloom_trace_for_program(program: &L2CoreProgram) -> Result<KOracleOutcome
 // ---------------------------------------------------------------------------
 
 /// Returns `Some(reason)` if the program contains any construct that the
-/// kloom harness cannot faithfully serialize.  This prevents placeholder
-/// lowerings (e.g. Min/Max → 0, Bytes → 0) from silently poisoning the
-/// differential gate.
+/// kloom harness cannot faithfully serialize.  This guards against placeholder
+/// lowerings silently poisoning the differential gate. Every construct is
+/// currently modelled, so this returns `None` for all programs; it is kept as a
+/// forward guard for any future unmodelled construct.
 fn program_uses_unsupported_constructs(program: &L2CoreProgram) -> Option<&'static str> {
     for stmt in &program.body {
         if let Some(reason) = stmt_uses_unsupported(stmt) {
@@ -110,9 +113,7 @@ fn stmt_uses_unsupported(stmt: &L2CoreStmt) -> Option<&'static str> {
 
 fn expr_uses_unsupported(expr: &ScalarExpr) -> Option<&'static str> {
     match expr {
-        ScalarExpr::Const(ScalarValue::Bytes(_)) => {
-            Some("ScalarValue::Bytes not representable in kloom")
-        }
+        // All scalar constants — including Bytes — are now modelled in kloom.
         ScalarExpr::Const(_) | ScalarExpr::Var(_) => None,
         ScalarExpr::Add(l, r)
         | ScalarExpr::Sub(l, r)
@@ -193,9 +194,9 @@ fn arrow_type_to_l2ty(dt: &loom_ir_core::l2_core::L2DataType) -> Result<&'static
         loom_ir_core::l2_core::L2DataType::Float32 => Ok("float32"),
         loom_ir_core::l2_core::L2DataType::Float64 => Ok("float64"),
         loom_ir_core::l2_core::L2DataType::Boolean => Ok("bool"),
-        other => Err(KloomHarnessError::new(format!(
-            "unsupported L2 type for kloom serialization: {other:?}"
-        ))),
+        // Utf8 is the bytes-bearing L2 type (mirrors ScalarType::Bytes); kloom
+        // models it as the `bytes` builder type.
+        loom_ir_core::l2_core::L2DataType::Utf8 => Ok("bytes"),
     }
 }
 
@@ -396,11 +397,15 @@ fn serialize_scalar_value(
             out.push_str(&bits.to_string());
         }
         ScalarValue::Bytes(b) => {
-            // Bytes are not representable as kloom constants; emit 0 as placeholder.
-            // Defensive-only: program_uses_unsupported_constructs rejects Bytes
-            // before serialization for any program compared through the K oracle.
-            let _ = b;
-            out.push('0');
+            // kloom models bytes via the `bytesConst("<hex>")` literal. The byte
+            // content never reaches the trace (appendValue with a constant records
+            // only the builder type, not the value), so a hex rendering is purely
+            // for a faithful, escape-safe round-trip through kloom syntax.
+            out.push_str("bytesConst(\"");
+            for byte in b {
+                out.push_str(&format!("{byte:02x}"));
+            }
+            out.push_str("\")");
         }
     }
     Ok(())
@@ -614,6 +619,45 @@ mod tests {
         assert!(text.contains("builder col0:int32"));
         assert!(text.contains("appendValue(col0, 42)"));
         assert!(text.contains("maxRows 1"));
+    }
+
+    #[test]
+    fn serialize_bytes_builder_and_const() {
+        let program = L2CoreProgram {
+            artifact_version: 1,
+            required_features: vec![],
+            optional_features: vec![],
+            capabilities: vec![Capability::OutputBuilder(
+                loom_ir_core::l2_core::OutputBuilderCapability {
+                    id: "col0".to_string(),
+                    arrow_type: loom_ir_core::l2_core::L2DataType::Utf8,
+                    nullable: false,
+                    max_events: 1,
+                },
+            )],
+            resource_budget: ResourceBudget {
+                max_steps: 10,
+                max_input_bytes_read: 0,
+                max_scratch_bytes: 0,
+                max_builder_events: 1,
+                max_rows: 1,
+                max_constraint_count: 0,
+            },
+            body: vec![L2CoreStmt::AppendValue {
+                builder: "col0".to_string(),
+                value: ScalarExpr::Const(ScalarValue::Bytes(vec![0xAB, 0xCD])),
+            }],
+        };
+
+        // Bytes is now a modelled construct — no longer flagged unsupported.
+        assert!(program_uses_unsupported_constructs(&program).is_none());
+
+        let text = serialize_program(&program).unwrap();
+        assert!(text.contains("builder col0:bytes"), "got:\n{text}");
+        assert!(
+            text.contains("appendValue(col0, bytesConst(\"abcd\"))"),
+            "got:\n{text}"
+        );
     }
 
     #[test]

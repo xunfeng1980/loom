@@ -1,0 +1,12 @@
+// test-014: bytes builder with bytesConst literals in appendValue
+// Expected trace:
+//   append-value:col0:bytes
+//   append-value:col0:bytes
+//   terminal:finished
+
+program
+  builder col0:bytes
+body
+  appendValue(col0, bytesConst("abcd"));
+  appendValue(col0, bytesConst("00"))
+maxRows 2

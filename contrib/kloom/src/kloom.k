@@ -2,7 +2,7 @@
   kloom — K Framework executable semantics for Loom L2Core (v4)
 
   Covers: readInput, letScalar, forRange, cursorLoop, full expression
-  language (add/sub/mul/eq/lt/le), failClosed.
+  language (add/sub/mul/min/max/eq/lt/le), bytes constants, failClosed.
 
   Trust model: spec-oracle, offline/CI only, outside production TCB.
 */
@@ -19,6 +19,7 @@ module LOOMCORE-SYNTAX
                 | "float32"
                 | "float64"
                 | "bool"
+                | "bytes"
 
   syntax ScalarType ::= "boolTy"
                       | "int32Ty"
@@ -35,6 +36,7 @@ module LOOMCORE-SYNTAX
 
   syntax ScalarExpr ::= ScalarValue
                       | Id
+                      | "bytesConst" "(" String ")"
                       | "add" "(" ScalarExpr "," ScalarExpr ")"
                       | "sub" "(" ScalarExpr "," ScalarExpr ")"
                       | "mul" "(" ScalarExpr "," ScalarExpr ")"
@@ -146,6 +148,7 @@ module LOOMCORE
   rule <k> TypeOf(N:Int) => TypeOfResult(int64Ty) ... </k>
   rule <k> TypeOf(true) => TypeOfResult(boolTy) ... </k>
   rule <k> TypeOf(false) => TypeOfResult(boolTy) ... </k>
+  rule <k> TypeOf(bytesConst(_:String)) => TypeOfResult(bytesTy) ... </k>
 
   rule <k> TypeOf(V:Id) => TypeOfResult(T) ... </k>
        <scalars>... V |-> T ...</scalars>

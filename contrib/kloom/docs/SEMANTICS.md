@@ -69,8 +69,8 @@ Lean's `modeledFailClosed` behavior.
 | `failClosed` | ✅ | ✅ | Explicit user-code fail-closed |
 | Scalar expressions (add/sub/mul/eq/lt/le) | ✅ | ✅ | `EvalConst` for constants; `TypeOf` for type derivation |
 | Float/bool scalar values | ✅ | ✅ | Bit-pattern integers for float; `true`/`false` for bool |
-| `Min` / `Max` | ✅ | ❌ | Not modelled in kloom; Rust harness classifies UnsupportedProgram |
-| `Bytes` constants | ✅ | ❌ | Not representable in kloom syntax; UnsupportedProgram |
+| `Min` / `Max` | ✅ | ✅ | `EvalConst` selects the bound; `TypeOf` propagates operand type |
+| `Bytes` constants | ✅ | ✅ | `bytes` builder type + `bytesConst("<hex>")` literal; content irrelevant to trace |
 | `UInt32` / `UInt64` / `RowIndex` | ✅ | ⚠️ | Syntax declared; rule coverage partial |
 
 ## 4. Trust Boundary
