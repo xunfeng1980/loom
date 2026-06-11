@@ -1,0 +1,8 @@
+[package]
+name = "loom-ir-core"
+version = "0.1.0"
+edition = "2021"
+description = "Independent Loom decode IR — L2Core codec, verifier, sidecar overlay, and runtime ABI — zero container or Arrow-builder dependencies"
+
+[dependencies]
+fnv = { workspace = true }

@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/loom-core",
+    "crates/loom-ir-core",
     "crates/loom-ffi",
     "crates/loom-fixtures",
     "crates/loom-cli",
@@ -30,6 +31,7 @@ arrow-ipc    = { version = "=58.3.0" }
 
 fsst = { package = "fsst-rs", version = "=0.5.11" }
 ron = { version = "=0.10.1" }
+fnv = { version = "=1.0.7" }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.150" }
 

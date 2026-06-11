@@ -3538,6 +3538,13 @@ name = "loom-iceberg-binding"
 version = "0.1.0"
 
 [[package]]
+name = "loom-ir-core"
+version = "0.1.0"
+dependencies = [
+ "fnv",
+]
+
+[[package]]
 name = "loom-lance-ingress"
 version = "0.1.0"
 dependencies = [
