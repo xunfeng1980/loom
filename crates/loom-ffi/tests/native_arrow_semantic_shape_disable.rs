@@ -30,7 +30,7 @@ use loom_ffi::jit::{
 // Full production-route tests (require melior + K oracle)
 // ---------------------------------------------------------------------------
 
-#[cfg(feature = "melior")]
+
 mod melior_tests {
     use super::*;
     use arrow_array::Array;

@@ -2,19 +2,19 @@ use std::fs;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use loom_ffi::arrow_buffer_lowering::{
+use crate::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 
-use loom_ffi::backend::{
+use crate::backend::{
     validate_backend_request, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
     NativeBackendReport, NativeBackendRequest, NativeBackendRequestInput, NativeBackendStatus,
 };
-use loom_ffi::builder::MeliorModuleArtifact;
-use loom_ffi::report::{
+use crate::builder::MeliorModuleArtifact;
+use crate::report::{
     MeliorBackendDiagnosticCode, MeliorBackendReport, MlirToolKind, MlirToolStatus,
 };
-use loom_ffi::toolchain::{probe_toolchain, require_compatible_toolchain};
+use crate::toolchain::{probe_toolchain, require_compatible_toolchain};
 
 pub const PRODUCTION_MLIR_VALIDATION_PIPELINE_ID: &str = "phase23-production-mlir-validation-v0";
 pub const PRODUCTION_LLVM_LOWERING_PIPELINE_ID: &str = "phase23-llvm-lowering-v0";
@@ -652,13 +652,13 @@ fn temp_mlir_path(prefix: &str) -> std::path::PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use loom_ffi::full_verifier::verify_l2_core;
-    use loom_ffi::l2_core::{
+    use crate::full_verifier::verify_l2_core;
+    use crate::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };
 
-    use loom_ffi::builder::build_melior_module;
+    use crate::builder::build_melior_module;
 
     use super::*;
 

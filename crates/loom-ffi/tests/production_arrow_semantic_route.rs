@@ -7,15 +7,15 @@ use arrow_array::{
 use arrow_schema::{DataType, Field, Schema};
 use loom_ffi::arrow_semantic::ArrowSemanticPayload;
 use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
-#[cfg(feature = "melior")]
+
 use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
 use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeFallbackPolicy, RuntimeSafetyPolicy, SplitDescriptor,
 };
-#[cfg(feature = "melior")]
+
 use loom_ffi::runtime_abi::{PredicateOperator, ProjectionColumn};
 use loom_ffi::backend::{NativeBackendCancellation, NativeBackendDiagnosticCode};
-#[cfg(feature = "melior")]
+
 use loom_ffi::jit::{
     execute_arrow_semantic_codegen_jit, validate_arrow_semantic_codegen_production_route_output,
 };
@@ -24,7 +24,7 @@ use loom_ffi::jit::{
     ArrowSemanticCodegenRouteStatus,
 };
 
-#[cfg(feature = "melior")]
+
 #[test]
 fn positive_route_uses_real_jit_validation_replay_and_cache_admission() {
     reset_disabled_shapes();
@@ -55,7 +55,7 @@ fn positive_route_uses_real_jit_validation_replay_and_cache_admission() {
         .contains("validation=native-model:phase40"));
 }
 
-#[cfg(feature = "melior")]
+
 #[test]
 fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() {
     reset_disabled_shapes();
@@ -103,7 +103,7 @@ fn route_output_divergence_fails_closed_or_falls_back_without_cache_admission() 
     assert!(fallback.replay_evidence.is_none());
 }
 
-#[cfg(feature = "melior")]
+
 #[test]
 fn non_full_query_shapes_fail_closed_or_fallback_without_cache_admission() {
     reset_disabled_shapes();
@@ -191,7 +191,7 @@ fn non_full_query_shapes_fail_closed_or_fallback_without_cache_admission() {
     }
 }
 
-#[cfg(feature = "melior")]
+
 #[test]
 fn route_jit_metadata_drift_fails_closed_before_cache_admission() {
     reset_disabled_shapes();
@@ -292,7 +292,7 @@ fn route_cancellation_is_distinct_and_non_cacheable() {
         .any(|diagnostic| diagnostic.code == NativeBackendDiagnosticCode::Cancelled));
 }
 
-#[cfg(feature = "melior")]
+
 fn assert_metadata_drift_fails_closed(
     bytes: &[u8],
     support: loom_ffi::native_arrow_semantic::NativeArrowSemanticCodegenSupportReport,
@@ -319,7 +319,7 @@ fn assert_metadata_drift_fails_closed(
     assert_eq!(diagnostic.path, expected_path);
 }
 
-#[cfg(not(feature = "melior"))]
+
 #[test]
 fn default_route_requires_melior_feature_and_cannot_seed_cache() {
     reset_disabled_shapes();

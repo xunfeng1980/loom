@@ -1,10 +1,10 @@
-use loom_ffi::full_verifier::FullVerificationReport;
-use loom_ffi::l2_core::L2CoreProgram;
-use loom_ffi::native_lowering::{
+use crate::full_verifier::FullVerificationReport;
+use crate::l2_core::L2CoreProgram;
+use crate::native_lowering::{
     check_lowering_support, lower_to_textual_mlir, LoweringDiagnosticCode,
 };
 
-use loom_ffi::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MeliorModuleArtifact {
@@ -83,8 +83,8 @@ fn map_lowering_code(code: LoweringDiagnosticCode) -> MeliorBackendDiagnosticCod
 
 #[cfg(test)]
 mod tests {
-    use loom_ffi::full_verifier::{verify_l2_core, FullVerificationReport};
-    use loom_ffi::l2_core::{
+    use crate::full_verifier::{verify_l2_core, FullVerificationReport};
+    use crate::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
     };

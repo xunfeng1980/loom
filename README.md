@@ -56,7 +56,7 @@ bash scripts/sidecar-overlay-test.sh
 | Path | Purpose |
 |------|---------|
 | `crates/loom-ir-core` | Zero-dependency decode IR — L2Core program model, sidecar overlay, content-hash identity, 4-gate routing, verifier |
-| `crates/loom-ffi` | Production core + C ABI — Arrow materialization, L1/L2 decode pipeline, sidecar extract/verify/route, optional melior/LLVM JIT acceleration (`--features melior`) |
+| `crates/loom-ffi` | Production core + C ABI — Arrow materialization, L1/L2 decode pipeline, sidecar extract/verify/route, melior/LLVM JIT acceleration |
 | `crates/loom-parquet-ingress` | Parquet ingress adapter — sidecar extract/embed via KeyValue metadata |
 | `crates/loom-vortex-ingress` | Vortex ingress adapter + oracle fixtures |
 | `crates/loom-lance-ingress` | Lance ingress adapter (sidecar deferred — 7.0.0 manifest lacks writable metadata) |
@@ -78,9 +78,7 @@ Parquet / Lance / Vortex
    ▼         ▼
 Loom-native  Host-native
   decode      fallback
-(JIT via       │
---features     │
- melior)       │
+(JIT → LLVM)   │
    │           │
    └─────┬─────┘
          ▼
@@ -99,8 +97,8 @@ Safety model: fail-closed at every gate. The sidecar is strippable — unknown
 valid Parquet/Lance/Vortex.
 
 **JIT acceleration:** Loom-native decode compiles L2Core IR → MLIR → LLVM → native
-machine code via melior. Enabled with `--features melior` on `loom-ffi`. Without
-it, the pure-Rust interpreter is used — functionally identical, just slower.
+machine code via melior for maximum speed. Falls back to the pure-Rust interpreter
+if JIT compilation fails or output validation mismatches.
 
 ## Encodings
 

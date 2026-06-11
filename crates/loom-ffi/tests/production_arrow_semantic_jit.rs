@@ -7,22 +7,22 @@ use arrow_schema::{DataType, Field, Schema};
 use loom_ffi::arrow_semantic::ArrowSemanticPayload;
 use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
-#[cfg(feature = "melior")]
+
 use loom_ffi::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     validate_native_arrow_semantic_codegen_output,
     validated_native_arrow_semantic_codegen_runtime_cache_key,
 };
-#[cfg(feature = "melior")]
+
 use loom_ffi::runtime_abi::{ProjectionSet, RuntimeExecutionDecision, RuntimeSafetyPolicy};
 use loom_ffi::backend::NativeBackendCancellation;
-#[cfg(not(feature = "melior"))]
+
 use loom_ffi::backend::NativeBackendDiagnosticCode;
 use loom_ffi::jit::execute_arrow_semantic_codegen_jit;
-#[cfg(feature = "melior")]
+
 use loom_ffi::jit::ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL;
 
-#[cfg(feature = "melior")]
+
 #[test]
 fn arrow_semantic_jit_produces_validated_phase35_record_batch() {
     let batch = full_primitive_nullable_batch();
@@ -74,7 +74,7 @@ fn arrow_semantic_jit_produces_validated_phase35_record_batch() {
         .contains("validation=native-model:phase40"));
 }
 
-#[cfg(not(feature = "melior"))]
+
 #[test]
 fn arrow_semantic_jit_requires_melior_feature() {
     let batch = full_primitive_nullable_batch();

@@ -2,7 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use loom_ffi::report::{
+use crate::report::{
     MeliorBackendDiagnosticCode, MeliorBackendReport, MlirToolFact, MlirToolKind, MlirToolStatus,
     MlirToolchainFacts,
 };

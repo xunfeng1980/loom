@@ -82,18 +82,11 @@ pub use ron;
 pub use serde;
 pub use fnv;
 
-// --- Optional melior/LLVM/JIT backend (feature = "melior") ---
-#[cfg(feature = "melior")]
+// --- melior/LLVM/JIT backend ---
 pub mod backend;
-#[cfg(feature = "melior")]
 pub mod decode_dialect_manifest;
-#[cfg(feature = "melior")]
 pub mod report;
-#[cfg(feature = "melior")]
 pub mod toolchain;
-#[cfg(feature = "melior")]
 pub mod builder;
-#[cfg(feature = "melior")]
 pub mod jit;
-#[cfg(feature = "melior")]
 pub mod pipeline;

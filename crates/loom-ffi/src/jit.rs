@@ -1,38 +1,38 @@
-#[cfg(feature = "melior")]
+
 use arrow_schema::DataType;
-#[cfg(feature = "melior")]
-use loom_ffi::arrow_buffer_lowering::{
+
+use crate::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
-use loom_ffi::arrow_buffer_lowering::{
+use crate::arrow_buffer_lowering::{
     plan_arrow_buffers_from_decode_dialect, ArrowTableBufferPlan,
 };
-use loom_ffi::full_verifier::FullVerificationReport;
-use loom_ffi::l2_core::L2CoreProgram;
-#[cfg(feature = "melior")]
-use loom_ffi::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
-use loom_ffi::native_arrow_semantic::{
+use crate::full_verifier::FullVerificationReport;
+use crate::l2_core::L2CoreProgram;
+
+use crate::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
+use crate::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
     validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
     NativeArrowSemanticCodegenSupportReport, NativeArrowSemanticDiagnosticCode,
 };
-use loom_ffi::native_lowering::{
+use crate::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
-use loom_ffi::backend::{
+use crate::backend::{
     NativeBackendCancellation, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
     NativeBackendReport, NativeBackendStatus,
 };
-use loom_ffi::builder::{build_melior_module, MeliorModuleArtifact};
-#[cfg(feature = "melior")]
-use loom_ffi::pipeline::LLVM_LOWERING_PIPELINE;
-use loom_ffi::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
-use loom_ffi::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
-use loom_ffi::toolchain::probe_toolchain;
-use loom_ffi::runtime_abi::{
+use crate::builder::{build_melior_module, MeliorModuleArtifact};
+
+use crate::pipeline::LLVM_LOWERING_PIPELINE;
+use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
+use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use crate::toolchain::probe_toolchain;
+use crate::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
 };
@@ -954,7 +954,7 @@ fn execute_raw_copy_mlir(
     execute_raw_copy_mlir_backend(table, input_value_buffers)
 }
 
-#[cfg(feature = "melior")]
+
 fn execute_arrow_semantic_codegen_jit_backend(
     support: &NativeArrowSemanticCodegenSupportReport,
 ) -> Result<ArrowSemanticCodegenJitOutput, NativeBackendDiagnostic> {
@@ -1059,18 +1059,8 @@ fn execute_arrow_semantic_codegen_jit_backend(
     })
 }
 
-#[cfg(not(feature = "melior"))]
-fn execute_arrow_semantic_codegen_jit_backend(
-    _support: &NativeArrowSemanticCodegenSupportReport,
-) -> Result<ArrowSemanticCodegenJitOutput, NativeBackendDiagnostic> {
-    Err(NativeBackendDiagnostic::new(
-        NativeBackendDiagnosticCode::JitUnavailable,
-        "$.jit.arrow_semantic",
-        "production Arrow semantic codegen JIT requires the loom-ffi melior feature",
-    ))
-}
 
-#[cfg(feature = "melior")]
+
 fn execute_raw_copy_mlir_backend(
     table: &ArrowTableBufferPlan,
     input_value_buffers: &[Vec<u8>],
@@ -1174,19 +1164,8 @@ fn execute_raw_copy_mlir_backend(
         .collect())
 }
 
-#[cfg(not(feature = "melior"))]
-fn execute_raw_copy_mlir_backend(
-    _table: &ArrowTableBufferPlan,
-    _input_value_buffers: &[Vec<u8>],
-) -> Result<Vec<Vec<u8>>, NativeBackendDiagnostic> {
-    Err(NativeBackendDiagnostic::new(
-        NativeBackendDiagnosticCode::JitUnavailable,
-        "$.jit",
-        "production JIT requires the loom-ffi melior feature",
-    ))
-}
 
-#[cfg(feature = "melior")]
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ArrowSemanticSlotKind {
     I32,
@@ -1196,7 +1175,7 @@ enum ArrowSemanticSlotKind {
     Bytes,
 }
 
-#[cfg(feature = "melior")]
+
 impl ArrowSemanticSlotKind {
     fn mlir_type(self) -> &'static str {
         match self {
@@ -1209,14 +1188,14 @@ impl ArrowSemanticSlotKind {
     }
 }
 
-#[cfg(feature = "melior")]
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ArrowSemanticSlotRole {
     Value,
     Validity,
 }
 
-#[cfg(feature = "melior")]
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ArrowSemanticSlotPlan {
     column_index: usize,
@@ -1226,7 +1205,7 @@ struct ArrowSemanticSlotPlan {
     input_bytes: Vec<u8>,
 }
 
-#[cfg(feature = "melior")]
+
 fn arrow_semantic_slot_plans(
     support: &NativeArrowSemanticCodegenSupportReport,
 ) -> Result<Vec<ArrowSemanticSlotPlan>, NativeBackendDiagnostic> {
@@ -1276,7 +1255,7 @@ fn arrow_semantic_slot_plans(
     Ok(slots)
 }
 
-#[cfg(feature = "melior")]
+
 fn lower_arrow_semantic_slots_to_standard_mlir(slots: &[ArrowSemanticSlotPlan]) -> String {
     let input_args = slots
         .iter()
@@ -1319,7 +1298,7 @@ fn lower_arrow_semantic_slots_to_standard_mlir(slots: &[ArrowSemanticSlotPlan]) 
     text
 }
 
-#[cfg(feature = "melior")]
+
 #[repr(C)]
 struct MemRef1D<T> {
     allocated: *mut T,
@@ -1329,7 +1308,7 @@ struct MemRef1D<T> {
     stride0: isize,
 }
 
-#[cfg(feature = "melior")]
+
 impl<T> MemRef1D<T> {
     fn new(values: &mut [T]) -> Self {
         let ptr = values.as_mut_ptr();
@@ -1343,14 +1322,14 @@ impl<T> MemRef1D<T> {
     }
 }
 
-#[cfg(feature = "melior")]
+
 struct ArrowSemanticJitSlotStorage {
     column_index: usize,
     role: ArrowSemanticSlotRole,
     inner: ArrowSemanticJitSlotInner,
 }
 
-#[cfg(feature = "melior")]
+
 enum ArrowSemanticJitSlotInner {
     I32 {
         input: Vec<i32>,
@@ -1394,7 +1373,7 @@ enum ArrowSemanticJitSlotInner {
     },
 }
 
-#[cfg(feature = "melior")]
+
 impl ArrowSemanticJitSlotStorage {
     fn new(plan: &ArrowSemanticSlotPlan) -> Result<Self, NativeBackendDiagnostic> {
         let inner = match plan.kind {
@@ -1593,7 +1572,7 @@ impl ArrowSemanticJitSlotStorage {
     }
 }
 
-#[cfg(feature = "melior")]
+
 fn arrow_semantic_output_columns_from_slots(
     support: &NativeArrowSemanticCodegenSupportReport,
     slots: Vec<ArrowSemanticJitSlotStorage>,
@@ -1644,7 +1623,7 @@ fn arrow_semantic_output_columns_from_slots(
     Ok(columns)
 }
 
-#[cfg(feature = "melior")]
+
 enum JitColumnStorage {
     I32 {
         input: Vec<i32>,
@@ -1680,7 +1659,7 @@ enum JitColumnStorage {
     },
 }
 
-#[cfg(feature = "melior")]
+
 impl JitColumnStorage {
     fn new(
         column: &ArrowColumnBufferPlan,
@@ -1843,27 +1822,27 @@ impl JitColumnStorage {
     }
 }
 
-#[cfg(feature = "melior")]
+
 fn bytes_to_i32(bytes: &[u8]) -> Result<Vec<i32>, NativeBackendDiagnostic> {
     chunks_to_values(bytes, i32::from_le_bytes, "Int32")
 }
 
-#[cfg(feature = "melior")]
+
 fn bytes_to_i64(bytes: &[u8]) -> Result<Vec<i64>, NativeBackendDiagnostic> {
     chunks_to_values(bytes, i64::from_le_bytes, "Int64")
 }
 
-#[cfg(feature = "melior")]
+
 fn bytes_to_f32(bytes: &[u8]) -> Result<Vec<f32>, NativeBackendDiagnostic> {
     chunks_to_values(bytes, f32::from_le_bytes, "Float32")
 }
 
-#[cfg(feature = "melior")]
+
 fn bytes_to_f64(bytes: &[u8]) -> Result<Vec<f64>, NativeBackendDiagnostic> {
     chunks_to_values(bytes, f64::from_le_bytes, "Float64")
 }
 
-#[cfg(feature = "melior")]
+
 fn chunks_to_values<const N: usize, T>(
     bytes: &[u8],
     convert: impl Fn([u8; N]) -> T,
@@ -2016,8 +1995,8 @@ fn map_lowering_code(code: LoweringDiagnosticCode) -> MeliorBackendDiagnosticCod
 
 #[cfg(test)]
 mod tests {
-    use loom_ffi::full_verifier::{verify_l2_core, FullVerificationReport};
-    use loom_ffi::l2_core::{
+    use crate::full_verifier::{verify_l2_core, FullVerificationReport};
+    use crate::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };
