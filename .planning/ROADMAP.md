@@ -1271,7 +1271,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) ar
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
-| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/0 | Placeholder (Repositioning 决定二 slice 2) | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/3 | Planned (Repositioning 决定二 slice 2) | - |
 | 51. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
@@ -1355,28 +1355,30 @@ Plans:
 
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 
-> **Status: PLACEHOLDER — not yet specced.** Second slice of Decision Two: the sidecar overlay contract itself, building on demoted containers (Phase 50.1) and the independent IR identity (Phase 49). Do not plan/execute until Phase 50.1 lands. Refine via `/gsd-spec-phase 50` → `/gsd-plan-phase 50`.
+> **Status: PLANNED — 3 plans across 3 waves.** Second slice of Decision Two: the sidecar overlay contract itself, building on demoted containers (Phase 50.1) and the independent IR identity (Phase 49).
 
 **Repositioning anchor:** Second slice of the Loom repositioning (整理稿) — **决定二: 参考 AnyBlox(思想参考、工程独立)、无 Wasm 回退、回退即宿主原生 reader**. Where Phase 49 makes the decode IR an independent, hashable artifact and Phase 50.1 demotes containers/degrades ingress to thin adapters, this phase makes Loom a *sidecar overlay* on host formats rather than a top-level format: a Loom-aware engine takes the verifiable native track; everything else falls back to the host's own native reader. Single execution track (Loom 原生 — 可验证 + 宽向量 + 64 位); **no Wasm fallback** (§2.2), **no second IR execution implementation**, **no equivalence-diff burden**.
 
-**Goal (provisional):** Establish the sidecar contract so a Loom artifact rides *on top of* an unmodified host file (Parquet/Vortex/Lance) as a strippable overlay, with content-hash binding the host data at column-chunk/fragment granularity to the Phase 49 IR identity, and a fail-closed decision: **(integrated engine ∧ hash matches ∧ encoding supported) → Loom verifiable-native track; otherwise → host's own native reader** (§2.3, §3). Container demotion and thin-adapter degradation are Phase 50.1 prerequisites.
+**Goal:** The `loom-core::sidecar` module defines `SidecarOverlay`/`ChunkBinding` with deterministic encode/decode. The Parquet thin adapter has real sidecar extract/embed via KeyValue metadata. The `loom-core::sidecar_routing` module implements a 4-gate fail-closed routing decision: engine integrated? → sidecar present? → content-hash matches? → encoding supported? → LoomNative, otherwise HostNativeReader. Vortex and Lance adapters follow the same contract shape. A `loom sidecar embed` CLI and `scripts/sidecar-overlay-test.sh` release gate complete the phase.
 
 **Core discipline to hold (§2.3 前提):** Loom must be **叠加而非替换** — a host file carrying a Loom sidecar must still be readable as ordinary Parquet/Vortex/Lance by an engine with no Loom. The overlay is strippable; data is never re-encoded into a Loom-only form, or "fall back to host native reader" breaks.
 
-**Candidate success criteria** (to be firmed in spec):
+**Depends on:** Phase 50.1 (container demotion + thin adapters) and Phase 49 (independent L2Core IR codec + content-hash identity).
 
-  1. A Loom sidecar mounts on an unmodified host file and is fully strippable — a Loom-unaware engine reads the host file unchanged (叠加-not-替换 proven by reading the same file through a vanilla host reader).
-  2. Content-hash binds host data to the Phase 49 IR identity at column-chunk/fragment granularity; an independent rewrite of the host invalidates only the affected granule's sidecar, the rest still accelerates; verification cost does not cancel the native speedup (§8 item 3).
-  3. Fail-closed routing is exhaustive and honest: integrated + hash-match + supported → verifiable-native; any miss (no Loom / hash mismatch / unsupported encoding) → host-native reader, zero risk to the host user (worst case: the sidecar is ignored).
+**Host priority (§7, data-decided, not pre-bet):** Parquet first and deepest (oldest encodings → clearest incremental value), Vortex next (already-advanced encodings → Loom adds safety/native-execution, not compression), Lance a question mark (random-access vs sequential decode IR).
 
-**Depends on:** Phase 50.1 (container demotion + thin adapters — the sidecar needs the packaging layer cleared before the overlay contract is built) and Phase 49 (independent L2Core IR codec + content-hash identity — the sidecar binds host granules to *that* identity).
+**Non-goals:** No Wasm track. No second IR execution. No new top-level user-facing container. No correctness claims — verifiable safety + well-formedness + graceful degradation only.
 
-**Non-goals:** No Wasm track (rejected, §2.2 — browser is a pseudo-need; cross-arch is solved by LLVM; sandbox contradicts verifiable safety; no AnyBlox free-ride). No second IR execution / no equivalence differential. No new top-level user-facing container competing for adoption — `LMC2`/`LMA1` demote to an optional out-of-TCB lineage section + a dev-time canonical reference packaging (§9). No host PKI/key-management product. Core IR is designed server-side-optimal — degradation is the fallback side's responsibility, never a constraint pushed back onto the IR (§8 item 5). No correctness claims — verifiable safety + well-formedness + graceful degradation only.
+**Plans:** 3 plans across 3 waves (coarse granularity)
 
-**Host priority (§7, data-decided, not pre-bet):** Parquet first and deepest (oldest encodings → clearest incremental value), Vortex next (already-advanced encodings → Loom adds safety/native-execution, not compression), Lance a question mark (random-access vs sequential decode IR). "回退=宿主原生 reader" makes mounting any host zero-risk, so priority is decided by real usage, not a symmetric upfront bet.
+**Wave 1**
 
-**Plans:** TBD (placeholder — spec before planning).
+- [ ] 50-01-PLAN.md — Core Sidecar Overlay Model and Parquet Sidecar Embedding
 
-Plans:
+**Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] TBD (run /gsd-spec-phase 50, then /gsd-plan-phase 50 to break down)
+- [ ] 50-02-PLAN.md — Fail-Closed Sidecar Routing Decision and Content-Hash Verification
+
+**Wave 3** *(blocked on Waves 1-2 completion)*
+
+- [ ] 50-03-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI
