@@ -52,7 +52,7 @@ bash scripts/sidecar-overlay-test.sh
 | 路径 | 用途 |
 |------|------|
 | `crates/loom-ir-core` | 零依赖解码 IR — L2Core 程序模型、sidecar overlay、内容哈希标识、4 关路由、验证器 |
-| `crates/loom-ffi` | 生产核心 + C ABI — Arrow 物化、L1/L2 解码管线、sidecar 提取/验证/路由、可选的 melior/LLVM JIT 后端 |
+| `crates/loom-ffi` | 生产核心 + C ABI — Arrow 物化、L1/L2 解码管线、sidecar 提取/验证/路由、可选的 melior/LLVM JIT 加速（`--features melior`） |
 | `crates/loom-parquet-ingress` | Parquet 入口适配器 — 通过 KeyValue 元数据实现 sidecar 提取/嵌入 |
 | `crates/loom-vortex-ingress` | Vortex 入口适配器 + oracle 测试夹具 |
 | `crates/loom-lance-ingress` | Lance 入口适配器（sidecar 暂缓 — 7.0.0 manifest 缺乏可写元数据） |
@@ -74,6 +74,9 @@ Parquet / Lance / Vortex
    ▼         ▼
 Loom 原生    宿主原生
   解码        回退
+(JIT 加速       │
+ --features     │
+  melior)       │
    │           │
    └─────┬─────┘
          ▼
@@ -88,6 +91,8 @@ Loom 原生    宿主原生
 5. 全部通过 → Loom 原生解码
 
 安全模型：每关都是 fail-closed。sidecar 可剥离 — 未知的 `loom.*` 键会被标准 reader 静默忽略。如果 Loom 失败，文件仍然是有效的 Parquet/Lance/Vortex。
+
+**JIT 加速：** Loom 原生解码将 L2Core IR → MLIR → LLVM → 本地机器码，通过 melior 编译执行。在 `loom-ffi` 上用 `--features melior` 启用。不启用时使用纯 Rust 解释器 — 功能相同，仅速度差异。
 
 ## 编码
 
