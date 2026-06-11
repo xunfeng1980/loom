@@ -13,7 +13,7 @@ pub use loom_ir_core::l2core_codec;
 pub use loom_ir_core::full_verifier;
 // Sidecar modules (Phase 50 — Plan 50-02):
 pub use loom_ir_core::sidecar;
-// pub use loom_ir_core::sidecar_routing;
+pub use loom_ir_core::sidecar_routing;
 
 // --- Container layer (from loom-container) ---
 pub use loom_container::fsst_params;

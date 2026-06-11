@@ -43,11 +43,8 @@ pub struct SidecarRoutingInput {
     pub encoding_supported: bool,
 }
 
-/// Result of verifying one granule's content-hash binding against host data.
-///
-/// Re-exported from [`crate::sidecar::HashVerificationResult`] where
-/// hash-related types live together with hash computation.
-pub use crate::sidecar::HashVerificationResult;
+// Note: HashVerificationResult is defined in sidecar.rs and imported above
+// via `use crate::sidecar::HashVerificationResult`.
 
 // ---------------------------------------------------------------------------
 // Decision types
