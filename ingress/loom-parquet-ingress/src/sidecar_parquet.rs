@@ -21,6 +21,7 @@
 use base64::Engine as _;
 use loom_ir_core::sidecar::{SidecarCodecError, SidecarOverlay};
 use parquet::file::metadata::{KeyValue, ParquetMetaData};
+use std::path::Path;
 
 /// Key used for the file-level sidecar payload in Parquet's KeyValue metadata.
 const SIDECAR_KEY: &str = "loom.sidecar.v1";
@@ -98,6 +99,85 @@ pub fn embed_sidecar_into_key_value_metadata(
     }
 }
 
+/// Embed a sidecar overlay into an existing Parquet file on disk.
+///
+/// Reads the file, extracts existing metadata, embeds the sidecar overlay
+/// via [`embed_sidecar_into_key_value_metadata`], and rewrites the file
+/// with the modified metadata. All existing row data is preserved.
+///
+/// This convenience function handles file I/O so downstream consumers
+/// (e.g., the CLI) don't need to depend directly on `parquet`.
+pub fn embed_sidecar_into_parquet_file(
+    path: &Path,
+    overlay: &SidecarOverlay,
+) -> Result<(), SidecarCodecError> {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+    use parquet::arrow::ArrowWriter;
+    use parquet::file::properties::WriterProperties;
+    use std::fs::File;
+
+    let file = File::open(path).map_err(|e| {
+        SidecarCodecError::Malformed(format!("read Parquet file {}: {e}", path.display()))
+    })?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|e| {
+        SidecarCodecError::Malformed(format!("open Parquet file {}: {e}", path.display()))
+    })?;
+
+    let schema = builder.schema().clone();
+    let metadata = builder.metadata().clone();
+    let file_meta = metadata.file_metadata();
+
+    // Build key_value_metadata from existing metadata
+    let mut kv_metadata: Vec<KeyValue> = file_meta
+        .key_value_metadata()
+        .map(|kv_list| kv_list.to_vec())
+        .unwrap_or_default();
+
+    embed_sidecar_into_key_value_metadata(&mut kv_metadata, overlay);
+
+    // Read all batches
+    let reader_file = File::open(path).map_err(|e| {
+        SidecarCodecError::Malformed(format!("re-open Parquet file {}: {e}", path.display()))
+    })?;
+    let reader = ParquetRecordBatchReaderBuilder::try_new(reader_file)
+        .map_err(|e| {
+            SidecarCodecError::Malformed(format!("re-open Parquet file {}: {e}", path.display()))
+        })?
+        .build()
+        .map_err(|e| {
+            SidecarCodecError::Malformed(format!("build Parquet reader for {}: {e}", path.display()))
+        })?;
+
+    let batches: Vec<_> = reader
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            SidecarCodecError::Malformed(format!("read batches from {}: {e}", path.display()))
+        })?;
+
+    // Write modified file
+    let out_file = File::create(path).map_err(|e| {
+        SidecarCodecError::Malformed(format!("create output file {}: {e}", path.display()))
+    })?;
+    let props = WriterProperties::builder()
+        .set_key_value_metadata(Some(kv_metadata))
+        .build();
+    let mut writer = ArrowWriter::try_new(out_file, schema.clone(), Some(props))
+        .map_err(|e| {
+            SidecarCodecError::Malformed(format!("create Parquet writer for {}: {e}", path.display()))
+        })?;
+    for batch in &batches {
+        writer.write(batch).map_err(|e| {
+            SidecarCodecError::Malformed(format!("write batch to {}: {e}", path.display()))
+        })?;
+    }
+    writer.close().map_err(|e| {
+        SidecarCodecError::Malformed(format!("close Parquet writer for {}: {e}", path.display()))
+    })?;
+
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -127,52 +207,48 @@ mod tests {
         }
     }
 
-    /// Helper: create a minimal ParquetMetaData with the given key_value_metadata.
-    fn metadata_with_kv(
+    /// Write a minimal Parquet file with the given key_value_metadata and
+    /// return its metadata. Uses real ArrowWriter → ParquetRecordBatchReaderBuilder.
+    fn write_parquet_and_read_metadata(
         kv_metadata: Option<Vec<KeyValue>>,
     ) -> ParquetMetaData {
-        use parquet::file::metadata::FileMetaData;
-        use parquet::schema::types::{
-            ColumnDescriptor, ColumnPath, SchemaDescriptor,
-            SchemaElement, Type, PrimitiveType, PhysicalType,
-        };
+        use arrow_array::{ArrayRef, Int32Array, RecordBatch};
+        use arrow_schema::{DataType, Field, Schema};
+        use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+        use parquet::arrow::ArrowWriter;
+        use parquet::file::properties::WriterProperties;
+        use std::fs::File;
         use std::sync::Arc;
 
-        let schema_elements = vec![SchemaElement {
-            type_: Some(Arc::new(Type::PrimitiveType(PrimitiveType {
-                physical_type: PhysicalType::INT32,
-                type_length: -1,
-                scale: -1,
-                precision: -1,
-            }))),
-            ..Default::default()
-        }];
-        let schema_descr = Arc::new(
-            SchemaDescriptor::new(Arc::new(
-                parquet::schema::types::SchemaType::new(vec![Arc::new(
-                    Type::PrimitiveType(PrimitiveType {
-                        physical_type: PhysicalType::INT32,
-                        type_length: -1,
-                        scale: -1,
-                        precision: -1,
-                    }),
-                )]),
-            )),
-        );
-        let file_meta = FileMetaData::new(
-            1,       // version
-            0,       // num_rows
-            None,    // created_by
-            kv_metadata,
-            schema_descr,
-            None,    // column_orders
-        );
-        ParquetMetaData::new(file_meta, vec![])
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "x",
+            DataType::Int32,
+            false,
+        )]));
+        let col: ArrayRef = Arc::new(Int32Array::from(vec![1, 2, 3]));
+        let batch = RecordBatch::try_new(schema.clone(), vec![col]).unwrap();
+
+        let temp = tempfile::NamedTempFile::new().expect("tempfile");
+        let file = File::create(temp.path()).expect("create");
+
+        let mut props_builder = WriterProperties::builder();
+        if let Some(kv) = kv_metadata {
+            props_builder = props_builder.set_key_value_metadata(Some(kv));
+        }
+        let props = props_builder.build();
+
+        let mut writer = ArrowWriter::try_new(file, schema, Some(props)).expect("writer");
+        writer.write(&batch).expect("write");
+        writer.close().expect("close");
+
+        let file = File::open(temp.path()).expect("reopen");
+        let builder = ParquetRecordBatchReaderBuilder::try_new(file).expect("builder");
+        Arc::unwrap_or_clone(Arc::clone(builder.metadata()))
     }
 
     #[test]
     fn extract_returns_none_when_no_sidecar_key() {
-        let metadata = metadata_with_kv(Some(vec![
+        let metadata = write_parquet_and_read_metadata(Some(vec![
             KeyValue::new("other.key".to_string(), Some("value".to_string())),
         ]));
         let result = extract_sidecar_from_parquet_metadata(&metadata).expect("no error");
@@ -181,14 +257,14 @@ mod tests {
 
     #[test]
     fn extract_returns_none_when_empty_kv() {
-        let metadata = metadata_with_kv(Some(vec![]));
+        let metadata = write_parquet_and_read_metadata(Some(vec![]));
         let result = extract_sidecar_from_parquet_metadata(&metadata).expect("no error");
         assert!(result.is_none());
     }
 
     #[test]
     fn extract_returns_none_when_no_kv_metadata() {
-        let metadata = metadata_with_kv(None);
+        let metadata = write_parquet_and_read_metadata(None);
         let result = extract_sidecar_from_parquet_metadata(&metadata).expect("no error");
         assert!(result.is_none());
     }
@@ -199,8 +275,7 @@ mod tests {
         let mut kv_metadata = Vec::new();
         embed_sidecar_into_key_value_metadata(&mut kv_metadata, &overlay);
 
-        // Build metadata with the modified KV list.
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        let metadata = write_parquet_and_read_metadata(Some(kv_metadata));
         let extracted = extract_sidecar_from_parquet_metadata(&metadata)
             .expect("extract must succeed")
             .expect("sidecar must be present");
@@ -217,7 +292,7 @@ mod tests {
         let overlay = make_overlay();
         embed_sidecar_into_key_value_metadata(&mut kv_metadata, &overlay);
 
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        let metadata = write_parquet_and_read_metadata(Some(kv_metadata));
         let kv_list = metadata.file_metadata().key_value_metadata().unwrap();
 
         // Non-loom keys should be preserved.
@@ -247,7 +322,7 @@ mod tests {
         embed_sidecar_into_key_value_metadata(&mut kv_metadata, &overlay);
         assert_eq!(kv_metadata.len(), count_after_first);
 
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        let metadata = write_parquet_and_read_metadata(Some(kv_metadata));
         let extracted = extract_sidecar_from_parquet_metadata(&metadata)
             .expect("extract must succeed")
             .expect("sidecar must be present");
@@ -256,11 +331,10 @@ mod tests {
 
     #[test]
     fn extract_rejects_bad_base64() {
-        let kv_metadata = vec![KeyValue::new(
+        let metadata = write_parquet_and_read_metadata(Some(vec![KeyValue::new(
             SIDECAR_KEY.to_string(),
             Some("not-valid-base64!!!".to_string()),
-        )];
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        )]));
         let result = extract_sidecar_from_parquet_metadata(&metadata);
         assert!(result.is_err());
     }
@@ -269,11 +343,10 @@ mod tests {
     fn extract_rejects_corrupt_sidecar_bytes() {
         // Valid base64, but the decoded bytes aren't a valid sidecar.
         let b64 = base64::engine::general_purpose::STANDARD.encode(b"garbage");
-        let kv_metadata = vec![KeyValue::new(
+        let metadata = write_parquet_and_read_metadata(Some(vec![KeyValue::new(
             SIDECAR_KEY.to_string(),
             Some(b64),
-        )];
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        )]));
         let result = extract_sidecar_from_parquet_metadata(&metadata);
         // Should fail with Truncated or Malformed
         assert!(result.is_err());
@@ -282,11 +355,10 @@ mod tests {
     #[test]
     fn extract_skips_empty_value() {
         // KeyValue with no value should be skipped.
-        let kv_metadata = vec![KeyValue::new(
+        let metadata = write_parquet_and_read_metadata(Some(vec![KeyValue::new(
             SIDECAR_KEY.to_string(),
             None::<String>,
-        )];
-        let metadata = metadata_with_kv(Some(kv_metadata));
+        )]));
         let result = extract_sidecar_from_parquet_metadata(&metadata).expect("no error");
         assert!(result.is_none());
     }

@@ -13,4 +13,5 @@ arrow = { workspace = true }
 arrow-data = { workspace = true }
 arrow-schema = { workspace = true }
 loom-core = { path = "../loom-core" }
+loom-parquet-ingress = { path = "../../ingress/loom-parquet-ingress" }
 loom-vortex-ingress = { path = "../../ingress/loom-vortex-ingress" }

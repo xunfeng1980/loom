@@ -3489,6 +3489,7 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "loom-core",
+ "loom-parquet-ingress",
  "loom-vortex-ingress",
 ]
 
@@ -3597,7 +3598,9 @@ version = "0.1.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
+ "base64",
  "loom-core",
+ "loom-ir-core",
  "loom-source-ingress",
  "parquet",
  "tempfile",

@@ -25,9 +25,12 @@ use loom_core::l2_core::{
     OutputBuilderCapability, ResourceBudget, ScalarExpr,
 };
 use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_core::l2core_codec::{decode_l2core_program, encode_l2core_program, l2core_program_hash};
 use loom_core::layout_codec::decode_layout_payload;
+use loom_core::sidecar::SidecarOverlay;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
+use loom_parquet_ingress::sidecar_parquet::embed_sidecar_into_parquet_file;
 use loom_vortex_ingress::{
     inspect_vortex_path, reader_facts_from_vortex_path,
     source_facts_from_vortex_buffer, VortexIngressReport, VortexReaderEmissionKind,
@@ -71,6 +74,10 @@ fn run() -> Result<(), String> {
             let mode = args.next().ok_or_else(usage)?;
             ingest_vortex(&mode, args.collect())
         }
+        "sidecar" => {
+            let mode = args.next().ok_or_else(|| sidecar_usage())?;
+            sidecar(&mode, args.collect())
+        }
         "-h" | "--help" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -80,8 +87,106 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-artifact <artifact.loom>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>"
+    "usage: loom <inspect|decode> <payload-or-descriptor>\n       loom verify-artifact <artifact.loom>\n       loom verify-l2core --sample\n       loom ingest-vortex --inspect <input.vortex>\n       loom ingest-vortex --emit-loom <input.vortex> <output.loom>\n       loom sidecar embed --source <path> --ir <path> [--host <parquet|vortex|lance>]"
         .to_string()
+}
+
+fn sidecar_usage() -> String {
+    "usage: loom sidecar embed --source <path> --ir <path> [--host <parquet|vortex|lance>]"
+        .to_string()
+}
+
+fn sidecar(mode: &str, args: Vec<String>) -> Result<(), String> {
+    match mode {
+        "embed" => sidecar_embed(args),
+        "-h" | "--help" | "help" => {
+            println!("{}", sidecar_usage());
+            Ok(())
+        }
+        other => Err(format!("unknown sidecar subcommand '{other}'\n{}", sidecar_usage())),
+    }
+}
+
+/// Embed a sidecar overlay into a host file.
+///
+/// Reads an L2Core IR file, decodes and re-encodes it to canonical bytes,
+/// computes its content-hash identity, and embeds a [`SidecarOverlay`] into
+/// the host file's metadata. Currently supports Parquet (the priority path);
+/// Vortex and Lance are deferred due to format metadata API limitations.
+fn sidecar_embed(args: Vec<String>) -> Result<(), String> {
+    let mut source_path: Option<String> = None;
+    let mut ir_path: Option<String> = None;
+    let mut host_format = "parquet".to_string();
+
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--source" => {
+                source_path = Some(iter.next().ok_or_else(|| {
+                    "missing value for --source".to_string()
+                })?);
+            }
+            "--ir" => {
+                ir_path = Some(iter.next().ok_or_else(|| {
+                    "missing value for --ir".to_string()
+                })?);
+            }
+            "--host" => {
+                host_format = iter.next().ok_or_else(|| {
+                    "missing value for --host".to_string()
+                })?;
+            }
+            "-h" | "--help" => {
+                println!("{}", sidecar_usage());
+                return Ok(());
+            }
+            other => return Err(format!("unknown argument '{other}'\n{}", sidecar_usage())),
+        }
+    }
+
+    let source = source_path.ok_or_else(|| sidecar_usage())?;
+    let ir = ir_path.ok_or_else(|| sidecar_usage())?;
+
+    match host_format.as_str() {
+        "parquet" => sidecar_embed_parquet(Path::new(&source), Path::new(&ir)),
+        "vortex" => Err(
+            "Vortex 0.74.0 footer does not support arbitrary metadata writing. \
+             Sidecar embedding for Vortex is deferred.".to_string(),
+        ),
+        "lance" => Err(
+            "Lance 7.0.0 manifest does not support arbitrary metadata writing. \
+             Sidecar embedding for Lance is deferred.".to_string(),
+        ),
+        other => Err(format!(
+            "unknown host format '{other}'. Supported: parquet, vortex, lance"
+        )),
+    }
+}
+
+/// Embed a sidecar overlay into a Parquet file.
+fn sidecar_embed_parquet(source: &Path, ir: &Path) -> Result<(), String> {
+    // 1. Read and decode the IR file
+    let ir_bytes_raw = fs::read(ir)
+        .map_err(|err| format!("read IR file {}: {err}", ir.display()))?;
+    let program = decode_l2core_program(&ir_bytes_raw)
+        .map_err(|err| format!("decode L2Core IR from {}: {err}", ir.display()))?;
+    let ir_encoded = encode_l2core_program(&program);
+    let ir_hash = l2core_program_hash(&program);
+
+    // 2. Build a minimal SidecarOverlay with the IR identity
+    let overlay = SidecarOverlay {
+        ir_bytes: ir_encoded,
+        bindings: Vec::new(), // per-column bindings deferred
+    };
+
+    // 3. Embed into the Parquet file via the ingress adapter
+    embed_sidecar_into_parquet_file(source, &overlay)
+        .map_err(|err| format!("embed sidecar into {}: {err}", source.display()))?;
+
+    let binding_count = overlay.bindings.len();
+    println!("Sidecar embedded: {binding_count} chunk bindings, IR identity: {ir_hash}");
+
+    Ok(())
 }
 
 fn verify_artifact_cli(args: Vec<String>) -> Result<(), String> {
