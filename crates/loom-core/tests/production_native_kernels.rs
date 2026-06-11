@@ -5,7 +5,7 @@ use loom_core::artifact_verifier::{
 };
 use loom_core::decode_dialect::emit_decode_dialect_text;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
-use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
     check_layout_kernel_support, check_production_lowering_support,
     ProductionLoweringDiagnosticCode,
@@ -23,7 +23,7 @@ fn raw_layout(data_type: DataType, elem_size: u8) -> LayoutDescription {
     }
 }
 
-fn output(builder_id: &str, data_type: DataType) -> OutputSchemaFact {
+fn output(builder_id: &str, data_type: L2DataType) -> OutputSchemaFact {
     OutputSchemaFact {
         builder_id: builder_id.to_string(),
         arrow_type: data_type,
@@ -56,8 +56,8 @@ fn accepted_table() -> ArtifactVerificationReport {
     facts.row_count_bound = Some(4);
     facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![
-        output("id", DataType::Int64),
-        output("score", DataType::Float64),
+        output("id", L2DataType::Int64),
+        output("score", L2DataType::Float64),
     ]));
     ArtifactVerificationReport::accepted(facts)
 }

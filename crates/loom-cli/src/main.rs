@@ -21,8 +21,8 @@ use loom_core::fsst_params::FsstParams;
 use loom_core::full_verifier::verify_l2_core;
 use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr,
 };
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::layout_codec::decode_layout_payload;
@@ -245,7 +245,7 @@ fn sample_l2core_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),

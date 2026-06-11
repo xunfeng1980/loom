@@ -1,8 +1,7 @@
-use arrow_schema::DataType;
 use loom_core::l2_core::constraints::{ConstraintSet, ConstraintTerm, IntegerType, LoomConstraint};
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr, VerifiedArtifactFacts,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, VerifiedArtifactFacts,
 };
 
 fn sample_bounded_copy_program() -> L2CoreProgram {
@@ -18,7 +17,7 @@ fn sample_bounded_copy_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),
@@ -81,7 +80,7 @@ fn verifier_10_verified_artifact_facts_record_lowering_preconditions() {
     assert_eq!(facts.input_ranges.len(), 1);
     assert_eq!(facts.input_ranges[0].capability_id, "input0");
     assert_eq!(facts.output_schema.len(), 1);
-    assert_eq!(facts.output_schema[0].arrow_type, DataType::Int32);
+    assert_eq!(facts.output_schema[0].arrow_type, L2DataType::Int32);
     assert_eq!(facts.loop_bounds[0].loop_id, "i");
     assert!(facts.constraint_ids.iter().any(|id| id == "c-input-range"));
     assert!(facts

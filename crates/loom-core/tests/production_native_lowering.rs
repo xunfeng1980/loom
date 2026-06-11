@@ -1,8 +1,7 @@
-use arrow_schema::DataType;
 use loom_core::artifact_verifier::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
-use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
     check_production_lowering_support, is_supported_primitive, ProductionLoweringBackend,
     ProductionLoweringDiagnosticCode, ProductionLoweringShape,
@@ -27,7 +26,7 @@ fn l2_facts(output_schema: Vec<OutputSchemaFact>) -> VerifiedArtifactFacts {
     }
 }
 
-fn column(builder_id: &str, arrow_type: DataType, nullable: bool) -> OutputSchemaFact {
+fn column(builder_id: &str, arrow_type: L2DataType, nullable: bool) -> OutputSchemaFact {
     OutputSchemaFact {
         builder_id: builder_id.to_string(),
         arrow_type,
@@ -74,14 +73,14 @@ fn backend_and_diagnostic_strings_are_stable() {
 #[test]
 fn supported_primitive_type_matrix_is_explicit() {
     for data_type in [
-        DataType::Int32,
-        DataType::Int64,
-        DataType::Float32,
-        DataType::Float64,
+        L2DataType::Int32,
+        L2DataType::Int64,
+        L2DataType::Float32,
+        L2DataType::Float64,
     ] {
         assert!(is_supported_primitive(&data_type), "{data_type:?}");
     }
-    for data_type in [DataType::Boolean, DataType::Utf8] {
+    for data_type in [L2DataType::Boolean, L2DataType::Utf8] {
         assert!(!is_supported_primitive(&data_type), "{data_type:?}");
     }
 }
@@ -90,7 +89,7 @@ fn supported_primitive_type_matrix_is_explicit() {
 fn accepted_single_column_layout_is_supported() {
     let report = accepted_report(
         "LMP1 layout",
-        vec![column("out0", DataType::Int32, false)],
+        vec![column("out0", L2DataType::Int32, false)],
     );
     let support = check_production_lowering_support(&report);
 
@@ -108,7 +107,7 @@ fn accepted_single_column_layout_is_supported() {
         ProductionLoweringShape::SingleColumnPrimitive { row_count, column } => {
             assert_eq!(*row_count, 4);
             assert_eq!(column.builder_id, "out0");
-            assert_eq!(column.arrow_type, DataType::Int32);
+            assert_eq!(column.arrow_type, L2DataType::Int32);
             assert!(!column.nullable);
         }
         other => panic!("unexpected shape: {other:?}"),
@@ -120,8 +119,8 @@ fn accepted_table_is_supported() {
     let report = accepted_report(
         "LMT1 table",
         vec![
-            column("id", DataType::Int64, false),
-            column("score", DataType::Float64, false),
+            column("id", L2DataType::Int64, false),
+            column("score", L2DataType::Float64, false),
         ],
     );
     let support = check_production_lowering_support(&report);
@@ -137,7 +136,7 @@ fn accepted_table_is_supported() {
             assert_eq!(*row_count, 4);
             assert_eq!(columns.len(), 2);
             assert_eq!(columns[0].builder_id, "id");
-            assert_eq!(columns[1].arrow_type, DataType::Float64);
+            assert_eq!(columns[1].arrow_type, L2DataType::Float64);
         }
         other => panic!("unexpected shape: {other:?}"),
     }
@@ -148,7 +147,7 @@ fn accepted_program_with_collected_constraints_is_supported() {
     // Phase A–C: lowering no longer gates on constraints_discharged.
     let report = accepted_report(
         "LMP1 layout",
-        vec![column("out0", DataType::Int32, false)],
+        vec![column("out0", L2DataType::Int32, false)],
     );
     let support = check_production_lowering_support(&report);
     assert!(
@@ -186,7 +185,7 @@ fn missing_row_bound_rejects() {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMP1 layout".to_string());
     facts.constraints_discharged = false;
-    facts.l2_core = Some(l2_facts(vec![column("out0", DataType::Int32, false)]));
+    facts.l2_core = Some(l2_facts(vec![column("out0", L2DataType::Int32, false)]));
     let report = ArtifactVerificationReport::accepted(facts);
 
     assert_eq!(
@@ -199,7 +198,7 @@ fn missing_row_bound_rejects() {
 fn unsupported_payload_type_and_nullability_reject() {
     let payload = accepted_report(
         "LMP2 future",
-        vec![column("out0", DataType::Int32, false)],
+        vec![column("out0", L2DataType::Int32, false)],
     );
     assert_eq!(
         first_code(&payload),
@@ -208,7 +207,7 @@ fn unsupported_payload_type_and_nullability_reject() {
 
     let ty = accepted_report(
         "LMP1 layout",
-        vec![column("out0", DataType::Utf8, false)],
+        vec![column("out0", L2DataType::Utf8, false)],
     );
     assert_eq!(
         first_code(&ty),
@@ -217,7 +216,7 @@ fn unsupported_payload_type_and_nullability_reject() {
 
     let nullable = accepted_report(
         "LMP1 layout",
-        vec![column("out0", DataType::Int32, true)],
+        vec![column("out0", L2DataType::Int32, true)],
     );
     assert_eq!(
         first_code(&nullable),
@@ -230,8 +229,8 @@ fn single_column_payload_rejects_multiple_columns() {
     let report = accepted_report(
         "LMP1 layout",
         vec![
-            column("id", DataType::Int32, false),
-            column("score", DataType::Float32, false),
+            column("id", L2DataType::Int32, false),
+            column("score", L2DataType::Float32, false),
         ],
     );
 

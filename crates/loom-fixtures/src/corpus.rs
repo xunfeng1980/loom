@@ -18,8 +18,8 @@
 //! ```
 
 use loom_core::l2_core::{
-    Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
-    ScalarType, ScalarValue,
+    Capability, L2CoreProgram, L2CoreStmt, L2DataType, OutputBuilderCapability,
+    ResourceBudget, ScalarExpr, ScalarType, ScalarValue,
 };
 
 /// Builder for an equivalence-class corpus.
@@ -240,7 +240,7 @@ fn mk_program(schema: &[(String, ScalarType, bool)], body: Vec<L2CoreStmt>) -> L
         .map(|(idx, (_name, ty, nullable))| {
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: format!("out{}", idx),
-                arrow_type: scalar_type_to_arrow(ty),
+                arrow_type: scalar_type_to_l2(ty),
                 nullable: *nullable,
                 max_events,
             })
@@ -304,6 +304,20 @@ fn scalar_type_to_arrow(ty: &ScalarType) -> arrow_schema::DataType {
         ScalarType::Bool => arrow_schema::DataType::Boolean,
         ScalarType::Bytes => arrow_schema::DataType::Binary,
         ScalarType::RowIndex => arrow_schema::DataType::UInt64,
+    }
+}
+
+fn scalar_type_to_l2(ty: &ScalarType) -> L2DataType {
+    match ty {
+        ScalarType::Int32 => L2DataType::Int32,
+        ScalarType::Int64 => L2DataType::Int64,
+        ScalarType::UInt32 => L2DataType::Int32,
+        ScalarType::UInt64 => L2DataType::Int64,
+        ScalarType::Float32 => L2DataType::Float32,
+        ScalarType::Float64 => L2DataType::Float64,
+        ScalarType::Bool => L2DataType::Boolean,
+        ScalarType::Bytes => L2DataType::Utf8,
+        ScalarType::RowIndex => L2DataType::Int64,
     }
 }
 

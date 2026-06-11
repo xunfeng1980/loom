@@ -5,8 +5,8 @@
 
 use loom_core::kloom_harness::{kloom_trace_for_program, KOracleOutcome};
 use loom_core::l2_core::{
-    Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget, ScalarExpr,
-    ScalarValue,
+    Capability, L2CoreProgram, L2CoreStmt, L2DataType, OutputBuilderCapability, ResourceBudget,
+    ScalarExpr, ScalarValue,
 };
 
 use std::sync::Mutex;
@@ -22,7 +22,7 @@ fn make_program(body: Vec<L2CoreStmt>) -> L2CoreProgram {
         optional_features: vec![],
         capabilities: vec![Capability::OutputBuilder(OutputBuilderCapability {
             id: "out".to_string(),
-            arrow_type: arrow_schema::DataType::Int32,
+            arrow_type: L2DataType::Int32,
             nullable: false,
             max_events: 8,
         })],

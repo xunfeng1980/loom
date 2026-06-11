@@ -9,8 +9,8 @@ use loom_core::artifact_verifier::{
     ArtifactVerificationStage,
 };
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr, VerifiedArtifactFacts,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, VerifiedArtifactFacts,
 };
 use loom_core::native_arrow_semantic::{
     verify_native_arrow_semantic_model, verify_native_arrow_semantic_model_output,
@@ -34,7 +34,7 @@ fn accepted_l2_report() -> ArtifactVerificationReport {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),

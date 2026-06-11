@@ -1,9 +1,8 @@
-use arrow_schema::DataType;
 use loom_core::full_verifier::{verify_l2_core, FullVerificationCode};
 use loom_core::l2_core::constraints::LoomConstraint;
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr, ScalarValue,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue,
 };
 use std::fs;
 
@@ -20,7 +19,7 @@ fn sample_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),
@@ -140,7 +139,7 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
         }),
         Capability::OutputBuilder(OutputBuilderCapability {
             id: "out0".to_string(),
-            arrow_type: DataType::Int32,
+            arrow_type: L2DataType::Int32,
             nullable: false,
             max_events: 4,
         }),
@@ -177,7 +176,7 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
         }),
         Capability::OutputBuilder(OutputBuilderCapability {
             id: "out0".to_string(),
-            arrow_type: DataType::Boolean,
+            arrow_type: L2DataType::Boolean,
             nullable: false,
             max_events: 4,
         }),
@@ -215,7 +214,7 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
     let mut fuzz_003 = sample_program();
     fuzz_003.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
         id: "score32".to_string(),
-        arrow_type: DataType::Float32,
+        arrow_type: L2DataType::Float32,
         nullable: false,
         max_events: 4,
     })];
@@ -227,7 +226,7 @@ fn correspondence_cases() -> Vec<CorrespondenceCase> {
     let mut fuzz_004 = sample_program();
     fuzz_004.capabilities = vec![Capability::OutputBuilder(OutputBuilderCapability {
         id: "score64".to_string(),
-        arrow_type: DataType::Float64,
+        arrow_type: L2DataType::Float64,
         nullable: true,
         max_events: 4,
     })];

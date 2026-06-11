@@ -1,12 +1,12 @@
 use arrow_schema::DataType;
 use loom_core::artifact_verifier::{ArtifactVerificationFacts, ArtifactVerificationReport};
 use loom_core::decode_dialect::{arrow_type_name, emit_decode_dialect_text, DecodeDialectOp};
-use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
     check_production_lowering_support, lower_to_decode_dialect_text,
 };
 
-fn column(builder_id: &str, arrow_type: DataType) -> OutputSchemaFact {
+fn column(builder_id: &str, arrow_type: L2DataType) -> OutputSchemaFact {
     OutputSchemaFact {
         builder_id: builder_id.to_string(),
         arrow_type,
@@ -38,7 +38,7 @@ fn accepted_report(payload_kind: &str) -> ArtifactVerificationReport {
     facts.payload_kind = Some(payload_kind.to_string());
     facts.row_count_bound = Some(4);
     facts.constraints_discharged = false;
-    facts.l2_core = Some(l2_facts(vec![column("out0", DataType::Int32)]));
+    facts.l2_core = Some(l2_facts(vec![column("out0", L2DataType::Int32)]));
     ArtifactVerificationReport::accepted(facts)
 }
 
@@ -48,8 +48,8 @@ fn accepted_table_report() -> ArtifactVerificationReport {
     facts.row_count_bound = Some(4);
     facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![
-        column("id", DataType::Int64),
-        column("score", DataType::Float64),
+        column("id", L2DataType::Int64),
+        column("score", L2DataType::Float64),
     ]));
     ArtifactVerificationReport::accepted(facts)
 }

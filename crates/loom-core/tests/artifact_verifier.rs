@@ -13,6 +13,7 @@ use loom_core::artifact_verifier::{
     ArtifactVerificationOptions, ArtifactVerificationReport, ArtifactVerificationStage,
     ArtifactVerificationStatus,
 };
+use loom_core::l2_core::L2DataType;
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload, Feature};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
 use loom_core::l2_core::{
@@ -125,7 +126,7 @@ fn sample_l2core_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),

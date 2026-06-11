@@ -1,18 +1,17 @@
-use arrow_schema::DataType;
 use loom_core::arrow_buffer_lowering::{
     lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 use loom_core::artifact_verifier::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
-use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::check_production_lowering_support;
 use loom_native_melior::pipeline::{
     validate_production_standard_mlir, MlirValidationOptions, ProductionMlirArtifact,
 };
 use loom_native_melior::report::MeliorBackendDiagnosticCode;
 
-fn output(builder_id: &str, data_type: DataType) -> OutputSchemaFact {
+fn output(builder_id: &str, data_type: L2DataType) -> OutputSchemaFact {
     OutputSchemaFact {
         builder_id: builder_id.to_string(),
         arrow_type: data_type,
@@ -32,8 +31,8 @@ fn accepted_table() -> ArtifactVerificationReport {
         accepted_feature_set: vec!["test.production".to_string()],
         input_ranges: Vec::new(),
         output_schema: vec![
-            output("id", DataType::Int64),
-            output("score", DataType::Float64),
+            output("id", L2DataType::Int64),
+            output("score", L2DataType::Float64),
         ],
         row_count_bound: Some(4),
         loop_bounds: Vec::new(),

@@ -1,4 +1,4 @@
-use arrow_schema::DataType;
+use loom_core::l2_core::L2DataType;
 
 use loom_core::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
@@ -57,7 +57,7 @@ fn runtime_cache_key() -> RuntimeCacheKey {
     })
 }
 
-fn lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
+fn lowering_facts(data_type: L2DataType) -> ProductionLoweringFacts {
     ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
@@ -74,7 +74,7 @@ fn lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
     }
 }
 
-fn nullable_lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
+fn nullable_lowering_facts(data_type: L2DataType) -> ProductionLoweringFacts {
     ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
@@ -95,7 +95,7 @@ fn request_input() -> NativeBackendRequestInput {
     NativeBackendRequestInput {
         runtime_plan: runtime_plan(),
         runtime_cache_key: Some(runtime_cache_key()),
-        lowering_facts: Some(lowering_facts(DataType::Int32)),
+        lowering_facts: Some(lowering_facts(L2DataType::Int32)),
         backend_identity: NativeBackendIdentity::preflight_only(),
         cancellation: NativeBackendCancellation::default(),
     }
@@ -202,7 +202,7 @@ fn cancellation_stops_before_jit_preparation() {
 #[test]
 fn unsupported_primitive_shape_does_not_jit() {
     let mut input = request_input();
-    input.lowering_facts = Some(lowering_facts(DataType::Utf8));
+    input.lowering_facts = Some(lowering_facts(L2DataType::Utf8));
     let request = validate_backend_request(input).expect("preflight only checks runtime facts");
     let report = NativeBackendReport::accepted_pipeline(
         &request,
@@ -229,7 +229,7 @@ fn unsupported_primitive_shape_does_not_jit() {
 #[test]
 fn nullable_primitive_shape_does_not_jit() {
     let mut input = request_input();
-    input.lowering_facts = Some(nullable_lowering_facts(DataType::Int32));
+    input.lowering_facts = Some(nullable_lowering_facts(L2DataType::Int32));
     let request = validate_backend_request(input).expect("preflight only checks runtime facts");
     let report = NativeBackendReport::accepted_pipeline(
         &request,

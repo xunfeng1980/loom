@@ -1,8 +1,7 @@
-use arrow_schema::DataType;
 use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
 };
 use loom_native_melior::builder::build_melior_module;
 use loom_native_melior::report::MeliorBackendDiagnosticCode;
@@ -20,7 +19,7 @@ fn sample_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),

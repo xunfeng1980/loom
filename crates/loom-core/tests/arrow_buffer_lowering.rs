@@ -7,12 +7,12 @@ use loom_core::arrow_buffer_lowering::{
 use loom_core::artifact_verifier::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
-use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
     check_production_lowering_support, ProductionLoweringDiagnosticCode,
 };
 
-fn column(builder_id: &str, arrow_type: DataType, nullable: bool) -> OutputSchemaFact {
+fn column(builder_id: &str, arrow_type: L2DataType, nullable: bool) -> OutputSchemaFact {
     OutputSchemaFact {
         builder_id: builder_id.to_string(),
         arrow_type,
@@ -61,8 +61,8 @@ fn primitive_type_metadata_is_stable() {
 #[test]
 fn plans_primitive_arrow_buffers_for_supported_table() {
     let report = accepted_report(vec![
-        column("id", DataType::Int64, false),
-        column("score", DataType::Float64, false),
+        column("id", L2DataType::Int64, false),
+        column("score", L2DataType::Float64, false),
     ]);
     let support = check_production_lowering_support(&report);
     let buffers = plan_arrow_buffers_from_decode_dialect(support.facts().expect("facts"));
@@ -92,8 +92,8 @@ fn plans_primitive_arrow_buffers_for_supported_table() {
 #[test]
 fn emits_standard_mlir_for_primitive_builder_plan() {
     let report = accepted_report(vec![
-        column("id", DataType::Int64, false),
-        column("score", DataType::Float64, false),
+        column("id", L2DataType::Int64, false),
+        column("score", L2DataType::Float64, false),
     ]);
     let support = check_production_lowering_support(&report);
     let buffers = plan_arrow_buffers_from_decode_dialect(support.facts().expect("facts"));
@@ -110,8 +110,8 @@ fn emits_standard_mlir_for_primitive_builder_plan() {
 #[test]
 fn emits_raw_copy_mlir_with_input_and_output_memrefs() {
     let report = accepted_report(vec![
-        column("id", DataType::Int32, false),
-        column("score", DataType::Float64, false),
+        column("id", L2DataType::Int32, false),
+        column("score", L2DataType::Float64, false),
     ]);
     let support = check_production_lowering_support(&report);
     let buffers = plan_arrow_buffers_from_decode_dialect(support.facts().expect("facts"));
@@ -135,7 +135,7 @@ fn emits_raw_copy_mlir_with_input_and_output_memrefs() {
 
 #[test]
 fn reference_zeroed_bytes_match_value_buffer_length() {
-    let report = accepted_report(vec![column("out0", DataType::Float32, false)]);
+    let report = accepted_report(vec![column("out0", L2DataType::Float32, false)]);
     let support = check_production_lowering_support(&report);
     let buffers = plan_arrow_buffers_from_decode_dialect(support.facts().expect("facts"));
     let column = &buffers.table().expect("table").columns[0];
@@ -146,7 +146,7 @@ fn reference_zeroed_bytes_match_value_buffer_length() {
 
 #[test]
 fn production_gate_rejects_unsupported_buffer_shapes_before_planning() {
-    let report = accepted_report(vec![column("out0", DataType::Utf8, false)]);
+    let report = accepted_report(vec![column("out0", L2DataType::Utf8, false)]);
     let support = check_production_lowering_support(&report);
 
     assert!(!support.is_supported());
@@ -158,7 +158,7 @@ fn production_gate_rejects_unsupported_buffer_shapes_before_planning() {
 
 #[test]
 fn production_gate_rejects_nullable_before_buffer_planning() {
-    let report = accepted_report(vec![column("out0", DataType::Int32, true)]);
+    let report = accepted_report(vec![column("out0", L2DataType::Int32, true)]);
     let support = check_production_lowering_support(&report);
 
     assert!(!support.is_supported());

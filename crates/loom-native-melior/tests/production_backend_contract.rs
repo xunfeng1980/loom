@@ -1,4 +1,4 @@
-use arrow_schema::DataType;
+use loom_core::l2_core::L2DataType;
 
 use loom_core::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
@@ -60,7 +60,7 @@ fn lowering_facts() -> ProductionLoweringFacts {
             row_count: 4,
             columns: vec![ProductionColumnShape {
                 builder_id: "id".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: false,
             }],
         },

@@ -83,13 +83,11 @@ fn map_lowering_code(code: LoweringDiagnosticCode) -> MeliorBackendDiagnosticCod
 
 #[cfg(test)]
 mod tests {
-    use arrow_schema::DataType;
     use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
     use loom_core::l2_core::{
-        Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-        ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
+        Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+        OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
     };
-
     use super::*;
 
     fn sample_program() -> L2CoreProgram {
@@ -105,7 +103,7 @@ mod tests {
                 }),
                 Capability::OutputBuilder(OutputBuilderCapability {
                     id: "out0".to_string(),
-                    arrow_type: DataType::Int32,
+                    arrow_type: L2DataType::Int32,
                     nullable: true,
                     max_events: 4,
                 }),
@@ -185,7 +183,7 @@ mod tests {
     fn builder_rejects_non_int32_output() {
         let mut program = sample_program();
         if let Capability::OutputBuilder(builder) = &mut program.capabilities[1] {
-            builder.arrow_type = DataType::Int64;
+            builder.arrow_type = L2DataType::Int64;
         }
         let report = verify_l2_core(&program);
         let err = build_melior_module(&program, &report).expect_err("should reject");

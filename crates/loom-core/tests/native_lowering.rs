@@ -1,8 +1,7 @@
-use arrow_schema::DataType;
 use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
 use loom_core::l2_core::{
-    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
-    ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
+    Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
 };
 use loom_core::native_lowering::{
     check_lowering_support, execute_supported_copy_i32, lower_to_textual_mlir, LoweringBackend,
@@ -22,7 +21,7 @@ fn sample_program() -> L2CoreProgram {
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "out0".to_string(),
-                arrow_type: DataType::Int32,
+                arrow_type: L2DataType::Int32,
                 nullable: true,
                 max_events: 4,
             }),
@@ -238,7 +237,7 @@ fn native_lowering_rejects_non_int32_output_type() {
         }),
         Capability::OutputBuilder(OutputBuilderCapability {
             id: "out0".to_string(),
-            arrow_type: DataType::Int64,
+            arrow_type: L2DataType::Int64,
             nullable: true,
             max_events: 4,
         }),
