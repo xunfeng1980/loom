@@ -3512,14 +3512,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "loom-container"
-version = "0.1.0"
-dependencies = [
- "loom-common",
- "loom-container-legacy",
-]
-
-[[package]]
 name = "loom-container-legacy"
 version = "0.1.0"
 dependencies = [
@@ -3550,7 +3542,7 @@ dependencies = [
  "fnv",
  "fsst-rs",
  "loom-common",
- "loom-container",
+ "loom-container-legacy",
  "loom-ir-core",
  "ron",
  "serde",
@@ -3639,7 +3631,7 @@ name = "loom-self-ingress"
 version = "0.1.0"
 dependencies = [
  "arrow",
- "loom-container",
+ "loom-container-legacy",
 ]
 
 [[package]]

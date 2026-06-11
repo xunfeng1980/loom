@@ -2,8 +2,8 @@
 name = "loom-self-ingress"
 version = "0.1.0"
 edition = "2021"
-description = "Single IO boundary for Loom native .loom file format — delegates all format logic to loom-container"
+description = "Single IO boundary for Loom native .loom file format — delegates all format logic to loom-container-legacy"
 
 [dependencies]
-loom-container = { path = "../../crates/loom-container" }
+loom-container-legacy = { path = "../../contrib/loom-container" }
 arrow = { workspace = true }

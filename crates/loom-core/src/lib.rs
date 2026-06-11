@@ -34,17 +34,17 @@ pub use loom_common::production_native_lowering;
 pub use loom_common::runtime_abi;
 pub use loom_common::verify_layout_types;
 
-// --- Container layer (from loom-container) ---
-pub use loom_container::container_codec;
-pub use loom_container::descriptor;
-pub use loom_container::layout_codec;
-pub use loom_container::table_codec;
-pub use loom_container::verified_lineage;
+// --- Container layer (from loom-container-legacy) ---
+pub use loom_container_legacy::container_codec;
+pub use loom_container_legacy::descriptor;
+pub use loom_container_legacy::layout_codec;
+pub use loom_container_legacy::table_codec;
+pub use loom_container_legacy::verified_lineage;
 // artifact_verifier and verifier modules contain container-dependent
 // functions (verify_artifact LMC1 path, verify_container, artifact_verifier
-// pipeline) — re-exported from loom-container.
-pub use loom_container::artifact_verifier;
-pub use loom_container::verifier;
+// pipeline) — re-exported from loom-container-legacy.
+pub use loom_container_legacy::artifact_verifier;
+pub use loom_container_legacy::verifier;
 
 // --- Re-export key dependency crates that downstream code may use ---
 pub use arrow;

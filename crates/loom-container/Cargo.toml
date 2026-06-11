@@ -1,9 +1,0 @@
-[package]
-name = "loom-container"
-version = "0.1.0"
-edition = "2021"
-description = "DEPRECATED: moved to contrib/loom-container — kept as transitional re-export shim"
-
-[dependencies]
-loom-container-legacy = { path = "../../contrib/loom-container" }
-loom-common = { path = "../loom-common" }

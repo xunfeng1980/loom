@@ -12,7 +12,7 @@
 //! - [`verify_loom_file`] — read, validate, and return the decoded
 //!   [`ContainerDescription`] for inspection
 //!
-//! [`ContainerDescription`]: loom_container::container_codec::ContainerDescription
+//! [`ContainerDescription`]: loom_container_legacy::container_codec::ContainerDescription
 
 use std::error::Error;
 use std::fmt;
@@ -20,7 +20,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use loom_container::container_codec;
+use loom_container_legacy::container_codec;
 
 /// Errors that can occur during Loom file ingress/egress operations.
 #[derive(Debug)]

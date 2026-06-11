@@ -1447,3 +1447,14 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 50-04-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI
+
+### Phase 101: Retain only Loom sidecar mode — remove container path, legacy codecs, native .loom IO, and full FFI
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 100
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 101 to break down)

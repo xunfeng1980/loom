@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 50-04-PLAN.md
-last_updated: "2026-06-11T12:25:47.486Z"
+stopped_at: Phase 101 context gathered
+last_updated: "2026-06-11T13:19:04.407Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 53
+  total_phases: 54
   completed_phases: 45
   total_plans: 196
   completed_plans: 179
-  percent: 85
+  percent: 83
 ---
 
 # Project State
@@ -313,6 +313,7 @@ None yet.
 - [Phase 43.2 P05]: Closed production native-codegen stabilization with `scripts/production-native-codegen-stabilization-test.sh`, MVP2 gate wiring, `43.2-ABI-FREEZE-DOSSIER.md`, `43.2-VERIFICATION.md`, and README/README-zh updates. CODEGEN-STABLE-01 through CODEGEN-STABLE-05 are complete; Phase 51 (ABI Freeze, moved from original Phase 44) is ready to start from stabilized native-codegen evidence. `ENGINE-01` remains suspended/pre-GA and is not closed.
 - [Phase 43.2 review fix]: Production native codegen cache/replay admission is now restricted to full projection, no predicate, and full-scan splits with matching row count. Non-full query shapes fail closed or fall back without replay/cache evidence, route validation now rejects drifted JIT entry-symbol/row-count/column-count metadata, and `scripts/mvp2-verify.sh` is labeled as a local coverage gate so missing live StarRocks evidence is not mistaken for a closed `ENGINE-01`.
 - [Phase 43.2 DuckDB default route fix]: Removed the DuckDB `LMC1` raw-copy native/test-facts path and internal preparation cache controls. DuckDB now attempts production Arrow semantic codegen for verifier-accepted `LMC2(LMA1)` / direct `LMA1` full-projection primitive artifacts by default, hands value/validity buffers through the internal native buffer ABI, and falls back/fails closed for projected, Utf8/logical/nested, LMC1, cancellation, or unavailable-native cases.
+- Phase 101 added (2026-06-11): Retain only Loom sidecar mode — remove container path (contrib/loom-container), legacy codecs (LMC1/LMP1/LMT1), native .loom IO (ingress/loom-self-ingress), full FFI (crates/loom-ffi), and container-legacy re-exports from loom-core. Clean up loom-fixtures container-dependent tests and duckdb-ext full-mode code paths. Result: single sidecar-only build path with lean loom-sidecar-ffi as the sole C ABI surface.
 - [Phase 48]: Complete on 2026-06-10. All deferred items P1–P5 closed:
   - **P1** Real Min/Max K semantic rules: `EvalConst(min/max)` and `TypeOfMin/MaxCheck` rules added to `kloom.k` v4; `kloom_harness.rs` Min/Max serialization is faithful (Bytes remains UnsupportedProgram); `test-013-min-max.kloom` and Rust skip-semantics tests pass.
   - **P2** Extract LLVM backend interpreter into production mode: deferred indefinitely; LLVM interpreter remains a research artifact.
@@ -390,8 +391,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T12:25:31.575Z
-Stopped at: Completed 50-04-PLAN.md
+Last session: 2026-06-11T13:19:04.396Z
+Stopped at: Phase 101 context gathered
 
 Phase 17 handoff:
 
@@ -438,7 +439,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: None
+Resume file: .planning/phases/101-retain-only-loom-sidecar-mode-remove-container-path-legacy-c/101-CONTEXT.md
 
 ## Performance Metrics
 

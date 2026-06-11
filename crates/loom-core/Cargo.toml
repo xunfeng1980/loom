@@ -5,9 +5,9 @@ edition = "2021"
 description = "Loom core re-export shim — delegates to loom-ir-core and loom-container"
 
 [dependencies]
-loom-ir-core   = { path = "../loom-ir-core" }
-loom-common    = { path = "../loom-common" }
-loom-container = { path = "../loom-container" }
+loom-ir-core            = { path = "../loom-ir-core" }
+loom-common             = { path = "../loom-common" }
+loom-container-legacy   = { path = "../../contrib/loom-container" }
 # Re-export these for downstream crates that use them directly:
 arrow          = { workspace = true }
 arrow-array    = { workspace = true }
