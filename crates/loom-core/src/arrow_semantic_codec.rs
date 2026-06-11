@@ -1,4 +1,9 @@
 //! `LMA1` Arrow semantic payload codec and `LMC2` wrapper.
+//!
+//! **Phase 50.1: OUT-OF-TCB — dev-time reference packaging only.**
+//! These codecs are retained for kloom/verifier test fixtures and backward-compat
+//! decode. Production emission paths do NOT use LMC2/LMA1 (replaced by sidecar
+//! overlay in Phase 50). Encode functions are explicitly documented as dev-time only.
 
 use std::io::Cursor;
 
@@ -43,6 +48,7 @@ pub fn arrow_semantic_container_feature_names(bits: u64) -> Vec<&'static str> {
     names
 }
 
+/// Dev-time only. Encodes an `ArrowSemanticPayload` into LMA1 bytes.
 pub fn encode_arrow_semantic_payload(
     payload: &ArrowSemanticPayload,
 ) -> Result<Vec<u8>, LoomDecodeError> {
@@ -76,6 +82,7 @@ pub fn encode_arrow_semantic_payload(
     Ok(out)
 }
 
+/// Dev-time only. Encodes an `ArrowSemanticPayload` into an LMC2 container.
 pub fn encode_arrow_semantic_container_payload(
     payload: &ArrowSemanticPayload,
 ) -> Result<Vec<u8>, LoomDecodeError> {
@@ -83,6 +90,7 @@ pub fn encode_arrow_semantic_container_payload(
     wrap_arrow_semantic_payload(&lma1)
 }
 
+/// Dev-time only. Wraps pre-encoded LMA1 bytes into an LMC2 container.
 pub fn wrap_arrow_semantic_payload(lma1_bytes: &[u8]) -> Result<Vec<u8>, LoomDecodeError> {
     decode_arrow_semantic_payload(lma1_bytes)?;
 
