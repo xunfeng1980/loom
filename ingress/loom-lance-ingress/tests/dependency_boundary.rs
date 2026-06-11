@@ -99,7 +99,10 @@ fn lance_dependency_is_direct_only_in_lance_adapter_manifest() {
     );
     assert_eq!(
         direct_parquet_manifests,
-        vec![root.join("ingress/loom-parquet-ingress/Cargo.toml")]
+        vec![
+            root.join("crates/loom-sidecar-ffi/Cargo.toml"),
+            root.join("ingress/loom-parquet-ingress/Cargo.toml"),
+        ]
     );
 }
 
