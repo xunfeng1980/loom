@@ -11,3 +11,4 @@ pub mod error;
 pub mod l2_core;
 pub mod l2core_codec;
 pub mod full_verifier;
+pub mod sidecar;

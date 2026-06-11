@@ -11,8 +11,8 @@ pub use loom_ir_core::error;
 pub use loom_ir_core::l2_core;
 pub use loom_ir_core::l2core_codec;
 pub use loom_ir_core::full_verifier;
-// Sidecar modules not yet created (Plan 50-02):
-// pub use loom_ir_core::sidecar;
+// Sidecar modules (Phase 50 — Plan 50-02):
+pub use loom_ir_core::sidecar;
 // pub use loom_ir_core::sidecar_routing;
 
 // --- Container layer (from loom-container) ---

@@ -10,6 +10,7 @@
 //! Arrow materialization and LMC2/LMA1 emission removed from public API.
 
 pub mod source_contract;
+pub mod sidecar_parquet;
 
 pub use source_contract::{
     bind_content_hash_to_parquet_data,
