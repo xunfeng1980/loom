@@ -87,7 +87,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)** - Close kloom v4 spec-oracle gaps: typed KOracleOutcome, krun-absent skip, garbled-output hard-fail, per-shape native-route disable, strict skip convention, LLVM-backend feasibility evidence (completed 2026-06-10)
 - [x] **Phase 49: Independent L2Core Decode IR Codec and Content-Hash Identity** - Decision One: standalone L2Core IR codec with `L2IR` magic/version, deterministic wire format, content-hash identity via FNV-1a over canonical bytes, fail-closed parse-and-verify (completed 2026-06-11)
 - [x] **Phase 50.1: Container Demotion and Thin Host Adapters** - First slice of Decision Two: demote LMC2/LMA1 from top-level format to optional lineage section + reference packaging; degrade existing ingress crates into thin host adapters (one IR + three adapters) (completed 2026-06-11)
-- [ ] **Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback** - Second slice of Decision Two: sidecar overlay contract, content-hash binding at column-chunk/fragment granularity, fail-closed routing to verifiable-native track or host's own native reader
+- [x] **Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback** - Second slice of Decision Two: sidecar overlay contract, content-hash binding at column-chunk/fragment granularity, fail-closed routing to verifiable-native track or host's own native reader (completed 2026-06-11)
 
 ## Phase Details
 
@@ -1176,10 +1176,10 @@ Plans:
 
 ### Phase 51: Sidecar-DuckDB Decoupling and Loom Self-Ingress
 
-**Status:** Not started.
+**Status:** Planned.
 **Goal:** Decouple the DuckDB sidecar path from `loom-container` so that DuckDB can read Parquet files with embedded Loom IR sidecars using only `loom-ir-core`. Reposition `loom-container` as the exclusive handler of the Loom native `.loom` format, and introduce `loom-self-ingress` as its IO boundary.
 **Depends on:** Phase 50 (sidecar overlay model), Phase 50.1 (container demotion / thin host adapters).
-**Requirements:** TBD
+**Requirements:** SC-1, SC-2, SC-3, SC-4, SC-5
 **Success Criteria** (what must be TRUE):
 
   1. A new `loom-sidecar-ffi` (or feature-gated `loom-ffi` lean path) exports sidecar decode/verify/routing functions via C ABI, depending only on `loom-ir-core` and `loom-parquet-ingress` — zero dependency on `loom-container`.
@@ -1189,7 +1189,19 @@ Plans:
   5. Full workspace build and test pass with the new dependency boundaries enforced (no accidental `loom-container` leak into the sidecar-DuckDB path).
 
 **Non-goals:** No changes to the `.loom` container format itself. No changes to the MLIR/LLVM native lowering path. The existing DuckDB `LMC2(LMA1)` Arrow semantic path through `loom-ffi` → `loom-container` remains functional but is now one of two paths (the `loom-container`-heavy path for `.loom` files, and the lean sidecar path for sidecar-embedded host files).
-**Plans:** 3 plans across 3 waves (Wave 1: lean sidecar FFI; Wave 2: loom-self-ingress + CLI split; Wave 3: DuckDB extension lean path + integration gate).
+**Plans:** 3 plans across 3 waves
+
+**Wave 1**
+
+- [ ] 51-01-PLAN.md — Lean sidecar FFI crate (`loom-sidecar-ffi`) + parquet-ingress dependency cleanup (SC-1, SC-5)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 51-02-PLAN.md — Self-ingress crate (`loom-self-ingress`) + CLI feature-gate for lean sidecar compilation (SC-3, SC-4)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 51-03-PLAN.md — DuckDB extension lean build path (CMake option) + workspace integration gate (SC-2, SC-5)
 
 ### Phase 100: ABI Freeze and Compatibility Contract
 
@@ -1288,8 +1300,8 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) a
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
-| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete | 2026-06-11 |
-| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 0/0 | Planned | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 0/3 | Planned | - |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
@@ -1360,7 +1372,7 @@ Plans:
 
 **Ordering decision:** Container demotion must precede the sidecar overlay (Phase 50) because the sidecar overlay replaces the old container as the distribution model — you cannot build a new packaging model on top of old containers that are still "top-level."
 
-**Plans:** 3/3 plans complete
+**Plans:** 5/5 plans complete
 
 **Wave 1**
 

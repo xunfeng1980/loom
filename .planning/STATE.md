@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 50-04-PLAN.md
-last_updated: "2026-06-11T09:15:29.643Z"
-last_activity: 2026-06-11 -- Phase 50 execution started
+stopped_at: Completed 51-03-PLAN.md
+last_updated: "2026-06-11T10:06:57.005Z"
+last_activity: 2026-06-11
 progress:
-  total_phases: 51
+  total_phases: 52
   completed_phases: 44
   total_plans: 191
   completed_plans: 175
-  percent: 86
+  percent: 85
 ---
 
 # Project State
@@ -25,12 +25,13 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase: 50 (sidecar-overlay-model-and-host-native-reader-fallback) — EXECUTING
+Phase: 51
 Phase 44 MVP1.5 Closeout and Milestone Archive PLACEHOLDER: (spec before planning — see /gsd-spec-phase 44)
-Phase 51 ABI Freeze and Compatibility Contract: (moved from original Phase 44; 2 planned waves)
-Plan: 4 of 5
+Phase 51 ABI Freeze and Compatibility Contract: (moved from original Phase 44; now renumbered to Phase 100)
+Phase 51 Sidecar-DuckDB Decoupling and Loom Self-Ingress: 3 plans across 3 waves
+Plan: 51-01, 51-02, 51-03 created
 Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 50 execution started
+Last activity: 2026-06-11
 
 Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is complete; Phase 43.2 is complete; Phase 44 is a placeholder (MVP1.5 Closeout); Phase 51 (ABI Freeze, moved from original Phase 44) is ready to start.
 
