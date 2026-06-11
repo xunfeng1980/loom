@@ -80,7 +80,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 43.1: Production Native Codegen Realization** - 44-pre / 44A inserted phase: replace the current Rust/Arrow native-copy placeholder with true MLIR/LLVM/JIT/native backend output for the Phase 35 Arrow semantic matrix, validated by Phase 40 before any runtime/cache admission
 - [x] **Phase 43.2: Production Native Codegen Stabilization and Production Readiness** - 44-pre stabilization phase: harden the real Phase 43.1 native-codegen path with deterministic replay, production-route evidence, adversarial validation, perf/soak/resource checks, and an ABI-freeze dossier
 - [ ] **Phase 44: MVP1.5 Closeout and Milestone Archive** - Placeholder — spec via `/gsd-spec-phase 44`
-- [ ] **Phase 51: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, Phase 43.1's real native-codegen requirements, and Phase 43.2's production-readiness evidence; live second-engine runtime evidence is deferred to pre-GA reactivation
+- [x] **Phase 51: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, Phase 43.1's real native-codegen requirements, and Phase 43.2's production-readiness evidence; live second-engine runtime evidence is deferred to pre-GA reactivation (completed 2026-06-11)
 
 **Repositioning (整理稿) — Decode-IR Sidecar** *(active; phases 48-50 inserted out-of-order. Decision One: separate decode IR from container. Decision Two: sidecar overlay + host-native reader fallback.)*
 
@@ -1189,7 +1189,7 @@ Plans:
   5. Full workspace build and test pass with the new dependency boundaries enforced (no accidental `loom-container` leak into the sidecar-DuckDB path).
 
 **Non-goals:** No changes to the `.loom` container format itself. No changes to the MLIR/LLVM native lowering path. The existing DuckDB `LMC2(LMA1)` Arrow semantic path through `loom-ffi` → `loom-container` remains functional but is now one of two paths (the `loom-container`-heavy path for `.loom` files, and the lean sidecar path for sidecar-embedded host files).
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 **Wave 1**
 
@@ -1201,7 +1201,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 51-03-PLAN.md — DuckDB extension lean build path (CMake option) + workspace integration gate (SC-2, SC-5)
+- [x] 51-03-PLAN.md — DuckDB extension lean build path (CMake option) + workspace integration gate (SC-2, SC-5)
 
 ### Phase 100: ABI Freeze and Compatibility Contract
 
@@ -1301,7 +1301,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) a
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
-| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 1/3 | In Progress|  |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete   | 2026-06-11 |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)

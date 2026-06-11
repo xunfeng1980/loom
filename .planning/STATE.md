@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Completed 50-04-PLAN.md
-last_updated: "2026-06-11T10:44:17.299Z"
+last_updated: "2026-06-11T11:04:41.244Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 52
-  completed_phases: 44
+  completed_phases: 45
   total_plans: 194
-  completed_plans: 177
-  percent: 85
+  completed_plans: 178
+  percent: 87
 ---
 
 # Project State
@@ -184,6 +184,7 @@ Recent decisions affecting current work:
 - [Phase ?]: FNV-1a via fnv::FnvHasher for content-hash — matches l2core_program_hash algorithm family
 - [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Vortex 0.74.0 footer API does not support general-purpose key-value metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Vortex footer exposes layout(), segment_map(), and approx_byte_size() but no metadata dictionary. Documented no-op prevents silent non-embedding (threat T-50-13).
 - [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Lance 7.0.0 manifest API does not support general-purpose writable metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Lance manifest provides version-level metadata keys for reading but no structured API for writing custom sidecar data. Documented no-op prevents silent non-embedding (threat T-50-13).
+- [Phase 51-sidecar-duckdb-decoupling-and-loom-self-ingress]: .planning/phases/51-sidecar-duckdb-decoupling-and-loom-self-ingress/51-03-SUMMARY.md — Sidecar-only DuckDB extension returns VARCHAR diagnostic rows rather than Arrow decode: preserves dependency boundary as primary value proof
 
 ### Pending Todos
 
@@ -387,7 +388,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T10:44:17.290Z
+Last session: 2026-06-11T11:04:36.205Z
 Stopped at: Completed 50-04-PLAN.md
 
 Phase 17 handoff:
@@ -460,3 +461,4 @@ Resume file: None
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P02 | 9 min | 3 tasks | 7 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P03 | 7min | 3 tasks | 4 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P04 | 16min | 3 tasks | 10 files |
+| Phase 51-sidecar-duckdb-decoupling-and-loom-self-ingress P03 | 7min | 3 tasks | 3 files |
