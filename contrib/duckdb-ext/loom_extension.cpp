@@ -1,39 +1,33 @@
-// loom_extension.cpp — Loom DuckDB extension (Phase 2)
+// loom_extension.cpp — Loom DuckDB extension (Phase 2, extended Phase 51)
 //
 // Exports: loom_duckdb_cpp_init (via DUCKDB_CPP_EXTENSION_ENTRY macro)
-// Registers: loom_scan(VARCHAR) — table function that calls loom_decode and
-//            populates DuckDB's DataChunk directly from the decoded Arrow array.
+// Registers: loom_scan(VARCHAR) — table function.
 //
-// Architecture:
-//   loom_scan('file.bin')
-//     └─ LoomBind  : declare output schema (INTEGER "value", nullable)
-//     └─ LoomInit  : call loom_decode; check rc; store Arrow array+schema in state
-//     └─ LoomScan  : populate the DataChunk directly from the Arrow buffers
-//     └─ LoomScanState::~LoomScanState : release array+schema on every teardown path
+// Build modes (Phase 51):
+//   LOOM_SIDECAR_ONLY=OFF (default): full Loom decode path — calls loom_decode
+//     and populates DuckDB's DataChunk from decoded Arrow arrays, including
+//     native codegen and Arrow semantic paths.
+//   LOOM_SIDECAR_ONLY=ON: sidecar-only path — extracts Loom sidecar overlay from
+//     Parquet files via loom_sidecar_extract, evaluates routing decisions via
+//     loom_sidecar_route, and returns diagnostic information. Links only
+//     libloom_sidecar_ffi.a (no container/codec/native-lowering dependencies).
 //
-// DECISION — D-01 (revised; see 02-CONTEXT.md "D-01 revised"):
-//   The original D-01 fed DuckDB via a one-shot Arrow stream + the built-in
-//   arrow_scan. Execution surfaced a hard blocker: arrow_scan requires a
-//   STRUCT/record-batch schema at the top level, but loom_decode emits a BARE
-//   primitive Int32 array (format="i", n_children=0). Wrapping a single hardcoded
-//   column in a record batch purely to satisfy arrow_scan is premature for this
-//   plumbing stub, so D-01 was formally revised: Phase 2 populates the DataChunk
-//   directly from the Arrow buffers. The arrow_scan / streaming path is DEFERRED
-//   to Phase 3, where real columnar decode produces a record-batch-shaped output
-//   that arrow_scan can consume (tracked: see STATE.md and 02-CONTEXT.md).
-//   No dead "stable-surface" scaffolding is kept here — when Phase 3 needs the
-//   stream path it will build it against the real record-batch output.
-//
-// Thread-safety: each query creates a fresh LoomScanState; no shared mutable
+// Thread-safety: each query creates a fresh state; no shared mutable
 // state is used in this extension.
 
 #define DUCKDB_EXTENSION_MAIN
 #include "vendor/duckdb-src/duckdb.hpp"  // DuckDB v1.5.3 amalgamated header
 
+#ifdef LOOM_SIDECAR_ONLY
+extern "C" {
+#include "../../crates/loom-sidecar-ffi/include/loom_sidecar.h"
+}
+#else
 extern "C" {
 #include "../../crates/loom-ffi/include/loom.h"  // Phase 1: loom_decode signature
 #include "../../crates/loom-ffi/include/loom_duckdb_internal.h"
 }
+#endif
 
 #include <cstdint>
 #include <cstddef>
@@ -45,6 +39,162 @@ extern "C" {
 #include <sstream>
 
 using namespace duckdb;
+
+// ===========================================================================
+// Sidecar-only mode (LOOM_SIDECAR_ONLY=ON)
+//
+// In this mode the extension links only libloom_sidecar_ffi.a (zero container
+// or native-lowering dependencies).  loom_scan(path) extracts any embedded Loom
+// sidecar overlay from the Parquet file at `path`, evaluates the 4-gate routing
+// decision, and returns a single VARCHAR diagnostic row describing the result.
+//
+// Full Arrow decode / native codegen / container codec paths are NOT available
+// in this build — those require the full libloom_ffi.a (LOOM_SIDECAR_ONLY=OFF).
+// ===========================================================================
+#ifdef LOOM_SIDECAR_ONLY
+
+#include <string>
+
+static string CStringOrEmpty(const char *value) {
+    return value == nullptr ? string() : string(value);
+}
+
+struct SidecarBindData : TableFunctionData {
+    string file_path;
+    string diagnostic;
+
+    unique_ptr<FunctionData> Copy() const override {
+        auto copy = make_uniq<SidecarBindData>();
+        copy->file_path = file_path;
+        copy->diagnostic = diagnostic;
+        return std::move(copy);
+    }
+
+    bool Equals(const FunctionData &other_p) const override {
+        auto &other = other_p.Cast<SidecarBindData>();
+        return file_path == other.file_path && diagnostic == other.diagnostic;
+    }
+};
+
+struct SidecarScanState : GlobalTableFunctionState {
+    bool batch_emitted = false;
+
+    idx_t MaxThreads() const override {
+        return 1;
+    }
+};
+
+static unique_ptr<FunctionData> SidecarBind(
+    ClientContext & /*ctx*/,
+    TableFunctionBindInput &input,
+    vector<LogicalType> &return_types,
+    vector<string> &names)
+{
+    if (input.inputs.empty() || input.inputs[0].IsNull()) {
+        throw BinderException("loom_scan requires a non-null file path");
+    }
+
+    auto bind_data = make_uniq<SidecarBindData>();
+    bind_data->file_path = input.inputs[0].GetValue<string>();
+
+    // Attempt sidecar extraction.
+    uint8_t *overlay_bytes = nullptr;
+    uintptr_t overlay_len = 0;
+    int32_t extract_rc = loom_sidecar_extract(bind_data->file_path.c_str(),
+                                              &overlay_bytes, &overlay_len);
+
+    if (extract_rc == 0 && overlay_bytes != nullptr && overlay_len > 0) {
+        // Sidecar found — evaluate routing decision.
+        const char *decision_json = nullptr;
+        int32_t route_rc = loom_sidecar_route(overlay_bytes, overlay_len,
+                                              nullptr, 0, &decision_json);
+        if (route_rc == 0 && decision_json != nullptr) {
+            string decision = CStringOrEmpty(decision_json);
+            if (decision.find("\"decision\":\"LoomNative\"") != string::npos) {
+                bind_data->diagnostic =
+                    "loom_scan[sidecar/LoomNative]: file has a Loom sidecar overlay "
+                    "routing to LoomNative track. Full Arrow decode requires the "
+                    "full loom_scan build (LOOM_SIDECAR_ONLY=OFF). "
+                    "Use DuckDB's native Parquet reader for this file instead.";
+            } else if (decision.find("\"decision\":\"HostNativeReader\"") != string::npos) {
+                bind_data->diagnostic =
+                    "loom_scan[sidecar/HostNativeReader]: Loom sidecar overlay found "
+                    "and routed to HostNativeReader. Use DuckDB's native Parquet "
+                    "reader for this file.";
+            } else {
+                bind_data->diagnostic =
+                    "loom_scan[sidecar/unknown-route]: Loom sidecar overlay found "
+                    "with unrecognized routing decision: " + decision;
+            }
+        } else {
+            bind_data->diagnostic =
+                "loom_scan[sidecar/route-failed]: Loom sidecar overlay found but "
+                "routing evaluation failed with code " +
+                std::to_string(static_cast<int>(route_rc));
+        }
+
+        // Free the overlay bytes allocated by loom_sidecar_extract.
+        loom_sidecar_free_bytes(overlay_bytes, overlay_len);
+    } else if (extract_rc == 5) {
+        // NoSidecar — file has no embedded Loom sidecar.
+        bind_data->diagnostic =
+            "loom_scan[sidecar/NoSidecar]: no Loom sidecar overlay found in file. "
+            "Use DuckDB's native Parquet reader for this file.";
+    } else {
+        // IoError, DecodeFailed, Panicked, or NullPointer.
+        bind_data->diagnostic =
+            "loom_scan[sidecar/extract-failed]: sidecar extraction failed with "
+            "code " + std::to_string(static_cast<int>(extract_rc));
+    }
+
+    // Return a single VARCHAR column with the diagnostic message.
+    return_types.push_back(LogicalType::VARCHAR);
+    names.push_back("diagnostic");
+
+    return std::move(bind_data);
+}
+
+static unique_ptr<GlobalTableFunctionState> SidecarInit(
+    ClientContext & /*ctx*/,
+    TableFunctionInitInput & /*input*/)
+{
+    return make_uniq<SidecarScanState>();
+}
+
+static void SidecarScan(
+    ClientContext & /*ctx*/,
+    TableFunctionInput &data,
+    DataChunk &output)
+{
+    auto &state = data.global_state->Cast<SidecarScanState>();
+
+    if (state.batch_emitted) {
+        output.SetCardinality(0);
+        return;
+    }
+
+    auto &bind_data = data.bind_data->Cast<SidecarBindData>();
+    output.SetCardinality(1);
+    FlatVector::GetData<string_t>(output.data[0])[0] =
+        StringVector::AddString(output.data[0], bind_data.diagnostic);
+    state.batch_emitted = true;
+}
+
+static void LoadInternal(ExtensionLoader &loader) {
+    TableFunction fn(
+        "loom_scan",
+        {LogicalType::VARCHAR},
+        SidecarScan,
+        SidecarBind,
+        SidecarInit);
+    fn.projection_pushdown = false;
+    loader.RegisterFunction(fn);
+}
+
+// ===========================================================================
+// Full mode (LOOM_SIDECAR_ONLY=OFF) — existing implementation below.
+// ===========================================================================
+#else
 
 enum class LoomValueKind : uint8_t {
     BOOL,
@@ -1438,3 +1588,5 @@ DUCKDB_CPP_EXTENSION_ENTRY(loom, loader) {
     LoadInternal(loader);
 }
 }  // extern "C"
+
+#endif  // LOOM_SIDECAR_ONLY
