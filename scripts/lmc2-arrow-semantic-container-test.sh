@@ -42,9 +42,6 @@ check_marker "is_arrow_semantic_container" crates/loom-core/src/arrow_semantic_c
 check_marker "verify_arrow_semantic_container_artifact" crates/loom-core/src/artifact_verifier.rs "LMC2 verifier routing"
 check_marker "ArtifactVerificationFacts::new(\"LMC2\")" crates/loom-core/src/artifact_verifier.rs "LMC2 verifier facts"
 check_marker "LMC2(LMA1)" ingress/loom-source-ingress/src/lib.rs "source emission display"
-check_marker "LMC2-wrapped LMA1 semantic emission" ingress/loom-parquet-ingress/src/source_contract.rs "Parquet LMC2 report wording"
-check_marker "LMC2-wrapped LMA1 semantic emission" ingress/loom-lance-ingress/src/source_contract.rs "Lance LMC2 report wording"
-check_marker "LMC2-wrapped LMA1 semantic emission" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex LMC2 report wording"
 ok "LMC2 markers are present"
 
 info "Running core wrapper and artifact verifier tests..."
@@ -65,6 +62,9 @@ fi
 ok "CLI output identifies LMC2 wrapper facts without native overclaim"
 
 info "Running source handoff tests for default LMC2 emission..."
+# Note (Phase 50.1-03 Task 2): These test files have been updated to use
+# cfg(test)-gated oracle functions + dev-time packaging instead of removed
+# public emission functions (emit_source_ingress_lmc2_from_*).
 cargo test -p loom-parquet-ingress --test source_ingress_handoff
 cargo test -p loom-lance-ingress --test source_ingress_handoff
 cargo test -p loom-vortex-ingress --test source_ingress_handoff

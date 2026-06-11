@@ -64,6 +64,8 @@ rg -q "scan_f32_values_from_vortex_buffer" ingress/loom-vortex-ingress/src/lib.r
     || fail "missing f32 scan oracle helper"
 rg -q "scan_f64_values_from_vortex_buffer" ingress/loom-vortex-ingress/src/lib.rs \
     || fail "missing f64 scan oracle helper"
+rg -q "extract_sidecar_bytes_from_vortex_buffer" ingress/loom-vortex-ingress/src/source_contract.rs \
+    || fail "missing thin adapter Vortex sidecar extract"
 ok "implementation markers are present"
 
 info "Running full ingress crate tests..."

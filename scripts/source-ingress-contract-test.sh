@@ -147,7 +147,8 @@ check_marker "pub struct SourceFacts" ingress/loom-source-ingress/src/lib.rs "So
 check_marker "pub struct SourceOracleEvidence" ingress/loom-source-ingress/src/lib.rs "SourceOracleEvidence"
 check_marker "source_facts_from_vortex_reader_facts" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex facts mapping helper"
 check_marker "source_report_from_vortex_reader_facts" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex report mapping helper"
-check_marker "emit_source_ingress_lmc2_from_vortex_buffer" ingress/loom-vortex-ingress/src/source_contract.rs "verifier-routed Vortex handoff helper"
+check_marker "extract_sidecar_bytes_from_vortex_buffer" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex thin adapter sidecar extract"
+check_marker "bind_content_hash_to_vortex_data" ingress/loom-vortex-ingress/src/source_contract.rs "Vortex thin adapter hash bind"
 ok "implementation markers are present"
 
 info "Running focused Phase 26 contract tests..."
