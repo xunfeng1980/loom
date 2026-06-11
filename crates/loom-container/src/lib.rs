@@ -3,57 +3,29 @@
 //! This crate owns all packaging, codec, and distribution logic.
 //! It depends on `loom-ir-core` for the L2Core IR types, codec,
 //! verifier, sidecar overlay, and runtime ABI.
+//! Plan 52-01: production-core modules are now in `loom-common`; this
+//! crate re-exports them for backward compatibility.
 
 #![forbid(unsafe_code)]
 
-use arrow_schema::DataType;
-use loom_ir_core::l2_core::L2DataType;
+// Re-export production-core utility functions from loom-common
+pub use loom_common::{arrow_to_l2, l2_to_arrow};
 
-/// Convert a container-local [`L2DataType`] to a native Arrow [`DataType`].
-pub fn l2_to_arrow(dt: &L2DataType) -> DataType {
-    match dt {
-        L2DataType::Boolean => DataType::Boolean,
-        L2DataType::Int32 => DataType::Int32,
-        L2DataType::Int64 => DataType::Int64,
-        L2DataType::Float32 => DataType::Float32,
-        L2DataType::Float64 => DataType::Float64,
-        L2DataType::Utf8 => DataType::Utf8,
-    }
-}
+// Re-export the 17 production-core modules from loom-common
+pub use loom_common::{
+    alp_params, arrow_builder_output, arrow_buffer_lowering, arrow_semantic,
+    arrow_semantic_codec, arrow_semantic_verifier, artifact_types, decode_dialect, fsst_params,
+    kloom_harness, l1_model, l2_kernel_registry, native_arrow_semantic, native_lowering,
+    production_native_lowering, runtime_abi, verify_layout_types,
+};
 
-/// Attempt to convert a native Arrow [`DataType`] to a container-local [`L2DataType`].
-/// Returns `None` for unsupported types.
-pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
-    match dt {
-        DataType::Boolean => Some(L2DataType::Boolean),
-        DataType::Int32 => Some(L2DataType::Int32),
-        DataType::Int64 => Some(L2DataType::Int64),
-        DataType::Float32 => Some(L2DataType::Float32),
-        DataType::Float64 => Some(L2DataType::Float64),
-        DataType::Utf8 => Some(L2DataType::Utf8),
-        _ => None,
-    }
-}
-
-pub mod fsst_params;
-pub mod alp_params;
+// Legacy container-layer modules still resident here
 pub mod layout_codec;
 pub mod table_codec;
 pub mod container_codec;
-pub mod kloom_harness;
-pub mod native_lowering;
-pub mod production_native_lowering;
-pub mod decode_dialect;
-pub mod arrow_buffer_lowering;
-pub mod arrow_semantic;
-pub mod arrow_semantic_codec;
-pub mod arrow_semantic_verifier;
-pub mod native_arrow_semantic;
 pub mod verified_lineage;
-pub mod artifact_verifier;
 pub mod descriptor;
-pub mod arrow_builder_output;
-pub mod l1_model;
-pub mod l2_kernel_registry;
+// verifier.rs keeps container-dependent verify_table and verify_container
 pub mod verifier;
-pub mod runtime_abi;
+// artifact_verifier.rs keeps container-dependent verify_artifact (LMC1 path)
+pub mod artifact_verifier;

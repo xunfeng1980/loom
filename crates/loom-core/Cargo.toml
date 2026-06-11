@@ -6,6 +6,7 @@ description = "Loom core re-export shim — delegates to loom-ir-core and loom-c
 
 [dependencies]
 loom-ir-core   = { path = "../loom-ir-core" }
+loom-common    = { path = "../loom-common" }
 loom-container = { path = "../loom-container" }
 # Re-export these for downstream crates that use them directly:
 arrow          = { workspace = true }

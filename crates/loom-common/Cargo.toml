@@ -1,12 +1,11 @@
 [package]
-name = "loom-container"
+name = "loom-common"
 version = "0.1.0"
 edition = "2021"
-description = "Loom distribution container layer — packaging, codecs, Arrow semantic artifacts, native lowering"
+description = "Loom production-core types, codecs, lowering, and runtime ABI"
 
 [dependencies]
 loom-ir-core  = { path = "../loom-ir-core" }
-loom-common   = { path = "../loom-common" }
 arrow         = { workspace = true }
 arrow-array   = { workspace = true }
 arrow-buffer  = { workspace = true }
