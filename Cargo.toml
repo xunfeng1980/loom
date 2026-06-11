@@ -15,6 +15,7 @@ members = [
     "ingress/loom-lance-ingress",
     "ingress/loom-parquet-ingress",
     "contrib/loom-iceberg-binding",
+    "contrib/loom-container",
     "crates/loom-native-melior",
 ]
 

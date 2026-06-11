@@ -3515,6 +3515,14 @@ dependencies = [
 name = "loom-container"
 version = "0.1.0"
 dependencies = [
+ "loom-common",
+ "loom-container-legacy",
+]
+
+[[package]]
+name = "loom-container-legacy"
+version = "0.1.0"
+dependencies = [
  "arrow",
  "arrow-array",
  "arrow-buffer",

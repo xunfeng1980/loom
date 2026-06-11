@@ -1,31 +1,20 @@
-//! `loom-container` — Loom distribution container layer.
+//! DEPRECATED — transitional shim.
 //!
-//! This crate owns all packaging, codec, and distribution logic.
-//! It depends on `loom-ir-core` for the L2Core IR types, codec,
-//! verifier, sidecar overlay, and runtime ABI.
-//! Plan 52-01: production-core modules are now in `loom-common`; this
-//! crate re-exports them for backward compatibility.
+//! All modules have moved to `loom-common` (production-core types)
+//! and `loom-container-legacy` (legacy container format).
+//! Use those crates directly. This crate exists for backward
+//! compatibility only.
+//!
+//! Plan 52-02: replaced with re-exports from loom-container-legacy
+//! (which already re-exports all production-core modules from loom-common).
 
 #![forbid(unsafe_code)]
 
-// Re-export production-core utility functions from loom-common
+// Re-export everything from the legacy container crate.
+// Since loom-container-legacy's lib.rs already re-exports all
+// loom-common modules, this covers both common and legacy types.
+pub use loom_container_legacy::*;
+
+// Re-export utility functions from loom-common's lib.rs
+// (not covered by module re-exports above).
 pub use loom_common::{arrow_to_l2, l2_to_arrow};
-
-// Re-export the 17 production-core modules from loom-common
-pub use loom_common::{
-    alp_params, arrow_builder_output, arrow_buffer_lowering, arrow_semantic,
-    arrow_semantic_codec, arrow_semantic_verifier, artifact_types, decode_dialect, fsst_params,
-    kloom_harness, l1_model, l2_kernel_registry, native_arrow_semantic, native_lowering,
-    production_native_lowering, runtime_abi, verify_layout_types,
-};
-
-// Legacy container-layer modules still resident here
-pub mod layout_codec;
-pub mod table_codec;
-pub mod container_codec;
-pub mod verified_lineage;
-pub mod descriptor;
-// verifier.rs keeps container-dependent verify_table and verify_container
-pub mod verifier;
-// artifact_verifier.rs keeps container-dependent verify_artifact (LMC1 path)
-pub mod artifact_verifier;

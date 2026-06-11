@@ -1,0 +1,19 @@
+[package]
+name = "loom-container-legacy"
+version = "0.1.0"
+edition = "2021"
+description = "Legacy Loom container format — LMC1/LMP1/LMT1 codecs, descriptor, and verifier"
+
+[dependencies]
+loom-common   = { path = "../../crates/loom-common" }
+loom-ir-core  = { path = "../../crates/loom-ir-core" }
+arrow         = { workspace = true }
+arrow-array   = { workspace = true }
+arrow-buffer  = { workspace = true }
+arrow-schema  = { workspace = true }
+arrow-data    = { workspace = true }
+arrow-ipc     = { workspace = true }
+fsst          = { workspace = true }
+ron           = { workspace = true }
+serde         = { workspace = true }
+fnv           = { workspace = true }
