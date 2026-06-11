@@ -1355,7 +1355,7 @@ Plans:
 
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 
-> **Status: PLANNED — 3 plans across 3 waves.** Second slice of Decision Two: the sidecar overlay contract itself, building on demoted containers (Phase 50.1) and the independent IR identity (Phase 49).
+> **Status: PLANNED — 5 plans across 5 waves.** Second slice of Decision Two: the sidecar overlay contract itself, building on demoted containers (Phase 50.1) and the independent IR identity (Phase 49). Crate split (loom-ir-core + loom-container) is the new Wave 0-1 prerequisite.
 
 **Repositioning anchor:** Second slice of the Loom repositioning (整理稿) — **决定二: 参考 AnyBlox(思想参考、工程独立)、无 Wasm 回退、回退即宿主原生 reader**. Where Phase 49 makes the decode IR an independent, hashable artifact and Phase 50.1 demotes containers/degrades ingress to thin adapters, this phase makes Loom a *sidecar overlay* on host formats rather than a top-level format: a Loom-aware engine takes the verifiable native track; everything else falls back to the host's own native reader. Single execution track (Loom 原生 — 可验证 + 宽向量 + 64 位); **no Wasm fallback** (§2.2), **no second IR execution implementation**, **no equivalence-diff burden**.
 
@@ -1369,16 +1369,24 @@ Plans:
 
 **Non-goals:** No Wasm track. No second IR execution. No new top-level user-facing container. No correctness claims — verifiable safety + well-formedness + graceful degradation only.
 
-**Plans:** 3 plans across 3 waves (coarse granularity)
+**Plans:** 5 plans across 5 waves (coarse granularity)
 
-**Wave 1**
+**Wave 0** *(prerequisite: crate split)*
 
-- [ ] 50-01-PLAN.md — Core Sidecar Overlay Model and Parquet Sidecar Embedding
+- [x] 50-00-PLAN.md — Create loom-ir-core and loom-container Crates
+
+**Wave 1** *(blocked on Wave 0 completion)*
+
+- [ ] 50-01-PLAN.md — Thin loom-core to Re-Export Shim and Rewire Downstream Crates
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 50-02-PLAN.md — Fail-Closed Sidecar Routing Decision and Content-Hash Verification
+- [ ] 50-02-PLAN.md — Core Sidecar Overlay Model and Parquet Sidecar Embedding
 
-**Wave 3** *(blocked on Waves 1-2 completion)*
+**Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 50-03-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI
+- [ ] 50-03-PLAN.md — Fail-Closed Sidecar Routing Decision and Content-Hash Verification
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 50-04-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI

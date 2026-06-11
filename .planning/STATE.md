@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Phase 40 complete; ready for Phase 41
-last_updated: "2026-06-11T04:49:49.858Z"
-last_activity: 2026-06-11 -- Phase 50.1 execution started
+last_updated: "2026-06-11T07:58:28.399Z"
+last_activity: 2026-06-11 -- Phase 50 execution started
 progress:
   total_phases: 51
-  completed_phases: 42
-  total_plans: 186
-  completed_plans: 167
-  percent: 82
+  completed_phases: 43
+  total_plans: 191
+  completed_plans: 171
+  percent: 84
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** A user can run a SQL query in DuckDB over Loom-decoded artifacts, including mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow semantic artifacts; full-projection, unfiltered, full-scan one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct `LMA1` artifacts route through production native codegen by default when the MLIR/JIT backend is available.
-**Current focus:** Phase 50.1 — container-demotion-and-thin-host-adapters
+**Current focus:** Phase 50 — sidecar-overlay-model-and-host-native-reader-fallback
 
 ## Current Position
 
-Phase: 50.1 (container-demotion-and-thin-host-adapters) — EXECUTING
+Phase: 50 (sidecar-overlay-model-and-host-native-reader-fallback) — EXECUTING
 Phase 44 MVP1.5 Closeout and Milestone Archive PLACEHOLDER: (spec before planning — see /gsd-spec-phase 44)
 Phase 51 ABI Freeze and Compatibility Contract: (moved from original Phase 44; 2 planned waves)
-Plan: 1 of 3
-Status: Executing Phase 50.1
-Last activity: 2026-06-11 -- Phase 50.1 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-06-11 -- Phase 50 execution started
 
 Progress: Phase 42 is complete; Phase 43 has 3/3 plans implemented and is suspended because `ENGINE-01` needs external live StarRocks runtime rows; Phase 43.1 is complete; Phase 43.2 is complete; Phase 44 is a placeholder (MVP1.5 Closeout); Phase 51 (ABI Freeze, moved from original Phase 44) is ready to start.
 
@@ -175,6 +175,9 @@ Recent decisions affecting current work:
 - [Phase 34]: `scripts/duckdb-lmc2-sql-surface-test.sh` is wired into `scripts/mvp0-verify.sh` after `scripts/lmc2-arrow-semantic-container-test.sh`; `scripts/duckdb-source-e2e-test.sh` now queries default source `LMC2` artifacts directly and retains direct `LMA1` bridge checks as regression evidence.
 - [Phase 30 P04]: Query-surface negative coverage now rejects descriptor identity/result drift, Phase 29 binding drift, sidecar-only/manifest-only/stale evidence, forged oracle evidence, and unsupported query features without accepted descriptor or binding bytes.
 - [Phase 30 P05]: Phase 30 is complete as bounded dual query-surface evidence: executable DuckDB `loom_scan(path)` rows/aggregates plus deterministic StarRocks-compatible offline descriptors over one accepted Phase 29 binding. Optional live StarRocks runtime smoke is env-gated and supplemental only.
+- [Phase ?]: verifier.rs kept in loom-container (not ir-core) — depends on container-layer modules
+- [Phase ?]: runtime_abi.rs kept in loom-container (not ir-core) — imports ArtifactVerificationStatus from artifact_verifier
+- [Phase ?]: L2DataType local enum defined in l2_core.rs to satisfy zero-Arrow constraint in loom-ir-core; maps 1:1 with supported Arrow subset (Boolean, Int32, Int64, Float32, Float64, Utf8)
 
 ### Pending Todos
 
@@ -378,7 +381,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-09T09:33:38.412Z
+Last session: 2026-06-11T07:58:28.389Z
 Stopped at: Phase 40 complete; ready for Phase 41
 
 Phase 17 handoff:
@@ -447,3 +450,4 @@ Resume file: .planning/ROADMAP.md
 | Phase 29-iceberg-ref-table-binding P03 | 5m37s | 3 tasks | 8 files |
 | Phase 29-iceberg-ref-table-binding P04 | 9min | 3 tasks | 9 files |
 | Phase 29-iceberg-ref-table-binding P05 | ~30min | 3 tasks | 5 files |
+| Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P00 | 13min | 2 tasks | 34 files |
