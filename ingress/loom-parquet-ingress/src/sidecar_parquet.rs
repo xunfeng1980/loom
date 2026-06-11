@@ -155,24 +155,50 @@ pub fn embed_sidecar_into_parquet_file(
             SidecarCodecError::Malformed(format!("read batches from {}: {e}", path.display()))
         })?;
 
-    // Write modified file
-    let out_file = File::create(path).map_err(|e| {
-        SidecarCodecError::Malformed(format!("create output file {}: {e}", path.display()))
+    // Write to a temporary file first, then atomically rename.
+    // This prevents data loss: if File::create(path) truncates the
+    // original and the writer subsequently fails mid-batch, the
+    // original Parquet data would be irrecoverably lost.
+    let tmp_path = path.with_extension("tmp.loom-sidecar");
+    let out_file = File::create(&tmp_path).map_err(|e| {
+        SidecarCodecError::Malformed(format!(
+            "create temp output file {}: {e}",
+            tmp_path.display()
+        ))
     })?;
     let props = WriterProperties::builder()
         .set_key_value_metadata(Some(kv_metadata))
         .build();
     let mut writer = ArrowWriter::try_new(out_file, schema.clone(), Some(props))
         .map_err(|e| {
-            SidecarCodecError::Malformed(format!("create Parquet writer for {}: {e}", path.display()))
+            SidecarCodecError::Malformed(format!(
+                "create Parquet writer for {}: {e}",
+                tmp_path.display()
+            ))
         })?;
     for batch in &batches {
         writer.write(batch).map_err(|e| {
-            SidecarCodecError::Malformed(format!("write batch to {}: {e}", path.display()))
+            SidecarCodecError::Malformed(format!(
+                "write batch to {}: {e}",
+                tmp_path.display()
+            ))
         })?;
     }
     writer.close().map_err(|e| {
-        SidecarCodecError::Malformed(format!("close Parquet writer for {}: {e}", path.display()))
+        SidecarCodecError::Malformed(format!(
+            "close Parquet writer for {}: {e}",
+            tmp_path.display()
+        ))
+    })?;
+
+    // Atomically replace the original file with the new one.
+    std::fs::rename(&tmp_path, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp_path);
+        SidecarCodecError::Malformed(format!(
+            "rename temp {} to {}: {e}",
+            tmp_path.display(),
+            path.display()
+        ))
     })?;
 
     Ok(())
