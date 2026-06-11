@@ -4,25 +4,23 @@
 //! `loom-source-ingress` contract data.
 
 use std::path::Path;
+
+#[cfg(test)]
 use std::sync::Arc;
 
-use arrow_array::{Array, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch};
-use arrow_schema::{DataType, Field, Schema, SchemaRef};
+#[cfg(test)]
+use arrow_array::RecordBatch;
+#[cfg(test)]
+use arrow_schema::SchemaRef;
+use arrow_schema::{DataType, Field, Schema};
+#[cfg(test)]
 use futures::TryStreamExt;
 use lance::Dataset;
-use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::{encode_arrow_semantic_payload, wrap_arrow_semantic_payload};
-use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
-use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload};
-use loom_core::l1_model::{LayoutDescription, LayoutNode};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_core::layout_codec::encode_layout_payload;
-use loom_core::table_codec::{encode_table_payload, TableColumn, TableDescription};
 use loom_source_ingress::{
-    SourceArtifactVerificationSummary, SourceCoverage, SourceDiagnostic, SourceDiagnosticCode,
+    SourceCoverage, SourceDiagnostic, SourceDiagnosticCode,
     SourceEmissionDisposition, SourceEmissionKind, SourceFacts, SourceIdentity,
-    SourceIngressAcceptedArtifact, SourceIngressReport, SourceIngressStatus, SourceLayoutFact,
-    SourceLoweringDisposition, SourceOracleEvidence, SourceOracleStrategy, SourceSchemaFact,
+    SourceIngressReport, SourceIngressStatus, SourceLayoutFact,
+    SourceLoweringDisposition, SourceSchemaFact,
     SourceSplitFact,
 };
 
@@ -89,20 +87,41 @@ pub async fn lance_source_facts_from_path(path: &Path) -> Result<SourceFacts, So
     Ok(source_facts_from_dataset(path, &dataset, &schema, row_count as u64).await)
 }
 
-/// Build a source ingress report for a local Lance dataset.
-///
-/// Accepted reports are backed by verifier-accepted `LMC2(LMA1)` semantic emission.
-pub async fn source_ingress_report_from_lance_path(path: &Path) -> SourceIngressReport {
-    emit_source_ingress_lmc2_from_lance_path(path)
-        .await
-        .map(|artifact| artifact.report)
-        .unwrap_or_else(|report| report)
+/// Extract sidecar bytes from a Lance dataset (Phase 50 placeholder).
+/// Returns None until the sidecar overlay contract is defined in Phase 50.
+pub async fn extract_sidecar_bytes_from_lance_path(
+    path: &Path,
+) -> Result<Option<Vec<u8>>, SourceIngressReport> {
+    let _ = Dataset::open(path.to_str().ok_or_else(|| {
+        rejected_report(path, SourceDiagnostic::new(
+            SourceDiagnosticCode::OpenFailed,
+            "$.open",
+            "local Lance dataset path is not valid UTF-8",
+        ))
+    })?).await.map_err(|error| {
+        rejected_report(path, diagnostic_with_detail(
+            SourceDiagnosticCode::OpenFailed,
+            "$.open",
+            "local Lance dataset could not be opened",
+            error.to_string(),
+        ))
+    })?;
+    Ok(None)
+}
+
+/// Bind the L2Core IR content-hash to a host data range (Phase 50 placeholder).
+pub fn bind_content_hash_to_lance_data(
+    _ir_hash: &str,
+    _host_data_range: (u64, u64),
+) -> Result<(), SourceIngressReport> {
+    Ok(())
 }
 
 /// Read a local Lance dataset through Lance's native scan path.
 ///
 /// This is source evidence only. Accepted Loom artifact bytes come from
 /// `LMC2(LMA1)` Arrow semantic emission plus artifact verification.
+#[cfg(test)]
 pub async fn lance_native_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -129,112 +148,6 @@ pub async fn lance_native_oracle_batches_from_path(
                 error.to_string(),
             ),
         )
-    })
-}
-
-async fn lance_arrow_schema_from_path(path: &Path) -> Result<SchemaRef, SourceIngressReport> {
-    let dataset = open_local_dataset(path, "$.schema.open").await?;
-    Ok(Arc::new(Schema::from(dataset.schema())))
-}
-
-/// Historical Phase 31 entry point for explicit direct `LMA1` bridge evidence.
-pub async fn emit_source_ingress_lma1_from_lance_path(
-    path: &Path,
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_semantic_from_lance_path(path, SemanticArtifactFormat::DirectLma1).await
-}
-
-/// Emit verifier-accepted `LMC2(LMA1)` bytes for a Lance source materialized as Arrow.
-pub async fn emit_source_ingress_lmc2_from_lance_path(
-    path: &Path,
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    emit_source_ingress_semantic_from_lance_path(path, SemanticArtifactFormat::WrappedLmc2).await
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SemanticArtifactFormat {
-    DirectLma1,
-    WrappedLmc2,
-}
-
-impl SemanticArtifactFormat {
-    fn label(self) -> &'static str {
-        match self {
-            Self::DirectLma1 => "LMA1",
-            Self::WrappedLmc2 => "LMC2(LMA1)",
-        }
-    }
-}
-
-async fn emit_source_ingress_semantic_from_lance_path(
-    path: &Path,
-    artifact_format: SemanticArtifactFormat,
-) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
-    let facts = lance_source_facts_from_path(path).await?;
-    let coverage = facts
-        .coverage
-        .as_ref()
-        .expect("Lance facts always include coverage");
-    if coverage.support != SourceIngressStatus::Accepted {
-        let diagnostic = diagnostic_for_facts(&facts);
-        return Err(SourceIngressReport::unsupported(Some(facts), diagnostic));
-    }
-
-    let schema = lance_arrow_schema_from_path(path)
-        .await
-        .map_err(|report| source_oracle_failed_report(&facts, report))?;
-    let batches = lance_native_oracle_batches_from_path(path)
-        .await
-        .map_err(|report| source_oracle_failed_report(&facts, report))?;
-    let artifact_bytes = loom_artifact_from_batches(schema, &batches, artifact_format)
-        .map_err(|diagnostic| SourceIngressReport::unsupported(Some(facts.clone()), diagnostic))?;
-
-    let registry = L2KernelRegistry::default_for_mvp0();
-    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
-    if verification.status() != ArtifactVerificationStatus::Accepted {
-        return Err(source_verification_failed_report(
-            &facts,
-            verification.status().as_str(),
-            artifact_format.label(),
-        ));
-    }
-
-    let artifact_facts = verification
-        .facts()
-        .expect("accepted artifact verification exposes facts");
-    let artifact_summary = SourceArtifactVerificationSummary::accepted(
-        artifact_bytes.len(),
-        format!(
-            "{} verifier accepted {}",
-            artifact_facts.artifact_kind,
-            artifact_facts
-                .payload_kind
-                .as_deref()
-                .unwrap_or("unknown payload")
-        ),
-    );
-    let oracle_evidence = lance_oracle_evidence(&batches)
-        .map_err(|diagnostic| SourceIngressReport::unsupported(Some(facts.clone()), diagnostic))?;
-    let coverage = facts
-        .coverage
-        .as_ref()
-        .expect("Lance facts always include coverage");
-    let emission_kind = coverage.emission_kind;
-    let emission_disposition = coverage.emission_disposition;
-    let lowering_disposition = coverage.lowering_disposition;
-    let report = SourceIngressReport::accepted(
-        facts,
-        emission_kind,
-        emission_disposition,
-        lowering_disposition,
-        artifact_summary,
-        oracle_evidence,
-    )
-    .expect("accepted Lance facts map to an accepted source report");
-
-    Ok(SourceIngressAcceptedArtifact {
-        bytes: artifact_bytes,
-        report,
     })
 }
 
@@ -431,51 +344,6 @@ fn unsupported_note(schema: &Schema) -> String {
     }
 }
 
-fn diagnostic_for_facts(facts: &SourceFacts) -> SourceDiagnostic {
-    if facts
-        .coverage
-        .as_ref()
-        .is_some_and(|coverage| coverage.support == SourceIngressStatus::Accepted)
-    {
-        return SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.emission",
-            "Lance source shape is supported for canonical emission, but artifact bytes are deferred to a later plan",
-        );
-    }
-
-    if facts
-        .schema_facts
-        .iter()
-        .any(|fact| fact.nullable == Some(true))
-    {
-        return SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedSchema,
-            "$.schema",
-            "nullable Lance fields are outside the supported emission slice",
-        );
-    }
-
-    if facts.schema_facts.iter().any(|fact| {
-        matches!(
-            fact.logical_kind.as_str(),
-            "nested" | "dictionary" | "extension"
-        )
-    }) {
-        return SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedSchema,
-            "$.schema",
-            "nested or dictionary Lance fields are outside the supported emission slice",
-        );
-    }
-
-    SourceDiagnostic::new(
-        SourceDiagnosticCode::UnsupportedConversion,
-        "$.schema",
-        "Lance schema is valid but cannot be converted to a Phase 27 Loom artifact",
-    )
-}
-
 fn logical_kind(data_type: &DataType) -> &'static str {
     match data_type {
         DataType::Int32 | DataType::Int64 | DataType::Float32 | DataType::Float64 => "primitive",
@@ -526,6 +394,7 @@ fn child_field_names(data_type: &DataType) -> Vec<String> {
     }
 }
 
+#[cfg(test)]
 async fn open_local_dataset(
     path: &Path,
     diagnostic_path: &'static str,
@@ -563,290 +432,6 @@ async fn open_local_dataset(
             ),
         )
     })
-}
-
-fn loom_artifact_from_batches(
-    schema: SchemaRef,
-    batches: &[RecordBatch],
-    artifact_format: SemanticArtifactFormat,
-) -> Result<Vec<u8>, SourceDiagnostic> {
-    let lma1 = direct_lma1_artifact_from_batches(schema, batches)?;
-    if artifact_format == SemanticArtifactFormat::DirectLma1 {
-        return Ok(lma1);
-    }
-
-    wrap_arrow_semantic_payload(&lma1).map_err(|err| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to wrap Lance LMA1 payload in LMC2: {err}"),
-        )
-    })
-}
-
-fn direct_lma1_artifact_from_batches(
-    schema: SchemaRef,
-    batches: &[RecordBatch],
-) -> Result<Vec<u8>, SourceDiagnostic> {
-    let semantic_batches = batches
-        .iter()
-        .map(ArrowSemanticBatch::from_record_batch)
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| {
-            SourceDiagnostic::new(
-                SourceDiagnosticCode::UnsupportedConversion,
-                "$.payload",
-                format!("failed to build Lance Arrow semantic batches: {err}"),
-            )
-        })?;
-    let payload = ArrowSemanticPayload::try_new(schema, semantic_batches).map_err(|err| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to build Lance Arrow semantic payload: {err}"),
-        )
-    })?;
-    encode_arrow_semantic_payload(&payload).map_err(|err| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to encode direct Lance LMA1 payload: {err}"),
-        )
-    })
-}
-
-#[allow(dead_code)]
-fn legacy_lmc1_artifact_from_batches(batches: &[RecordBatch]) -> Result<Vec<u8>, SourceDiagnostic> {
-    let first = batches.first().ok_or_else(|| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::OracleUnavailable,
-            "$.oracle.scan",
-            "Lance native oracle scan produced no batches",
-        )
-    })?;
-    if first.num_columns() == 0 {
-        return Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::SchemaUnavailable,
-            "$.schema",
-            "Lance native oracle scan produced an empty schema",
-        ));
-    }
-
-    if first.num_columns() == 1 {
-        let layout = layout_from_batches(first.schema().field(0), batches, 0)?;
-        let payload = encode_layout_payload(&layout);
-        return wrap_layout_payload(&payload).map_err(|err| {
-            SourceDiagnostic::new(
-                SourceDiagnosticCode::UnsupportedConversion,
-                "$.payload",
-                format!("failed to wrap Lance LMP1 payload in LMC1: {err}"),
-            )
-        });
-    }
-
-    let row_count = total_row_count(batches)?;
-    let columns = first
-        .schema()
-        .fields()
-        .iter()
-        .enumerate()
-        .map(|(index, field)| {
-            layout_from_batches(field, batches, index).map(|layout| TableColumn {
-                name: field.name().to_string(),
-                layout,
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let table = TableDescription { row_count, columns };
-    let payload = encode_table_payload(&table).map_err(|err| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to encode Lance LMT1 payload: {err}"),
-        )
-    })?;
-    wrap_table_payload(&payload).map_err(|err| {
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedConversion,
-            "$.payload",
-            format!("failed to wrap Lance LMT1 payload in LMC1: {err}"),
-        )
-    })
-}
-
-fn layout_from_batches(
-    field: &Field,
-    batches: &[RecordBatch],
-    column_index: usize,
-) -> Result<LayoutDescription, SourceDiagnostic> {
-    if field.is_nullable() {
-        return Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedSchema,
-            format!("$.schema.{}", field.name()),
-            "nullable Lance fields cannot emit Phase 27 Loom artifacts",
-        ));
-    }
-    if field_has_extension_metadata(field) {
-        return Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedSchema,
-            format!("$.schema.{}", field.name()),
-            "extension Lance fields cannot emit Phase 27 Loom artifacts",
-        ));
-    }
-    let row_count = total_row_count(batches)?;
-    let (data, elem_size) = raw_bytes_from_batches(field, batches, column_index)?;
-    Ok(LayoutDescription {
-        data_type: field.data_type().clone(),
-        root: LayoutNode::Raw {
-            data,
-            elem_size,
-            count: row_count,
-        },
-        row_count,
-    })
-}
-
-fn raw_bytes_from_batches(
-    field: &Field,
-    batches: &[RecordBatch],
-    column_index: usize,
-) -> Result<(Vec<u8>, u8), SourceDiagnostic> {
-    let mut out = Vec::new();
-    for batch in batches {
-        let column = batch.column(column_index);
-        if column.null_count() != 0 {
-            return Err(SourceDiagnostic::new(
-                SourceDiagnosticCode::UnsupportedSchema,
-                format!("$.schema.{}", field.name()),
-                "Lance arrays with null values cannot emit Phase 27 Loom artifacts",
-            ));
-        }
-        match field.data_type() {
-            DataType::Int32 => {
-                let array = column
-                    .as_any()
-                    .downcast_ref::<Int32Array>()
-                    .ok_or_else(|| {
-                        unsupported_type_diagnostic(field, "expected Int32 Arrow array")
-                    })?;
-                out.extend(array.values().iter().flat_map(|value| value.to_le_bytes()));
-            }
-            DataType::Int64 => {
-                let array = column
-                    .as_any()
-                    .downcast_ref::<Int64Array>()
-                    .ok_or_else(|| {
-                        unsupported_type_diagnostic(field, "expected Int64 Arrow array")
-                    })?;
-                out.extend(array.values().iter().flat_map(|value| value.to_le_bytes()));
-            }
-            DataType::Float32 => {
-                let array = column
-                    .as_any()
-                    .downcast_ref::<Float32Array>()
-                    .ok_or_else(|| {
-                        unsupported_type_diagnostic(field, "expected Float32 Arrow array")
-                    })?;
-                out.extend(array.values().iter().flat_map(|value| value.to_le_bytes()));
-            }
-            DataType::Float64 => {
-                let array = column
-                    .as_any()
-                    .downcast_ref::<Float64Array>()
-                    .ok_or_else(|| {
-                        unsupported_type_diagnostic(field, "expected Float64 Arrow array")
-                    })?;
-                out.extend(array.values().iter().flat_map(|value| value.to_le_bytes()));
-            }
-            _ => return Err(unsupported_type_diagnostic(field, "unsupported Arrow type")),
-        }
-    }
-    Ok((out, elem_size(field.data_type())?))
-}
-
-fn elem_size(data_type: &DataType) -> Result<u8, SourceDiagnostic> {
-    match data_type {
-        DataType::Int32 | DataType::Float32 => Ok(4),
-        DataType::Int64 | DataType::Float64 => Ok(8),
-        _ => Err(SourceDiagnostic::new(
-            SourceDiagnosticCode::UnsupportedSchema,
-            "$.schema",
-            "Lance schema is outside the Phase 27 primitive emission slice",
-        )),
-    }
-}
-
-fn total_row_count(batches: &[RecordBatch]) -> Result<usize, SourceDiagnostic> {
-    batches.iter().try_fold(0usize, |sum, batch| {
-        sum.checked_add(batch.num_rows()).ok_or_else(|| {
-            SourceDiagnostic::new(
-                SourceDiagnosticCode::UnsupportedConversion,
-                "$.oracle.rows",
-                "Lance native oracle row count overflowed usize",
-            )
-        })
-    })
-}
-
-fn unsupported_type_diagnostic(field: &Field, detail: &str) -> SourceDiagnostic {
-    SourceDiagnostic::new(
-        SourceDiagnosticCode::UnsupportedSchema,
-        format!("$.schema.{}", field.name()),
-        format!("{detail}; only non-null Int32/Int64/Float32/Float64 are supported"),
-    )
-}
-
-fn lance_oracle_evidence(
-    batches: &[RecordBatch],
-) -> Result<SourceOracleEvidence, SourceDiagnostic> {
-    let row_count = total_row_count(batches)? as u64;
-    let mut evidence =
-        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
-    if batches
-        .iter()
-        .flat_map(|batch| batch.columns())
-        .any(|column| column.null_count() != 0)
-    {
-        evidence
-            .notes
-            .push("Lance native scan preserved source null values".to_string());
-    }
-    evidence.nulls_checked = true;
-    evidence.notes.push(
-        "Lance native scan is evidence only; Loom artifact verification/decode remains the acceptance path"
-            .to_string(),
-    );
-    Ok(evidence)
-}
-
-fn source_verification_failed_report(
-    facts: &SourceFacts,
-    status: &str,
-    artifact_kind: &str,
-) -> SourceIngressReport {
-    SourceIngressReport::unsupported(
-        Some(facts.clone()),
-        SourceDiagnostic::new(
-            SourceDiagnosticCode::VerificationFailed,
-            "$.verification",
-            format!("emitted Lance {artifact_kind} was not accepted by Loom artifact verifier: {status}"),
-        ),
-    )
-}
-
-fn source_oracle_failed_report(
-    facts: &SourceFacts,
-    oracle_report: SourceIngressReport,
-) -> SourceIngressReport {
-    let detail = oracle_report
-        .diagnostics
-        .first()
-        .map(|diagnostic| diagnostic.message.clone())
-        .unwrap_or_else(|| "Lance native oracle scan failed".to_string());
-    SourceIngressReport::unsupported(
-        Some(facts.clone()),
-        SourceDiagnostic::new(SourceDiagnosticCode::OracleUnavailable, "$.oracle", detail),
-    )
 }
 
 fn rejected_report(path: &Path, diagnostic: SourceDiagnostic) -> SourceIngressReport {
