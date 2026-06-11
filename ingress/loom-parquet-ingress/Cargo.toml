@@ -8,10 +8,10 @@ description = "Isolated local Parquet file ingress adapter for Loom"
 arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 base64 = "0.22.1"
-loom-core = { path = "../../crates/loom-core" }
 loom-ir-core = { path = "../../crates/loom-ir-core" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 parquet = { workspace = true }
 
 [dev-dependencies]
+loom-core = { path = "../../crates/loom-core" }
 tempfile = { workspace = true }
