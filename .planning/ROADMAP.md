@@ -86,7 +86,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)** - Close kloom v4 spec-oracle gaps: typed KOracleOutcome, krun-absent skip, garbled-output hard-fail, per-shape native-route disable, strict skip convention, LLVM-backend feasibility evidence (completed 2026-06-10)
 - [x] **Phase 49: Independent L2Core Decode IR Codec and Content-Hash Identity** - Decision One: standalone L2Core IR codec with `L2IR` magic/version, deterministic wire format, content-hash identity via FNV-1a over canonical bytes, fail-closed parse-and-verify (completed 2026-06-11)
-- [ ] **Phase 50.1: Container Demotion and Thin Host Adapters** - First slice of Decision Two: demote LMC2/LMA1 from top-level format to optional lineage section + reference packaging; degrade existing ingress crates into thin host adapters (one IR + three adapters)
+- [x] **Phase 50.1: Container Demotion and Thin Host Adapters** - First slice of Decision Two: demote LMC2/LMA1 from top-level format to optional lineage section + reference packaging; degrade existing ingress crates into thin host adapters (one IR + three adapters) (completed 2026-06-11)
 - [ ] **Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback** - Second slice of Decision Two: sidecar overlay contract, content-hash binding at column-chunk/fragment granularity, fail-closed routing to verifiable-native track or host's own native reader
 
 ## Phase Details
@@ -1270,7 +1270,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) ar
 | 44. MVP1.5 Closeout and Milestone Archive | 0/0 | Placeholder | - |
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
-| 50.1. Container Demotion and Thin Host Adapters | 0/0 | Placeholder (Repositioning 决定二 slice 1) | - |
+| 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/0 | Placeholder (Repositioning 决定二 slice 2) | - |
 | 51. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
@@ -1333,6 +1333,7 @@ Plans:
 **Depends on:** Phase 49 (independent L2Core IR codec + content-hash identity — the IR must exist as an independent artifact before containers can be demoted and adapters can bind to it). Relates to Phases 26–31 ingress crates (which are the sources being degraded).
 
 **Success Criteria** (to be firmed in spec):
+
   1. `LMC2`/`LMA1` are demoted: they are no longer the default top-level distribution artifact; they exist only as an optional lineage evidence section and a dev-time reference packaging for kloom/verifier tests.
   2. The three ingress crates are degraded to thin adapters: each adapter's public API is "mount host file → extract sidecar bytes + bind content-hash to host data range"; no decode logic lives in the adapter.
   3. All existing release gates and tests pass with the demoted containers (backward compat); the dev-time reference packaging round-trips through kloom differential and verifier tests.
@@ -1341,16 +1342,16 @@ Plans:
 
 **Ordering decision:** Container demotion must precede the sidecar overlay (Phase 50) because the sidecar overlay replaces the old container as the distribution model — you cannot build a new packaging model on top of old containers that are still "top-level."
 
-**Plans:** 3 plans across 2 waves
+**Plans:** 3/3 plans complete
 
 **Wave 1**
 
-- [ ] 50.1-01-PLAN.md — Container demotion in loom-core: LMC2/LMA1 codec docs marked out-of-TCB; ArtifactVerificationFacts gains tcb_status + artifact_role fields; deprecation annotations on SourceIngressAcceptedArtifact; backward-compat comments in native_arrow_semantic
-- [ ] 50.1-02-PLAN.md — Ingress crate degradation: remove emit_source_ingress_lmc2_from_* from all 3 adapters; gate oracle batch functions to #[cfg(test)]; add extract_sidecar_bytes_from_* + bind_content_hash_to_* stubs; update lib.rs re-exports
+- [x] 50.1-01-PLAN.md — Container demotion in loom-core: LMC2/LMA1 codec docs marked out-of-TCB; ArtifactVerificationFacts gains tcb_status + artifact_role fields; deprecation annotations on SourceIngressAcceptedArtifact; backward-compat comments in native_arrow_semantic
+- [x] 50.1-02-PLAN.md — Ingress crate degradation: remove emit_source_ingress_lmc2_from_* from all 3 adapters; gate oracle batch functions to #[cfg(test)]; add extract_sidecar_bytes_from_* + bind_content_hash_to_* stubs; update lib.rs re-exports
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 50.1-03-PLAN.md — Release gate and test adaptation: update source-ingress-contract-test.sh, lmc2-arrow-semantic-container-test.sh, complete-vortex-reader-test.sh; adapt 10 ingress test files to use cfg(test)-gated oracle + dev-time packaging; run full release gate for backward-compat verification
+- [x] 50.1-03-PLAN.md — Release gate and test adaptation: update source-ingress-contract-test.sh, lmc2-arrow-semantic-container-test.sh, complete-vortex-reader-test.sh; adapt 10 ingress test files to use cfg(test)-gated oracle + dev-time packaging; run full release gate for backward-compat verification
 
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 
