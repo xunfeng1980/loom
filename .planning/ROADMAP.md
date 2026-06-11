@@ -1218,7 +1218,16 @@ Plans:
   5. `cargo tree` confirms zero `contrib/loom-container` in the transitive deps of `loom-sidecar-ffi`, `loom-ffi`, and `loom-native-melior`.
 
 **Non-goals:** No module renaming or internal refactoring beyond the split boundary. No changes to the `.loom` format. No changes to MLIR/LLVM toolchain.
-**Plans:** 2 plans across 2 waves.
+
+**Plans:** 2 plans across 2 waves
+
+**Wave 1**
+
+- [ ] 52-01-PLAN.md — Create loom-common crate, move 15 clean modules, extract artifact_types and verify_layout_types, update loom-core re-exports
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 52-02-PLAN.md — Create contrib/loom-container with 7 legacy modules, remove old loom-container, update all downstream dep paths, verify cargo tree isolation
 
 ### Phase 100: ABI Freeze and Compatibility Contract
 
