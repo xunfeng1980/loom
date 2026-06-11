@@ -65,12 +65,16 @@ pub fn parquet_source_facts_from_path(path: &Path) -> Result<SourceFacts, Source
     ))
 }
 
-/// Extract sidecar bytes from a Parquet file (Phase 50 placeholder).
-/// Returns None until the sidecar overlay contract is defined in Phase 50.
+/// Extract sidecar bytes from a Parquet file via its KeyValue metadata.
+///
+/// Loads the Parquet file's metadata and delegates to
+/// [`sidecar_parquet::extract_sidecar_from_parquet_metadata`].
+/// On success, re-encodes the overlay bytes. Returns `Ok(None)` when
+/// no `"loom.sidecar.v1"` KeyValue entry exists.
 pub fn extract_sidecar_bytes_from_parquet_path(
     path: &Path,
 ) -> Result<Option<Vec<u8>>, SourceIngressReport> {
-    let _ = File::open(path).map_err(|error| {
+    let file = File::open(path).map_err(|error| {
         rejected_report(path, diagnostic_with_detail(
             SourceDiagnosticCode::OpenFailed,
             "$.open",
@@ -78,7 +82,29 @@ pub fn extract_sidecar_bytes_from_parquet_path(
             error.to_string(),
         ))
     })?;
-    Ok(None)
+
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|error| {
+        rejected_report(path, diagnostic_with_detail(
+            SourceDiagnosticCode::ReadFailed,
+            "$.metadata",
+            "local Parquet metadata could not be read",
+            error.to_string(),
+        ))
+    })?;
+
+    match crate::sidecar_parquet::extract_sidecar_from_parquet_metadata(builder.metadata()) {
+        Ok(Some(overlay)) => Ok(Some(overlay.encode())),
+        Ok(None) => Ok(None),
+        Err(err) => Err(rejected_report(
+            path,
+            diagnostic_with_detail(
+                SourceDiagnosticCode::ReadFailed,
+                "$.sidecar.decode",
+                "failed to decode sidecar overlay from Parquet metadata",
+                err.to_string(),
+            ),
+        )),
+    }
 }
 
 /// Bind the L2Core IR content-hash to a host data range (Phase 50 placeholder).
