@@ -27,6 +27,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
 | Vortex ingress | Real `.vortex` files enter through `loom-vortex-ingress` and emit verifier-accepted `LMC2(LMA1)` by default; legacy `LMC1` emission helpers are internal-only |
 | Native execution | Native MLIR/LLVM/JIT path is gated behind Phase 40 validation; raw-copy kernel and decode dialect op have been removed from core production modules pending that gate. Phase 35 Arrow semantic JIT evidence remains in `loom-native-melior` |
+| Sidecar overlay | Host-neutral `SidecarOverlay`/`ChunkBinding` data model with content-hash identity (FNV-1a); 4-gate fail-closed routing (`decide_sidecar_routing`) chooses Loom-native track vs host-native reader fallback; Parquet sidecar extract/embed via Thrift KeyValue metadata; Vortex/Lance adapters with documented format limitations; `loom sidecar embed` CLI |
 | Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
 
 This is still pre-production. The project favors narrow, verifier-gated vertical
@@ -207,15 +208,32 @@ The claim remains intentionally narrow: one-batch nullable fixed-width primitive
 not a persistent production cache, not a DuckDB-native integration claim, not
 general Arrow shape support, and not a GA performance promise.
 
+### 12. Run the sidecar overlay gate
+
+```bash
+bash scripts/sidecar-overlay-test.sh
+```
+
+This verifies the Phase 50 sidecar overlay: `SidecarOverlay` and `ChunkBinding`
+types have deterministic encode/decode and content-hash identity, Parquet
+sidecar extract/embed roundtrips through Thrift KeyValue metadata, the `loom
+sidecar embed` CLI embeds a sidecar into a Parquet file, strippable overlay
+invariant holds (unknown `loom.*` keys ignored by standard Arrow readers), and
+Vortex/Lance adapters are present with documented format limitations.
+
 ## Repository Map
 
 | Path | Purpose |
 |---|---|
-| `crates/loom-core` | Core layout/table/container codecs, verifier, artifact verification, lowering facts |
+| `crates/loom-ir-core` | Zero-dependency decode IR core — `SidecarOverlay`, `ChunkBinding`, routing, content-hash |
+| `crates/loom-container` | Packaging/distribution layer; depends on `loom-ir-core` |
+| `crates/loom-core` | Thin re-export shim delegating to `loom-ir-core` + `loom-container` |
 | `crates/loom-ffi` | C ABI boundary and Arrow C Data Interface export |
-| `crates/loom-cli` | `loom inspect`, `decode`, `verify-artifact`, `verify-l2core`, `ingest-vortex` |
+| `crates/loom-cli` | `loom inspect`, `decode`, `verify-artifact`, `verify-l2core`, `ingest-vortex`, `sidecar embed` |
 | `crates/loom-fixtures` | Deterministic fixture/oracle generation for DuckDB and Rust tests |
-| `ingress/loom-vortex-ingress` | Isolated real Vortex file ingress boundary |
+| `ingress/loom-parquet-ingress` | Parquet source ingress with sidecar extract/embed via KeyValue metadata |
+| `ingress/loom-vortex-ingress` | Vortex source ingress with sidecar adapter |
+| `ingress/loom-lance-ingress` | Lance source ingress with sidecar adapter |
 | `crates/loom-native-melior` | Optional MLIR/melior/native-backend evidence path |
 | `contrib/duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |
 | `contrib/loom-iceberg-binding` | Iceberg binding placeholder (moved to contrib) |
@@ -263,6 +281,7 @@ bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
 bash scripts/lmc2-arrow-semantic-container-test.sh
 bash scripts/native-arrow-semantic-execution-test.sh
+bash scripts/sidecar-overlay-test.sh
 ```
 
 The broad release-style gate is:
