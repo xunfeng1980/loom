@@ -7,6 +7,7 @@
 //! Phase 50.1: Degraded to thin host adapter — mount + extract facts + sidecar stubs.
 //! Arrow materialization and LMC2/LMA1 emission removed from public API.
 
+pub mod sidecar_vortex;
 pub mod source_contract;
 pub use source_contract::{
     bind_content_hash_to_vortex_data,

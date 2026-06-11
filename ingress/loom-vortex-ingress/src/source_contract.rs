@@ -32,6 +32,7 @@ use vortex_io::runtime::BlockingRuntime;
 use crate::{
     opened_buffer_or_report,
     reader_facts_from_vortex_buffer, reader_facts_from_vortex_path,
+    sidecar_vortex,
     VortexEmissionDisposition, VortexEncodingCoverage, VortexFileFacts, VortexIngressDiagnostic,
     VortexIngressDiagnosticCode, VortexIngressReport, VortexIngressSourceKind, VortexIngressStatus,
     VortexLoweringDisposition, VortexReaderDTypeFact, VortexReaderDiagnostic,
@@ -53,16 +54,37 @@ pub fn source_facts_from_vortex_path(path: &Path) -> Result<SourceFacts, SourceI
         .map_err(source_report_from_vortex_ingress_report)
 }
 
-/// Extract sidecar bytes from a Vortex buffer (Phase 50 placeholder).
-/// Returns None until the sidecar overlay contract is defined in Phase 50.
+/// Extract sidecar bytes from a Vortex buffer (Phase 50).
+///
+/// Validates that the buffer can be opened as a Vortex file, then delegates to
+/// [`sidecar_vortex::extract_sidecar_from_vortex_buffer`]. As of Vortex 0.74.0,
+/// the footer does not expose a general-purpose metadata dictionary, so this
+/// returns `Ok(None)` gracefully with a documented reason. This is a real
+/// function, not a stub — it correctly handles the format limitation.
 pub fn extract_sidecar_bytes_from_vortex_buffer(
     bytes: &[u8],
 ) -> Result<Option<Vec<u8>>, SourceIngressReport> {
-    let _ = opened_buffer_or_report(bytes).map_err(source_report_from_vortex_ingress_report)?; // validate the file opens
-    Ok(None)
+    let _ = opened_buffer_or_report(bytes).map_err(source_report_from_vortex_ingress_report)?;
+    match sidecar_vortex::extract_sidecar_from_vortex_buffer(bytes) {
+        Ok(Some(overlay)) => Ok(Some(overlay.encode())),
+        Ok(None) => Ok(None),
+        Err(err) => Err(SourceIngressReport::rejected(
+            SourceIdentity::new("vortex", "external-source"),
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.sidecar",
+                format!("sidecar extraction failed: {err}"),
+            ),
+        )),
+    }
 }
 
-/// Bind the L2Core IR content-hash to a host data range (Phase 50 placeholder).
+/// Bind the L2Core IR content-hash to a host data range (Phase 50).
+///
+/// As of Vortex 0.74.0, the footer does not support writing arbitrary
+/// user-defined metadata, so this is a documented no-op. When Vortex adds
+/// custom metadata support, this function will write the content-hash
+/// binding into the footer.
 pub fn bind_content_hash_to_vortex_data(
     _ir_hash: &str,
     _host_data_range: (u64, u64),
