@@ -8,6 +8,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------------------------------------------------------------------------
+# Build mode: LOOM_SIDECAR_ONLY=ON links libloom_sidecar_ffi.a (sidecar extract,
+# verify, route) without any container/codec/native-lowering dependencies.
+# Default (OFF) links the full libloom_ffi.a with all existing functionality.
+# ---------------------------------------------------------------------------
+option(LOOM_SIDECAR_ONLY "Build with only the sidecar FFI path (no container or native lowering deps)" OFF)
+
+# ---------------------------------------------------------------------------
 # Paths
 #
 # CMAKE_SOURCE_DIR = <repo>/contrib/duckdb-ext   (because cmake -S contrib/duckdb-ext)
@@ -16,76 +23,101 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(WORKSPACE_ROOT "${CMAKE_SOURCE_DIR}/../..")
 set(WORKSPACE_CARGO_TOML "${WORKSPACE_ROOT}/Cargo.toml")
 set(LIBLOOM_FFI "${WORKSPACE_ROOT}/target/release/libloom_ffi.a")
-
-# The Rust staticlib now contains the Melior ExecutionEngine path. Cargo links
-# test binaries against LLVM automatically, but this CMake-built DuckDB extension
-# must carry the same LLVM runtime linkage explicitly or dlopen fails on LLVM
-# symbols from the static archive.
-set(LLVM_CONFIG_EXECUTABLE "" CACHE FILEPATH "Path to llvm-config for the MLIR/LLVM runtime")
-if(NOT LLVM_CONFIG_EXECUTABLE)
-    foreach(LLVM_CONFIG_CANDIDATE
-        "$ENV{MLIR_SYS_220_PREFIX}/bin/llvm-config"
-        "$ENV{TABLEGEN_220_PREFIX}/bin/llvm-config"
-        "/opt/homebrew/opt/llvm/bin/llvm-config"
-        "/usr/local/opt/llvm/bin/llvm-config"
-    )
-        if(EXISTS "${LLVM_CONFIG_CANDIDATE}")
-            set(LLVM_CONFIG_EXECUTABLE "${LLVM_CONFIG_CANDIDATE}" CACHE FILEPATH "Path to llvm-config for the MLIR/LLVM runtime" FORCE)
-            break()
-        endif()
-    endforeach()
-endif()
-if(NOT LLVM_CONFIG_EXECUTABLE)
-    find_program(LLVM_CONFIG_EXECUTABLE
-        NAMES llvm-config
-        HINTS
-            "$ENV{MLIR_SYS_220_PREFIX}"
-            "$ENV{TABLEGEN_220_PREFIX}"
-            "/opt/homebrew/opt/llvm"
-            "/usr/local/opt/llvm"
-        PATH_SUFFIXES bin
-    )
-endif()
-if(NOT LLVM_CONFIG_EXECUTABLE)
-    message(FATAL_ERROR "llvm-config is required to link the Melior ExecutionEngine runtime")
-endif()
-
-execute_process(
-    COMMAND "${LLVM_CONFIG_EXECUTABLE}" --ldflags
-    OUTPUT_VARIABLE LLVM_LDFLAGS_RAW
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-execute_process(
-    COMMAND "${LLVM_CONFIG_EXECUTABLE}" --libs
-    OUTPUT_VARIABLE LLVM_LIBS_RAW
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-execute_process(
-    COMMAND "${LLVM_CONFIG_EXECUTABLE}" --system-libs
-    OUTPUT_VARIABLE LLVM_SYSTEM_LIBS_RAW
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-separate_arguments(LLVM_LDFLAGS NATIVE_COMMAND "${LLVM_LDFLAGS_RAW}")
-separate_arguments(LLVM_LIBS NATIVE_COMMAND "${LLVM_LIBS_RAW}")
-separate_arguments(LLVM_SYSTEM_LIBS NATIVE_COMMAND "${LLVM_SYSTEM_LIBS_RAW}")
+set(LIBLOOM_SIDECAR_FFI "${WORKSPACE_ROOT}/target/release/libloom_sidecar_ffi.a")
 
 # ---------------------------------------------------------------------------
-# Step 1: cargo build trigger — ensures libloom_ffi.a is fresh before link.
+# LLVM / MLIR runtime linkage (required only for the FULL build path).
+# In sidecar-only mode, no LLVM/MLIR symbols are needed — the lean sidecar FFI
+# has no native lowering, so llvm-config is not required.
+# ---------------------------------------------------------------------------
+if(NOT LOOM_SIDECAR_ONLY)
+    # The Rust staticlib now contains the Melior ExecutionEngine path. Cargo links
+    # test binaries against LLVM automatically, but this CMake-built DuckDB extension
+    # must carry the same LLVM runtime linkage explicitly or dlopen fails on LLVM
+    # symbols from the static archive.
+    set(LLVM_CONFIG_EXECUTABLE "" CACHE FILEPATH "Path to llvm-config for the MLIR/LLVM runtime")
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        foreach(LLVM_CONFIG_CANDIDATE
+            "$ENV{MLIR_SYS_220_PREFIX}/bin/llvm-config"
+            "$ENV{TABLEGEN_220_PREFIX}/bin/llvm-config"
+            "/opt/homebrew/opt/llvm/bin/llvm-config"
+            "/usr/local/opt/llvm/bin/llvm-config"
+        )
+            if(EXISTS "${LLVM_CONFIG_CANDIDATE}")
+                set(LLVM_CONFIG_EXECUTABLE "${LLVM_CONFIG_CANDIDATE}" CACHE FILEPATH "Path to llvm-config for the MLIR/LLVM runtime" FORCE)
+                break()
+            endif()
+        endforeach()
+    endif()
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        find_program(LLVM_CONFIG_EXECUTABLE
+            NAMES llvm-config
+            HINTS
+                "$ENV{MLIR_SYS_220_PREFIX}"
+                "$ENV{TABLEGEN_220_PREFIX}"
+                "/opt/homebrew/opt/llvm"
+                "/usr/local/opt/llvm"
+            PATH_SUFFIXES bin
+        )
+    endif()
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        message(FATAL_ERROR "llvm-config is required to link the Melior ExecutionEngine runtime")
+    endif()
+
+    execute_process(
+        COMMAND "${LLVM_CONFIG_EXECUTABLE}" --ldflags
+        OUTPUT_VARIABLE LLVM_LDFLAGS_RAW
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    execute_process(
+        COMMAND "${LLVM_CONFIG_EXECUTABLE}" --libs
+        OUTPUT_VARIABLE LLVM_LIBS_RAW
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    execute_process(
+        COMMAND "${LLVM_CONFIG_EXECUTABLE}" --system-libs
+        OUTPUT_VARIABLE LLVM_SYSTEM_LIBS_RAW
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    separate_arguments(LLVM_LDFLAGS NATIVE_COMMAND "${LLVM_LDFLAGS_RAW}")
+    separate_arguments(LLVM_LIBS NATIVE_COMMAND "${LLVM_LIBS_RAW}")
+    separate_arguments(LLVM_SYSTEM_LIBS NATIVE_COMMAND "${LLVM_SYSTEM_LIBS_RAW}")
+endif()
+
+# ---------------------------------------------------------------------------
+# Step 1: cargo build trigger — ensures the correct staticlib is fresh before link.
 # D-03: the staticlib must be rebuilt before the C++ extension links against it.
+#
+# LOOM_SIDECAR_ONLY=ON  → build libloom_sidecar_ffi.a (lean sidecar-only staticlib)
+# LOOM_SIDECAR_ONLY=OFF → build libloom_ffi.a (full container + native lowering path)
 # ---------------------------------------------------------------------------
-add_custom_command(
-    OUTPUT "${LIBLOOM_FFI}"
-    COMMAND cargo build -p loom-ffi --release
-            --manifest-path "${WORKSPACE_CARGO_TOML}"
-    WORKING_DIRECTORY "${WORKSPACE_ROOT}"
-    COMMENT "Building libloom_ffi.a (Rust staticlib, cargo build -p loom-ffi --release)"
-)
-add_custom_target(loom_ffi_build ALL
-    DEPENDS "${LIBLOOM_FFI}"
-)
+if(LOOM_SIDECAR_ONLY)
+    set(LIBLOOM_FFI "${LIBLOOM_SIDECAR_FFI}")
+    add_custom_command(
+        OUTPUT "${LIBLOOM_SIDECAR_FFI}"
+        COMMAND cargo build -p loom-sidecar-ffi --release
+                --manifest-path "${WORKSPACE_CARGO_TOML}"
+        WORKING_DIRECTORY "${WORKSPACE_ROOT}"
+        COMMENT "Building libloom_sidecar_ffi.a (lean sidecar-only staticlib)"
+    )
+    add_custom_target(loom_ffi_build ALL
+        DEPENDS "${LIBLOOM_SIDECAR_FFI}"
+    )
+else()
+    add_custom_command(
+        OUTPUT "${LIBLOOM_FFI}"
+        COMMAND cargo build -p loom-ffi --release
+                --manifest-path "${WORKSPACE_CARGO_TOML}"
+        WORKING_DIRECTORY "${WORKSPACE_ROOT}"
+        COMMENT "Building libloom_ffi.a (Rust staticlib, cargo build -p loom-ffi --release)"
+    )
+    add_custom_target(loom_ffi_build ALL
+        DEPENDS "${LIBLOOM_FFI}"
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Step 2: The DuckDB extension shared library.
@@ -101,22 +133,36 @@ add_dependencies(loom_loadable_extension loom_ffi_build)
 
 # Include directories:
 #   - vendor/duckdb-src  → duckdb.hpp (DuckDB v1.5.3 amalgamated header)
-#   - ../crates/loom-ffi/include → loom.h (Phase 1 FFI header)
+#   - crates/loom-ffi/include → loom.h (Phase 1 FFI header) — full build
+#   - crates/loom-sidecar-ffi/include → loom_sidecar.h — sidecar-only build
 target_include_directories(loom_loadable_extension PRIVATE
     "${CMAKE_SOURCE_DIR}/vendor/duckdb-src"
     "${WORKSPACE_ROOT}/crates/loom-ffi/include"
 )
+if(LOOM_SIDECAR_ONLY)
+    target_include_directories(loom_loadable_extension PRIVATE
+        "${WORKSPACE_ROOT}/crates/loom-sidecar-ffi/include"
+    )
+    target_compile_definitions(loom_loadable_extension PRIVATE LOOM_SIDECAR_ONLY)
+endif()
 
 # Link the Rust staticlib.  Do NOT link libduckdb — DuckDB symbols are resolved
 # at dlopen time from the CLI binary (PITFALLS P6; RESEARCH Q5).
-target_link_libraries(loom_loadable_extension PRIVATE
-    "${LIBLOOM_FFI}"
-    ${LLVM_LIBS}
-    ${LLVM_SYSTEM_LIBS}
-)
-target_link_options(loom_loadable_extension PRIVATE
-    ${LLVM_LDFLAGS}
-)
+# LLVM libraries are NOT needed in sidecar-only mode (no native lowering).
+if(LOOM_SIDECAR_ONLY)
+    target_link_libraries(loom_loadable_extension PRIVATE
+        "${LIBLOOM_FFI}"
+    )
+else()
+    target_link_libraries(loom_loadable_extension PRIVATE
+        "${LIBLOOM_FFI}"
+        ${LLVM_LIBS}
+        ${LLVM_SYSTEM_LIBS}
+    )
+    target_link_options(loom_loadable_extension PRIVATE
+        ${LLVM_LDFLAGS}
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Step 3: Symbol resolution and hiding.
