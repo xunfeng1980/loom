@@ -83,4 +83,20 @@ int32_t loom_sidecar_route(const uint8_t *overlay_bytes,
  */
 int32_t loom_sidecar_free_bytes(uint8_t *ptr, uintptr_t len);
 
+/**
+ * Free a C string previously returned by [`loom_sidecar_verify`] or
+ * [`loom_sidecar_route`].
+ *
+ * Reconstructs the `CString` from the raw pointer and drops it.  The caller
+ * must ensure `ptr` came from a prior call to `loom_sidecar_verify` or
+ * `loom_sidecar_route` and that this function is called at most once per
+ * allocation.
+ *
+ * # Returns
+ *
+ * * `0` — String freed.
+ * * `1` — `ptr` is null.
+ */
+int32_t loom_sidecar_free_cstr(char *ptr);
+
 #endif  /* LOOM_SIDECAR_H */

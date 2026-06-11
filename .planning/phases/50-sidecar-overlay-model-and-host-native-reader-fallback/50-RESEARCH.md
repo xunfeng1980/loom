@@ -667,7 +667,7 @@ pub fn loom_scan_with_sidecar_routing(
 | A4 | The existing `runtime_abi.rs` pattern (fail-closed gate, `RuntimeFallbackPolicy`, `RuntimeExecutionDecision`) is the right architectural analog for the sidecar routing decision | Routing Decision Logic | LOW: The runtime ABI was designed for this class of decision and has been battle-tested through Phases 22-43. |
 | A5 | Host-native reader fallback for DuckDB means calling `read_parquet('path')` instead of `loom_scan('path')`, returning the result transparently to the user | DuckDB Integration | LOW: DuckDB already supports `read_parquet` natively; the extension just chooses which function to delegate to. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the content-hash over host data use a cryptographic hash (SHA-256/BLAKE3) instead of FNV-1a?**
    - What we know: FNV-1a is non-cryptographic and trivially collisionable. The L2Core IR uses FNV-1a (Phase 49). The threat model for MVP2 is non-adversarial (sidecar authored by same party as host data).

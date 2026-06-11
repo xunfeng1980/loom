@@ -110,6 +110,7 @@ static unique_ptr<FunctionData> SidecarBind(
                                               nullptr, 0, &decision_json);
         if (route_rc == 0 && decision_json != nullptr) {
             string decision = CStringOrEmpty(decision_json);
+            loom_sidecar_free_cstr(const_cast<char *>(decision_json));
             if (decision.find("\"decision\":\"LoomNative\"") != string::npos) {
                 bind_data->diagnostic =
                     "loom_scan[sidecar/LoomNative]: file has a Loom sidecar overlay "

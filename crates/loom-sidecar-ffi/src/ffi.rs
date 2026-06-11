@@ -309,6 +309,47 @@ pub unsafe extern "C" fn loom_sidecar_free_bytes(ptr: *mut u8, len: usize) -> i3
 }
 
 // ---------------------------------------------------------------------------
+// loom_sidecar_free_cstr
+// ---------------------------------------------------------------------------
+
+/// Free a C string previously returned by [`loom_sidecar_verify`] or
+/// [`loom_sidecar_route`].
+///
+/// Reconstructs the `CString` from the raw pointer and drops it.  The caller
+/// must ensure `ptr` came from a prior call to `loom_sidecar_verify` or
+/// `loom_sidecar_route` and that this function is called at most once per
+/// allocation.
+///
+/// # Returns
+///
+/// * `0` — String freed.
+/// * `1` — `ptr` is null.
+#[no_mangle]
+pub unsafe extern "C" fn loom_sidecar_free_cstr(ptr: *mut c_char) -> i32 {
+    if ptr.is_null() {
+        return LoomSidecarError::NullPointer.code();
+    }
+
+    let result: std::result::Result<std::result::Result<i32, LoomSidecarError>, _> =
+        panic::catch_unwind(AssertUnwindSafe(|| {
+        // Safety: ptr must describe a valid CString allocation from the
+        // global allocator (guaranteed by the contract — caller must pass
+        // values obtained from loom_sidecar_verify or loom_sidecar_route).
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        }
+        Ok(0)
+    }));
+
+    match result {
+        Ok(Ok(0)) => LoomSidecarError::Success.code(),
+        Ok(Err(e)) => e.code(),
+        Ok(_) => LoomSidecarError::DecodeFailed.code(),
+        Err(_) => LoomSidecarError::Panicked.code(),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Routing decision → JSON formatting
 // ---------------------------------------------------------------------------
 
@@ -346,8 +387,8 @@ fn routing_decision_to_json(
             reason,
             ref diagnostics,
         } => {
-            // Strip the trailing zero-byte from CString to get the JSON string length
-            let reason_str = format!("{reason:?}"); // Debug-repr of the enum variant
+            // Serialize the reason using its stable Display representation.
+            let reason_str = format!("{reason}");
             buf.push_str("{\"decision\":\"HostNativeReader\",");
             write!(&mut buf, "\"reason\":\"{reason_str}\",")?;
             buf.push_str("\"diagnostics\":[");
@@ -357,7 +398,8 @@ fn routing_decision_to_json(
                 }
                 write!(
                     &mut buf,
-                    "{{\"path\":{},\"message\":{}}}",
+                    "{{\"code\":{},\"path\":{},\"message\":{}}}",
+                    json_string(&d.code.to_string()),
                     json_string(&d.path),
                     json_string(&d.message)
                 )?;
@@ -370,11 +412,24 @@ fn routing_decision_to_json(
 
 /// Format a Rust string as a JSON string value (with surrounding quotes).
 fn json_string(s: &str) -> String {
-    let escaped = s
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t");
-    format!("\"{}\"", escaped)
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\x08' => out.push_str("\\b"),
+            '\x0C' => out.push_str("\\f"),
+            c if c < ' ' => {
+                use std::fmt::Write;
+                write!(&mut out, "\\u{:04x}", c as u32).unwrap();
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }

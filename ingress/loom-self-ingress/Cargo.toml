@@ -5,5 +5,5 @@ edition = "2021"
 description = "Single IO boundary for Loom native .loom file format — delegates all format logic to loom-container"
 
 [dependencies]
-loom-container = { path = "../loom-container" }
+loom-container = { path = "../../crates/loom-container" }
 arrow = { workspace = true }

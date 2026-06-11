@@ -165,7 +165,7 @@ cargo run -p loom-cli -- verify-artifact target/loom-duckdb-fixtures/mixed-table
 | `crates/loom-ir-core` | 零依赖解码 IR 核心 — `SidecarOverlay`、`ChunkBinding`、routing、content-hash |
 | `crates/loom-sidecar-ffi` | Lean C ABI，用于 sidecar extract/verify/route（零 container 依赖） |
 | `crates/loom-container` | `.loom` 格式层 — codecs、verifier、native lowering、lineage |
-| `crates/loom-self-ingress` | `.loom` 文件 IO 边界（read/write/verify） |
+| `ingress/loom-self-ingress` | `.loom` 文件 IO 边界（read/write/verify） |
 | `crates/loom-core` | 薄 re-export shim，委托 `loom-ir-core` + `loom-container` |
 | `crates/loom-ffi` | 完整 C ABI 与 Arrow C Data Interface（container 路径） |
 | `crates/loom-cli` | CLI；lean 模式（`--no-default-features`）用于 sidecar embed，full 模式用于 container 操作 |

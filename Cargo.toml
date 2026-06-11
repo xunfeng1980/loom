@@ -8,7 +8,7 @@ members = [
     "crates/loom-fixtures",
     "crates/loom-cli",
     "crates/loom-sidecar-ffi",
-    "crates/loom-self-ingress",
+    "ingress/loom-self-ingress",
     "ingress/loom-vortex-ingress",
     "ingress/loom-source-ingress",
     "ingress/loom-lance-ingress",

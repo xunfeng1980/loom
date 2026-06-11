@@ -168,7 +168,7 @@ cargo run -p loom-cli -- verify-artifact target/loom-duckdb-fixtures/mixed-table
 | `crates/loom-ir-core` | Zero-dependency decode IR core — `SidecarOverlay`, `ChunkBinding`, routing, content-hash |
 | `crates/loom-sidecar-ffi` | Lean C ABI for sidecar extract/verify/route (zero container dependency) |
 | `crates/loom-container` | `.loom` format layer — codecs, verifier, native lowering, lineage |
-| `crates/loom-self-ingress` | `.loom` file IO boundary (read/write/verify) |
+| `ingress/loom-self-ingress` | `.loom` file IO boundary (read/write/verify) |
 | `crates/loom-core` | Thin re-export shim for `loom-ir-core` + `loom-container` |
 | `crates/loom-ffi` | Full C ABI and Arrow C Data Interface (container path) |
 | `crates/loom-cli` | CLI; lean mode (`--no-default-features`) for sidecar embed, full mode for container ops |

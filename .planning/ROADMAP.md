@@ -1301,7 +1301,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) a
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
-| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete   | 2026-06-11 |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete    | 2026-06-11 |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
