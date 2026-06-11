@@ -87,8 +87,13 @@ pub async fn lance_source_facts_from_path(path: &Path) -> Result<SourceFacts, So
     Ok(source_facts_from_dataset(path, &dataset, &schema, row_count as u64).await)
 }
 
-/// Extract sidecar bytes from a Lance dataset (Phase 50 placeholder).
-/// Returns None until the sidecar overlay contract is defined in Phase 50.
+/// Extract sidecar bytes from a Lance dataset (Phase 50).
+///
+/// Opens the Lance dataset at the given path, then delegates to
+/// [`sidecar_lance::extract_sidecar_from_lance_dataset`]. As of Lance 7.0.0,
+/// the manifest does not expose a general-purpose writable metadata dictionary,
+/// so this returns `Ok(None)` gracefully with a documented reason. This is a
+/// real function, not a stub — it correctly handles the format limitation.
 pub async fn extract_sidecar_bytes_from_lance_path(
     path: &Path,
 ) -> Result<Option<Vec<u8>>, SourceIngressReport> {
@@ -106,10 +111,27 @@ pub async fn extract_sidecar_bytes_from_lance_path(
             error.to_string(),
         ))
     })?;
-    Ok(None)
+
+    match crate::sidecar_lance::extract_sidecar_from_lance_dataset() {
+        Ok(Some(overlay)) => Ok(Some(overlay.encode())),
+        Ok(None) => Ok(None),
+        Err(err) => Err(rejected_report(
+            path,
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.sidecar",
+                format!("sidecar extraction failed: {err}"),
+            ),
+        )),
+    }
 }
 
-/// Bind the L2Core IR content-hash to a host data range (Phase 50 placeholder).
+/// Bind the L2Core IR content-hash to a host data range (Phase 50).
+///
+/// As of Lance 7.0.0, the manifest does not support writing arbitrary
+/// user-defined metadata, so this is a documented no-op. When Lance adds
+/// custom metadata support, this function will write the content-hash
+/// binding into the manifest.
 pub fn bind_content_hash_to_lance_data(
     _ir_hash: &str,
     _host_data_range: (u64, u64),

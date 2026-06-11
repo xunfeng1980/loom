@@ -9,6 +9,7 @@
 //! Phase 50.1: Degraded to thin host adapter — mount + extract facts + sidecar stubs.
 //! Arrow materialization and LMC2/LMA1 emission removed from public API.
 
+mod sidecar_lance;
 mod source_contract;
 
 pub use source_contract::{
