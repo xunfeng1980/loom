@@ -8,9 +8,12 @@ use arrow_array::{
 };
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
+use futures::TryStreamExt;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_lance_ingress::{emit_source_ingress_lmc2_from_lance_path, lance_source_facts_from_path};
+use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{
     source_verified_native_coverage_row, validate_source_verified_native_coverage_row,
     SourceIngressStatus, SourceVerifiedNativeDisposition,
@@ -23,6 +26,20 @@ async fn write_lance_dataset(path: &Path, batch: RecordBatch) {
     Dataset::write(reader, path.to_str().expect("utf-8 temp path"), None)
         .await
         .expect("write Lance dataset");
+}
+
+/// Dev-time oracle + LMC2 emission (compact — test only needs artifact bytes).
+async fn dev_time_lance_lmc2_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    let dataset = Dataset::open(path.to_str().ok_or("non-utf8 path")?)
+        .await.map_err(|e| format!("open: {e}"))?;
+    let scanner = dataset.scan();
+    let stream = scanner.try_into_stream().await.map_err(|e| format!("scan: {e}"))?;
+    let batches: Vec<RecordBatch> = stream.try_collect::<Vec<_>>().await.map_err(|e| format!("collect: {e}"))?;
+    let schema = batches.first().map(RecordBatch::schema).ok_or("no batches")?;
+    let semantic = batches.iter().map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>().map_err(|e| format!("batch: {e}"))?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic).map_err(|e| format!("payload: {e}"))?;
+    encode_arrow_semantic_container_payload(&payload).map_err(|e| format!("LMC2: {e}"))
 }
 
 async fn write_single_column(
@@ -39,11 +56,9 @@ async fn write_single_column(
 }
 
 async fn assert_lmc2_verifier_accepts(path: &Path) {
-    let accepted = emit_source_ingress_lmc2_from_lance_path(path)
-        .await
-        .expect("Lance source should emit LMC2");
+    let artifact_bytes = dev_time_lance_lmc2_bytes(path).await.expect("Lance source should emit LMC2");
     let report = verify_artifact(
-        &accepted.bytes,
+        &artifact_bytes,
         &L2KernelRegistry::default_for_mvp0(),
         &Default::default(),
     );

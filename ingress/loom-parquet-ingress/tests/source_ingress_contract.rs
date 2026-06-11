@@ -8,15 +8,23 @@ use arrow_array::{
     StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_parquet_ingress::{
-    parquet_source_facts_from_path, source_ingress_report_from_parquet_path,
-};
+use loom_parquet_ingress::parquet_source_facts_from_path;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
-    SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
+    SourceEmissionKind, SourceIngressAcceptedArtifact, SourceIngressReport, SourceIngressStatus,
+    SourceLoweringDisposition,
 };
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use parquet::arrow::ArrowWriter;
 use tempfile::TempDir;
+
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
+use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_source_ingress::{
+    SourceDiagnostic, SourceOracleEvidence, SourceOracleStrategy,
+};
 
 fn write_record_batch(path: &Path, batch: RecordBatch) {
     let file = File::create(path).expect("create parquet file");
@@ -24,6 +32,84 @@ fn write_record_batch(path: &Path, batch: RecordBatch) {
         ArrowWriter::try_new(file, batch.schema(), None).expect("create parquet writer");
     writer.write(&batch).expect("write parquet batch");
     writer.close().expect("close parquet writer");
+}
+
+/// Dev-time oracle: read Arrow RecordBatches from a Parquet file.
+fn dev_time_parquet_oracle(path: &Path) -> Result<Vec<RecordBatch>, String> {
+    let file = File::open(path).map_err(|e| format!("open: {e}"))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+        .map_err(|e| format!("parquet reader build: {e}"))?;
+    let reader = builder.build().map_err(|e| format!("parquet reader: {e}"))?;
+    reader.map(|r| r.map_err(|e| format!("parquet read: {e}"))).collect()
+}
+
+/// Dev-time replacement for dev_time_parquet_source_report.
+fn dev_time_parquet_source_report(path: &Path) -> SourceIngressReport {
+    let source_facts = match parquet_source_facts_from_path(path) {
+        Ok(facts) => facts,
+        Err(report) => return report,
+    };
+    let batches = match dev_time_parquet_oracle(path) {
+        Ok(b) => b,
+        Err(msg) => {
+            return SourceIngressReport::unsupported(
+                Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", msg),
+            );
+        }
+    };
+    let schema = match batches.first().map(RecordBatch::schema) {
+        Some(s) => s,
+        None => {
+            return SourceIngressReport::unsupported(
+                Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", "no batches"),
+            );
+        }
+    };
+    let semantic_batches = match batches.iter().map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>() {
+        Ok(b) => b,
+        Err(err) => {
+            return SourceIngressReport::unsupported(Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("batch: {err}")));
+        }
+    };
+    let payload = match ArrowSemanticPayload::try_new(schema, semantic_batches) {
+        Ok(p) => p,
+        Err(err) => {
+            return SourceIngressReport::unsupported(Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("payload: {err}")));
+        }
+    };
+    let artifact_bytes = match encode_arrow_semantic_container_payload(&payload) {
+        Ok(b) => b,
+        Err(err) => {
+            return SourceIngressReport::unsupported(Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("LMC2: {err}")));
+        }
+    };
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
+    if verification.status() != ArtifactVerificationStatus::Accepted {
+        return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.artifact",
+                format!("verification: {}", verification.status().as_str())));
+    }
+    let artifact_facts = verification.facts().expect("accepted");
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(
+        artifact_bytes.len(),
+        format!("{} verifier accepted {}", artifact_facts.artifact_kind,
+            artifact_facts.payload_kind.as_deref().unwrap_or("unknown payload")),
+    );
+    let row_count = batches.iter().map(|b| b.num_rows() as u64).sum();
+    let mut oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    oracle.nulls_checked = true;
+    oracle.notes.push("source-native oracle evidence via dev-time Parquet read".to_string());
+    SourceIngressReport::accepted(
+        source_facts, SourceEmissionKind::ArrowSemantic, SourceEmissionDisposition::SemanticArrow,
+        SourceLoweringDisposition::InterpreterOnly, artifact_summary, oracle,
+    ).expect("accepted Parquet semantic facts map to an accepted source report")
 }
 
 fn supported_int32_path(temp: &TempDir) -> std::path::PathBuf {
@@ -281,7 +367,7 @@ fn parquet_classifies_materializable_shapes_as_arrow_semantic() {
     ];
 
     for path in semantic_cases {
-        let report = source_ingress_report_from_parquet_path(&path);
+        let report = dev_time_parquet_source_report(&path);
         assert_eq!(report.status, SourceIngressStatus::Accepted);
         assert!(report.facts.is_some());
         assert_eq!(report.emission_kind, SourceEmissionKind::ArrowSemantic);
@@ -306,7 +392,7 @@ fn parquet_malformed_files_are_rejected_without_facts() {
     let malformed = temp.path().join("malformed.parquet");
     std::fs::write(&malformed, b"not a parquet file").expect("write malformed bytes");
 
-    let malformed_report = source_ingress_report_from_parquet_path(&malformed);
+    let malformed_report = dev_time_parquet_source_report(&malformed);
     assert_eq!(malformed_report.status, SourceIngressStatus::Rejected);
     assert!(malformed_report.facts.is_none());
     assert_eq!(malformed_report.emission_kind, SourceEmissionKind::None);
@@ -327,7 +413,7 @@ fn parquet_malformed_files_are_rejected_without_facts() {
     assert_eq!(malformed_report.diagnostics[0].path, "$.metadata");
 
     let missing = temp.path().join("missing.parquet");
-    let missing_report = source_ingress_report_from_parquet_path(&missing);
+    let missing_report = dev_time_parquet_source_report(&missing);
     assert_eq!(missing_report.status, SourceIngressStatus::Rejected);
     assert!(missing_report.facts.is_none());
     assert_eq!(missing_report.emission_kind, SourceEmissionKind::None);

@@ -8,10 +8,17 @@ use arrow_array::{
 };
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
-use loom_lance_ingress::{lance_source_facts_from_path, source_ingress_report_from_lance_path};
+use futures::TryStreamExt;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
+use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
+use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{
-    SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
-    SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
+    SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
+    SourceEmissionDisposition, SourceEmissionKind, SourceIngressAcceptedArtifact,
+    SourceIngressReport, SourceIngressStatus, SourceLoweringDisposition, SourceOracleEvidence,
+    SourceOracleStrategy,
 };
 use tempfile::TempDir;
 
@@ -21,6 +28,61 @@ async fn write_lance_dataset(path: &Path, batch: RecordBatch) {
     Dataset::write(reader, path.to_str().expect("utf-8 temp path"), None)
         .await
         .expect("write Lance dataset");
+}
+
+/// Dev-time oracle: read Arrow RecordBatches from a Lance dataset.
+async fn dev_time_lance_oracle(path: &Path) -> Result<Vec<RecordBatch>, String> {
+    let dataset = Dataset::open(path.to_str().ok_or("non-utf8 path")?)
+        .await.map_err(|e| format!("open: {e}"))?;
+    let scanner = dataset.scan();
+    let stream = scanner.try_into_stream().await.map_err(|e| format!("scan: {e}"))?;
+    stream.try_collect::<Vec<_>>().await.map_err(|e| format!("collect: {e}"))
+}
+
+/// Dev-time replacement for dev_time_lance_source_report.
+async fn dev_time_lance_source_report(path: &Path) -> SourceIngressReport {
+    let source_facts = match lance_source_facts_from_path(path).await {
+        Ok(f) => f,
+        Err(report) => return report,
+    };
+    let batches = match dev_time_lance_oracle(path).await {
+        Ok(b) => b,
+        Err(msg) => return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", msg)),
+    };
+    let schema = match batches.first().map(RecordBatch::schema) {
+        Some(s) => s, None => return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", "no batches")),
+    };
+    let semantic = match batches.iter().map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>() {
+        Ok(b) => b, Err(err) => return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("batch: {err}"))),
+    };
+    let payload = match ArrowSemanticPayload::try_new(schema, semantic) {
+        Ok(p) => p, Err(err) => return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("payload: {err}"))),
+    };
+    let artifact_bytes = match encode_arrow_semantic_container_payload(&payload) {
+        Ok(b) => b, Err(err) => return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("LMC2: {err}"))),
+    };
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
+    if verification.status() != ArtifactVerificationStatus::Accepted {
+        return SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.artifact", format!("verification: {}", verification.status().as_str())))
+    }
+    let artifact_facts = verification.facts().expect("accepted");
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(artifact_bytes.len(),
+        format!("{} verifier accepted {}", artifact_facts.artifact_kind, artifact_facts.payload_kind.as_deref().unwrap_or("unknown payload")));
+    let row_count = batches.iter().map(|b| b.num_rows() as u64).sum();
+    let mut oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    oracle.nulls_checked = true;
+    oracle.notes.push("dev-time Lance source-native oracle evidence only".to_string());
+    SourceIngressReport::accepted(source_facts, SourceEmissionKind::ArrowSemantic,
+        SourceEmissionDisposition::SemanticArrow, SourceLoweringDisposition::InterpreterOnly,
+        artifact_summary, oracle).expect("accepted")
 }
 
 async fn supported_int32_dataset(temp: &TempDir) -> std::path::PathBuf {
@@ -273,7 +335,7 @@ async fn lance_classifies_materializable_shapes_as_arrow_semantic() {
     ];
 
     for path in semantic_cases {
-        let report = source_ingress_report_from_lance_path(&path).await;
+        let report = dev_time_lance_source_report(&path).await;
         assert_eq!(report.status, SourceIngressStatus::Accepted);
         assert!(report.facts.is_some());
         assert_eq!(report.emission_kind, SourceEmissionKind::ArrowSemantic);
@@ -298,7 +360,7 @@ async fn lance_non_dataset_paths_are_rejected_without_facts() {
     let regular_file = temp.path().join("not-a-dataset.lance");
     std::fs::write(&regular_file, b"not a Lance dataset").expect("write non-dataset file");
 
-    let regular_report = source_ingress_report_from_lance_path(&regular_file).await;
+    let regular_report = dev_time_lance_source_report(&regular_file).await;
     assert_eq!(regular_report.status, SourceIngressStatus::Rejected);
     assert!(regular_report.facts.is_none());
     assert_eq!(regular_report.emission_kind, SourceEmissionKind::None);
@@ -319,7 +381,7 @@ async fn lance_non_dataset_paths_are_rejected_without_facts() {
     assert_eq!(regular_report.diagnostics[0].path, "$.open");
 
     let missing = temp.path().join("missing.lance");
-    let missing_report = source_ingress_report_from_lance_path(&missing).await;
+    let missing_report = dev_time_lance_source_report(&missing).await;
     assert_eq!(missing_report.status, SourceIngressStatus::Rejected);
     assert!(missing_report.facts.is_none());
     assert_eq!(missing_report.emission_kind, SourceEmissionKind::None);

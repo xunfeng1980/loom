@@ -7,15 +7,16 @@ use arrow_array::{
     Array, ArrayRef, BooleanArray, Int32Array, ListArray, RecordBatch, StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_parquet_ingress::{
-    emit_source_ingress_lmc2_from_parquet_path, parquet_source_facts_from_path,
-};
+use loom_parquet_ingress::parquet_source_facts_from_path;
 use loom_source_ingress::{
     source_verified_native_coverage_row, validate_source_verified_native_coverage_row,
     SourceIngressStatus, SourceVerifiedNativeDisposition,
 };
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use parquet::arrow::ArrowWriter;
 use tempfile::TempDir;
 
@@ -40,11 +41,29 @@ fn write_single_column(
     path
 }
 
+/// Dev-time oracle + LMC2 emission helper (compact — this test only needs artifact bytes).
+fn dev_time_parquet_lmc2_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    let file = File::open(path).map_err(|e| format!("open: {e}"))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+        .map_err(|e| format!("parquet reader: {e}"))?;
+    let reader = builder.build().map_err(|e| format!("parquet reader: {e}"))?;
+    let batches: Vec<RecordBatch> =
+        reader.map(|r| r.map_err(|e| format!("read: {e}"))).collect::<Result<_, _>>()?;
+    let schema = batches.first().map(RecordBatch::schema).ok_or("no batches")?;
+    let semantic = batches
+        .iter()
+        .map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("batch: {e}"))?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic)
+        .map_err(|e| format!("payload: {e}"))?;
+    encode_arrow_semantic_container_payload(&payload).map_err(|e| format!("encode: {e}"))
+}
+
 fn assert_lmc2_verifier_accepts(path: &Path) {
-    let accepted =
-        emit_source_ingress_lmc2_from_parquet_path(path).expect("Parquet source should emit LMC2");
+    let artifact_bytes = dev_time_parquet_lmc2_bytes(path).expect("Parquet source should emit LMC2");
     let report = verify_artifact(
-        &accepted.bytes,
+        &artifact_bytes,
         &L2KernelRegistry::default_for_mvp0(),
         &Default::default(),
     );

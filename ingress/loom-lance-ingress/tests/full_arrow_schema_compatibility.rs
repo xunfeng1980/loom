@@ -8,14 +8,19 @@ use arrow_array::{
 };
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
-use loom_core::arrow_semantic_codec::decode_arrow_semantic_container_payload;
+use futures::TryStreamExt;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::{
+    decode_arrow_semantic_container_payload, encode_arrow_semantic_container_payload,
+};
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
-use loom_lance_ingress::{
-    emit_source_ingress_lmc2_from_lance_path, lance_native_oracle_batches_from_path,
-};
+use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{
-    SourceEmissionDisposition, SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition,
+    SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
+    SourceEmissionDisposition, SourceEmissionKind, SourceIngressAcceptedArtifact,
+    SourceIngressReport, SourceIngressStatus, SourceLoweringDisposition, SourceOracleEvidence,
+    SourceOracleStrategy,
 };
 use tempfile::TempDir;
 
@@ -27,6 +32,59 @@ async fn write_lance_dataset(path: &Path, batch: RecordBatch) {
         .expect("write Lance dataset");
 }
 
+/// Dev-time oracle: read Arrow RecordBatches from a Lance dataset.
+async fn dev_time_lance_oracle(path: &Path) -> Result<Vec<RecordBatch>, String> {
+    let dataset = Dataset::open(path.to_str().ok_or("non-utf8 path")?)
+        .await.map_err(|e| format!("open: {e}"))?;
+    let scanner = dataset.scan();
+    let stream = scanner.try_into_stream().await.map_err(|e| format!("scan: {e}"))?;
+    stream.try_collect::<Vec<_>>().await.map_err(|e| format!("collect: {e}"))
+}
+
+/// Dev-time packaging: replicates old dev_time_emit_lmc2.
+async fn dev_time_emit_lmc2(path: &Path) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    let source_facts = lance_source_facts_from_path(path).await?;
+    let batches = dev_time_lance_oracle(path).await.map_err(|msg| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", msg))
+    })?;
+    let schema = batches.first().map(RecordBatch::schema).ok_or_else(|| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", "no batches"))
+    })?;
+    let semantic = batches.iter().map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>().map_err(|err| {
+            SourceIngressReport::unsupported(Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("batch: {err}")))
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic).map_err(|err| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("payload: {err}")))
+    })?;
+    let artifact_bytes = encode_arrow_semantic_container_payload(&payload).map_err(|err| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("LMC2: {err}")))
+    })?;
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
+    if verification.status() != ArtifactVerificationStatus::Accepted {
+        return Err(SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.artifact", format!("verification: {}", verification.status().as_str()))));
+    }
+    let artifact_facts = verification.facts().expect("accepted");
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(artifact_bytes.len(),
+        format!("{} verifier accepted {}", artifact_facts.artifact_kind,
+            artifact_facts.payload_kind.as_deref().unwrap_or("unknown payload")));
+    let row_count = batches.iter().map(|b| b.num_rows() as u64).sum();
+    let mut oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    oracle.nulls_checked = true;
+    oracle.notes.push("dev-time Lance source-native oracle evidence only".to_string());
+    let report = SourceIngressReport::accepted(source_facts, SourceEmissionKind::ArrowSemantic,
+        SourceEmissionDisposition::SemanticArrow, SourceLoweringDisposition::InterpreterOnly,
+        artifact_summary, oracle).expect("accepted");
+    Ok(SourceIngressAcceptedArtifact { bytes: artifact_bytes, report })
+}
+
 async fn semantic_case_path(temp: &TempDir, name: &str, batch: RecordBatch) -> std::path::PathBuf {
     let path = temp.path().join(format!("{name}.lance"));
     write_lance_dataset(&path, batch).await;
@@ -34,7 +92,7 @@ async fn semantic_case_path(temp: &TempDir, name: &str, batch: RecordBatch) -> s
 }
 
 async fn assert_lance_lmc2_roundtrip(path: &Path) {
-    let accepted = emit_source_ingress_lmc2_from_lance_path(path)
+    let accepted = dev_time_emit_lmc2(path)
         .await
         .expect("accepted Lance semantic handoff");
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
@@ -61,7 +119,7 @@ async fn assert_lance_lmc2_roundtrip(path: &Path) {
         Some("Arrow semantic payload")
     );
 
-    let source = lance_native_oracle_batches_from_path(path)
+    let source = dev_time_lance_oracle(path)
         .await
         .expect("Lance Arrow source");
     let decoded = decode_arrow_semantic_container_payload(&accepted.bytes)

@@ -11,17 +11,71 @@ use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::container_codec::decode_table_payload_maybe_container;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_core::table_codec::decode_table_to_array_data;
-use loom_parquet_ingress::{
-    emit_source_ingress_lma1_from_parquet_path, parquet_arrow_oracle_batches_from_path,
-};
+use loom_parquet_ingress::parquet_source_facts_from_path;
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use parquet::arrow::ArrowWriter;
 use tempfile::TempDir;
+
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_core::arrow_semantic_codec::encode_arrow_semantic_payload;
+use loom_source_ingress::{
+    SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
+    SourceEmissionDisposition, SourceEmissionKind, SourceIngressAcceptedArtifact,
+    SourceIngressReport, SourceIngressStatus, SourceLoweringDisposition, SourceOracleEvidence,
+    SourceOracleStrategy,
+};
 
 fn fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("fixtures")
         .join("legacy")
+}
+
+/// Dev-time oracle: read Arrow RecordBatches from a Parquet file.
+fn dev_time_parquet_oracle(path: &Path) -> Result<Vec<RecordBatch>, String> {
+    let file = File::open(path).map_err(|e| format!("open: {e}"))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+        .map_err(|e| format!("parquet reader build: {e}"))?;
+    let reader = builder.build().map_err(|e| format!("parquet reader: {e}"))?;
+    reader.map(|r| r.map_err(|e| format!("parquet read: {e}"))).collect()
+}
+
+/// Dev-time packaging helper: replicates old dev_time_emit_lma1.
+fn dev_time_emit_lma1(path: &Path) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    let source_facts = parquet_source_facts_from_path(path)?;
+    let batches = dev_time_parquet_oracle(path).map_err(|msg| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", msg))
+    })?;
+    let schema = batches.first().map(RecordBatch::schema).ok_or_else(|| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", "no batches"))
+    })?;
+    let semantic = batches.iter().map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>().map_err(|err| {
+            SourceIngressReport::unsupported(Some(source_facts.clone()),
+                SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("batch: {err}")))
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic).map_err(|err| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("payload: {err}")))
+    })?;
+    let lma1_bytes = encode_arrow_semantic_payload(&payload).map_err(|err| {
+        SourceIngressReport::unsupported(Some(source_facts.clone()),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", format!("LMA1: {err}")))
+    })?;
+    let row_count = batches.iter().map(|b| b.num_rows() as u64).sum();
+    let mut oracle = SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    oracle.nulls_checked = true;
+    oracle.notes.push("source-native oracle evidence via dev-time Parquet read".to_string());
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(
+        lma1_bytes.len(), "LMA1 payload accepted".to_string());
+    let report = SourceIngressReport::accepted(source_facts, SourceEmissionKind::ArrowSemantic,
+        SourceEmissionDisposition::SemanticArrow, SourceLoweringDisposition::InterpreterOnly,
+        artifact_summary, oracle)
+        .expect("accepted");
+    Ok(SourceIngressAcceptedArtifact { bytes: lma1_bytes, report })
 }
 
 fn sha256_bytes(bytes: &[u8]) -> String {
@@ -187,12 +241,12 @@ fn legacy_parquet_fixture_has_paired_verifier_accepted_loom_and_current_rewrite_
     let paired_batch = decode_loom_batch(&std::fs::read(&loom).expect("read paired loom"));
     assert_batch_matches_expected(&paired_batch);
 
-    let source_batches = parquet_arrow_oracle_batches_from_path(&source)
+    let source_batches = dev_time_parquet_oracle(&source)
         .expect("current Parquet reader reads actual older-version fixture");
     assert_eq!(source_batches.len(), 1);
     assert_batch_matches_expected(&source_batches[0]);
 
-    let accepted = emit_source_ingress_lma1_from_parquet_path(&source)
+    let accepted = dev_time_emit_lma1(&source)
         .expect("current Parquet adapter emits verifier-accepted Loom from older fixture");
     let registry = L2KernelRegistry::default_for_mvp0();
     let report = verify_artifact(&accepted.bytes, &registry, &Default::default());
@@ -211,7 +265,7 @@ fn legacy_parquet_fixture_has_paired_verifier_accepted_loom_and_current_rewrite_
     let rewritten = temp.path().join("legacy-current-rewrite.parquet");
     write_current_parquet(&rewritten, &paired_batch);
     let rewritten_batches =
-        parquet_arrow_oracle_batches_from_path(&rewritten).expect("read current rewrite");
+        dev_time_parquet_oracle(&rewritten).expect("read current rewrite");
     assert_eq!(rewritten_batches.len(), 1);
     assert_batch_matches_expected(&rewritten_batches[0]);
 }

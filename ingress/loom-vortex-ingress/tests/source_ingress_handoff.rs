@@ -1,28 +1,39 @@
+use std::sync::Arc;
 use std::sync::LazyLock;
 
+use arrow_array::RecordBatch;
+use arrow_schema::Schema;
+use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
 use loom_core::arrow_semantic_codec::{
     decode_arrow_semantic_container_payload, decode_arrow_semantic_payload,
-    is_arrow_semantic_container,
+    encode_arrow_semantic_container_payload, is_arrow_semantic_container,
 };
 use loom_core::artifact_verifier::{verify_artifact, ArtifactVerificationStatus};
 use loom_core::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
-    SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
-    SourceEmissionKind, SourceIngressStatus, SourceLoweringDisposition, SourceOracleStrategy,
+    SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
+    SourceEmissionDisposition, SourceEmissionKind, SourceIngressAcceptedArtifact,
+    SourceIngressReport, SourceIngressStatus, SourceLoweringDisposition, SourceOracleEvidence,
+    SourceOracleStrategy,
 };
 use loom_vortex_ingress::{
-    emit_source_ingress_lmc2_from_vortex_buffer,
-    vortex_arrow_oracle_batches_from_buffer,
+    reader_facts_from_vortex_buffer, source_facts_from_vortex_reader_facts,
+    source_report_from_vortex_ingress_report,
 };
 use vortex_array::arrays::{StructArray, VarBinArray};
+use vortex_array::arrow::ArrowSessionExt;
 use vortex_array::dtype::{DType, FieldNames, Nullability};
 use vortex_array::memory::MemorySession;
 use vortex_array::scalar_fn::session::ScalarFnSession;
 use vortex_array::session::ArraySession;
+use vortex_array::stream::ArrayStreamExt;
 use vortex_array::validity::Validity;
 use vortex_array::IntoArray;
+use vortex_array::VortexSessionExecute;
 use vortex_buffer::buffer;
+use vortex_buffer::ByteBuffer;
 use vortex_buffer::ByteBufferMut;
+use vortex_file::OpenOptionsSessionExt;
 use vortex_file::WriteOptionsSessionExt;
 use vortex_io::runtime::current::CurrentThreadRuntime;
 use vortex_io::runtime::BlockingRuntime;
@@ -95,6 +106,168 @@ fn unsupported_table_bytes() -> Vec<u8> {
     vortex_file_bytes(array)
 }
 
+/// Dev-time oracle: materialize a Vortex buffer into Arrow RecordBatches.
+fn dev_time_vortex_oracle_batches(bytes: &[u8]) -> Result<Vec<RecordBatch>, String> {
+    let s = session();
+    let file = s
+        .open_options()
+        .open_buffer(ByteBuffer::copy_from(bytes))
+        .map_err(|e| format!("failed to open Vortex buffer: {e}"))?;
+    let array = RUNTIME.block_on(async {
+        let stream = file
+            .scan()
+            .map_err(|e| format!("Vortex scan failed: {e}"))?
+            .into_array_stream()
+            .map_err(|e| format!("Vortex array stream failed: {e}"))?;
+        stream
+            .read_all()
+            .await
+            .map_err(|e| format!("Vortex read_all failed: {e}"))
+    })?;
+    let mut ctx = file.session().create_execution_ctx();
+    let field = file
+        .session()
+        .arrow()
+        .to_arrow_field("value", file.dtype())
+        .map_err(|e| format!("Arrow field conversion failed: {e}"))?;
+    let arrow_array = file
+        .session()
+        .arrow()
+        .execute_arrow(array, Some(&field), &mut ctx)
+        .map_err(|e| format!("Arrow execution failed: {e}"))?;
+    let batch = RecordBatch::try_new(Arc::new(Schema::new(vec![field])), vec![arrow_array])
+        .map_err(|e| format!("RecordBatch build failed: {e}"))?;
+    Ok(vec![batch])
+}
+
+/// Dev-time packaging helper — replicates the old dev_time_emit_lmc2_from_vortex_buffer.
+fn dev_time_emit_lmc2_from_vortex_buffer(
+    bytes: &[u8],
+) -> Result<SourceIngressAcceptedArtifact, SourceIngressReport> {
+    let reader_facts =
+        reader_facts_from_vortex_buffer(bytes).map_err(source_report_from_vortex_ingress_report)?;
+    let batches = dev_time_vortex_oracle_batches(bytes).map_err(|msg| {
+        let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+        SourceIngressReport::unsupported(
+            Some(facts),
+            SourceDiagnostic::new(SourceDiagnosticCode::UnsupportedConversion, "$.oracle", msg),
+        )
+    })?;
+    let schema = batches
+        .first()
+        .map(RecordBatch::schema)
+        .ok_or_else(|| {
+            let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+            SourceIngressReport::unsupported(
+                Some(facts),
+                SourceDiagnostic::new(
+                    SourceDiagnosticCode::UnsupportedConversion,
+                    "$.oracle",
+                    "oracle produced no batches",
+                ),
+            )
+        })?;
+    let semantic_batches = batches
+        .iter()
+        .map(ArrowSemanticBatch::from_record_batch)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| {
+            let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+            SourceIngressReport::unsupported(
+                Some(facts),
+                SourceDiagnostic::new(
+                    SourceDiagnosticCode::UnsupportedConversion,
+                    "$.oracle",
+                    format!("ArrowSemanticBatch build failed: {err}"),
+                ),
+            )
+        })?;
+    let payload = ArrowSemanticPayload::try_new(schema, semantic_batches).map_err(|err| {
+        let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+        SourceIngressReport::unsupported(
+            Some(facts),
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                format!("ArrowSemanticPayload build failed: {err}"),
+            ),
+        )
+    })?;
+    let artifact_bytes = encode_arrow_semantic_container_payload(&payload).map_err(|err| {
+        let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+        SourceIngressReport::unsupported(
+            Some(facts),
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.oracle",
+                format!("LMC2 encoding failed: {err}"),
+            ),
+        )
+    })?;
+
+    let registry = L2KernelRegistry::default_for_mvp0();
+    let verification = verify_artifact(&artifact_bytes, &registry, &Default::default());
+    if verification.status() != ArtifactVerificationStatus::Accepted {
+        let facts = source_facts_from_vortex_reader_facts(&reader_facts);
+        return Err(SourceIngressReport::unsupported(
+            Some(facts),
+            SourceDiagnostic::new(
+                SourceDiagnosticCode::UnsupportedConversion,
+                "$.artifact",
+                format!("verification failed: {}", verification.status().as_str()),
+            ),
+        ));
+    }
+    let artifact_facts = verification
+        .facts()
+        .expect("accepted artifact verification exposes facts");
+    let artifact_summary = SourceArtifactVerificationSummary::accepted(
+        artifact_bytes.len(),
+        format!(
+            "{} verifier accepted {}",
+            artifact_facts.artifact_kind,
+            artifact_facts
+                .payload_kind
+                .as_deref()
+                .unwrap_or("unknown payload")
+        ),
+    );
+    let row_count = batches.iter().map(|b| b.num_rows() as u64).sum();
+    let mut oracle =
+        SourceOracleEvidence::accepted(SourceOracleStrategy::SourceNativeScan, row_count);
+    oracle.nulls_checked = true;
+    oracle
+        .notes
+        .push("source-native oracle evidence via dev-time Vortex read".to_string());
+
+    let mut source_facts = source_facts_from_vortex_reader_facts(&reader_facts);
+    if let Some(coverage) = source_facts.coverage.as_mut() {
+        coverage.support = SourceIngressStatus::Accepted;
+        coverage.emission_kind = SourceEmissionKind::ArrowSemantic;
+        coverage.emission_disposition = SourceEmissionDisposition::SemanticArrow;
+        coverage.lowering_disposition = SourceLoweringDisposition::InterpreterOnly;
+        coverage.notes.push(
+            "Vortex source materialized as Arrow for LMC2-wrapped LMA1 semantic emission"
+                .to_string(),
+        );
+    }
+
+    let report = SourceIngressReport::accepted(
+        source_facts,
+        SourceEmissionKind::ArrowSemantic,
+        SourceEmissionDisposition::SemanticArrow,
+        SourceLoweringDisposition::InterpreterOnly,
+        artifact_summary,
+        oracle,
+    )
+    .expect("accepted Vortex semantic facts map to an accepted source report");
+
+    Ok(SourceIngressAcceptedArtifact {
+        bytes: artifact_bytes,
+        report,
+    })
+}
+
 fn assert_emitted_artifact_is_verifier_accepted(bytes: &[u8]) {
     assert!(is_arrow_semantic_container(bytes));
     let registry = L2KernelRegistry::default_for_mvp0();
@@ -110,7 +283,7 @@ fn assert_emitted_artifact_is_verifier_accepted(bytes: &[u8]) {
 
 fn assert_lmc2_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8]) {
     let source =
-        vortex_arrow_oracle_batches_from_buffer(source_bytes).expect("Vortex Arrow oracle");
+        dev_time_vortex_oracle_batches(source_bytes).expect("Vortex Arrow oracle");
     let decoded = decode_arrow_semantic_container_payload(artifact_bytes)
         .expect("decode LMC2")
         .to_record_batches()
@@ -120,7 +293,7 @@ fn assert_lmc2_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8])
 
 fn assert_direct_lma1_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8]) {
     let source =
-        vortex_arrow_oracle_batches_from_buffer(source_bytes).expect("Vortex Arrow oracle");
+        dev_time_vortex_oracle_batches(source_bytes).expect("Vortex Arrow oracle");
     let decoded = decode_arrow_semantic_payload(artifact_bytes)
         .expect("decode direct LMA1")
         .to_record_batches()
@@ -132,7 +305,7 @@ fn assert_direct_lma1_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes:
 fn accepted_single_column_handoff_is_verifier_routed_lmc2() {
     let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     assert!(!accepted.bytes.is_empty());
     assert!(accepted.bytes.starts_with(b"LMC2"));
@@ -173,7 +346,7 @@ fn accepted_single_column_handoff_is_verifier_routed_lmc2() {
 fn accepted_table_handoff_is_verifier_routed_lmc2() {
     let vortex = supported_table_bytes();
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     assert!(!accepted.bytes.is_empty());
     assert!(accepted.bytes.starts_with(b"LMC2"));
@@ -214,7 +387,7 @@ fn accepted_table_handoff_is_verifier_routed_lmc2() {
 fn accepted_single_column_records_source_native_oracle_evidence() {
     let vortex = vortex_file_bytes(buffer![7i32, -1, 42]);
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     let oracle = accepted
         .report
@@ -237,7 +410,7 @@ fn accepted_single_column_records_source_native_oracle_evidence() {
 fn accepted_table_records_source_native_oracle_evidence() {
     let vortex = supported_table_bytes();
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     let oracle = accepted
         .report
@@ -260,7 +433,7 @@ fn accepted_table_records_source_native_oracle_evidence() {
 fn valid_utf8_handoff_is_verifier_routed_lmc2() {
     let vortex = unsupported_utf8_bytes();
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
@@ -275,7 +448,7 @@ fn valid_utf8_handoff_is_verifier_routed_lmc2() {
 fn valid_table_with_utf8_handoff_is_verifier_routed_lmc2() {
     let vortex = unsupported_table_bytes();
     let accepted =
-        emit_source_ingress_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
+        dev_time_emit_lmc2_from_vortex_buffer(&vortex).expect("accepted source handoff");
 
     assert_emitted_artifact_is_verifier_accepted(&accepted.bytes);
     assert_eq!(accepted.report.status, SourceIngressStatus::Accepted);
@@ -288,7 +461,7 @@ fn valid_table_with_utf8_handoff_is_verifier_routed_lmc2() {
 
 #[test]
 fn malformed_source_fails_closed_without_facts_or_oracle() {
-    let report = emit_source_ingress_lmc2_from_vortex_buffer(b"not a vortex file")
+    let report = dev_time_emit_lmc2_from_vortex_buffer(b"not a vortex file")
         .expect_err("malformed source report");
 
     assert_eq!(report.status, SourceIngressStatus::Rejected);
