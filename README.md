@@ -11,294 +11,214 @@ non-Turing-complete language for shipping decoder logic with data. Its only
 successful output is well-formed Apache Arrow, and every artifact is meant to
 fail closed before it reaches a host engine.
 
-The current repository is an MVP1 / v3 track implementation. It can build
-multi-column `.loom` containers, verify them, decode them to Arrow through Rust
-and C FFI, and query them from DuckDB through `loom_scan(...)`.
+The primary integration model is the **sidecar overlay**: embed a Loom IR
+program as strippable metadata in an existing Parquet, Lance, or Vortex file.
+The DuckDB extension reads the sidecar, verifies content-hash identity, and
+routes through the Loom-native decode path or falls back to the host-native
+reader — all without introducing a new file format.
+
+## Quickstart: Sidecar + DuckDB
+
+The fastest path: embed Loom IR into a Parquet file, query it through DuckDB.
+
+### 1. Build the lean CLI (no container dependency)
+
+```bash
+cargo build -p loom-cli --no-default-features --release
+```
+
+The `sidecar embed` command compiles without the full `loom-container` stack.
+
+### 2. Embed a Loom IR program into a Parquet file
+
+```bash
+cargo run -p loom-cli --no-default-features -- \
+  sidecar embed --source data.parquet --ir program.l2ir
+```
+
+This adds `loom.sidecar.v1` and per-column `loom.hash.*` KeyValue metadata to
+the Parquet file. The sidecar is **additive only** — the original Parquet data
+is untouched, and unknown `loom.*` keys are silently ignored by standard Arrow
+readers.
+
+### 3. Build the DuckDB extension (sidecar-only mode)
+
+```bash
+cd contrib/duckdb-ext
+mkdir -p build && cd build
+cmake .. -DLOOM_SIDECAR_ONLY=ON
+make -j$(nproc)
+```
+
+`LOOM_SIDECAR_ONLY=ON` links against `libloom_sidecar_ffi.a` (lean path, zero
+container dependency) instead of `libloom_ffi.a` (full `.loom` container path).
+
+### 4. Query through DuckDB
+
+```sql
+LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
+
+SELECT * FROM loom_scan('data.parquet');
+```
+
+DuckDB sees ordinary Arrow columns. Under the hood, the extension extracts the
+sidecar, runs the 4-gate routing decision, and either decodes through Loom or
+falls back to the host-native reader with typed diagnostics.
+
+### 5. Sidecar + Lance / Vortex
+
+Same pattern for other host formats:
+
+```bash
+# Lance
+cargo run -p loom-cli --no-default-features -- \
+  sidecar embed --source data.lance --ir program.l2ir --host lance
+
+# Vortex
+cargo run -p loom-cli --no-default-features -- \
+  sidecar embed --source data.vortex --ir program.l2ir --host vortex
+```
+
+Lance and Vortex adapters are present with documented format limitations
+(Lance 7.0.0 manifest and Vortex 0.74.0 footer lack general-purpose metadata
+dictionaries; the adapters return graceful `Ok(None)` for extract, documenting
+the limitation).
+
+### 6. Run the sidecar release gate
+
+```bash
+bash scripts/sidecar-overlay-test.sh
+```
 
 ## What Works Today
 
 | Area | Current state |
 |---|---|
-| Container | `LMC2(LMA1)` is the default distribution artifact; legacy `LMC1` wrapping `LMP1`/`LMT1` remains for internal coverage tests |
+| Sidecar overlay | `SidecarOverlay`/`ChunkBinding` with deterministic encode/decode and content-hash identity (FNV-1a); 4-gate fail-closed routing (`decide_sidecar_routing`) — Loom-native vs host-native fallback with typed diagnostics |
+| Sidecar + Parquet | Real extract/embed via Thrift `KeyValue` metadata; strippable by standard Arrow readers |
+| Sidecar + Lance/Vortex | Thin adapters with documented format limitations |
+| Lean FFI | `loom-sidecar-ffi` staticlib with C ABI (extract, verify, route, free); zero dependency on `loom-container` |
+| DuckDB | C++ extension; `LOOM_SIDECAR_ONLY=ON` builds against the lean FFI for sidecar-embedded host files; full path for `.loom` container files |
+| Container (`.loom`) | `LMC2(LMA1)` distribution artifact; `loom-self-ingress` handles IO |
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
-| Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, SMT-ready constraint IR (evidence targets; no in-TCB discharge in Phases A–C) |
-| Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
-| DuckDB | C++ extension in `contrib/duckdb-ext` exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage over default `LMC2(LMA1)` Arrow semantic artifacts; interpreter fallback is disabled by default and requires explicit `LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1` |
-| Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
-| Vortex ingress | Real `.vortex` files enter through `loom-vortex-ingress` and emit verifier-accepted `LMC2(LMA1)` by default; legacy `LMC1` emission helpers are internal-only |
-| Native execution | Native MLIR/LLVM/JIT path is gated behind Phase 40 validation; raw-copy kernel and decode dialect op have been removed from core production modules pending that gate. Phase 35 Arrow semantic JIT evidence remains in `loom-native-melior` |
-| Sidecar overlay | Host-neutral `SidecarOverlay`/`ChunkBinding` data model with content-hash identity (FNV-1a); 4-gate fail-closed routing (`decide_sidecar_routing`) chooses Loom-native track vs host-native reader fallback; Parquet sidecar extract/embed via Thrift KeyValue metadata; Vortex/Lance adapters with documented format limitations; `loom sidecar embed` CLI |
-| Verified lineage | Accepted artifacts can produce a safety provenance record naming verifier, solver, Lean, differential-validation evidence, and explicit TCB assumptions |
-
-This is still pre-production. The project favors narrow, verifier-gated vertical
-slices over broad unverified format support.
+| Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, SMT-ready constraint IR |
+| Arrow boundary | Arrow C Data Interface export |
+| Verified lineage | Safety provenance record naming verifier, solver, Lean, differential-validation evidence, and TCB assumptions |
 
 ## DuckDB Data Flow
 
-The DuckDB path is the easiest way to understand the project: Loom artifacts
-travel as data, the host verifies and decodes them, and DuckDB sees ordinary
-Arrow-shaped columns.
-
 ```mermaid
 flowchart LR
-    vortex["Optional real Vortex file<br/>fixtures/vortex/*.vortex"]
-    ingress["loom-vortex-ingress<br/>supported slice only"]
-    fixture["loom-fixtures<br/>deterministic test payloads"]
-    container["LMC1 .loom container<br/>LMP1 layout or LMT1 table"]
-    verifier["Loom artifact verifier<br/>fail closed on malformed input"]
+    parquet["Parquet / Lance / Vortex<br/>with embedded loom.sidecar.v1"]
+    sidecar_ffi["loom-sidecar-ffi<br/>extract + verify + route"]
+    container["LMC2(LMA1) .loom container<br/>via loom-self-ingress"]
     ffi["loom-ffi<br/>Arrow C Data Interface"]
-    duckext["contrib/duckdb-ext<br/>loom_scan(path)"]
+    duckext["DuckDB extension<br/>loom_scan(path)"]
     sql["DuckDB SQL<br/>SELECT ... FROM loom_scan(...)"]
-    result["Arrow columns<br/>rows and aggregates"]
+    result["Arrow columns"]
 
-    vortex --> ingress --> container
-    fixture --> container
-    container --> verifier --> ffi --> duckext --> sql --> result
+    parquet --> sidecar_ffi --> duckext --> sql --> result
+    container --> ffi --> duckext
 ```
 
-In the smoke test, DuckDB loads the extension and queries generated `.loom`
-fixtures:
+Two paths, one DuckDB surface:
+- **Sidecar path** (lean): host file → `loom-sidecar-ffi` → routing gate → Loom decode or host-native fallback
+- **Container path** (full): `.loom` file → `loom-ffi` → `loom-container` → Arrow
 
-```sql
-LOAD 'contrib/contrib/duckdb-ext/build/loom.duckdb_extension';
+## Container Quickstart (`.loom` files)
 
-SELECT id, flag, label
-FROM loom_scan('target/loom-duckdb-fixtures/mixed-table.loom');
+The legacy `.loom` container path remains available.
 
-SELECT COUNT(*), SUM(id), COUNT(label)
-FROM loom_scan('target/loom-duckdb-fixtures/mixed-table.loom');
-```
-
-## Quickstart
-
-### 1. Build and run focused Rust checks
-
-```bash
-cargo test -p loom-core
-cargo test -p loom-fixtures
-```
-
-### 2. Generate deterministic Loom fixtures
+### Generate fixtures
 
 ```bash
 cargo run -p loom-fixtures --bin emit_duckdb_payloads
 ls target/loom-duckdb-fixtures
 ```
 
-Useful generated files include:
-
-- `target/loom-duckdb-fixtures/bitpack-i32.loom`
-- `target/loom-duckdb-fixtures/for-i32.loom`
-- `target/loom-duckdb-fixtures/fsst-utf8.loom`
-- `target/loom-duckdb-fixtures/alp-f64.loom`
-- `target/loom-duckdb-fixtures/mixed-table.loom`
-
-### 3. Inspect, decode, and verify an artifact
+### Build the full DuckDB extension
 
 ```bash
-cargo run --bin loom -- inspect target/loom-duckdb-fixtures/mixed-table.loom
-cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
-cargo run --bin loom -- verify-artifact target/loom-duckdb-fixtures/mixed-table.loom
+cd contrib/duckdb-ext && mkdir -p build && cd build
+cmake .. -DLOOM_SIDECAR_ONLY=OFF
+make -j$(nproc)
 ```
 
-### 4. Run the DuckDB SQL smoke test
+### Query
+
+```sql
+LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
+
+SELECT id, flag, label
+FROM loom_scan('target/loom-duckdb-fixtures/mixed-table.loom');
+```
+
+### Inspect, decode, verify
 
 ```bash
-bash scripts/duckdb-smoke-test.sh
+cargo run -p loom-cli -- inspect target/loom-duckdb-fixtures/mixed-table.loom
+cargo run -p loom-cli -- decode target/loom-duckdb-fixtures/mixed-table.loom
+cargo run -p loom-cli -- verify-artifact target/loom-duckdb-fixtures/mixed-table.loom
 ```
-
-The script generates fixtures, builds `loom-ffi`, builds
-`contrib/duckdb-ext/build/loom.duckdb_extension`, downloads a pinned DuckDB CLI if one
-is not supplied through `DUCKDB_CLI`, and checks row/aggregate SQL results over
-`loom_scan(...)`.
-
-### 5. Try the narrow Vortex ingress slice
-
-```bash
-cargo run -p loom-vortex-ingress --bin emit_vortex_ingress_fixtures
-cargo run --bin loom -- ingest-vortex --inspect fixtures/vortex/int32-flat.vortex
-cargo run --bin loom -- ingest-vortex --emit-loom \
-  fixtures/vortex/int32-flat.vortex /tmp/int32-flat.loom
-cargo run --bin loom -- verify-artifact /tmp/int32-flat.loom
-```
-
-Unsupported Vortex layouts are expected to report diagnostics and fail closed,
-not silently emit invalid Loom artifacts.
-
-### 6. Run the full Arrow semantic source gate
-
-```bash
-bash scripts/full-arrow-semantic-compatibility-test.sh
-```
-
-This verifies the Phase 31 semantic path: source readers materialize Arrow
-batches, Loom encodes them as Arrow semantic payloads, the artifact verifier
-accepts the bytes, and decoded batches compare equal to the source/oracle Arrow
-batches.
-This is a source compatibility claim, not a claim that DuckDB SQL or native
-lowering supports every Arrow nested or logical type.
-
-### 7. Run the LMC2 wrapper gate
-
-```bash
-bash scripts/lmc2-arrow-semantic-container-test.sh
-```
-
-This verifies the Phase 33 distribution wrapper: source defaults and the
-new source-ingress `lmc2` entrypoints emit `LMC2(LMA1)`, the artifact verifier
-recognizes the wrapper and reports the inner Arrow semantic payload, and CLI
-reports keep native lowering unsupported instead of turning wrapper acceptance
-into native execution evidence. Direct `LMA1` bridge entrypoints have been
-removed from the public API; only `LMC2(LMA1)` remains as the default.
-
-### 8. Run the DuckDB LMC2 SQL surface gate
-
-```bash
-bash scripts/duckdb-lmc2-sql-surface-test.sh
-```
-
-This verifies the Phase 34 query surface: one-batch, multi-column
-primitive/Utf8/Boolean nullable `LMC2(LMA1)` artifacts work through
-`loom_scan(...)`, while Date32 logical and Struct nested fixtures fail closed
-with explicit unsupported diagnostics. Native Arrow semantic execution is
-covered by the separate engine-neutral Phase 35 gate and is not consumed by
-DuckDB yet.
-
-### 9. Run the native Arrow semantic execution gate
-
-```bash
-bash scripts/native-arrow-semantic-execution-test.sh
-```
-
-This verifies the Phase 35 native route: verifier-accepted `LMC2(LMA1)`
-artifacts execute through an engine-neutral backend for one-batch nullable
-`Boolean`, `Int32`, `Int64`, `Float32`, and `Float64` columns. Utf8, logical,
-nested, multi-batch, malformed, and verifier-rejected inputs fail closed.
-The raw-copy kernel has been removed from the core production path; native
-execution is gated behind Phase 40 validation.
-
-### 10. Run the verified-lineage closeout gate
-
-```bash
-bash scripts/verified-lineage-test.sh
-```
-
-This runs the MVP1.5 lineage matrix: Lean with zero `sorry`, Lean/Rust verifier
-correspondence, model/Rust trace consistency, native/model validation, and
-verified-lineage record tests. `loom_core::verified_lineage` records safety
-provenance for accepted artifacts only. It names evidence layers and TCB
-assumptions; it does not claim source correctness, verified compilation,
-end-to-end toolchain verification, performance, or production readiness.
-
-### 11. Run the production native-codegen stabilization gate
-
-```bash
-bash scripts/production-native-codegen-stabilization-test.sh
-```
-
-This verifies the Phase 43.2 stabilization layer over the real Phase 43.1
-MLIR/LLVM/JIT path. It rejects native-tool skip evidence, checks that the
-production/stabilization path does not use zero-buffer placeholders, reruns the
-Phase 43.1 realization gate, and covers replay/cache stability, production
-routing, adversarial output validation, cancellation checkpoints, resource
-ownership, and bounded soak evidence.
-
-The claim remains intentionally narrow: one-batch nullable fixed-width primitive
-`LMC2(LMA1)` artifacts only. This is not verified compilation,
-not a persistent production cache, not a DuckDB-native integration claim, not
-general Arrow shape support, and not a GA performance promise.
-
-### 12. Run the sidecar overlay gate
-
-```bash
-bash scripts/sidecar-overlay-test.sh
-```
-
-This verifies the Phase 50 sidecar overlay: `SidecarOverlay` and `ChunkBinding`
-types have deterministic encode/decode and content-hash identity, Parquet
-sidecar extract/embed roundtrips through Thrift KeyValue metadata, the `loom
-sidecar embed` CLI embeds a sidecar into a Parquet file, strippable overlay
-invariant holds (unknown `loom.*` keys ignored by standard Arrow readers), and
-Vortex/Lance adapters are present with documented format limitations.
 
 ## Repository Map
 
 | Path | Purpose |
 |---|---|
 | `crates/loom-ir-core` | Zero-dependency decode IR core — `SidecarOverlay`, `ChunkBinding`, routing, content-hash |
-| `crates/loom-container` | Packaging/distribution layer; depends on `loom-ir-core` |
-| `crates/loom-core` | Thin re-export shim delegating to `loom-ir-core` + `loom-container` |
-| `crates/loom-ffi` | C ABI boundary and Arrow C Data Interface export |
-| `crates/loom-cli` | `loom inspect`, `decode`, `verify-artifact`, `verify-l2core`, `ingest-vortex`, `sidecar embed` |
-| `crates/loom-fixtures` | Deterministic fixture/oracle generation for DuckDB and Rust tests |
-| `ingress/loom-parquet-ingress` | Parquet source ingress with sidecar extract/embed via KeyValue metadata |
-| `ingress/loom-vortex-ingress` | Vortex source ingress with sidecar adapter |
-| `ingress/loom-lance-ingress` | Lance source ingress with sidecar adapter |
+| `crates/loom-sidecar-ffi` | Lean C ABI for sidecar extract/verify/route (zero container dependency) |
+| `crates/loom-container` | `.loom` format layer — codecs, verifier, native lowering, lineage |
+| `crates/loom-self-ingress` | `.loom` file IO boundary (read/write/verify) |
+| `crates/loom-core` | Thin re-export shim for `loom-ir-core` + `loom-container` |
+| `crates/loom-ffi` | Full C ABI and Arrow C Data Interface (container path) |
+| `crates/loom-cli` | CLI; lean mode (`--no-default-features`) for sidecar embed, full mode for container ops |
+| `crates/loom-fixtures` | Deterministic fixture/oracle generation |
+| `ingress/loom-parquet-ingress` | Parquet ingress with sidecar extract/embed |
+| `ingress/loom-vortex-ingress` | Vortex ingress with sidecar adapter |
+| `ingress/loom-lance-ingress` | Lance ingress with sidecar adapter |
 | `crates/loom-native-melior` | Optional MLIR/melior/native-backend evidence path |
-| `contrib/duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |
-| `contrib/loom-iceberg-binding` | Iceberg binding placeholder (moved to contrib) |
-| `contrib/loom-dual-query-surface` | Dual-query surface placeholder (moved to contrib) |
+| `contrib/duckdb-ext` | C++ DuckDB extension |
 | `scripts` | Release gates and focused smoke tests |
 
 ## Design Shape
 
-Loom separates decoder distribution from host execution:
-
-```mermaid
-flowchart LR
-    data["Encoded data + Loom artifact"]
-    verify["Static verification<br/>safety, bounds, termination shape"]
-    arrow["Typed Arrow builder events<br/>legal output by construction"]
-    host["Host engine boundary<br/>Arrow C Data Interface"]
-    native["Optional bounded native lowering<br/>MLIR / LLVM / engine backend"]
-
-    data --> verify --> arrow --> host --> native
+```
+Parquet/Lance/Vortex      .loom container
+       │                       │
+       ▼                       ▼
+loom-sidecar-ffi         loom-self-ingress
+  (lean, 0 container)       (full path)
+       │                       │
+       ▼                       ▼
+  4-gate routing          loom-container
+  Loom decode /            codecs + verifier
+  host-native fallback
+       │                       │
+       └───────┬───────────────┘
+               ▼
+       DuckDB / Arrow consumer
 ```
 
-The important split:
-
-- **L1 declarative layout** describes physical structure: offsets, repetition,
-  RLE, bitpacking, FOR, dictionary, table columns.
-- **L2 total-function kernels** are reserved for compute that cannot be
-  expressed declaratively.
-- **The verifier owns safety and well-formedness**, not semantic truth. Wrong
-  but safe decoders still require oracle tests, signatures, checksums, or proof
-  obligations.
-- **The host owns scheduling and execution strategy**. Loom supplies a verified,
-  target-neutral decoder artifact; DuckDB, MLIR, or another engine decides how
-  to run it.
+- **Sidecar path**: Embed Loom IR in existing files, let DuckDB decide at query time.
+- **Container path**: Full `.loom` distribution for when you control the format end-to-end.
 
 ## Verification Gates
 
-Focused gates can be run individually:
-
 ```bash
+bash scripts/sidecar-overlay-test.sh
 bash scripts/container-negative-test.sh
 bash scripts/verifier-negative-test.sh
 bash scripts/artifact-verifier-test.sh
-bash scripts/complete-vortex-reader-test.sh
-bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
 bash scripts/lmc2-arrow-semantic-container-test.sh
 bash scripts/native-arrow-semantic-execution-test.sh
-bash scripts/sidecar-overlay-test.sh
 ```
 
-The broad release-style gate is:
+The broad release gate:
 
 ```bash
 bash scripts/mvp1-verify.sh
 ```
-
-`scripts/mvp1-verify.sh` runs the inherited `scripts/mvp0-verify.sh` gate first,
-including the full Arrow semantic, `LMC2(LMA1)` wrapper, and DuckDB LMC2 SQL
-surface gates, then runs the DuckDB source e2e gate and the native Arrow
-semantic execution gate.
-
-Formal and external tooling is explicit. Production verify stays oracle-free
-(no krun/Bitwuzla dependency). Missing Lean/TLC or LLVM/MLIR is not treated as
-success unless the corresponding opt-out environment variable is deliberately
-set by the caller.
 
 ## Why Loom Exists
 
