@@ -1197,7 +1197,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 51-02-PLAN.md — Self-ingress crate (`loom-self-ingress`) + CLI feature-gate for lean sidecar compilation (SC-3, SC-4)
+- [x] 51-02-PLAN.md — Self-ingress crate (`loom-self-ingress`) + CLI feature-gate for lean sidecar compilation (SC-3, SC-4)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
