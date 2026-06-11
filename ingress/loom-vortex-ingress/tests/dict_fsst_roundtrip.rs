@@ -9,8 +9,8 @@ use vortex_array::dtype::{DType, Nullability};
 use vortex_array::IntoArray;
 use vortex_array::VortexSessionExecute;
 
-use loom_fixtures::oracle;
-use loom_fixtures::vortex_reader;
+use loom_vortex_ingress::oracle;
+use loom_vortex_ingress::vortex_reader;
 
 #[test]
 fn dict_over_fsst_matches_vortex_oracle() {

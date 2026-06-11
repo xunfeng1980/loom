@@ -9,8 +9,8 @@ use vortex_array::dtype::{DType, Nullability};
 use vortex_array::VortexSessionExecute;
 use vortex_fsst::FSSTArray;
 
-use loom_fixtures::oracle;
-use loom_fixtures::vortex_reader;
+use loom_vortex_ingress::oracle;
+use loom_vortex_ingress::vortex_reader;
 
 fn make_fsst(rows: &[Option<&str>], training_rows: &[Option<&str>]) -> FSSTArray {
     let values = VarBinArray::from_iter(rows.iter().copied(), DType::Utf8(Nullability::Nullable));

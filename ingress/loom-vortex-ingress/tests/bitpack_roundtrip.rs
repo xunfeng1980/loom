@@ -17,8 +17,8 @@ use vortex_array::IntoArray;
 use vortex_array::VortexSessionExecute;
 use vortex_fastlanes::BitPackedData;
 
-use loom_fixtures::oracle;
-use loom_fixtures::vortex_reader;
+use loom_vortex_ingress::oracle;
+use loom_vortex_ingress::vortex_reader;
 
 static SESSION: LazyLock<vortex_session::VortexSession> = LazyLock::new(|| {
     let session = vortex_session::VortexSession::empty();

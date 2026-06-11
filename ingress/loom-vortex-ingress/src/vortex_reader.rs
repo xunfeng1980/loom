@@ -72,7 +72,7 @@ pub fn extract_validity(validity: Validity, len: usize) -> (Option<Vec<bool>>, b
         Validity::Array(bool_arr) => {
             // Execute the boolean array to canonical BoolArray, then collect
             // the bit buffer into a Vec<bool>. This is the only Vortex call
-            // in the validity path — it stays inside loom-fixtures.
+            // in the validity path — it stays inside loom-vortex-ingress.
             let mut ctx = LEGACY_SESSION.create_execution_ctx();
             let canonical = bool_arr
                 .execute::<BoolArray>(&mut ctx)
@@ -208,7 +208,7 @@ pub fn from_rle_array(arr: &RLEArray) -> LayoutNode {
 /// Inspect a Vortex [`FSSTArray`] and emit `LayoutNode::KernelEscape`.
 ///
 /// The returned node carries only Loom-owned `FsstParams` bytes. All Vortex
-/// buffers and child arrays are flattened inside `loom-fixtures`.
+/// buffers and child arrays are flattened inside `loom-vortex-ingress`.
 pub fn from_fsst_array(arr: &FSSTArray) -> LayoutNode {
     from_fsst_view(arr)
 }

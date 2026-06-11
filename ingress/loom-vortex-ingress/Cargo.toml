@@ -2,20 +2,30 @@
 name = "loom-vortex-ingress"
 version = "0.1.0"
 edition = "2021"
-description = "Isolated real Vortex file ingress bridge for Loom"
+description = "Vortex ingress bridge + reference fixtures and oracle decoder"
 
 [dependencies]
 arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 loom-ffi = { path = "../../crates/loom-ffi" }
 loom-source-ingress = { path = "../loom-source-ingress" }
-vortex-array = { workspace = true }
-vortex-buffer = "=0.74.0"
-vortex-file = "=0.74.0"
-vortex-io = "=0.74.0"
-vortex-layout = "=0.74.0"
-vortex-session = "=0.74.0"
+vortex-array     = { workspace = true }
+vortex-fastlanes = { workspace = true }
+vortex-fsst      = { workspace = true }
+vortex-buffer    = "=0.74.0"
+vortex-file      = "=0.74.0"
+vortex-io        = "=0.74.0"
+vortex-layout    = "=0.74.0"
+vortex-session   = "=0.74.0"
+
+[[bin]]
+name = "emit_arrow_semantic_lmc2_sql_fixture"
+path = "src/bin/emit_arrow_semantic_lmc2_sql_fixture.rs"
+
+[[bin]]
+name = "loom_fixture_timing"
+path = "src/bin/loom_fixture_timing.rs"
 
 [dev-dependencies]
 arrow = { workspace = true }
-vortex-fastlanes = { workspace = true }
+fastlanes = "=0.5.1"

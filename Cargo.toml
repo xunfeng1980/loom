@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/loom-ir-core",
     "crates/loom-ffi",
-    "crates/loom-fixtures",
     "contrib/loom-cli",
     "ingress/loom-vortex-ingress",
     "ingress/loom-source-ingress",
@@ -33,7 +32,7 @@ fnv = { version = "=1.0.7" }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.150" }
 
-# Vortex family — 0.74.0 pinned; only loom-fixtures may use these (D-02).
+# Vortex family — 0.74.0 pinned; only loom-vortex-ingress may use these (D-02).
 # Note: vortex-dict was merged into vortex-array in the 0.7x series;
 # dictionary encoding is accessed via vortex-array at 0.74.0.
 # STACK.md listed vortex-dict =0.74.0 but that version does not exist on crates.io

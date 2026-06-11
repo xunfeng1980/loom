@@ -5,7 +5,7 @@
 //!
 //! # Check #1 (compile): BufferHandle byte access + as_opt downcast
 //!
-//! Verified by `cargo build -p loom-fixtures` succeeding: the
+//! Verified by `cargo build -p loom-vortex-ingress` succeeding: the
 //! `packed_bytes` function in `vortex_reader` calls
 //! `packed_buf.as_host().as_ref()` and `array.as_opt::<BitPacked>()`.
 //! If either method does not exist, the build fails.
@@ -43,8 +43,8 @@ use vortex_array::IntoArray;
 use vortex_array::VortexSessionExecute;
 use vortex_fastlanes::BitPackedData;
 
-use loom_fixtures::oracle;
-use loom_fixtures::vortex_reader;
+use loom_vortex_ingress::oracle;
+use loom_vortex_ingress::vortex_reader;
 
 // ---------------------------------------------------------------------------
 // Session (must include fastlanes encodings for BitPackedData::encode)

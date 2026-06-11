@@ -13,7 +13,7 @@ use vortex_array::dtype::{DType, Nullability};
 use vortex_array::{IntoArray, VortexSessionExecute, LEGACY_SESSION};
 use vortex_fastlanes::BitPackedData;
 
-use loom_fixtures::{oracle, vortex_reader};
+use loom_vortex_ingress::{oracle, vortex_reader};
 
 fn main() {
     println!("Loom fixture timing (illustrative wall-clock, not a benchmark)");

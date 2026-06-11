@@ -3510,22 +3510,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "loom-fixtures"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "arrow-array",
- "arrow-schema",
- "fastlanes",
- "loom-ffi",
- "vortex-array",
- "vortex-buffer",
- "vortex-fastlanes",
- "vortex-fsst",
- "vortex-session",
-]
-
-[[package]]
 name = "loom-ir-core"
 version = "0.1.0"
 dependencies = [
@@ -3584,12 +3568,14 @@ dependencies = [
  "arrow",
  "arrow-array",
  "arrow-schema",
+ "fastlanes",
  "loom-ffi",
  "loom-source-ingress",
  "vortex-array",
  "vortex-buffer",
  "vortex-fastlanes",
  "vortex-file",
+ "vortex-fsst",
  "vortex-io",
  "vortex-layout",
  "vortex-session",

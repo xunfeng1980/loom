@@ -9,7 +9,7 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use loom_fixtures::corpus::CorpusBuilder;
+//! use loom_vortex_ingress::corpus::CorpusBuilder;
 //!
 //! let programs = CorpusBuilder::default()
 //!     .schema_variants(10)

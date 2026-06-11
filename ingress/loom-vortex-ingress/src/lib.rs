@@ -9,6 +9,9 @@
 
 pub mod sidecar_vortex;
 pub mod source_contract;
+pub mod corpus;
+pub mod oracle;
+pub mod vortex_reader;
 pub use source_contract::{
     bind_content_hash_to_vortex_data,
     extract_sidecar_bytes_from_vortex_buffer,
