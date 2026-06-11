@@ -3493,6 +3493,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-container"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-data",
+ "arrow-ipc",
+ "arrow-schema",
+ "fnv",
+ "fsst-rs",
+ "loom-ir-core",
+ "ron",
+ "serde",
+]
+
+[[package]]
 name = "loom-core"
 version = "0.1.0"
 dependencies = [

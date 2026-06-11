@@ -1,0 +1,18 @@
+[package]
+name = "loom-container"
+version = "0.1.0"
+edition = "2021"
+description = "Loom distribution container layer — packaging, codecs, Arrow semantic artifacts, native lowering"
+
+[dependencies]
+loom-ir-core  = { path = "../loom-ir-core" }
+arrow         = { workspace = true }
+arrow-array   = { workspace = true }
+arrow-buffer  = { workspace = true }
+arrow-schema  = { workspace = true }
+arrow-data    = { workspace = true }
+arrow-ipc     = { workspace = true }
+fsst          = { workspace = true }
+ron           = { workspace = true }
+serde         = { workspace = true }
+fnv           = { workspace = true }
