@@ -1174,11 +1174,28 @@ Plans:
 
 - [ ] TBD (run /gsd-spec-phase 44, then /gsd-plan-phase 44 to break down)
 
-### Phase 51: ABI Freeze and Compatibility Contract
+### Phase 51: Sidecar-DuckDB Decoupling and Loom Self-Ingress
 
-**Status:** Not started. (Moved from original Phase 44.)
+**Status:** Not started.
+**Goal:** Decouple the DuckDB sidecar path from `loom-container` so that DuckDB can read Parquet files with embedded Loom IR sidecars using only `loom-ir-core`. Reposition `loom-container` as the exclusive handler of the Loom native `.loom` format, and introduce `loom-self-ingress` as its IO boundary.
+**Depends on:** Phase 50 (sidecar overlay model), Phase 50.1 (container demotion / thin host adapters).
+**Requirements:** TBD
+**Success Criteria** (what must be TRUE):
+
+  1. A new `loom-sidecar-ffi` (or feature-gated `loom-ffi` lean path) exports sidecar decode/verify/routing functions via C ABI, depending only on `loom-ir-core` and `loom-parquet-ingress` — zero dependency on `loom-container`.
+  2. The DuckDB extension can load this lean FFI surface and query a Parquet file with embedded `loom.sidecar.v1` metadata through `loom_scan(...)`, using the Phase 50 routing gate to choose Loom-native decode vs. host-native reader fallback — without linking any container/codec/verifier modules.
+  3. A new `loom-self-ingress` crate wraps `loom-container` codecs for ingress/egress of `.loom` files (read, write, verify, inspect) — all `.loom`-format IO flows through this boundary, no other crate imports `loom-container` directly for file IO.
+  4. `loom-cli` splits into two compilation units so the `sidecar embed` command compiles without `loom-container`. The existing `inspect`/`decode`/`verify-artifact` subcommands move to use `loom-self-ingress`.
+  5. Full workspace build and test pass with the new dependency boundaries enforced (no accidental `loom-container` leak into the sidecar-DuckDB path).
+
+**Non-goals:** No changes to the `.loom` container format itself. No changes to the MLIR/LLVM native lowering path. The existing DuckDB `LMC2(LMA1)` Arrow semantic path through `loom-ffi` → `loom-container` remains functional but is now one of two paths (the `loom-container`-heavy path for `.loom` files, and the lean sidecar path for sidecar-embedded host files).
+**Plans:** 3 plans across 3 waves (Wave 1: lean sidecar FFI; Wave 2: loom-self-ingress + CLI split; Wave 3: DuckDB extension lean path + integration gate).
+
+### Phase 100: ABI Freeze and Compatibility Contract
+
+**Status:** Not started. (Moved from original Phase 44; renumbered from Phase 51.)
 **Goal:** Freeze the host native runtime ABI with a versioned, documented compatibility policy.
-**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), Phase 43.2 (production native codegen stabilization/readiness), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 51 entry blocker.
+**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), Phase 43.2 (production native codegen stabilization/readiness), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 100 entry blocker.
 **Requirements:** ABI2-01, ABI2-02, ABI2-03
 **Success Criteria** (what must be TRUE):
 
@@ -1206,11 +1223,11 @@ MVP1.5 P36→37→38→39 (no P35 dep) ───────┘
 MVP1.5 P36–41 ──> verified-lineage record ─┐
                                             ├─> MVP2 P42 (coverage, lineage-backed)
                                             └─> (attestation deferred)
-MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P51 ABI freeze
+MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P100 ABI freeze
       P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before GA
 
-Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P50.1 container demotion ──> P50 sidecar overlay
-      (P48–50 run independent of MVP2 chain; P49 is the substrate for future artifact-level hash)
+Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P50.1 container demotion ──> P50 sidecar overlay ──> P51 sidecar-DuckDB decoupling + self-ingress
+       (P48–51 run independent of MVP2 chain; P49 is the substrate for future artifact-level hash)
 ```
 
 ## Progress
@@ -1218,7 +1235,7 @@ Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P5
 **Execution Order:**
 MVP1 phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
 
-MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) are active with a non-linear dependency graph — see the "Milestone dependency summary" above.
+MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–51) are active with a non-linear dependency graph — see the "Milestone dependency summary" above.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -1271,8 +1288,9 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) ar
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
-| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 4/5 | In Progress|  |
-| 51. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete | 2026-06-11 |
+| 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 0/0 | Planned | - |
+| 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
 
