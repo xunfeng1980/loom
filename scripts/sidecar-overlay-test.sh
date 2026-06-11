@@ -23,6 +23,13 @@ else
     RST=""
 fi
 
+# ripgrep (rg) is required by check_marker; fail early with a clear message
+# if it is not installed, rather than a cryptic "command not found" later.
+if ! command -v rg >/dev/null 2>&1; then
+    echo "ERROR: ripgrep (rg) is required but not installed" >&2
+    exit 2
+fi
+
 info() { echo "${YLW}[sidecar-overlay]${RST} $*"; }
 ok() { echo "${GRN}[PASS]${RST} $*"; }
 fail() { echo "${RED}[FAIL]${RST} $*" >&2; }
