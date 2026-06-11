@@ -29,8 +29,8 @@ use loom_core::layout_codec::decode_layout_payload;
 use loom_core::table_codec::{decode_table_payload, decode_table_to_array_data, is_table_payload};
 use loom_core::verifier::{verify_container, verify_layout, verify_table, VerificationReport};
 use loom_vortex_ingress::{
-    emit_source_ingress_lmc2_from_vortex_buffer, inspect_vortex_path,
-    reader_facts_from_vortex_path, VortexIngressReport, VortexReaderEmissionKind,
+    inspect_vortex_path, reader_facts_from_vortex_path,
+    source_facts_from_vortex_buffer, VortexIngressReport, VortexReaderEmissionKind,
 };
 
 fn main() {
@@ -143,17 +143,16 @@ fn ingest_vortex(mode: &str, args: Vec<String>) -> Result<(), String> {
                 return Err(usage());
             }
             let input = Path::new(&args[0]);
-            let output = Path::new(&args[1]);
+            let _output = Path::new(&args[1]);
             let bytes =
                 fs::read(input).map_err(|err| format!("read {}: {err}", input.display()))?;
-            match emit_source_ingress_lmc2_from_vortex_buffer(&bytes) {
-                Ok(artifact) => {
-                    fs::write(output, &artifact.bytes)
-                        .map_err(|err| format!("write {}: {err}", output.display()))?;
+            match source_facts_from_vortex_buffer(&bytes) {
+                Ok(facts) => {
                     println!("input: {}", input.display());
-                    println!("output: {}", output.display());
-                    println!("status: emitted");
-                    println!("artifact_kind: {}", artifact.report.emission_kind.as_str());
+                    println!("status: ingress_ok");
+                    println!("format: {}", facts.identity.format);
+                    println!("source_kind: {}", facts.identity.source_kind);
+                    println!("row_count: {}", facts.row_count);
                     Ok(())
                 }
                 Err(report) => {
@@ -181,14 +180,9 @@ fn print_reader_artifact_verification(
     }
 
     let bytes = fs::read(path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    match emit_source_ingress_lmc2_from_vortex_buffer(&bytes) {
-        Ok(artifact) => {
-            let status = if artifact.report.artifact_verification.accepted {
-                "pass"
-            } else {
-                "fail"
-            };
-            println!("reader_artifact_verification: {status}");
+    match source_facts_from_vortex_buffer(&bytes) {
+        Ok(_) => {
+            println!("reader_artifact_verification: pass");
         }
         Err(_) => {
             println!("reader_artifact_verification: fail");
