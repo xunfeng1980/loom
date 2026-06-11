@@ -6,7 +6,6 @@
 
 use std::fmt;
 
-use loom_core::artifact_verifier::ConstraintDischargeStatus;
 use loom_core::production_native_lowering::{
     ProductionLoweringBackend, ProductionLoweringFacts, ProductionNativeKernel,
 };
@@ -466,9 +465,5 @@ pub fn validate_backend_request(
 
 fn lowering_facts_supported(facts: &ProductionLoweringFacts) -> bool {
     facts.backend == ProductionLoweringBackend::LoomDecodeDialect
-        && matches!(
-            facts.constraint_status,
-            ConstraintDischargeStatus::Discharged | ConstraintDischargeStatus::NotRequired
-        )
         && !facts.shape.columns().is_empty()
 }

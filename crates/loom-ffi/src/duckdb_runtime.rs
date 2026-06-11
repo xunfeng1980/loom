@@ -17,7 +17,7 @@ use loom_core::arrow_semantic_codec::{
 };
 use loom_core::artifact_verifier::{
     verify_artifact, ArtifactVerificationOptions, ArtifactVerificationReport,
-    ArtifactVerificationStatus, ConstraintDischargeStatus,
+    ArtifactVerificationStatus,
 };
 use loom_core::container_codec::decode_table_payload_maybe_container;
 use loom_core::l2_kernel_registry::L2KernelRegistry;
@@ -1037,7 +1037,7 @@ pub fn plan_duckdb_runtime(
     let runtime_decision =
         decide_runtime_execution(&loom_core::runtime_abi::RuntimeDecisionInput {
             artifact_status: artifact_report.status(),
-            constraint_status: constraint_status_for(&artifact_report),
+            constraints_discharged: false,
             production_lowering_supported,
             reader_support: reader_support_for(&artifact_report),
             emission_disposition: emission_disposition_for(&artifact_report),
@@ -1193,7 +1193,7 @@ fn build_plan_report(
         abi_version: RuntimeAbiVersion::CURRENT,
         artifact_digest: artifact_digest(artifact_bytes),
         facts_fingerprint: facts_fingerprint(&artifact_report),
-        solver_identity: "duckdb-no-solver".to_string(),
+        verifier_identity: "loom-artifact-verifier-v1".to_string(),
         production_lowering_fingerprint: production_fingerprint.clone(),
         backend_identity: runtime_backend_identity(),
         projection,
@@ -1339,13 +1339,6 @@ fn row_count_for(report: &ArtifactVerificationReport) -> u64 {
         .unwrap_or(0)
 }
 
-fn constraint_status_for(report: &ArtifactVerificationReport) -> ConstraintDischargeStatus {
-    report
-        .facts()
-        .map(|facts| facts.constraint_status)
-        .unwrap_or(ConstraintDischargeStatus::Failed)
-}
-
 fn reader_support_for(report: &ArtifactVerificationReport) -> RuntimeReaderSupport {
     match report.status() {
         ArtifactVerificationStatus::Accepted => RuntimeReaderSupport::Accepted,
@@ -1457,7 +1450,7 @@ fn facts_fingerprint(report: &ArtifactVerificationReport) -> String {
             .row_count_bound
             .map(|row_count| row_count.to_string())
             .unwrap_or_else(|| "unknown".to_string()),
-        facts.constraint_status.as_str(),
+        if facts.constraints_discharged { "discharged" } else { "collected" },
         facts.required_features.join("+")
     )
 }

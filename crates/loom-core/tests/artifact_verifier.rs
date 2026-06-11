@@ -11,7 +11,7 @@ use loom_core::artifact_verifier::{
     verify_artifact, verify_artifact_with_l2_core, ArtifactLoweringDiagnostic,
     ArtifactLoweringReadiness, ArtifactVerificationDiagnostic, ArtifactVerificationFacts,
     ArtifactVerificationOptions, ArtifactVerificationReport, ArtifactVerificationStage,
-    ArtifactVerificationStatus, ConstraintDischargeStatus,
+    ArtifactVerificationStatus,
 };
 use loom_core::container_codec::{wrap_layout_payload, wrap_table_payload, Feature};
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -160,7 +160,7 @@ fn accepted_report_exposes_facts() {
     facts.container_version = Some(1);
     facts.required_features = vec!["single_column_lmp1".to_string()];
     facts.payload_kind = Some("LMP1 layout".to_string());
-    facts.constraint_status = ConstraintDischargeStatus::NotRequired;
+    facts.constraints_discharged = false;
 
     let report = ArtifactVerificationReport::accepted(facts);
 
@@ -169,10 +169,7 @@ fn accepted_report_exposes_facts() {
     let facts = report.facts().expect("accepted reports expose facts");
     assert_eq!(facts.artifact_kind, "LMC1");
     assert_eq!(facts.container_version, Some(1));
-    assert_eq!(
-        facts.constraint_status,
-        ConstraintDischargeStatus::NotRequired
-    );
+    assert!(!facts.constraints_discharged);
 }
 
 #[test]
@@ -222,10 +219,6 @@ fn enum_display_strings_are_stable() {
     assert_eq!(ArtifactVerificationStage::Manifest.as_str(), "manifest");
     assert_eq!(ArtifactVerificationStage::L2Core.as_str(), "l2core");
     assert_eq!(
-        ArtifactVerificationStage::ConstraintDischarge.as_str(),
-        "constraint-discharge"
-    );
-    assert_eq!(
         ArtifactVerificationStage::LoweringReadiness.as_str(),
         "lowering-readiness"
     );
@@ -237,14 +230,7 @@ fn enum_display_strings_are_stable() {
         "unsupported"
     );
 
-    assert_eq!(
-        ConstraintDischargeStatus::CollectedOnly.as_str(),
-        "collected-only"
-    );
-    assert_eq!(ConstraintDischargeStatus::Discharged.as_str(), "discharged");
-    assert_eq!(ConstraintDischargeStatus::Failed.as_str(), "failed");
-    assert_eq!(ConstraintDischargeStatus::Unknown.as_str(), "unknown");
-    assert_eq!(ConstraintDischargeStatus::Skipped.as_str(), "skipped");
+
 }
 
 #[test]
@@ -478,10 +464,7 @@ fn verify_artifact_with_l2_core_fuses_verified_facts() {
     assert_eq!(facts.row_count_bound, Some(4));
     assert!(facts.l2_core.is_some());
     assert!(!facts.constraint_ids.is_empty());
-    assert_eq!(
-        facts.constraint_status,
-        ConstraintDischargeStatus::CollectedOnly
-    );
+    assert!(!facts.constraints_discharged);
     assert!(facts
         .constraint_ids
         .iter()
@@ -554,7 +537,10 @@ fn verify_artifact_without_l2_core_is_not_lowering_ready() {
 }
 
 #[test]
-fn verify_artifact_with_l2_core_keeps_collected_constraints_not_lowering_ready() {
+fn verify_artifact_with_l2_core_accepted_program_is_lowering_ready() {
+    // Phase A–C: production verify stays oracle-free. Lowering readiness is
+    // determined by acceptance + supported-shape-has-a-rule, not by
+    // constraints_discharged (which is always false until Phase D).
     let bytes = wrapped_i32_layout(4);
     let program = sample_l2core_program();
     let options = ArtifactVerificationOptions {
@@ -568,16 +554,13 @@ fn verify_artifact_with_l2_core_keeps_collected_constraints_not_lowering_ready()
     let facts = report
         .facts()
         .expect("accepted artifact should expose facts");
-    assert!(!facts.lowering_ready.ready);
+    assert!(!facts.constraints_discharged);
+    assert!(facts.lowering_ready.ready);
     assert_eq!(
         facts.lowering_ready.backend.as_deref(),
         Some("textual-mlir")
     );
-    assert!(facts
-        .lowering_ready
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "constraints-not-discharged"));
+    assert!(facts.lowering_ready.diagnostics.is_empty());
 }
 
 #[test]

@@ -5,7 +5,7 @@
 //! signed attestation transport.
 
 use crate::artifact_verifier::{
-    ArtifactVerificationReport, ArtifactVerificationStatus, ConstraintDischargeStatus,
+    ArtifactVerificationReport, ArtifactVerificationStatus,
 };
 use crate::native_arrow_semantic::NativeArrowSemanticModelValidationReport;
 
@@ -13,7 +13,6 @@ use crate::native_arrow_semantic::NativeArrowSemanticModelValidationReport;
 pub enum VerifiedLineageDiagnosticCode {
     ArtifactNotAccepted,
     MissingVerifierFacts,
-    ConstraintDischargeRequired,
     NativeModelValidationFailed,
 }
 
@@ -22,7 +21,6 @@ impl VerifiedLineageDiagnosticCode {
         match self {
             Self::ArtifactNotAccepted => "artifact-not-accepted",
             Self::MissingVerifierFacts => "missing-verifier-facts",
-            Self::ConstraintDischargeRequired => "constraint-discharge-required",
             Self::NativeModelValidationFailed => "native-model-validation-failed",
         }
     }
@@ -52,7 +50,6 @@ impl VerifiedLineageDiagnostic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerifiedLineageEvidenceLayer {
     RustVerifierStructuralCheck,
-    BitwuzlaSmtDischarge,
     LeanModeledSoundnessTheorem,
     LeanRustVerifierDifferential,
     ModelRustInterpreterDifferential,
@@ -63,7 +60,6 @@ impl VerifiedLineageEvidenceLayer {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::RustVerifierStructuralCheck => "rust-verifier-structural-check",
-            Self::BitwuzlaSmtDischarge => "bitwuzla-smt-discharge",
             Self::LeanModeledSoundnessTheorem => "lean-modeled-soundness-theorem",
             Self::LeanRustVerifierDifferential => "lean-rust-verifier-differential",
             Self::ModelRustInterpreterDifferential => "model-rust-interpreter-differential",
@@ -207,31 +203,6 @@ pub fn build_verified_lineage_record(
         "loom_core::artifact_verifier",
         "artifact/container/schema/facts acceptance passed fail-closed structural verification",
     )];
-
-    if !facts.constraint_ids.is_empty()
-        && facts.constraint_status != ConstraintDischargeStatus::Discharged
-    {
-        return Err(VerifiedLineageDiagnostic::new(
-            VerifiedLineageDiagnosticCode::ConstraintDischargeRequired,
-            "$.facts.constraint_status",
-            "artifacts with collected constraints require discharged solver evidence before a positive verified-lineage record",
-        ));
-    }
-
-    let solver_status = match facts.constraint_status {
-        ConstraintDischargeStatus::Discharged => VerifiedLineageEvidenceStatus::Discharged,
-        ConstraintDischargeStatus::NotRequired => VerifiedLineageEvidenceStatus::NotRequired,
-        ConstraintDischargeStatus::CollectedOnly
-        | ConstraintDischargeStatus::Failed
-        | ConstraintDischargeStatus::Unknown
-        | ConstraintDischargeStatus::Skipped => VerifiedLineageEvidenceStatus::NotRun,
-    };
-    evidence.push(VerifiedLineageEvidence::new(
-        VerifiedLineageEvidenceLayer::BitwuzlaSmtDischarge,
-        solver_status,
-        "loom_core::artifact_verifier::apply_solver_discharge",
-        "range/arithmetic bad-state obligations are discharged when required; not-required means this artifact exposed no solver obligations",
-    ));
 
     let l2_scope_status = if facts.l2_core.is_some() {
         VerifiedLineageEvidenceStatus::CorpusValidated

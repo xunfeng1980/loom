@@ -11,7 +11,6 @@ members = [
     "ingress/loom-parquet-ingress",
     "contrib/loom-iceberg-binding",
     "crates/loom-native-melior",
-    "crates/loom-solver-smt",
 ]
 
 # Shared dependency versions — all downstream crates reference these via `.workspace = true`.

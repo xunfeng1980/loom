@@ -1,5 +1,5 @@
 use arrow_schema::DataType;
-use loom_core::artifact_verifier::ConstraintDischargeStatus;
+
 use loom_core::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
     ProductionLoweringShape,
@@ -31,7 +31,7 @@ fn runtime_cache_key() -> RuntimeCacheKey {
         abi_version: RuntimeAbiVersion::CURRENT,
         artifact_digest: "artifact-a".to_string(),
         facts_fingerprint: "facts-a".to_string(),
-        solver_identity: "bitwuzla-a".to_string(),
+        verifier_identity: "bitwuzla-a".to_string(),
         production_lowering_fingerprint: "lowering-a".to_string(),
         backend_identity: RuntimeBackendIdentity {
             backend: NATIVE_BACKEND_NAME.to_string(),
@@ -55,7 +55,7 @@ fn lowering_facts() -> ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
         payload_kind: "LMT1 table".to_string(),
-        constraint_status: ConstraintDischargeStatus::Discharged,
+        constraints_discharged: false,
         shape: ProductionLoweringShape::PrimitiveTable {
             row_count: 4,
             columns: vec![ProductionColumnShape {
@@ -163,7 +163,12 @@ fn missing_cache_and_lowering_facts_fail_closed() {
 fn unsupported_lowering_facts_fail_closed() {
     let mut input = request_input();
     let mut facts = lowering_facts();
-    facts.constraint_status = ConstraintDischargeStatus::CollectedOnly;
+    // Use an actually unsupported shape (empty columns) to trigger the reject
+    // path, since constraints_discharged no longer gates lowering facts.
+    facts.shape = loom_core::production_native_lowering::ProductionLoweringShape::PrimitiveTable {
+        row_count: 4,
+        columns: vec![],
+    };
     input.lowering_facts = Some(facts);
 
     let report = validate_backend_request(input).expect_err("unsupported facts should reject");

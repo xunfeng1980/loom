@@ -3,7 +3,7 @@ use loom_core::arrow_buffer_lowering::{
     lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 use loom_core::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
+    ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::check_production_lowering_support;
@@ -24,7 +24,7 @@ fn accepted_table() -> ArtifactVerificationReport {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMT1 table".to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = ConstraintDischargeStatus::Discharged;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(VerifiedArtifactFacts {
         artifact_version: 1,
         required_features: vec!["test.production".to_string()],
@@ -42,6 +42,7 @@ fn accepted_table() -> ArtifactVerificationReport {
         capability_summary: Vec::new(),
         constraint_ids: vec!["c0".to_string()],
         proof_obligation_ids: vec!["p0".to_string()],
+        kloom_discharged: true,
     });
     ArtifactVerificationReport::accepted(facts)
 }

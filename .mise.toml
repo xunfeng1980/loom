@@ -4,14 +4,13 @@ java = "temurin-21.0.8+9.0.LTS"
 [env]
 LOOM_EXPECTED_MLIR_MAJOR = "22"
 LOOM_ALLOW_NATIVE_TOOL_SKIP = "0"
-LOOM_ALLOW_SOLVER_SKIP = "0"
 
 [tasks.formal-tools]
 description = "Install Lean and TLC tools required by formal verifier gates"
 run = "scripts/install-formal-tools.sh"
 
 [tasks.external-tools]
-description = "Install LLVM/MLIR and Bitwuzla tools required by backend and solver gates"
+description = "Install LLVM/MLIR tools required by backend; Bitwuzla is optional (evidence layer only, not production-gated)"
 run = "scripts/install-external-tools.sh"
 
 [tasks.tools]

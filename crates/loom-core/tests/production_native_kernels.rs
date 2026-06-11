@@ -1,7 +1,7 @@
 use arrow_schema::DataType;
 use loom_core::arrow_buffer_lowering::plan_arrow_buffers_from_decode_dialect;
 use loom_core::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
+    ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::decode_dialect::emit_decode_dialect_text;
 use loom_core::l1_model::{LayoutDescription, LayoutNode};
@@ -46,14 +46,15 @@ fn l2_facts(output_schema: Vec<OutputSchemaFact>) -> VerifiedArtifactFacts {
         capability_summary: Vec::new(),
         constraint_ids: vec!["c0".to_string()],
         proof_obligation_ids: vec!["p0".to_string()],
+        kloom_discharged: true,
     }
 }
 
-fn accepted_table(status: ConstraintDischargeStatus) -> ArtifactVerificationReport {
+fn accepted_table() -> ArtifactVerificationReport {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMT1 table".to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = status;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![
         output("id", DataType::Int64),
         output("score", DataType::Float64),
@@ -160,7 +161,7 @@ fn dictionary_rle_and_kernel_escape_reject_fail_closed() {
 
 #[test]
 fn multi_column_table_lowers_through_dialect_and_buffer_plan() {
-    let report = accepted_table(ConstraintDischargeStatus::Discharged);
+    let report = accepted_table();
     let support = check_production_lowering_support(&report);
     assert!(
         support.is_supported(),
@@ -178,13 +179,10 @@ fn multi_column_table_lowers_through_dialect_and_buffer_plan() {
 }
 
 #[test]
-fn non_discharged_constraints_block_kernel_expansion() {
-    let report = accepted_table(ConstraintDischargeStatus::CollectedOnly);
+fn accepted_table_is_supported_regardless_of_constraint_status() {
+    // Phase A–C: lowering no longer gates on constraints_discharged.
+    let report = accepted_table();
     let support = check_production_lowering_support(&report);
 
-    assert!(!support.is_supported());
-    assert_eq!(
-        support.first_error().expect("diagnostic").code,
-        ProductionLoweringDiagnosticCode::ConstraintsNotDischarged
-    );
+    assert!(support.is_supported(), "unexpected diagnostics: {:?}", support.diagnostics());
 }

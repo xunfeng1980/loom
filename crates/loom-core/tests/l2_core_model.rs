@@ -73,6 +73,7 @@ fn verifier_10_verified_artifact_facts_record_lowering_preconditions() {
             "c-loop-decreases".to_string(),
         ],
         vec!["VERIFIER-10".to_string()],
+        true,
     );
 
     assert_eq!(facts.artifact_version, 1);

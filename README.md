@@ -21,7 +21,7 @@ and C FFI, and query them from DuckDB through `loom_scan(...)`.
 |---|---|
 | Container | `LMC2(LMA1)` is the default distribution artifact; legacy `LMC1` wrapping `LMP1`/`LMT1` remains for internal coverage tests |
 | Encodings | Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST, ALP Float32/Float64 |
-| Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, Bitwuzla-backed SMT evidence |
+| Verification | Container/layout/table verifier, full-verifier foundation, artifact verifier, SMT-ready constraint IR (evidence targets; no in-TCB discharge in Phases A–C) |
 | Arrow boundary | Rust decode core exports Arrow-compatible arrays through the Arrow C Data Interface |
 | DuckDB | C++ extension in `contrib/duckdb-ext` exposes `loom_scan('<artifact.loom>')` for SQL smoke coverage over default `LMC2(LMA1)` Arrow semantic artifacts; interpreter fallback is disabled by default and requires explicit `LOOM_DUCKDB_ALLOW_INTERPRETER_FALLBACK=1` |
 | Source compatibility | Parquet, Lance, and Vortex sources that materialize as Arrow can emit verifier-accepted `LMC2(LMA1)` semantic distribution artifacts |
@@ -98,16 +98,6 @@ Useful generated files include:
 cargo run --bin loom -- inspect target/loom-duckdb-fixtures/mixed-table.loom
 cargo run --bin loom -- decode target/loom-duckdb-fixtures/mixed-table.loom
 cargo run --bin loom -- verify-artifact target/loom-duckdb-fixtures/mixed-table.loom
-```
-
-Solver-backed verification is available when Bitwuzla is installed through the
-managed external-tool path:
-
-```bash
-mise run external-tools
-LOOM_REQUIRE_SOLVER=1 cargo run --bin loom -- \
-  verify-artifact --solver-bitwuzla --l2core-sample \
-  target/loom-duckdb-fixtures/bitpack-i32.loom
 ```
 
 ### 4. Run the DuckDB SQL smoke test
@@ -227,7 +217,6 @@ general Arrow shape support, and not a GA performance promise.
 | `crates/loom-fixtures` | Deterministic fixture/oracle generation for DuckDB and Rust tests |
 | `ingress/loom-vortex-ingress` | Isolated real Vortex file ingress boundary |
 | `crates/loom-native-melior` | Optional MLIR/melior/native-backend evidence path |
-| `crates/loom-solver-smt` | Optional SMT solver integration, currently Bitwuzla-primary |
 | `contrib/duckdb-ext` | C++ DuckDB extension exposing `loom_scan(...)` |
 | `contrib/loom-iceberg-binding` | Iceberg binding placeholder (moved to contrib) |
 | `contrib/loom-dual-query-surface` | Dual-query surface placeholder (moved to contrib) |
@@ -270,7 +259,6 @@ bash scripts/container-negative-test.sh
 bash scripts/verifier-negative-test.sh
 bash scripts/artifact-verifier-test.sh
 bash scripts/complete-vortex-reader-test.sh
-bash scripts/solver-verifier-test.sh
 bash scripts/production-native-lowering-test.sh
 bash scripts/full-arrow-semantic-compatibility-test.sh
 bash scripts/lmc2-arrow-semantic-container-test.sh
@@ -288,9 +276,10 @@ including the full Arrow semantic, `LMC2(LMA1)` wrapper, and DuckDB LMC2 SQL
 surface gates, then runs the DuckDB source e2e gate and the native Arrow
 semantic execution gate.
 
-Formal and external tooling is explicit. Missing Lean/TLC, LLVM/MLIR, or
-Bitwuzla is not treated as success unless the corresponding opt-out environment
-variable is deliberately set by the caller.
+Formal and external tooling is explicit. Production verify stays oracle-free
+(no krun/Bitwuzla dependency). Missing Lean/TLC or LLVM/MLIR is not treated as
+success unless the corresponding opt-out environment variable is deliberately
+set by the caller.
 
 ## Why Loom Exists
 

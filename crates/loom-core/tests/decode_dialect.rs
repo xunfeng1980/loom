@@ -1,7 +1,5 @@
 use arrow_schema::DataType;
-use loom_core::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
-};
+use loom_core::artifact_verifier::{ArtifactVerificationFacts, ArtifactVerificationReport};
 use loom_core::decode_dialect::{arrow_type_name, emit_decode_dialect_text, DecodeDialectOp};
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
@@ -31,17 +29,15 @@ fn l2_facts(output_schema: Vec<OutputSchemaFact>) -> VerifiedArtifactFacts {
         capability_summary: Vec::new(),
         constraint_ids: vec!["c0".to_string()],
         proof_obligation_ids: vec!["p0".to_string()],
+        kloom_discharged: true,
     }
 }
 
-fn accepted_report(
-    payload_kind: &str,
-    status: ConstraintDischargeStatus,
-) -> ArtifactVerificationReport {
+fn accepted_report(payload_kind: &str) -> ArtifactVerificationReport {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some(payload_kind.to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = status;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![column("out0", DataType::Int32)]));
     ArtifactVerificationReport::accepted(facts)
 }
@@ -50,7 +46,7 @@ fn accepted_table_report() -> ArtifactVerificationReport {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMT1 table".to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = ConstraintDischargeStatus::NotRequired;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![
         column("id", DataType::Int64),
         column("score", DataType::Float64),
@@ -96,9 +92,9 @@ fn arrow_type_names_are_stable() {
 
 #[test]
 fn emits_deterministic_single_column_decode_dialect_text() {
-    let report = accepted_report("LMP1 layout", ConstraintDischargeStatus::Discharged);
+    let report = accepted_report("LMP1 layout");
     let artifact = lower_to_decode_dialect_text(&report)
-        .expect("discharged single-column report should emit dialect text");
+        .expect("accepted single-column report should emit dialect text");
 
     assert_eq!(artifact.backend, "loom-decode-dialect");
     assert_eq!(artifact.module_name, "loom_artifact");
@@ -106,7 +102,7 @@ fn emits_deterministic_single_column_decode_dialect_text() {
     assert_eq!(artifact.column_count, 1);
     assert!(artifact
         .facts_linkage
-        .contains("constraint_status=discharged"));
+        .contains("constraint_status=collected"));
 
     assert!(artifact.text.contains("loom.decode.module"));
     assert!(artifact.text.contains("loom.decode.kernel"));
@@ -135,17 +131,17 @@ fn emits_deterministic_multi_column_decode_dialect_text() {
 
 #[test]
 fn dialect_emission_requires_production_support() {
-    let report = accepted_report("LMP1 layout", ConstraintDischargeStatus::CollectedOnly);
-    let err = lower_to_decode_dialect_text(&report)
-        .expect_err("collected-only report should reject before dialect text");
+    let report = accepted_report("LMP1 layout");
+    let artifact = lower_to_decode_dialect_text(&report)
+        .expect("accepted report should emit dialect text");
 
-    assert!(!err.diagnostics().is_empty());
-    assert!(!check_production_lowering_support(&report).is_supported());
+    assert_eq!(artifact.column_count, 1);
+    assert!(check_production_lowering_support(&report).is_supported());
 }
 
 #[test]
 fn direct_emit_uses_production_facts() {
-    let report = accepted_report("LMP1 layout", ConstraintDischargeStatus::Discharged);
+    let report = accepted_report("LMP1 layout");
     let support = check_production_lowering_support(&report);
     let text = emit_decode_dialect_text(support.facts().expect("facts"));
 

@@ -10,8 +10,7 @@ use std::fmt;
 use arrow_schema::DataType;
 
 use crate::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ArtifactVerificationStatus,
-    ConstraintDischargeStatus,
+    ArtifactVerificationReport, ArtifactVerificationStatus,
 };
 use crate::decode_dialect::{emit_decode_dialect_text, DecodeDialectTextArtifact};
 use crate::l1_model::{LayoutDescription, LayoutNode};
@@ -124,7 +123,7 @@ pub struct ProductionLoweringFacts {
     pub backend: ProductionLoweringBackend,
     pub artifact_kind: String,
     pub payload_kind: String,
-    pub constraint_status: ConstraintDischargeStatus,
+    pub constraints_discharged: bool,
     pub shape: ProductionLoweringShape,
 }
 
@@ -212,8 +211,6 @@ pub fn check_production_lowering_support(
         );
     }
 
-    check_constraint_status(facts, &mut support);
-
     let Some(payload_kind) = facts.payload_kind.as_deref() else {
         support.push(
             ProductionLoweringDiagnosticCode::UnsupportedPayload,
@@ -270,7 +267,8 @@ pub fn check_production_lowering_support(
             backend: ProductionLoweringBackend::LoomDecodeDialect,
             artifact_kind: facts.artifact_kind.clone(),
             payload_kind: payload_kind.to_string(),
-            constraint_status: facts.constraint_status,
+            // Phase A–C: no in-TCB constraint discharge.
+            constraints_discharged: false,
             shape,
         });
     }
@@ -289,27 +287,6 @@ pub fn lower_to_decode_dialect_text(
         .facts()
         .expect("supported report must expose production lowering facts");
     Ok(emit_decode_dialect_text(facts))
-}
-
-fn check_constraint_status(
-    facts: &ArtifactVerificationFacts,
-    support: &mut ProductionLoweringSupportReport,
-) {
-    if matches!(
-        facts.constraint_status,
-        ConstraintDischargeStatus::Discharged | ConstraintDischargeStatus::NotRequired
-    ) {
-        return;
-    }
-
-    support.push(
-        ProductionLoweringDiagnosticCode::ConstraintsNotDischarged,
-        "$.facts.constraint_status",
-        format!(
-            "production native lowering requires discharged or not-required constraints, got {}",
-            facts.constraint_status.as_str()
-        ),
-    );
 }
 
 fn supported_columns(

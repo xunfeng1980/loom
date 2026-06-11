@@ -56,7 +56,7 @@ pub struct DecodeDialectModule {
     pub artifact_kind: String,
     pub payload_kind: String,
     pub row_count: u64,
-    pub constraint_status: String,
+    pub constraints_discharged: bool,
     pub columns: Vec<ProductionColumnShape>,
 }
 
@@ -80,7 +80,7 @@ pub fn emit_decode_dialect_text(facts: &ProductionLoweringFacts) -> DecodeDialec
         escape(&module.artifact_kind),
         escape(&module.payload_kind),
         module.row_count,
-        module.constraint_status,
+        if module.constraints_discharged { "discharged" } else { "collected" },
         facts.backend.as_str(),
         module.columns.len()
     ));
@@ -136,7 +136,7 @@ pub fn emit_decode_dialect_text(facts: &ProductionLoweringFacts) -> DecodeDialec
             "artifact_kind={};payload_kind={};constraint_status={};rows={};columns={}",
             module.artifact_kind,
             module.payload_kind,
-            module.constraint_status,
+            if module.constraints_discharged { "discharged" } else { "collected" },
             module.row_count,
             module.columns.len()
         ),
@@ -151,7 +151,7 @@ impl From<&ProductionLoweringFacts> for DecodeDialectModule {
             artifact_kind: facts.artifact_kind.clone(),
             payload_kind: facts.payload_kind.clone(),
             row_count: facts.shape.row_count(),
-            constraint_status: facts.constraint_status.as_str().to_string(),
+            constraints_discharged: facts.constraints_discharged,
             columns: facts.shape.columns().to_vec(),
         }
     }

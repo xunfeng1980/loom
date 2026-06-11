@@ -5,7 +5,7 @@ use loom_core::arrow_buffer_lowering::{
     reference_zeroed_value_bytes, ArrowValidityPlan, PrimitiveArrowType,
 };
 use loom_core::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
+    ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
@@ -35,6 +35,7 @@ fn l2_facts(output_schema: Vec<OutputSchemaFact>) -> VerifiedArtifactFacts {
         capability_summary: Vec::new(),
         constraint_ids: vec!["c0".to_string()],
         proof_obligation_ids: vec!["p0".to_string()],
+        kloom_discharged: true,
     }
 }
 
@@ -42,7 +43,7 @@ fn accepted_report(output_schema: Vec<OutputSchemaFact>) -> ArtifactVerification
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMT1 table".to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = ConstraintDischargeStatus::Discharged;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(output_schema));
     ArtifactVerificationReport::accepted(facts)
 }

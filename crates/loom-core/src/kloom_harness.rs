@@ -42,8 +42,8 @@ impl KloomHarnessError {
 /// `ProducedTrace` means krun ran and emitted a usable reference trace.
 /// `SkippedRefereeAbsent` means krun/kompile was missing or timed out — the
 /// referee is absent and the gate should record a skip, not a hard fail.
-/// `UnsupportedProgram` means the program contains constructs (Min/Max/Bytes)
-/// that the harness cannot faithfully serialize to kloom syntax.
+/// `UnsupportedProgram` means the program contains constructs (`Bytes`
+/// constants) that the harness cannot faithfully serialize to kloom syntax.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KOracleOutcome {
     ProducedTrace(Vec<String>),

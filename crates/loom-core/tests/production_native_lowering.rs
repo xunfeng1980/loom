@@ -1,6 +1,6 @@
 use arrow_schema::DataType;
 use loom_core::artifact_verifier::{
-    ArtifactVerificationFacts, ArtifactVerificationReport, ConstraintDischargeStatus,
+    ArtifactVerificationFacts, ArtifactVerificationReport,
 };
 use loom_core::l2_core::{OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_core::production_native_lowering::{
@@ -23,6 +23,7 @@ fn l2_facts(output_schema: Vec<OutputSchemaFact>) -> VerifiedArtifactFacts {
         capability_summary: Vec::new(),
         constraint_ids: vec!["c0".to_string()],
         proof_obligation_ids: vec!["p0".to_string()],
+        kloom_discharged: true,
     }
 }
 
@@ -36,13 +37,13 @@ fn column(builder_id: &str, arrow_type: DataType, nullable: bool) -> OutputSchem
 
 fn accepted_report(
     payload_kind: &str,
-    constraint_status: ConstraintDischargeStatus,
     output_schema: Vec<OutputSchemaFact>,
 ) -> ArtifactVerificationReport {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some(payload_kind.to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = constraint_status;
+    // Phase A–C: constraints_discharged is always false in production.
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(output_schema));
     ArtifactVerificationReport::accepted(facts)
 }
@@ -86,10 +87,9 @@ fn supported_primitive_type_matrix_is_explicit() {
 }
 
 #[test]
-fn discharged_single_column_layout_is_supported() {
+fn accepted_single_column_layout_is_supported() {
     let report = accepted_report(
         "LMP1 layout",
-        ConstraintDischargeStatus::Discharged,
         vec![column("out0", DataType::Int32, false)],
     );
     let support = check_production_lowering_support(&report);
@@ -103,10 +103,7 @@ fn discharged_single_column_layout_is_supported() {
     assert_eq!(facts.backend, ProductionLoweringBackend::LoomDecodeDialect);
     assert_eq!(facts.artifact_kind, "LMC1");
     assert_eq!(facts.payload_kind, "LMP1 layout");
-    assert_eq!(
-        facts.constraint_status,
-        ConstraintDischargeStatus::Discharged
-    );
+    assert!(!facts.constraints_discharged);
     match &facts.shape {
         ProductionLoweringShape::SingleColumnPrimitive { row_count, column } => {
             assert_eq!(*row_count, 4);
@@ -119,10 +116,9 @@ fn discharged_single_column_layout_is_supported() {
 }
 
 #[test]
-fn not_required_table_is_supported() {
+fn accepted_table_is_supported() {
     let report = accepted_report(
         "LMT1 table",
-        ConstraintDischargeStatus::NotRequired,
         vec![
             column("id", DataType::Int64, false),
             column("score", DataType::Float64, false),
@@ -148,24 +144,18 @@ fn not_required_table_is_supported() {
 }
 
 #[test]
-fn collected_failed_unknown_and_skipped_constraints_reject() {
-    for status in [
-        ConstraintDischargeStatus::CollectedOnly,
-        ConstraintDischargeStatus::Failed,
-        ConstraintDischargeStatus::Unknown,
-        ConstraintDischargeStatus::Skipped,
-    ] {
-        let report = accepted_report(
-            "LMP1 layout",
-            status,
-            vec![column("out0", DataType::Int32, false)],
-        );
-        assert_eq!(
-            first_code(&report),
-            ProductionLoweringDiagnosticCode::ConstraintsNotDischarged,
-            "{status:?}"
-        );
-    }
+fn accepted_program_with_collected_constraints_is_supported() {
+    // Phase A–C: lowering no longer gates on constraints_discharged.
+    let report = accepted_report(
+        "LMP1 layout",
+        vec![column("out0", DataType::Int32, false)],
+    );
+    let support = check_production_lowering_support(&report);
+    assert!(
+        support.is_supported(),
+        "unexpected diagnostics: {:?}",
+        support.diagnostics()
+    );
 }
 
 #[test]
@@ -182,7 +172,7 @@ fn missing_facts_reject() {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMP1 layout".to_string());
     facts.row_count_bound = Some(4);
-    facts.constraint_status = ConstraintDischargeStatus::Discharged;
+    facts.constraints_discharged = false;
     let report = ArtifactVerificationReport::accepted(facts);
 
     assert_eq!(
@@ -195,7 +185,7 @@ fn missing_facts_reject() {
 fn missing_row_bound_rejects() {
     let mut facts = ArtifactVerificationFacts::new("LMC1");
     facts.payload_kind = Some("LMP1 layout".to_string());
-    facts.constraint_status = ConstraintDischargeStatus::Discharged;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(l2_facts(vec![column("out0", DataType::Int32, false)]));
     let report = ArtifactVerificationReport::accepted(facts);
 
@@ -209,7 +199,6 @@ fn missing_row_bound_rejects() {
 fn unsupported_payload_type_and_nullability_reject() {
     let payload = accepted_report(
         "LMP2 future",
-        ConstraintDischargeStatus::Discharged,
         vec![column("out0", DataType::Int32, false)],
     );
     assert_eq!(
@@ -219,7 +208,6 @@ fn unsupported_payload_type_and_nullability_reject() {
 
     let ty = accepted_report(
         "LMP1 layout",
-        ConstraintDischargeStatus::Discharged,
         vec![column("out0", DataType::Utf8, false)],
     );
     assert_eq!(
@@ -229,7 +217,6 @@ fn unsupported_payload_type_and_nullability_reject() {
 
     let nullable = accepted_report(
         "LMP1 layout",
-        ConstraintDischargeStatus::Discharged,
         vec![column("out0", DataType::Int32, true)],
     );
     assert_eq!(
@@ -242,7 +229,6 @@ fn unsupported_payload_type_and_nullability_reject() {
 fn single_column_payload_rejects_multiple_columns() {
     let report = accepted_report(
         "LMP1 layout",
-        ConstraintDischargeStatus::Discharged,
         vec![
             column("id", DataType::Int32, false),
             column("score", DataType::Float32, false),

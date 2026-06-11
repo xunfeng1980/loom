@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use crate::artifact_verifier::{ArtifactVerificationStatus, ConstraintDischargeStatus};
+use crate::artifact_verifier::ArtifactVerificationStatus;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RuntimeAbiVersion {
@@ -376,7 +376,7 @@ impl RuntimeDiagnostic {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeDecisionInput {
     pub artifact_status: ArtifactVerificationStatus,
-    pub constraint_status: ConstraintDischargeStatus,
+    pub constraints_discharged: bool,
     pub production_lowering_supported: bool,
     pub reader_support: RuntimeReaderSupport,
     pub emission_disposition: RuntimeEmissionDisposition,
@@ -447,7 +447,7 @@ pub struct RuntimeCacheKeyInput {
     pub abi_version: RuntimeAbiVersion,
     pub artifact_digest: String,
     pub facts_fingerprint: String,
-    pub solver_identity: String,
+    pub verifier_identity: String,
     pub production_lowering_fingerprint: String,
     pub backend_identity: RuntimeBackendIdentity,
     pub projection: ProjectionSet,
@@ -523,11 +523,11 @@ impl RuntimeCacheKey {
 
 fn canonical_cache_input(input: &RuntimeCacheKeyInput) -> String {
     format!(
-        "abi={};artifact={};facts={};solver={};lowering={};backend={};projection={};predicate={};split={};fallback={};predicate_policy={};concurrency={}",
+        "abi={};artifact={};facts={};verifier={};lowering={};backend={};projection={};predicate={};split={};fallback={};predicate_policy={};concurrency={}",
         input.abi_version.as_key(),
         input.artifact_digest,
         input.facts_fingerprint,
-        input.solver_identity,
+        input.verifier_identity,
         input.production_lowering_fingerprint,
         input.backend_identity.as_key(),
         input.projection.as_key(),
@@ -685,30 +685,6 @@ pub fn decide_runtime_execution(input: &RuntimeDecisionInput) -> RuntimePlanDeci
             "$.artifact.status",
             "runtime planning requires an accepted artifact verifier report",
         ));
-        return fail_or_diagnostic(input.policy.fallback, diagnostics);
-    }
-
-    if !matches!(
-        input.constraint_status,
-        ConstraintDischargeStatus::Discharged | ConstraintDischargeStatus::NotRequired
-    ) {
-        diagnostics.push(RuntimeDiagnostic::new(
-            RuntimeDiagnosticCode::ConstraintRejected,
-            "$.artifact.constraint_status",
-            format!(
-                "native runtime planning requires discharged or not-required constraints, got {}",
-                input.constraint_status.as_str()
-            ),
-        ));
-        if input.policy.fallback.allows_interpreter()
-            && input.reader_support == RuntimeReaderSupport::Accepted
-            && input.emission_disposition != RuntimeEmissionDisposition::None
-        {
-            return RuntimePlanDecisionReport {
-                decision: RuntimeExecutionDecision::InterpreterFallback,
-                diagnostics,
-            };
-        }
         return fail_or_diagnostic(input.policy.fallback, diagnostics);
     }
 

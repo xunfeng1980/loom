@@ -70,9 +70,6 @@ pub mod verified_lineage;
 /// Unified artifact-facing verifier report model for Phase 17+.
 pub mod artifact_verifier;
 
-/// Solver-neutral obligation and discharge report model for Phase 19+.
-pub mod solver;
-
 /// Host-neutral runtime ABI and execution policy model for Phase 22+.
 pub mod runtime_abi;
 

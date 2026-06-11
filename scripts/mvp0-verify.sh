@@ -93,10 +93,6 @@ info "Running Phase 18 complete Vortex reader gate..."
 bash scripts/complete-vortex-reader-test.sh
 ok "scripts/complete-vortex-reader-test.sh"
 
-info "Running Phase 19 solver-backed verifier gate..."
-bash scripts/solver-verifier-test.sh
-ok "scripts/solver-verifier-test.sh"
-
 info "Running Phase 20 production native-lowering gate..."
 bash scripts/production-native-lowering-test.sh
 ok "scripts/production-native-lowering-test.sh"

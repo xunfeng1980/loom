@@ -1,4 +1,4 @@
-use loom_core::artifact_verifier::{ArtifactVerificationStatus, ConstraintDischargeStatus};
+use loom_core::artifact_verifier::{ArtifactVerificationStatus};
 use loom_core::runtime_abi::{
     decide_runtime_execution, plan_split, ConcurrencyPolicy, RuntimeDecisionInput,
     RuntimeDiagnosticCode, RuntimeEmissionDisposition, RuntimeExecutionDecision,
@@ -9,7 +9,7 @@ use loom_core::runtime_abi::{
 fn native_ready_input() -> RuntimeDecisionInput {
     RuntimeDecisionInput {
         artifact_status: ArtifactVerificationStatus::Accepted,
-        constraint_status: ConstraintDischargeStatus::Discharged,
+        constraints_discharged: false,
         production_lowering_supported: true,
         reader_support: RuntimeReaderSupport::Accepted,
         emission_disposition: RuntimeEmissionDisposition::CanonicalRaw,
@@ -41,17 +41,18 @@ fn rejected_artifact_fails_closed() {
 }
 
 #[test]
-fn collected_constraints_never_choose_native() {
+fn collected_constraints_still_choose_native_when_lowering_supported() {
+    // Phase A–C: runtime no longer gates on constraints_discharged.
     let mut input = native_ready_input();
-    input.constraint_status = ConstraintDischargeStatus::CollectedOnly;
+    input.constraints_discharged = false;
     input.policy.fallback = RuntimeFallbackPolicy::AllowInterpreter;
 
     let report = decide_runtime_execution(&input);
     assert_eq!(
         report.decision,
-        RuntimeExecutionDecision::InterpreterFallback
+        RuntimeExecutionDecision::NativeCandidate
     );
-    assert_eq!(report.diagnostics[0].code.as_str(), "constraint-rejected");
+    assert!(report.diagnostics.is_empty());
 }
 
 #[test]

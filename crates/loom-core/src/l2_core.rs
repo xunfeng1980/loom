@@ -237,6 +237,7 @@ pub struct VerifiedArtifactFacts {
     pub capability_summary: Vec<CapabilityFact>,
     pub constraint_ids: Vec<String>,
     pub proof_obligation_ids: Vec<String>,
+    pub kloom_discharged: bool,
 }
 
 impl VerifiedArtifactFacts {
@@ -244,6 +245,7 @@ impl VerifiedArtifactFacts {
         program: &L2CoreProgram,
         constraint_ids: Vec<String>,
         proof_obligation_ids: Vec<String>,
+        kloom_discharged: bool,
     ) -> Self {
         let mut input_ranges = Vec::new();
         let mut output_schema = Vec::new();
@@ -312,6 +314,7 @@ impl VerifiedArtifactFacts {
             capability_summary,
             constraint_ids,
             proof_obligation_ids,
+            kloom_discharged,
         }
     }
 }

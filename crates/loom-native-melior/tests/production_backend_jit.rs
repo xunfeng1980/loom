@@ -1,5 +1,5 @@
 use arrow_schema::DataType;
-use loom_core::artifact_verifier::ConstraintDischargeStatus;
+
 use loom_core::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
     ProductionLoweringShape,
@@ -38,7 +38,7 @@ fn runtime_cache_key() -> RuntimeCacheKey {
         abi_version: RuntimeAbiVersion::CURRENT,
         artifact_digest: "artifact-jit".to_string(),
         facts_fingerprint: "facts-jit".to_string(),
-        solver_identity: "bitwuzla-jit".to_string(),
+        verifier_identity: "bitwuzla-jit".to_string(),
         production_lowering_fingerprint: "lowering-jit".to_string(),
         backend_identity: RuntimeBackendIdentity {
             backend: NATIVE_BACKEND_NAME.to_string(),
@@ -62,7 +62,7 @@ fn lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
         payload_kind: "LMT1 table".to_string(),
-        constraint_status: ConstraintDischargeStatus::Discharged,
+        constraints_discharged: false,
         shape: ProductionLoweringShape::PrimitiveTable {
             row_count: 4,
             columns: vec![ProductionColumnShape {
@@ -79,7 +79,7 @@ fn nullable_lowering_facts(data_type: DataType) -> ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
         payload_kind: "LMT1 table".to_string(),
-        constraint_status: ConstraintDischargeStatus::Discharged,
+        constraints_discharged: false,
         shape: ProductionLoweringShape::PrimitiveTable {
             row_count: 4,
             columns: vec![ProductionColumnShape {

@@ -3,8 +3,6 @@
 //! Phase 17 starts by defining the report and facts contract before wiring the
 //! existing structural and `L2Core` verifiers into one pipeline.
 
-use std::collections::BTreeSet;
-
 use crate::arrow_semantic_codec::{
     arrow_semantic_container_feature_names, decode_arrow_semantic_container,
     decode_arrow_semantic_payload, is_arrow_semantic_container, is_arrow_semantic_payload,
@@ -15,7 +13,6 @@ use crate::l2_core::L2CoreProgram;
 use crate::l2_core::VerifiedArtifactFacts;
 use crate::l2_kernel_registry::L2KernelRegistry;
 use crate::native_lowering::check_lowering_support;
-use crate::solver::{SolverDischargeReport, SolverObligationStatus};
 use crate::verifier::verify_container;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +21,6 @@ pub enum ArtifactVerificationStage {
     Manifest,
     L1Structural,
     L2Core,
-    ConstraintDischarge,
     Facts,
     LoweringReadiness,
 }
@@ -36,7 +32,6 @@ impl ArtifactVerificationStage {
             Self::Manifest => "manifest",
             Self::L1Structural => "l1-structural",
             Self::L2Core => "l2core",
-            Self::ConstraintDischarge => "constraint-discharge",
             Self::Facts => "facts",
             Self::LoweringReadiness => "lowering-readiness",
         }
@@ -56,29 +51,6 @@ impl ArtifactVerificationStatus {
             Self::Accepted => "accepted",
             Self::Rejected => "rejected",
             Self::Unsupported => "unsupported",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConstraintDischargeStatus {
-    NotRequired,
-    CollectedOnly,
-    Discharged,
-    Failed,
-    Unknown,
-    Skipped,
-}
-
-impl ConstraintDischargeStatus {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::NotRequired => "not-required",
-            Self::CollectedOnly => "collected-only",
-            Self::Discharged => "discharged",
-            Self::Failed => "failed",
-            Self::Unknown => "unknown",
-            Self::Skipped => "skipped",
         }
     }
 }
@@ -188,8 +160,12 @@ pub struct ArtifactVerificationFacts {
     pub l2_core: Option<VerifiedArtifactFacts>,
     pub constraint_ids: Vec<String>,
     pub proof_obligation_ids: Vec<String>,
-    pub constraint_status: ConstraintDischargeStatus,
-    pub solver_report: Option<SolverDischargeReport>,
+    /// In-TCB constraint discharge status. Always `false` in Phases A–C because
+    /// no bounded prover is in the TCB yet. Phase D may upgrade this.
+    pub constraints_discharged: bool,
+    /// Out-of-TCB evidence only: whether the kloom spec-oracle produced a trace
+    /// for this artifact. Never gates a production fact.
+    pub spec_oracle_trace_validated: bool,
     pub lowering_ready: ArtifactLoweringReadiness,
 }
 
@@ -208,8 +184,8 @@ impl ArtifactVerificationFacts {
             l2_core: None,
             constraint_ids: Vec::new(),
             proof_obligation_ids: Vec::new(),
-            constraint_status: ConstraintDischargeStatus::NotRequired,
-            solver_report: None,
+            constraints_discharged: false,
+            spec_oracle_trace_validated: false,
             lowering_ready: ArtifactLoweringReadiness::default(),
         }
     }
@@ -293,56 +269,6 @@ impl ArtifactVerificationReport {
             ArtifactVerificationStatus::Rejected | ArtifactVerificationStatus::Unsupported => None,
         }
     }
-}
-
-pub fn apply_solver_discharge(
-    mut report: ArtifactVerificationReport,
-    solver_report: SolverDischargeReport,
-) -> ArtifactVerificationReport {
-    if report.status != ArtifactVerificationStatus::Accepted {
-        return report;
-    }
-
-    let Some(mut facts) = report.facts.take() else {
-        report.diagnostics.push(ArtifactVerificationDiagnostic::new(
-            ArtifactVerificationStage::Facts,
-            "missing-artifact-facts",
-            "$.facts",
-            "accepted artifact report did not expose facts for solver discharge",
-        ));
-        return report;
-    };
-
-    if facts.constraint_ids.is_empty() {
-        facts.constraint_status = ConstraintDischargeStatus::NotRequired;
-        facts.solver_report = Some(solver_report);
-        report.facts = Some(facts);
-        return report;
-    }
-
-    let diagnostics = solver_discharge_diagnostics(&facts, &solver_report);
-    let discharged = diagnostics.is_empty() && solver_report.is_successful();
-    facts.constraint_status = if discharged {
-        ConstraintDischargeStatus::Discharged
-    } else if diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code.ends_with("mismatch"))
-    {
-        ConstraintDischargeStatus::Failed
-    } else {
-        constraint_status_from_solver_report(&solver_report)
-    };
-
-    if discharged {
-        facts.lowering_ready = promote_solver_blocked_lowering(facts.lowering_ready);
-    } else if facts.lowering_ready.ready {
-        facts.lowering_ready = solver_blocked_lowering(facts.lowering_ready.backend.clone());
-    }
-
-    facts.solver_report = Some(solver_report);
-    report.diagnostics.extend(diagnostics);
-    report.facts = Some(facts);
-    report
 }
 
 pub fn verify_artifact(
@@ -507,7 +433,7 @@ fn verify_arrow_semantic_artifact(
     facts.payload_kind = Some("Arrow semantic payload".to_string());
     facts.schema_section_present = true;
     facts.row_count_bound = Some(payload.row_count() as u64);
-    if options.compute_lowering_readiness || options.require_l2_core_for_lowering {
+    if options.compute_lowering_readiness || options.lowering_backend.is_some() {
         facts.lowering_ready = ArtifactLoweringReadiness::with_diagnostic(
             Some(lowering_backend(options)),
             ArtifactLoweringDiagnostic::new(
@@ -564,15 +490,13 @@ pub fn verify_artifact_with_l2_core(
     artifact_facts.row_count_bound = l2_facts.row_count_bound;
     artifact_facts.constraint_ids = l2_facts.constraint_ids.clone();
     artifact_facts.proof_obligation_ids = l2_facts.proof_obligation_ids.clone();
-    artifact_facts.constraint_status = constraint_status_for(&artifact_facts.constraint_ids);
+    // Phase A–C: constraints_discharged stays false (no in-TCB prover).
+    // kloom result is recorded as out-of-TCB evidence only.
+    artifact_facts.constraints_discharged = false;
+    artifact_facts.spec_oracle_trace_validated = l2_facts.kloom_discharged;
     artifact_facts.l2_core = Some(l2_facts);
     if options.compute_lowering_readiness || options.lowering_backend.is_some() {
-        artifact_facts.lowering_ready = lowering_readiness_for(
-            program,
-            &l2_report,
-            options,
-            artifact_facts.constraint_status,
-        );
+        artifact_facts.lowering_ready = lowering_readiness_for(program, &l2_report, options);
     }
 
     ArtifactVerificationReport::accepted(artifact_facts)
@@ -603,28 +527,17 @@ fn has_section(container: &ContainerDescription, kind: SectionKind) -> bool {
         .any(|section| section.kind == kind)
 }
 
-fn constraint_status_for(constraint_ids: &[String]) -> ConstraintDischargeStatus {
-    if constraint_ids.is_empty() {
-        ConstraintDischargeStatus::NotRequired
-    } else {
-        ConstraintDischargeStatus::CollectedOnly
-    }
-}
-
 fn lowering_readiness_for(
     program: &L2CoreProgram,
     report: &crate::full_verifier::FullVerificationReport,
     options: &ArtifactVerificationOptions,
-    constraint_status: ConstraintDischargeStatus,
 ) -> ArtifactLoweringReadiness {
     let backend = lowering_backend(options);
     let support = check_lowering_support(program, report);
-    if support.is_supported() && !constraint_status_blocks_lowering(constraint_status) {
-        return ArtifactLoweringReadiness::ready(backend);
-    }
-
+    // Phase A–C: lowering readiness = accepted ∧ supported-shape-has-a-rule.
+    // No in-TCB constraint discharge is required.
     if support.is_supported() {
-        return solver_blocked_lowering(Some(backend));
+        return ArtifactLoweringReadiness::ready(backend);
     }
 
     let diagnostics = support
@@ -650,124 +563,4 @@ fn lowering_backend(options: &ArtifactVerificationOptions) -> String {
         .lowering_backend
         .clone()
         .unwrap_or_else(|| "textual-mlir".to_string())
-}
-
-fn solver_discharge_diagnostics(
-    facts: &ArtifactVerificationFacts,
-    solver_report: &SolverDischargeReport,
-) -> Vec<ArtifactVerificationDiagnostic> {
-    let mut diagnostics = Vec::new();
-    let expected = facts
-        .constraint_ids
-        .iter()
-        .cloned()
-        .collect::<BTreeSet<_>>();
-    let actual = solver_report
-        .backend_results
-        .iter()
-        .map(|result| result.obligation_id.clone())
-        .collect::<BTreeSet<_>>();
-
-    if expected != actual {
-        diagnostics.push(ArtifactVerificationDiagnostic::new(
-            ArtifactVerificationStage::ConstraintDischarge,
-            "solver-obligation-mismatch",
-            "$.solver.backend_results",
-            format!(
-                "solver obligations do not match artifact constraints: expected {:?}, got {:?}",
-                expected, actual
-            ),
-        ));
-    }
-
-    if solver_report.required_obligation_count != facts.constraint_ids.len() {
-        diagnostics.push(ArtifactVerificationDiagnostic::new(
-            ArtifactVerificationStage::ConstraintDischarge,
-            "solver-required-count-mismatch",
-            "$.solver.required_obligation_count",
-            format!(
-                "solver required obligation count {} does not match artifact constraint count {}",
-                solver_report.required_obligation_count,
-                facts.constraint_ids.len()
-            ),
-        ));
-    }
-
-    if !solver_report.is_successful() {
-        diagnostics.push(ArtifactVerificationDiagnostic::new(
-            ArtifactVerificationStage::ConstraintDischarge,
-            solver_failure_code(solver_report.status),
-            "$.solver.status",
-            format!(
-                "solver discharge status {} does not discharge all required obligations",
-                solver_report.status.as_str()
-            ),
-        ));
-    }
-
-    diagnostics
-}
-
-fn solver_failure_code(status: SolverObligationStatus) -> &'static str {
-    match status {
-        SolverObligationStatus::Discharged => "solver-malformed-report",
-        SolverObligationStatus::Failed => "solver-discharge-failed",
-        SolverObligationStatus::Unknown => "solver-discharge-unknown",
-        SolverObligationStatus::TimedOut => "solver-discharge-timed-out",
-        SolverObligationStatus::Error => "solver-discharge-error",
-        SolverObligationStatus::Skipped => "solver-discharge-skipped",
-    }
-}
-
-fn constraint_status_from_solver_report(
-    solver_report: &SolverDischargeReport,
-) -> ConstraintDischargeStatus {
-    match solver_report.status {
-        SolverObligationStatus::Discharged => ConstraintDischargeStatus::Discharged,
-        SolverObligationStatus::Unknown => ConstraintDischargeStatus::Unknown,
-        SolverObligationStatus::Skipped => ConstraintDischargeStatus::Skipped,
-        SolverObligationStatus::Failed
-        | SolverObligationStatus::TimedOut
-        | SolverObligationStatus::Error => ConstraintDischargeStatus::Failed,
-    }
-}
-
-fn constraint_status_blocks_lowering(status: ConstraintDischargeStatus) -> bool {
-    matches!(
-        status,
-        ConstraintDischargeStatus::CollectedOnly
-            | ConstraintDischargeStatus::Failed
-            | ConstraintDischargeStatus::Unknown
-            | ConstraintDischargeStatus::Skipped
-    )
-}
-
-fn solver_blocked_lowering(backend: Option<String>) -> ArtifactLoweringReadiness {
-    ArtifactLoweringReadiness::with_diagnostic(
-        Some(backend.unwrap_or_else(|| "textual-mlir".to_string())),
-        ArtifactLoweringDiagnostic::new(
-            "constraints-not-discharged",
-            "$.facts.constraint_status",
-            "lowering readiness requires discharged solver-backed constraints",
-        ),
-    )
-}
-
-fn promote_solver_blocked_lowering(
-    readiness: ArtifactLoweringReadiness,
-) -> ArtifactLoweringReadiness {
-    if readiness.ready {
-        return readiness;
-    }
-    let only_solver_block = readiness.diagnostics.len() == 1
-        && readiness.diagnostics[0].code == "constraints-not-discharged";
-    if only_solver_block {
-        ArtifactLoweringReadiness::ready(
-            readiness
-                .backend
-                .unwrap_or_else(|| "textual-mlir".to_string()),
-        )
-    } else {
-        readiness
-    }
 }

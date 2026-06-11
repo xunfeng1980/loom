@@ -756,7 +756,7 @@ pub fn decide_validated_native_arrow_semantic_codegen_runtime(
         } else {
             ArtifactVerificationStatus::Accepted
         },
-        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        constraints_discharged: false,
         production_lowering_supported: execution.is_supported(),
         reader_support: if verifier_rejected {
             RuntimeReaderSupport::Rejected
@@ -840,7 +840,7 @@ pub fn validated_native_arrow_semantic_codegen_runtime_cache_key_with_shape(
             stable_digest_for_lines("reference-trace", validation.reference_trace()),
             stable_digest_for_lines("native-trace", validation.native_trace())
         ),
-        solver_identity: "not-required".to_string(),
+        verifier_identity: "not-required".to_string(),
         production_lowering_fingerprint: format!(
             "backend={};identity={};validation=native-model:phase40;rows={};columns={};output={}",
             PRODUCTION_NATIVE_ARROW_SEMANTIC_CODEGEN_BACKEND,
@@ -1415,7 +1415,7 @@ pub fn decide_native_arrow_semantic_runtime(
         } else {
             ArtifactVerificationStatus::Accepted
         },
-        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        constraints_discharged: false,
         production_lowering_supported: execution.is_supported(),
         reader_support: if verifier_rejected {
             RuntimeReaderSupport::Rejected
@@ -1449,7 +1449,7 @@ pub fn decide_validated_native_arrow_semantic_runtime(
         } else {
             ArtifactVerificationStatus::Accepted
         },
-        constraint_status: crate::artifact_verifier::ConstraintDischargeStatus::NotRequired,
+        constraints_discharged: false,
         production_lowering_supported: validation.is_validated(),
         reader_support: if verifier_rejected {
             RuntimeReaderSupport::Rejected
@@ -1508,7 +1508,7 @@ pub fn native_arrow_semantic_runtime_cache_key(
             execution.row_count,
             execution.column_count
         ),
-        solver_identity: "not-required".to_string(),
+        verifier_identity: "not-required".to_string(),
         production_lowering_fingerprint: format!(
             "backend={};rows={};columns={}",
             NATIVE_ARROW_SEMANTIC_BACKEND, execution.row_count, execution.column_count
@@ -1563,7 +1563,7 @@ pub fn validated_native_arrow_semantic_runtime_cache_key(
             stable_digest_for_lines("reference-trace", validation.reference_trace()),
             stable_digest_for_lines("native-trace", validation.native_trace())
         ),
-        solver_identity: "not-required".to_string(),
+        verifier_identity: "not-required".to_string(),
         production_lowering_fingerprint: format!(
             "backend={};validation=native-model:phase40;rows={};columns={}",
             NATIVE_ARROW_SEMANTIC_BACKEND, validation.row_count, validation.column_count

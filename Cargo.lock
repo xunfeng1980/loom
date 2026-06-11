@@ -3489,7 +3489,6 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "loom-core",
- "loom-solver-smt",
  "loom-vortex-ingress",
 ]
 
@@ -3575,14 +3574,6 @@ dependencies = [
  "loom-source-ingress",
  "parquet",
  "tempfile",
-]
-
-[[package]]
-name = "loom-solver-smt"
-version = "0.1.0"
-dependencies = [
- "arrow-schema",
- "loom-core",
 ]
 
 [[package]]

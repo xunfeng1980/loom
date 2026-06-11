@@ -202,10 +202,15 @@ pub fn verify_l2_core(program: &L2CoreProgram) -> FullVerificationReport {
             .iter()
             .map(|obligation| obligation.id.clone())
             .collect();
+        // Phase A–C: production verify stays oracle-free.
+        // kloom differential evidence lives in CI harnesses (kloom-diff.sh,
+        // native_arrow_semantic model-validation tests), not in the
+        // production verifier path.
         report.facts = Some(VerifiedArtifactFacts::for_program(
             program,
             constraint_ids,
             proof_ids,
+            false,
         ));
     }
 

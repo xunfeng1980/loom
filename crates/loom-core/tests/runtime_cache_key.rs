@@ -20,7 +20,7 @@ fn key_input() -> RuntimeCacheKeyInput {
         abi_version: RuntimeAbiVersion::CURRENT,
         artifact_digest: "artifact-a".to_string(),
         facts_fingerprint: "facts-a".to_string(),
-        solver_identity: "bitwuzla-script-a".to_string(),
+        verifier_identity: "loom-artifact-verifier-v1".to_string(),
         production_lowering_fingerprint: "lowering-a".to_string(),
         backend_identity: backend_identity(),
         projection: ProjectionSet::All,
@@ -63,7 +63,7 @@ fn cache_key_changes_when_solver_backend_or_toolchain_change() {
     let baseline = RuntimeCacheKey::build(&input);
 
     let mut changed = input.clone();
-    changed.solver_identity = "bitwuzla-script-b".to_string();
+    changed.verifier_identity = "loom-artifact-verifier-v2".to_string();
     assert_ne!(baseline, RuntimeCacheKey::build(&changed));
 
     let mut changed = input.clone();

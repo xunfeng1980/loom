@@ -105,7 +105,6 @@ info "Checking verified-lineage non-claim and TCB markers..."
 for marker in \
     "VerifiedLineageRecord" \
     "RustVerifierStructuralCheck" \
-    "BitwuzlaSmtDischarge" \
     "LeanModeledSoundnessTheorem" \
     "NativeModelValidation" \
     "no verified compilation claim"; do

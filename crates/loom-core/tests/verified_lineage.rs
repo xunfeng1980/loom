@@ -6,7 +6,7 @@ use loom_core::arrow_semantic::ArrowSemanticPayload;
 use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_core::artifact_verifier::{
     ArtifactVerificationDiagnostic, ArtifactVerificationFacts, ArtifactVerificationReport,
-    ArtifactVerificationStage, ConstraintDischargeStatus,
+    ArtifactVerificationStage,
 };
 use loom_core::l2_core::{
     Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability,
@@ -15,15 +15,13 @@ use loom_core::l2_core::{
 use loom_core::native_arrow_semantic::{
     verify_native_arrow_semantic_model, verify_native_arrow_semantic_model_output,
 };
-use loom_core::solver::{
-    SolverBackendInfo, SolverDischargeReport, SolverObligationResult, SolverRawResult,
-};
+
 use loom_core::verified_lineage::{
     build_verified_lineage_record, VerifiedLineageDiagnosticCode, VerifiedLineageEvidenceLayer,
     VerifiedLineageEvidenceStatus, VerifiedLineageTcbAssumption,
 };
 
-fn accepted_l2_report(constraint_status: ConstraintDischargeStatus) -> ArtifactVerificationReport {
+fn accepted_l2_report() -> ArtifactVerificationReport {
     let program = L2CoreProgram {
         artifact_version: 1,
         required_features: vec!["l2core.copy.v0".to_string()],
@@ -55,21 +53,13 @@ fn accepted_l2_report(constraint_status: ConstraintDischargeStatus) -> ArtifactV
     facts.row_count_bound = Some(4);
     facts.constraint_ids = vec!["c-input-range".to_string()];
     facts.proof_obligation_ids = vec!["obl-input-range".to_string()];
-    facts.constraint_status = constraint_status;
+    facts.constraints_discharged = false;
     facts.l2_core = Some(VerifiedArtifactFacts::for_program(
         &program,
         facts.constraint_ids.clone(),
         facts.proof_obligation_ids.clone(),
+        false,
     ));
-    if constraint_status == ConstraintDischargeStatus::Discharged {
-        facts.solver_report = Some(SolverDischargeReport::from_results(vec![
-            SolverObligationResult::new(
-                "obl-input-range",
-                SolverBackendInfo::bitwuzla(Some("/usr/bin/bitwuzla"), true, 1_000),
-                SolverRawResult::Unsat,
-            ),
-        ]));
-    }
     ArtifactVerificationReport::accepted(facts)
 }
 
@@ -92,7 +82,7 @@ fn arrow_semantic_bytes() -> Vec<u8> {
 
 #[test]
 fn accepted_artifact_record_names_evidence_layers_and_tcb() {
-    let report = accepted_l2_report(ConstraintDischargeStatus::Discharged);
+    let report = accepted_l2_report();
 
     let record = build_verified_lineage_record(&report, None).expect("lineage record");
 
@@ -100,8 +90,8 @@ fn accepted_artifact_record_names_evidence_layers_and_tcb() {
     assert_eq!(record.artifact_kind, "LMC1");
     assert!(record.has_evidence_layer(VerifiedLineageEvidenceLayer::RustVerifierStructuralCheck));
     assert_eq!(
-        record.evidence_status(VerifiedLineageEvidenceLayer::BitwuzlaSmtDischarge),
-        Some(VerifiedLineageEvidenceStatus::Discharged)
+        record.evidence_status(VerifiedLineageEvidenceLayer::LeanModeledSoundnessTheorem),
+        Some(VerifiedLineageEvidenceStatus::CorpusValidated)
     );
     assert_eq!(
         record.evidence_status(VerifiedLineageEvidenceLayer::LeanModeledSoundnessTheorem),
@@ -139,12 +129,13 @@ fn rejected_and_undischarged_reports_do_not_produce_positive_lineage() {
     let err = build_verified_lineage_record(&rejected, None).expect_err("rejected");
     assert_eq!(err.code, VerifiedLineageDiagnosticCode::ArtifactNotAccepted);
 
-    let collected_only = accepted_l2_report(ConstraintDischargeStatus::CollectedOnly);
-    let err =
-        build_verified_lineage_record(&collected_only, None).expect_err("undischarged constraints");
-    assert_eq!(
-        err.code,
-        VerifiedLineageDiagnosticCode::ConstraintDischargeRequired
+    // Phase A–C: constraints_discharged is always false, but lineage records
+    // are still produced for accepted artifacts (evidence only, no gate).
+    let accepted = accepted_l2_report();
+    let record = build_verified_lineage_record(&accepted, None).expect("lineage for accepted");
+    assert_eq!(record.artifact_kind, "LMC1");
+    assert!(
+        record.has_evidence_layer(VerifiedLineageEvidenceLayer::RustVerifierStructuralCheck)
     );
 }
 

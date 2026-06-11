@@ -1,5 +1,5 @@
 use arrow_schema::DataType;
-use loom_core::artifact_verifier::ConstraintDischargeStatus;
+
 use loom_core::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
     ProductionLoweringShape,
@@ -38,7 +38,7 @@ fn runtime_cache_key() -> RuntimeCacheKey {
         abi_version: RuntimeAbiVersion::CURRENT,
         artifact_digest: "artifact-pipeline".to_string(),
         facts_fingerprint: "facts-pipeline".to_string(),
-        solver_identity: "bitwuzla-pipeline".to_string(),
+        verifier_identity: "bitwuzla-pipeline".to_string(),
         production_lowering_fingerprint: "lowering-pipeline".to_string(),
         backend_identity: RuntimeBackendIdentity {
             backend: NATIVE_BACKEND_NAME.to_string(),
@@ -62,7 +62,7 @@ fn lowering_facts() -> ProductionLoweringFacts {
         backend: ProductionLoweringBackend::LoomDecodeDialect,
         artifact_kind: "LMC1".to_string(),
         payload_kind: "LMT1 table".to_string(),
-        constraint_status: ConstraintDischargeStatus::Discharged,
+        constraints_discharged: false,
         shape: ProductionLoweringShape::PrimitiveTable {
             row_count: 4,
             columns: vec![
@@ -176,7 +176,12 @@ fn missing_cache_cancelled_and_unsupported_facts_fail_before_pipeline() {
 
     let mut input = request_input();
     let mut facts = lowering_facts();
-    facts.constraint_status = ConstraintDischargeStatus::CollectedOnly;
+    // Use empty columns to trigger unsupported lowering facts,
+    // since constraints_discharged no longer gates.
+    facts.shape = loom_core::production_native_lowering::ProductionLoweringShape::PrimitiveTable {
+        row_count: 4,
+        columns: vec![],
+    };
     input.lowering_facts = Some(facts);
     let report =
         validate_and_prepare_production_backend(input, ProductionBackendPipelineOptions::default());
