@@ -4,14 +4,14 @@ milestone: v1.5.3
 milestone_name: milestone
 status: executing
 stopped_at: Completed 50-04-PLAN.md
-last_updated: "2026-06-11T11:19:13.376Z"
+last_updated: "2026-06-11T12:25:47.486Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 52
+  total_phases: 53
   completed_phases: 45
-  total_plans: 194
-  completed_plans: 178
-  percent: 87
+  total_plans: 196
+  completed_plans: 179
+  percent: 85
 ---
 
 # Project State
@@ -185,6 +185,8 @@ Recent decisions affecting current work:
 - [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Vortex 0.74.0 footer API does not support general-purpose key-value metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Vortex footer exposes layout(), segment_map(), and approx_byte_size() but no metadata dictionary. Documented no-op prevents silent non-embedding (threat T-50-13).
 - [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Lance 7.0.0 manifest API does not support general-purpose writable metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Lance manifest provides version-level metadata keys for reading but no structured API for writing custom sidecar data. Documented no-op prevents silent non-embedding (threat T-50-13).
 - [Phase 51-sidecar-duckdb-decoupling-and-loom-self-ingress]: .planning/phases/51-sidecar-duckdb-decoupling-and-loom-self-ingress/51-03-SUMMARY.md — Sidecar-only DuckDB extension returns VARCHAR diagnostic rows rather than Arrow decode: preserves dependency boundary as primary value proof
+- [Phase 52]: Split artifact_verifier.rs: types to loom-common, container-dependent functions stay in loom-container — Types have zero container deps and belong in production core
+- [Phase 52]: Split verifier.rs: verify_layout + types to loom-common, verify_table/verify_container stay — Types have zero container deps and belong in production core
 
 ### Pending Todos
 
@@ -388,7 +390,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T11:04:36.205Z
+Last session: 2026-06-11T12:25:31.575Z
 Stopped at: Completed 50-04-PLAN.md
 
 Phase 17 handoff:

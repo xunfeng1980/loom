@@ -1219,11 +1219,11 @@ Plans:
 
 **Non-goals:** No module renaming or internal refactoring beyond the split boundary. No changes to the `.loom` format. No changes to MLIR/LLVM toolchain.
 
-**Plans:** 2 plans across 2 waves
+**Plans:** 1/2 plans executed
 
 **Wave 1**
 
-- [ ] 52-01-PLAN.md — Create loom-common crate, move 15 clean modules, extract artifact_types and verify_layout_types, update loom-core re-exports
+- [x] 52-01-PLAN.md — Create loom-common crate, move 15 clean modules, extract artifact_types and verify_layout_types, update loom-core re-exports
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -1328,7 +1328,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 100) and Repositioning (48–52) a
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
 | 50. Sidecar Overlay Model and Host-Native Reader Fallback | 5/5 | Complete    | 2026-06-11 |
 | 51. Sidecar-DuckDB Decoupling and Loom Self-Ingress | 3/3 | Complete  | 2026-06-11 |
-| 52. Container Split — loom-common Core + contrib/loom-container Legacy | 0/0 | Planned | - |
+| 52. Container Split — loom-common Core + contrib/loom-container Legacy | 1/2 | In Progress|  |
 | 100. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
