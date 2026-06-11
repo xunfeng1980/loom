@@ -1271,7 +1271,7 @@ MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) ar
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
 | 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
 | 50.1. Container Demotion and Thin Host Adapters | 3/3 | Complete   | 2026-06-11 |
-| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/3 | Planned (Repositioning 决定二 slice 2) | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 3/5 | In Progress|  |
 | 51. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
@@ -1369,7 +1369,7 @@ Plans:
 
 **Non-goals:** No Wasm track. No second IR execution. No new top-level user-facing container. No correctness claims — verifiable safety + well-formedness + graceful degradation only.
 
-**Plans:** 5 plans across 5 waves (coarse granularity)
+**Plans:** 3/5 plans executed
 
 **Wave 0** *(prerequisite: crate split)*
 
@@ -1377,11 +1377,11 @@ Plans:
 
 **Wave 1** *(blocked on Wave 0 completion)*
 
-- [ ] 50-01-PLAN.md — Thin loom-core to Re-Export Shim and Rewire Downstream Crates
+- [x] 50-01-PLAN.md — Thin loom-core to Re-Export Shim and Rewire Downstream Crates
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 50-02-PLAN.md — Core Sidecar Overlay Model and Parquet Sidecar Embedding
+- [x] 50-02-PLAN.md — Core Sidecar Overlay Model and Parquet Sidecar Embedding
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
