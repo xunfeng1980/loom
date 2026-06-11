@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 40 complete; ready for Phase 41
-last_updated: "2026-06-11T08:56:43.940Z"
+stopped_at: Completed 50-04-PLAN.md
+last_updated: "2026-06-11T09:15:29.643Z"
 last_activity: 2026-06-11 -- Phase 50 execution started
 progress:
   total_phases: 51
-  completed_phases: 43
+  completed_phases: 44
   total_plans: 191
-  completed_plans: 174
-  percent: 84
+  completed_plans: 175
+  percent: 86
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase: 50 (sidecar-overlay-model-and-host-native-reader-fallback) — EXECUTING
 Phase 44 MVP1.5 Closeout and Milestone Archive PLACEHOLDER: (spec before planning — see /gsd-spec-phase 44)
 Phase 51 ABI Freeze and Compatibility Contract: (moved from original Phase 44; 2 planned waves)
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-11 -- Phase 50 execution started
 
@@ -181,6 +181,8 @@ Recent decisions affecting current work:
 - [Phase ?]: HashVerificationResult defined in sidecar.rs alongside hash computation, re-imported by sidecar_routing.rs
 - [Phase ?]: Sidecar routing is exhaustive: every code path returns LoomNative or HostNativeReader with typed reason (4-gate: engine → sidecar → hash → encoding)
 - [Phase ?]: FNV-1a via fnv::FnvHasher for content-hash — matches l2core_program_hash algorithm family
+- [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Vortex 0.74.0 footer API does not support general-purpose key-value metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Vortex footer exposes layout(), segment_map(), and approx_byte_size() but no metadata dictionary. Documented no-op prevents silent non-embedding (threat T-50-13).
+- [Phase 50-sidecar-overlay-model-and-host-native-reader-fallback]: Lance 7.0.0 manifest API does not support general-purpose writable metadata; sidecar extract returns Ok(None) gracefully with documented format limitation — Lance manifest provides version-level metadata keys for reading but no structured API for writing custom sidecar data. Documented no-op prevents silent non-embedding (threat T-50-13).
 
 ### Pending Todos
 
@@ -384,8 +386,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T08:56:28.257Z
-Stopped at: Phase 40 complete; ready for Phase 41
+Last session: 2026-06-11T09:15:29.633Z
+Stopped at: Completed 50-04-PLAN.md
 
 Phase 17 handoff:
 
@@ -432,7 +434,7 @@ Phase 21 context: .planning/phases/21-expanded-vortex-encoding-coverage/21-CONTE
 Phase 21 plans: .planning/phases/21-expanded-vortex-encoding-coverage/21-01-PLAN.md through 21-05-PLAN.md
 Phase 21 report: .planning/phases/21-expanded-vortex-encoding-coverage/21-COVERAGE-REPORT.md
 Phase 21 summary: .planning/phases/21-expanded-vortex-encoding-coverage/21-SUMMARY.md
-Resume file: .planning/ROADMAP.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -456,3 +458,4 @@ Resume file: .planning/ROADMAP.md
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P00 | 13min | 2 tasks | 34 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P02 | 9 min | 3 tasks | 7 files |
 | Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P03 | 7min | 3 tasks | 4 files |
+| Phase 50-sidecar-overlay-model-and-host-native-reader-fallback P04 | 16min | 3 tasks | 10 files |

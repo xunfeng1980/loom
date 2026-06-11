@@ -1389,4 +1389,4 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 50-04-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI
+- [x] 50-04-PLAN.md — Vortex/Lance Sidecar Adapters, Release Gate, and CLI
