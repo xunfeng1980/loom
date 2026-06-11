@@ -18,6 +18,17 @@ pub struct L2CoreProgram {
     pub body: Vec<L2CoreStmt>,
 }
 
+impl L2CoreProgram {
+    /// Compute the canonical content-hash identity of this program.
+    ///
+    /// The hash is taken over the independent L2Core IR codec bytes (including
+    /// the `L2IR` magic and version header), so the same program always yields
+    /// the same digest. See [`crate::l2core_codec::l2core_program_hash`].
+    pub fn content_hash(&self) -> String {
+        crate::l2core_codec::l2core_program_hash(self)
+    }
+}
+
 /// Explicit authority available to an `L2CoreProgram`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Capability {

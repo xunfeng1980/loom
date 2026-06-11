@@ -1339,7 +1339,7 @@ Plans:
 
 **Goal:** Give the L2Core decode IR a standalone, canonical, content-addressed identity that exists independently of every container format. Deliver (a) an **independent L2Core IR codec** — a deterministic, versioned, round-trippable serialization of `L2CoreProgram` (capabilities, `ResourceBudget`, body, feature sets) with its own magic/version, free of any `LMC*`/`LMP*`/`LMT*`/`LMA*` dependency; (b) a **content-hash identity** computed over the canonical codec bytes, so the same program always yields the same bytes and the same hash; and (c) **fail-closed independent verification** — the verifier accepts/rejects an IR program *parsed from its own codec bytes* (rejecting malformed/garbled/truncated input), so the verified object and the distributed object are byte-identical. After this phase, the formal-assurance assets (kloom v4 spec-oracle, Lean soundness model, Rust verifier) all anchor to one stable, hashable IR artifact regardless of how it is later packaged.
 
-**Requirements**: TBD (define via `/gsd-new-milestone` or `/gsd-plan-phase 49`; candidate IDs `IRID-01` independent codec, `IRID-02` content-hash identity, `IRID-03` fail-closed parse-and-verify).
+**Requirements**: `IRID-01` independent L2Core IR codec (magic/version, deterministic binary wire format, zero container dependency); `IRID-02` content-hash identity (FNV-1a over canonical bytes, stable across processes); `IRID-03` fail-closed parse-and-verify (`verify_l2_core_bytes` rejects malformed/truncated/bad-discriminant input before producing facts).
 
 **Depends on:** Phase 48 (kloom v4 spec-oracle + the `scripts/l2core-sync-checklist.py` 22-construct L2Core↔kloom.k↔Lean sync — the codec must cover exactly that construct surface so the content-hash anchors the same object all three artifacts reason about). Also leans on Phase 36/41 verified-lineage, whose digest field currently holds an MD5 placeholder pending a real IR identity to bind. Independent of Phases 44–47; the IR-level content-hash here is the substrate Phase 45's artifact-level content-addressing later builds on (do not duplicate).
 
@@ -1353,11 +1353,13 @@ Plans:
 
 **Ordering decision:** First slice of the repositioning because every later piece depends on it: the sidecar overlay (Phase 50) binds a host data range to *an IR identity*, the three thin host adapters (§8 item 4) each bind their host's bytes to *the same one IR*, and the assurance stack must anchor to *one stable hashable artifact*. Without an independent codec + identity, "decode IR 与 container 分离" remains conceptual — so it must land before sidecar, adapters, or container demotion.
 
-**Plans:** TBD (run `/gsd-plan-phase 49` to break down).
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 49 to break down)
+- [x] 49-01 — Independent L2Core IR codec (`l2core_codec.rs`): custom binary format with `L2IR` magic + `u16` version, little-endian fixed-width primitives, length-prefixed strings/vectors, `u8` enum discriminants for `Capability`/`ScalarValue`/`ScalarExpr`/`L2CoreStmt`, narrow `DataType` subset encoding (Boolean/Int32/Int64/Float32/Float64/Utf8), zero import of `container_codec`/`table_codec`/`layout_codec`/`arrow_semantic_codec`
+- [x] 49-02 — Content-hash identity: `L2CoreProgram::content_hash()` → `l2ir:<hex>` via FNV-1a over canonical codec bytes; deterministic encode-decode-reencode proven byte-identical; diverse-program corpus collision-free
+- [x] 49-03 — Fail-closed parse-and-verify: `verify_l2_core_bytes` in `full_verifier.rs` decodes then verifies, returning `ExplicitFailClosed` diagnostic on any `L2CoreCodecError` (bad magic, unsupported version, truncated payload, bad discriminant); valid bytes yield identical `VerifiedArtifactFacts` to in-memory AST path
 
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 

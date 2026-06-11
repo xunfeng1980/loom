@@ -34,6 +34,15 @@ pub mod verifier;
 /// Tiny future-language model and proof-obligation IR for the Phase 13 verifier.
 pub mod l2_core;
 
+/// Independent L2Core decode IR codec and content-hash identity (Phase 49).
+///
+/// Deliberately separate from all container codecs (`container_codec`,
+/// `table_codec`, `layout_codec`, `arrow_semantic_codec`). Provides a
+/// self-describing binary format with its own magic/version so the L2Core
+/// IR can be serialized, hashed, verified, and distributed as a freestanding
+/// artifact.
+pub mod l2core_codec;
+
 /// Executable verifier MVP for the Phase 13 `L2Core` slice.
 pub mod full_verifier;
 

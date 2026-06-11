@@ -217,6 +217,33 @@ pub fn verify_l2_core(program: &L2CoreProgram) -> FullVerificationReport {
     report
 }
 
+/// Fail-closed verifier entry point that consumes IR **parsed from its own wire form**.
+///
+/// 1. Attempts to decode `bytes` as an independent L2Core IR artifact.
+/// 2. If decoding fails, returns a [`FullVerificationReport`] with a single
+///    `FullVerificationCode::ExplicitFailClosed` diagnostic (the wire form is
+///    malformed / truncated / has a bad discriminant).
+/// 3. If decoding succeeds, runs the ordinary [`verify_l2_core`] on the decoded
+///    program and returns that report.
+///
+/// This is the **fail-closed parse-and-verify gate** required by Phase 49:
+/// the verifier never accepts bytes it cannot parse, and the parsed program
+/// is byte-identical to the distributed artifact (because encoding is canonical).
+pub fn verify_l2_core_bytes(bytes: &[u8]) -> FullVerificationReport {
+    match crate::l2core_codec::decode_l2core_program(bytes) {
+        Ok(program) => verify_l2_core(&program),
+        Err(err) => {
+            let mut report = FullVerificationReport::default();
+            report.push(
+                FullVerificationCode::ExplicitFailClosed,
+                "$.decode",
+                format!("L2Core IR wire-form rejected: {err}"),
+            );
+            report
+        }
+    }
+}
+
 fn verify_statements(
     body: &[L2CoreStmt],
     path: &str,
@@ -686,4 +713,99 @@ fn sanitize_path(path: &str) -> String {
             _ => "_".to_string(),
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use super::*;
+    use crate::l2_core::{
+        Capability, L2CoreProgram, L2CoreStmt, OutputBuilderCapability, ResourceBudget,
+        ScalarExpr, ScalarValue,
+    };
+    use arrow_schema::DataType;
+
+    fn valid_program() -> L2CoreProgram {
+        L2CoreProgram {
+            artifact_version: 1,
+            required_features: vec![],
+            optional_features: vec![],
+            capabilities: vec![Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out0".to_string(),
+                arrow_type: DataType::Int32,
+                nullable: false,
+                max_events: 4,
+            })],
+            resource_budget: ResourceBudget::bounded_rows(4),
+            body: vec![L2CoreStmt::AppendValue {
+                builder: "out0".to_string(),
+                value: ScalarExpr::Const(ScalarValue::Int32(42)),
+            }],
+        }
+    }
+
+    #[test]
+    fn verify_bytes_accept_valid_program() {
+        let program = valid_program();
+        let bytes = crate::l2core_codec::encode_l2core_program(&program);
+        let report = verify_l2_core_bytes(&bytes);
+        assert!(report.is_ok(), "valid program bytes must be accepted: {:?}", report.diagnostics());
+        assert!(report.facts().is_some());
+    }
+
+    #[test]
+    fn verify_bytes_reject_malformed_input() {
+        let bad = b"NOT_L2IR";
+        let report = verify_l2_core_bytes(bad);
+        assert!(!report.is_ok(), "malformed bytes must be rejected");
+        assert_eq!(
+            report.first_error().map(|d| d.code),
+            Some(FullVerificationCode::ExplicitFailClosed)
+        );
+    }
+
+    #[test]
+    fn verify_bytes_reject_truncated() {
+        let program = valid_program();
+        let mut bytes = crate::l2core_codec::encode_l2core_program(&program);
+        bytes.truncate(8); // magic + version only, no payload
+        let report = verify_l2_core_bytes(&bytes);
+        assert!(!report.is_ok(), "truncated bytes must be rejected");
+        assert_eq!(
+            report.first_error().map(|d| d.code),
+            Some(FullVerificationCode::ExplicitFailClosed)
+        );
+    }
+
+    #[test]
+    fn verify_bytes_reject_bad_discriminant() {
+        let mut bad = Vec::new();
+        bad.write_all(crate::l2core_codec::L2CORE_IR_MAGIC).unwrap();
+        crate::l2core_codec::write_u16(&mut bad, crate::l2core_codec::L2CORE_IR_VERSION);
+        crate::l2core_codec::write_u16(&mut bad, 1); // artifact_version
+        crate::l2core_codec::write_u32(&mut bad, 0); // required_features len
+        crate::l2core_codec::write_u32(&mut bad, 0); // optional_features len
+        crate::l2core_codec::write_u32(&mut bad, 1); // capabilities len
+        crate::l2core_codec::write_u8(&mut bad, 99); // bad Capability discriminant
+        let report = verify_l2_core_bytes(&bad);
+        assert!(!report.is_ok(), "bad discriminant must be rejected");
+        assert_eq!(
+            report.first_error().map(|d| d.code),
+            Some(FullVerificationCode::ExplicitFailClosed)
+        );
+    }
+
+    #[test]
+    fn verify_bytes_produces_same_facts_as_in_memory() {
+        let program = valid_program();
+        let bytes = crate::l2core_codec::encode_l2core_program(&program);
+        let report_from_bytes = verify_l2_core_bytes(&bytes);
+        let report_from_mem = verify_l2_core(&program);
+        assert_eq!(
+            report_from_bytes.facts(),
+            report_from_mem.facts(),
+            "facts from bytes must match facts from in-memory AST"
+        );
+    }
 }
