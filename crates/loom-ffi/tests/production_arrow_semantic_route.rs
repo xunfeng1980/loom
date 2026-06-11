@@ -321,7 +321,7 @@ fn assert_metadata_drift_fails_closed(
 
 
 #[test]
-fn default_route_requires_melior_feature_and_cannot_seed_cache() {
+fn default_route_succeeds_melior_always_available() {
     reset_disabled_shapes();
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
@@ -333,13 +333,9 @@ fn default_route_requires_melior_feature_and_cannot_seed_cache() {
         SplitDescriptor::FullScan { row_count: 9 },
         RuntimeSafetyPolicy::default(),
     );
-    assert_eq!(route.status, ArrowSemanticCodegenRouteStatus::FailClosed);
-    assert!(!route.cacheable);
-    assert!(route.replay_evidence.is_none());
-    assert!(route
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == NativeBackendDiagnosticCode::JitUnavailable));
+    assert_eq!(route.status, ArrowSemanticCodegenRouteStatus::NativeCandidate);
+    assert!(route.cacheable);
+    assert!(route.replay_evidence.is_some());
 }
 
 fn full_primitive_nullable_batch() -> RecordBatch {

@@ -200,9 +200,9 @@ fn lance_contract_does_not_leak_sdk_types_to_generic_crates() {
         .args([
             "-n",
             "pub struct Lance|Dataset|FileFragment|object_store",
-            "ingress/loom-source-ingress",
+            "crates/loom-source-ingress",
             "crates/loom-core",
-            "crates/loom-sidecar-ffi",
+            "crates/loom-ffi",
         ])
         .current_dir(&workspace_root)
         .output()

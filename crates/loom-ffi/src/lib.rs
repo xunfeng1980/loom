@@ -69,7 +69,6 @@ pub use interp::verify_layout_types;
 pub use jit::backend;
 pub use jit::builder;
 pub use jit::decode_dialect_manifest;
-pub use jit::jit as jit_mod;
 pub use jit::pipeline;
 pub use jit::report;
 pub use jit::toolchain;

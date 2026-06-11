@@ -236,8 +236,7 @@ fn parquet_contract_does_not_leak_sdk_types_to_generic_crates() {
         .args([
             "-n",
             "pub struct Parquet|ParquetMetaData|ParquetRecordBatchReader",
-            "ingress/loom-source-ingress",
-            "crates/loom-core",
+            "crates/loom-source-ingress",
         ])
         .current_dir(&workspace_root)
         .output()

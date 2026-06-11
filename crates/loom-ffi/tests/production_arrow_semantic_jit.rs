@@ -76,13 +76,14 @@ fn arrow_semantic_jit_produces_validated_phase35_record_batch() {
 
 
 #[test]
-fn arrow_semantic_jit_requires_melior_feature() {
+fn arrow_semantic_jit_executes_by_default() {
     let batch = full_primitive_nullable_batch();
     let bytes = encode_lmc2(&batch);
     let support = prepare_native_arrow_semantic_codegen_support(&bytes);
-    let err = execute_arrow_semantic_codegen_jit(&support, &NativeBackendCancellation::default())
-        .expect_err("default build must not pretend production JIT succeeded");
-    assert_eq!(err.code, NativeBackendDiagnosticCode::JitUnavailable);
+    let output = execute_arrow_semantic_codegen_jit(&support, &NativeBackendCancellation::default())
+        .expect("production JIT must succeed by default (melior always available)");
+    assert_eq!(output.row_count, 9);
+    assert_eq!(output.column_count, 5);
 }
 
 fn full_primitive_nullable_batch() -> RecordBatch {

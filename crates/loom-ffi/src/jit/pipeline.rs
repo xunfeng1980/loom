@@ -658,7 +658,7 @@ mod tests {
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };
 
-    use super::builder::build_melior_module;
+    use crate::jit::builder::build_melior_module;
 
     use super::*;
 

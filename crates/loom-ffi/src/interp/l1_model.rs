@@ -813,8 +813,8 @@ fn data_type_name(data_type: &DataType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::arrow_builder_output::OutputBuilder;
-    use super::fsst_params::FsstParams;
+    use crate::interp::arrow_builder_output::OutputBuilder;
+    use crate::interp::fsst_params::FsstParams;
 
     use arrow::array::Array;
 
