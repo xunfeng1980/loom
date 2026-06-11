@@ -1341,11 +1341,16 @@ Plans:
 
 **Ordering decision:** Container demotion must precede the sidecar overlay (Phase 50) because the sidecar overlay replaces the old container as the distribution model — you cannot build a new packaging model on top of old containers that are still "top-level."
 
-**Plans:** TBD (spec before planning). Estimated 2-3 plans across 2 waves.
+**Plans:** 3 plans across 2 waves
 
-Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-spec-phase 50.1, then /gsd-plan-phase 50.1 to break down)
+- [ ] 50.1-01-PLAN.md — Container demotion in loom-core: LMC2/LMA1 codec docs marked out-of-TCB; ArtifactVerificationFacts gains tcb_status + artifact_role fields; deprecation annotations on SourceIngressAcceptedArtifact; backward-compat comments in native_arrow_semantic
+- [ ] 50.1-02-PLAN.md — Ingress crate degradation: remove emit_source_ingress_lmc2_from_* from all 3 adapters; gate oracle batch functions to #[cfg(test)]; add extract_sidecar_bytes_from_* + bind_content_hash_to_* stubs; update lib.rs re-exports
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 50.1-03-PLAN.md — Release gate and test adaptation: update source-ingress-contract-test.sh, lmc2-arrow-semantic-container-test.sh, complete-vortex-reader-test.sh; adapt 10 ingress test files to use cfg(test)-gated oracle + dev-time packaging; run full release gate for backward-compat verification
 
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 
