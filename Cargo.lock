@@ -3519,7 +3519,10 @@ dependencies = [
  "arrow-data",
  "arrow-ipc",
  "arrow-schema",
+ "fnv",
  "fsst-rs",
+ "loom-container",
+ "loom-ir-core",
  "ron",
  "serde",
 ]

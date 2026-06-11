@@ -1,107 +1,52 @@
-//! `loom-core` — pure-Rust decode library.
+//! `loom-core` — re-export shim.
 //!
-//! This crate owns all decode logic: the L1 layout interpretation loop, the L2
-//! kernel dispatch table, and the Arrow builder output stage. It has **zero FFI**
-//! and **zero `vortex-*` dependencies** (D-01, D-02). The FFI surface and the
-//! Vortex reference decoder live in separate crates (`loom-ffi`, `loom-fixtures`).
+//! This crate is a thin wrapper that re-exports `loom-ir-core` and
+//! `loom-container`. All modules live in those crates. Existing
+//! consumers continue to `use loom_core::*` without changes.
 
-// Safety invariant: all unsafe code is confined to `loom-ffi`. This attribute
-// makes the compiler enforce that boundary — any accidental unsafe in loom-core
-// is a compile error (D-01).
 #![forbid(unsafe_code)]
 
-/// Typed decode errors (UnimplementedEncoding, BufferTooShort, UnsupportedWidth).
-pub mod error;
+// --- IR layer (from loom-ir-core) ---
+pub use loom_ir_core::error;
+pub use loom_ir_core::l2_core;
+pub use loom_ir_core::l2core_codec;
+pub use loom_ir_core::full_verifier;
+// Sidecar modules not yet created (Plan 50-02):
+// pub use loom_ir_core::sidecar;
+// pub use loom_ir_core::sidecar_routing;
 
-/// Stable binary parameter format for the FSST L2 kernel.
-pub mod fsst_params;
+// --- Container layer (from loom-container) ---
+pub use loom_container::fsst_params;
+pub use loom_container::alp_params;
+pub use loom_container::layout_codec;
+pub use loom_container::table_codec;
+pub use loom_container::container_codec;
+pub use loom_container::kloom_harness;
+pub use loom_container::native_lowering;
+pub use loom_container::production_native_lowering;
+pub use loom_container::decode_dialect;
+pub use loom_container::arrow_buffer_lowering;
+pub use loom_container::arrow_semantic;
+pub use loom_container::arrow_semantic_codec;
+pub use loom_container::arrow_semantic_verifier;
+pub use loom_container::native_arrow_semantic;
+pub use loom_container::verified_lineage;
+pub use loom_container::artifact_verifier;
+pub use loom_container::descriptor;
+pub use loom_container::arrow_builder_output;
+pub use loom_container::l1_model;
+pub use loom_container::l2_kernel_registry;
+pub use loom_container::verifier;
+pub use loom_container::runtime_abi;
 
-/// Stable binary parameter format for the ALP-style float L2 kernel.
-pub mod alp_params;
-
-/// Minimal MVP0 layout payload codec used by the FFI boundary.
-pub mod layout_codec;
-
-/// MVP0 table-shaped payload codec composed from one-column layout payloads.
-pub mod table_codec;
-
-/// Versioned Loom distribution container codec.
-pub mod container_codec;
-
-/// First-pass structural verifier for MVP0 layouts and table payloads.
-pub mod verifier;
-
-/// Tiny future-language model and proof-obligation IR for the Phase 13 verifier.
-pub mod l2_core;
-
-/// Independent L2Core decode IR codec and content-hash identity (Phase 49).
-///
-/// Deliberately separate from all container codecs (`container_codec`,
-/// `table_codec`, `layout_codec`, `arrow_semantic_codec`). Provides a
-/// self-describing binary format with its own magic/version so the L2Core
-/// IR can be serialized, hashed, verified, and distributed as a freestanding
-/// artifact.
-pub mod l2core_codec;
-
-/// Executable verifier MVP for the Phase 13 `L2Core` slice.
-pub mod full_verifier;
-
-/// K Framework harness for L2Core program trace extraction (Phase 40+).
-pub mod kloom_harness;
-
-/// Verifier-gated native-lowering support checks for the Phase 14 spike.
-pub mod native_lowering;
-
-/// Production native-lowering support gate for Phase 20+.
-pub mod production_native_lowering;
-
-/// Loom-owned textual `loom.decode` dialect surface for Phase 20+.
-pub mod decode_dialect;
-
-/// Primitive Arrow/raw-buffer builder plans for Phase 20+.
-pub mod arrow_buffer_lowering;
-
-/// Arrow semantic artifact substrate for Phase 31+ full source compatibility.
-pub mod arrow_semantic;
-
-/// Deterministic `LMA1` / `LMC2` Arrow semantic payload markers and codec.
-pub mod arrow_semantic_codec;
-
-/// Verifier scaffold for Arrow semantic artifacts.
-pub mod arrow_semantic_verifier;
-
-/// Engine-neutral native execution for Arrow semantic artifacts.
-pub mod native_arrow_semantic;
-
-/// Artifact-facing verified-lineage records for MVP1.5.
-pub mod verified_lineage;
-
-/// Unified artifact-facing verifier report model for Phase 17+.
-pub mod artifact_verifier;
-
-/// Host-neutral runtime ABI and execution policy model for Phase 22+.
-pub mod runtime_abi;
-
-/// Human-readable MVP0 layout descriptor codec.
-pub mod descriptor;
-
-/// Arrow builder output stage.
-///
-/// Owns the typed Arrow builder operations (append_value / append_null) and
-/// materialises the final `ArrayData` → `to_ffi` chain. Typed builders only —
-/// no raw buffer writes (ARROW-01).
-pub mod arrow_builder_output;
-
-/// L1 declarative layout model and synthesized read loop.
-///
-/// Represents the declarative layout descriptions for the built-in L1 encodings:
-/// bit-packing, frame-of-reference (FOR), dictionary, run-length encoding (RLE).
-/// The interpreter loop lives here.
-pub mod l1_model;
-
-/// L2 kernel registry.
-///
-/// Dispatches L2 kernel identifiers to total-function kernel implementations.
-/// The first (and for MVP0 only) registered kernel is FSST string decompression.
-/// Implemented in Phase 4+.
-pub mod l2_kernel_registry;
+// --- Re-export key dependency crates that downstream code may use ---
+pub use arrow;
+pub use arrow_array;
+pub use arrow_buffer;
+pub use arrow_schema;
+pub use arrow_data;
+pub use arrow_ipc;
+pub use fsst;
+pub use ron;
+pub use serde;
+pub use fnv;
