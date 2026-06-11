@@ -1,29 +1,33 @@
-# Loom — MVP1 (post-MVP0 distribution/verification track)
+# Loom — MVP2 / post-MVP1.5 coverage, native codegen, repositioning track
 
 ## What This Is
 
 Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
-(full design in `design.md`). The original MVP0 DuckDB demo is complete. The
-project is now in MVP1 / v3, focused on distribution containers, verifier-backed
-safety, native-lowering preparation, complete-reader Vortex ingress, bounded
-native execution hardening, and the post-native source/table/query-surface path.
-The default Arrow semantic source-distribution artifact is now `LMC2(LMA1)`.
+(full design in `design.md`). The original **MVP0** DuckDB demo is complete. **MVP1**
+and **MVP1.5** are complete. The project is now in **MVP2**, focused on coverage
+expansion, production native codegen stabilization, ABI freeze preparation,
+distribution/security, and repositioning toward a decode-IR sidecar model.
+
+The default Arrow semantic source-distribution artifact is `LMC2(LMA1)`. The
+L2Core decode IR now has an independent content-hash identity (`l2ir:<hex>`)
+decoupled from any container format (Phase 49). The next structural milestone
+is the ABI freeze (Phase 51, moved from original Phase 44).
 
 ## Core Value
 
-A user can run a SQL query in DuckDB over Loom-decoded payloads, including
+A user can run a SQL query in DuckDB over Loom-decoded artifacts, including
 mixed-column table payloads and default source-backed `LMC2(LMA1)` Arrow
 semantic artifacts, and get row/aggregate results that match the expected
-decoded values. Parquet, Lance, and Vortex sources that materialize as Arrow now
+decoded values. Parquet, Lance, and Vortex sources that materialize as Arrow
 emit verifier-accepted `LMC2(LMA1)` distribution artifacts by default. Real Vortex
-files can enter Loom through the complete-reader boundary, and the DuckDB native
-path is hardened with bounded equivalence, in-process cache, fallback, and
-fail-closed evidence. Engine-neutral native Arrow semantic execution now exists
-for the bounded one-batch nullable fixed-width primitive `LMC2(LMA1)` /
-direct-`LMA1` slice. Later phases should preserve the verifier-gated,
-fail-closed boundary as Loom grows toward broader SQL, richer Arrow shapes, and
-host integration.
+files can enter Loom through the complete-reader boundary. Full-projection,
+unfiltered, one-batch nullable fixed-width primitive `LMC2(LMA1)` / direct-`LMA1`
+artifacts route through production native codegen by default when the MLIR/JIT
+backend is available. Every emitted artifact is verifier-gated and fail-closed.
+The L2Core IR now has an independent content-hash identity decoupled from any
+container (Phase 49), anchoring the project's repositioning toward a decode-IR
+sidecar model.
 
 ## Requirements
 
@@ -70,28 +74,33 @@ host integration.
 
 ### Active
 
-<!-- Current scope. Building toward these. MVP1 hypotheses until shipped. -->
+<!-- Current scope. Building toward these. -->
 
-- [ ] MVP2 Phase 42 is the next planned phase: widen verified/native coverage while preserving per-shape verified-lineage and native/interpreter fallback disposition.
+- [ ] MVP2 Phase 44 (MVP1.5 Closeout and Milestone Archive) — placeholder, spec before planning.
+- [ ] MVP2 Phase 51 (ABI Freeze and Compatibility Contract) — freeze IR semantics and I/O contract with versioned compatibility policy.
+- [ ] Repositioning Phase 50.1 (Container Demotion and Thin Host Adapters) — depends on Phase 49.
+- [ ] Repositioning Phase 50 (Sidecar Overlay Model) — depends on Phase 50.1 and Phase 49.
+- [ ] Distribution, signing, remote fetch, encryption, and GA hardening are deferred to later phases.
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- Production MLIR `decode` dialect / arbitrary lowering / native-speed host execution — Phase 14 is only a verifier-gated textual lowering spike, Phase 16 is only optional bounded Int32 backend evidence, Phase 17 only unifies the artifact verifier report/facts pipeline, Phase 18 only establishes complete-reader facts and a finite emission matrix, and Phase 19 only adds solver-backed artifact verification evidence for the current slice (`design.md` §8)
-- MLIR/native lowering correctness proof and arbitrary real Vortex ingress proof — Phase 14 is only a verifier-gated textual lowering spike; Phase 16 is only bounded backend evidence; Phase 17 unified reports/facts; Phase 18 provides a complete reader boundary but not a proof for arbitrary Vortex semantics; Phase 19 adds Bitwuzla-backed local obligation discharge but not checked proof objects or arbitrary semantic proof (`design.md` §5, §7, §13)
-- Full arbitrary `.vortex` decode support for every encoding/layout/storage mode — Phase 18 records complete reader facts and Phase 21 expands representative coverage, but Loom artifacts still emit only for explicit verified/canonicalized shapes and defer arbitrary semantics to Phase 30
-- `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9) — current implementation focuses on schema/decode and SQL smoke paths
-- Content-hash URI, signatures, remote fetch, attestation, encryption, and native fast-path (`design.md` §10–11) — Phase 11 only starts the local versioned container boundary
 - Correctness guarantees beyond matching the reference decoder — Loom guarantees safety + well-formedness, never correctness (`design.md` §7)
+- Verified compilation of the MLIR/LLVM toolchain — stays in the TCB permanently; per-run translation validation only (`design.md` §5)
+- Live StarRocks runtime integration (`ENGINE-01`) — suspended pending external runtime/client availability; deferred to pre-GA reactivation
+- Content-hash URI, signatures, remote fetch, attestation, encryption (`design.md` §10–11) — deferred to Phases 45–46 after ABI freeze
+- `statistics()` and `projection_mask` / `range` random-access parts of the ABI (`design.md` §9)
+- Wasm fallback track — rejected in repositioning (整理稿 §2.2); cross-arch solved by LLVM, sandbox contradicts verifiable safety
+- PKI / key-management product — integrate an existing trust root; do not build one
 
 ## Context
 
 - **Origin doc:** `design.md` (Chinese) is the authoritative full design. MVP0 was the smallest slice that exercised the L1→L2-escape→Arrow→engine chain on real data; MVP1 is widening that proof toward distribution, verification, native lowering, real ingress, and table/query-surface integration.
 - **Vortex is Rust-native** (SpiralDB). Choosing Rust for the decoder core lets Loom use Vortex crates in oracle/fixture/ingress boundaries while keeping `loom-core` and `loom-ffi` Vortex-free.
 - **DuckDB extension path:** DuckDB is C++. The decoder is Rust. The seam between them is the Arrow C Data Interface — Rust produces an `ArrowArray`/`ArrowSchema`, the C++ table function adopts it zero-copy.
-- **Design philosophy carried into MVP1:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface before widening backend and engine integration.
-- **What MVP1 is *not* trying to prove yet:** DuckDB SQL over all `LMC2(LMA1)` Arrow semantic shapes, DuckDB consumption of the Phase 35 native Arrow semantic route, native speed, Utf8/logical/nested native Arrow semantic execution, arbitrary direct source physical decoding semantics, complete production verification of all future Loom artifacts, or live StarRocks runtime integration. Phase 34 supports the staged primitive/nullable SQL surface and records logical/nested unsupported diagnostics; Phase 35 supports only the engine-neutral one-batch nullable fixed-width primitive native Arrow semantic slice.
+- **Design philosophy carried into MVP2:** "Anything that can be declared shouldn't be code." ~90% of a decoder is structural layout (L1, pure data, zero verification); only the genuinely computational ~10% drops into L2. The current work keeps shrinking and verifying the executable surface while repositioning toward a decode-IR sidecar model.
+- **What MVP2 is *not* trying to prove yet:** Live StarRocks runtime integration (suspended), Wasm fallback (rejected in repositioning), verified MLIR/LLVM compilation (permanent TCB), arbitrary Vortex encoding coverage, or GA production readiness.
 
 ## Constraints
 
@@ -99,7 +108,7 @@ host integration.
 - **Tech stack**: C++ DuckDB extension (table function) — same language as DuckDB; thinnest possible wrapper over the Rust core.
 - **Interop**: Arrow C Data Interface as the Rust↔C++ FFI boundary — zero-copy, language-neutral, matches the design's "output is Arrow" contract.
 - **Dependencies**: DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs); Vortex crates only in oracle/fixture/ingress boundaries, not in the core decode path.
-- **Scope discipline**: MVP1 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
+- **Scope discipline**: MVP2 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
 
 ## Key Decisions
 
@@ -171,4 +180,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 after Phase 40 closeout — native/model validation is release-gated for the Phase 35 supported primitive matrix; verified-lineage closeout remains Phase 41.*
+*Last updated: 2026-06-11 after Phase 49 closeout — independent L2Core IR codec and content-hash identity complete; Phase 44 reorganized to MVP1.5 Closeout placeholder, ABI Freeze moved to Phase 51.*

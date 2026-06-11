@@ -2,22 +2,27 @@
 
 ## Project
 
-**Loom — MVP1 / v3 distribution and verification track**
+**Loom — MVP2 / post-MVP1.5 coverage, native codegen, repositioning track**
 
 Loom is a distribution-oriented decoder IR: a deliberately non-Turing-complete,
 total-function language whose only possible output is well-formed Apache Arrow
-(full design in `design.md`). The original **MVP0** DuckDB demo is complete. The
-project is now in **MVP1 / v3**, focused on distribution containers, verifier-backed
-safety, native-lowering preparation, and narrow real Vortex file ingress.
+(full design in `design.md`). The original **MVP0** DuckDB demo is complete. **MVP1**
+and **MVP1.5** are complete. The project is now in **MVP2**, focused on coverage
+expansion, production native codegen stabilization, ABI freeze preparation,
+distribution/security, and repositioning toward a decode-IR sidecar model.
 
 Current implemented path: multi-column `.loom` containers (`LMC1` wrapping `LMP1`/`LMT1`),
 DuckDB SQL smoke coverage, `L2Core` verifier foundation, verifier-gated textual MLIR spike,
-and an isolated `loom-vortex-ingress` boundary that may use `vortex-file`.
+real Vortex file ingress, full production native codegen (melior/LLVM/JIT), Arrow semantic
+`LMC2(LMA1)` distribution, verified-lineage closeout, Lean soundness theorem, kloom v4
+spec-oracle, and independent L2Core IR codec with content-hash identity.
 
 **Core Value:** A user can run SQL in DuckDB over Loom-decoded artifacts, including mixed-column
-table payloads, and real Vortex files can enter Loom through a narrow non-null Int32 `.vortex` ->
-`LMC1` ingress slice. The continuing goal is to keep every emitted artifact verifier-gated and
-fail-closed.
+table payloads, and real Vortex files can enter Loom through the complete-reader boundary. Default
+source-backed `LMC2(LMA1)` Arrow semantic artifacts route through production native codegen when
+the MLIR/JIT backend is available. Every emitted artifact is verifier-gated and fail-closed. The
+project is repositioning toward a decode-IR sidecar model where the L2Core IR has an independent
+content-hash identity decoupled from any container.
 
 ### Constraints
 
@@ -26,7 +31,7 @@ fail-closed.
 - **Interop**: Arrow C Data Interface as the Rust↔C++ FFI boundary — zero-copy, language-neutral, matches the design's "output is Arrow" contract.
 - **Dependencies**: DuckDB (host engine + extension API); Apache Arrow (C Data Interface, arrow-rs); Vortex crates only in oracle/fixture/ingress boundaries, not in the core decode path.
 - **Dependency boundary**: `loom-core` and `loom-ffi` must remain Vortex-free; `loom-fixtures` may use Vortex as an oracle, and `loom-vortex-ingress` may use `vortex-file` for the Phase 15 real-file ingress slice.
-- **Scope discipline**: MVP1 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
+- **Scope discipline**: MVP2 remains pre-production. Prefer narrow, verifier-gated vertical slices over broad format coverage or unverified execution paths.
 
 <!-- GSD:project-end -->
 

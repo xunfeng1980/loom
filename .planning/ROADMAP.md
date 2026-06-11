@@ -1,35 +1,23 @@
-# Roadmap: Loom MVP1 (post-MVP0 distribution/verification track)
+# Roadmap: Loom — MVP2 (post-MVP1.5 coverage, native codegen, repositioning)
 
 ## Overview
 
 The original Loom MVP0 proved one narrow chain end-to-end: Vortex-style encoded payloads are decoded
 by a pure-Rust interpreter through L1 declarative encodings and L2 kernels, producing well-formed
 Apache Arrow that crosses a C ABI seam into a C++ DuckDB table function and is queried with SQL.
-Phases 1-10 complete that MVP0/v2 proof chain. The project is now in MVP1/v3, focused on
-distribution containers, verifier-backed safety, native-lowering preparation, and real Vortex
-file ingress. Phase 16 completed verifier-gated `melior`/LLVM/JIT backend evidence for the bounded Int32 slice with managed LLVM/MLIR tooling. Phase 17 closed
-the largest verifier gap by unifying the current payload verifier and future `L2Core` verifier foundation into one artifact verification
-pipeline. Phase 18 completed the Vortex reader boundary beyond the narrow Phase 15 ingress slice. Phase 19
-completed the solver-backed full artifact verifier that upgrades collected obligations into Bitwuzla-discharged verifier evidence before
-production native expansion. Phase 20 completed the first verifier-gated production lowering seed: `loom.decode` textual contract,
-primitive Arrow/raw-buffer lowering, and raw primitive native-kernel evidence without claiming a complete compiled dialect or production
-JIT backend. Phase 21 widens Vortex encoding/layout coverage after the solver and lowering seed exist. Phases 22-25 split the formerly
-oversized engine-integrated native execution placeholder into a runtime ABI/policy phase, a production native backend implementation
-phase, a DuckDB host-integration MVP, and an equivalence/cache/fallback hardening phase. Phase 23 completed the production backend seed:
-runtime-plan/cache-key bridge, ODS evidence, melior/LLVM pipeline reports, backend identity, cancellation, JIT seed, and release-gate
-coverage while keeping the public C ABI unfrozen. Phase 25 completed bounded native equivalence,
-in-process cache, fallback, and strict fail-closed hardening while keeping public SQL as
-`loom_scan(path)` and cache controls internal. Phase 26 abstracts the Vortex ingress facts,
-diagnostics, support classification, and emission disposition pattern into a generic external-source ingress contract before more source
-formats are added. Phase 27 applies that contract to Lance and Parquet archival readability: generating verifier-backed, long-lived Loom
-artifacts so describable dataset/file metadata and column data remain readable and rewritable across source-reader version drift. Phase 28
-now closes a bounded Lance, Parquet, and Vortex semantic compatibility matrix before table/ref binding or query-surface evidence consumes
-source-family claims. Phase 29 binds Loom artifacts to local Iceberg table/ref metadata, and Phase 30 completes a bounded StarRocks + DuckDB
-dual-query surface proof: DuckDB executable SQL plus StarRocks-compatible offline descriptor evidence over one shared Phase 29 accepted artifact, with live StarRocks runtime smoke remaining optional and non-canonical. Phase 31 completed the source
-compatibility reset around full Arrow semantic artifacts, and Phase 33 implements the `LMC2(LMA1)` distribution wrapper so arbitrary Lance/Parquet schemas and materialized Vortex dtypes
-can be accepted by verifier-backed Arrow schema/value/null roundtrip evidence rather than narrow canonical raw layouts. Phase 32 paused feature expansion for an end-to-end
-architecture and code review across the completed MVP1 path, with explicit attention to true execution evidence, overclaim boundaries, ABI/FFI safety, dependency isolation,
-release-gate fidelity, and cleanup recommendations. Phases 34-35 completed the post-MVP1 claim-expansion track: DuckDB now queries default `LMC2(LMA1)` Arrow semantic artifacts over the staged primitive/nullable SQL surface, and Loom now has engine-neutral native Arrow semantic execution evidence for the bounded one-batch nullable fixed-width primitive slice.
+Phases 1-5 complete **MVP0** (DuckDB demo over FSST/bitpack/FOR/dict/RLE). Phases 6-10 complete the MVP0/v2 hardening, DX, table, verifier, and ALP coverage path. Phases 11-35 complete **MVP1 / v3** (distribution containers, verifier foundation, native lowering, real ingress, source/table/query surface, `LMC2` Arrow semantic distribution). Phases 36-41 complete **MVP1.5** (verified lineage with Lean soundness theorem and model↔native validation). The project is now in **MVP2**, with **Repositioning** (整理稿) phases 48-50 inserted out-of-order to deliver the independent L2Core IR identity and sidecar overlay model.
+
+Key phase highlights: Phase 16 delivered verifier-gated melior/LLVM/JIT backend evidence.
+Phases 17-21 unified artifact verification, completed the Vortex reader, added solver-backed
+Bitwuzla discharge, production lowering seed, and expanded Vortex encoding coverage. Phases 22-25
+established the host runtime ABI, production native backend, DuckDB native integration MVP, and
+equivalence/cache/fallback hardening. Phases 26-31 delivered external source ingress, Lance/Parquet
+archival readability, semantic compatibility matrices, Iceberg ref binding, StarRocks+DuckDB dual
+query surface, and full Arrow semantic source compatibility. Phase 32 completed an MVP1 architecture
+and code review. Phases 33-35 delivered `LMC2(LMA1)`, DuckDB Arrow semantic SQL surface, and
+engine-neutral native Arrow semantic execution. Phase 48 delivered the kloom v4 spec-oracle differential
+gate. Phase 49 delivered the independent L2Core IR codec and content-hash identity. Phase 50.1 (container demotion + thin adapters) and Phase 50 (sidecar overlay) are the next repositioning slices. ABI Freeze was moved
+from Phase 44 to Phase 51; Phase 44 is now an MVP1.5 closeout placeholder.
 
 ## Phases
 
@@ -85,16 +73,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 40: Native ↔ Model Validation** - Re-anchor Phase 35 native equivalence against the faithful model reference (not just the interpreter), as per-run translation validation; record the MLIR/LLVM pipeline as a permanent TCB trust assumption (completed 2026-06-09)
 - [x] **Phase 41: Verified-Lineage Closeout** - One combined `verified-lineage-test.sh` gate over all stages, plus a per-artifact verified-lineage record that names the evidence layers backing its safety (completed 2026-06-09)
 
-**MVP2 — Coverage, Second Engine, Productization** *(active as of Phase 44. Widen coverage, realize and stabilize true native codegen before ABI freeze, track the suspended second-engine runtime proof, then freeze the ABI and build distribution/security on top of the MVP1.5 lineage record.)*
+**MVP2 — Coverage, Second Engine, Productization** *(active as of Phase 44. Widen coverage, realize and stabilize true native codegen, track the suspended second-engine runtime proof, then freeze the ABI (Phase 51). Distribution, signing, remote fetch, and GA hardening are deferred to later phases.)*
 
 - [x] **Phase 42: Verified + Native Coverage Expansion** - Widen the accepted Vortex/Lance/Parquet encoding/layout/shape matrix, each new shape carrying a paired verified-lineage + native-execution + interpreter-fallback disposition
 - [ ] **Phase 43: StarRocks Live Runtime Integration** - Suspended pending live StarRocks runtime/client availability; completed contract/gate/ABI-findings work remains retained, while `ENGINE-01` moves to a pre-GA reactivation gate
 - [x] **Phase 43.1: Production Native Codegen Realization** - 44-pre / 44A inserted phase: replace the current Rust/Arrow native-copy placeholder with true MLIR/LLVM/JIT/native backend output for the Phase 35 Arrow semantic matrix, validated by Phase 40 before any runtime/cache admission
 - [x] **Phase 43.2: Production Native Codegen Stabilization and Production Readiness** - 44-pre stabilization phase: harden the real Phase 43.1 native-codegen path with deterministic replay, production-route evidence, adversarial validation, perf/soak/resource checks, and an ABI-freeze dossier
-- [ ] **Phase 44: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, Phase 43.1's real native-codegen requirements, and Phase 43.2's production-readiness evidence; live second-engine runtime evidence is deferred to pre-GA reactivation
-- [ ] **Phase 45: Content-Addressed Distribution and Signing** - Content-hash artifact identity, signatures, and attestation that binds the MVP1.5 verified-lineage record to the artifact
-- [ ] **Phase 46: Remote Fetch and Encryption** - Remote/object-store ingress with fail-closed remote verification and encryption in transit/at rest
-- [ ] **Phase 47: Production Hardening and GA Gate** - Scale performance, fuzz/soak, security review, and the general-availability release gate
+- [ ] **Phase 44: MVP1.5 Closeout and Milestone Archive** - Placeholder — spec via `/gsd-spec-phase 44`
+- [ ] **Phase 51: ABI Freeze and Compatibility Contract** - Freeze `loom_runtime.h` / the C ABI with a versioned compatibility policy, informed by the full coverage matrix, DuckDB evidence, Phase 43's recorded ABI findings, Phase 43.1's real native-codegen requirements, and Phase 43.2's production-readiness evidence; live second-engine runtime evidence is deferred to pre-GA reactivation
+
+**Repositioning (整理稿) — Decode-IR Sidecar** *(active; phases 48-50 inserted out-of-order. Decision One: separate decode IR from container. Decision Two: sidecar overlay + host-native reader fallback.)*
+
+- [x] **Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)** - Close kloom v4 spec-oracle gaps: typed KOracleOutcome, krun-absent skip, garbled-output hard-fail, per-shape native-route disable, strict skip convention, LLVM-backend feasibility evidence (completed 2026-06-10)
+- [x] **Phase 49: Independent L2Core Decode IR Codec and Content-Hash Identity** - Decision One: standalone L2Core IR codec with `L2IR` magic/version, deterministic wire format, content-hash identity via FNV-1a over canonical bytes, fail-closed parse-and-verify (completed 2026-06-11)
+- [ ] **Phase 50.1: Container Demotion and Thin Host Adapters** - First slice of Decision Two: demote LMC2/LMA1 from top-level format to optional lineage section + reference packaging; degrade existing ingress crates into thin host adapters (one IR + three adapters)
+- [ ] **Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback** - Second slice of Decision Two: sidecar overlay contract, content-hash binding at column-chunk/fragment granularity, fail-closed routing to verifiable-native track or host's own native reader
 
 ## Phase Details
 
@@ -1074,17 +1067,17 @@ Plans:
   2. Each emitted artifact can carry/produce a **verified-lineage record** naming the evidence layers establishing its safety (structural verifier, Bitwuzla discharge, Lean soundness, differential validation) and the TCB assumptions it relies on.
   3. Public/planning docs state precisely what "Verified Lineage" does and does not assert; no claim of end-to-end toolchain verification or of correctness.
 
-**Non-goals:** Not signing/attestation transport (that is MVP2 Phase 45, which *consumes* this record). Not productization.
+**Non-goals:** Not signing/attestation transport (deferred; this record is the substrate). Not productization.
 **Ordering decision:** Closeout last; the lineage record is the deliverable the milestone name promises and the input MVP2 attestation will bind to.
 **Plans:** 2/2 plans complete. Wave 1: [x] `41-01-PLAN.md` combined gate. Wave 2: [x] `41-02-PLAN.md` lineage record + docs.
 
 ## Milestone: MVP2 — Coverage, Second Engine, Productization
 
-> **Status: Phase 44 ready to start.** Phase 42 is complete. Phase 43 completed its contract/gate/ABI-findings work but is suspended until a live StarRocks runtime/client is available; `ENGINE-01` is deferred to a pre-GA reactivation gate rather than blocking ABI freeze planning. Phases 43.1 and 43.2 realized and stabilized real production native codegen, so Phase 44 can freeze the ABI from production-readiness evidence rather than placeholder or first-pass JIT tests.
+> **Status: Phase 51 (ABI Freeze) ready to start.** Phase 42 is complete. Phase 43 completed its contract/gate/ABI-findings work but is suspended until a live StarRocks runtime/client is available; `ENGINE-01` is deferred to a pre-GA reactivation gate rather than blocking ABI freeze planning. Phases 43.1 and 43.2 realized and stabilized real production native codegen, so Phase 51 can freeze the ABI from production-readiness evidence rather than placeholder or first-pass JIT tests.
 
 **Thesis:** Take the now-load-bearing verified core and make it (1) cover a real breadth of shapes, (2) realize and stabilize true native codegen for the supported Arrow semantic matrix before freezing ABI, (3) freeze and productize the ABI with every live-engine gap explicitly tracked, and (4) revalidate engine independence before GA once a genuine second consumer is available.
 
-**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widened coverage and attempted the second-engine runtime proof. Because the live StarRocks runtime is externally blocked, Phase 43's contract and ABI findings are retained. Before ABI freeze, Phase 43.1 must turn the bounded native Arrow semantic path into real MLIR/LLVM/JIT/native backend output, and Phase 43.2 must harden that path enough that Phase 44 freezes an ABI shaped by stable production behavior rather than first-pass green tests. `ENGINE-01` must still be reactivated before GA rather than silently waived.
+**Ordering rationale:** The MVP1 ABI was deliberately left *unfrozen* because it had only one consumer (N=1). MVP2 first widened coverage and attempted the second-engine runtime proof. Because the live StarRocks runtime is externally blocked, Phase 43's contract and ABI findings are retained. Before ABI freeze, Phase 43.1 must turn the bounded native Arrow semantic path into real MLIR/LLVM/JIT/native backend output, and Phase 43.2 must harden that path enough that Phase 51 freezes an ABI shaped by stable production behavior rather than first-pass green tests. `ENGINE-01` must still be reactivated before GA rather than silently waived.
 
 ### Phase 42: Verified + Native Coverage Expansion
 
@@ -1096,7 +1089,7 @@ Plans:
 
   1. The accepted matrix is widened with a target set of additional Vortex encodings/layouts and additional Lance/Parquet schema shapes; each addition records a paired disposition: verified-lineage-backed + native-supported, verified + interpreter-only, canonicalized, or fail-closed/deferred.
   2. Every newly accepted shape passes the MVP1.5 `verified-lineage` gate and the oracle row/aggregate equivalence gate; unsupported shapes still fail closed with typed diagnostics.
-  3. Coverage growth is recorded as a living matrix with per-shape evidence, so the ABI freeze (Phase 44) can be taken against a known surface.
+  3. Coverage growth is recorded as a living matrix with per-shape evidence, so the ABI freeze (Phase 51) can be taken against a known surface.
 
 **Non-goals:** Not arbitrary "decode every Vortex encoding"; not engine work; not ABI freeze. New shapes that cannot be lineage-backed remain interpreter-only or deferred — never silently native.
 **Ordering decision:** Coverage before ABI freeze, because new shapes stress ABI surface; a freeze taken before the matrix is known would freeze the wrong contract.
@@ -1104,7 +1097,7 @@ Plans:
 
 ### Phase 43: StarRocks Live Runtime Integration
 
-**Status:** Suspended / pending live runtime evidence. Plans 43-01 through 43-03 completed the typed runtime evidence contract, focused runtime gate, ABI findings report, and MVP2 gate wiring. Local contract mode passes, strict live mode fails closed without StarRocks env/client inputs, and no live StarRocks runtime query has been collected locally yet. `ENGINE-01` remains open and must be reactivated before GA, but it no longer blocks Phase 44 ABI-freeze planning.
+**Status:** Suspended / pending live runtime evidence. Plans 43-01 through 43-03 completed the typed runtime evidence contract, focused runtime gate, ABI findings report, and MVP2 gate wiring. Local contract mode passes, strict live mode fails closed without StarRocks env/client inputs, and no live StarRocks runtime query has been collected locally yet. `ENGINE-01` remains open and must be reactivated before GA, but it no longer blocks Phase 51 ABI-freeze planning.
 **Goal:** Prove engine-independence empirically: a live, different query engine consumes the same accepted artifacts and returns equivalent results.
 **Depends on:** Phase 42, MVP1 Phase 22 (ABI) and Phase 30 (StarRocks descriptor evidence).
 **Requirements:** ENGINE-01, ENGINE-02, ENGINE-03
@@ -1128,9 +1121,9 @@ Plans:
 
   1. Supported `LMC2(LMA1)` and explicit direct `LMA1` one-batch nullable fixed-width primitive artifacts execute through real MLIR/LLVM/JIT/native backend codegen to produce Arrow buffers/RecordBatch output for the Phase 35 matrix, not through `reference_zeroed_value_bytes` or Rust/Arrow builder-copy stand-ins.
   2. Each native codegen execution is admitted only after Phase 40 native/model validation succeeds against reference executor trace and decoded Arrow value equivalence; validation failure, unsupported shape, toolchain mismatch, or output divergence fails closed or takes an explicit interpreter fallback path according to runtime policy.
-  3. Runtime/cache identity includes artifact digest, verifier facts, backend identity, MLIR/LLVM toolchain identity, pass/pipeline identity, target/layout facts where available, and model/native trace fingerprints so Phase 44 can freeze an ABI informed by real native-codegen needs.
+  3. Runtime/cache identity includes artifact digest, verifier facts, backend identity, MLIR/LLVM toolchain identity, pass/pipeline identity, target/layout facts where available, and model/native trace fingerprints so Phase 51 can freeze an ABI informed by real native-codegen needs.
 
-**Non-goals:** No verified compilation of MLIR/LLVM; those remain TCB. No broadening beyond the Phase 35 supported Arrow semantic matrix. No StarRocks live runtime claim. No ABI freeze; Phase 44 owns the frozen contract after this phase.
+**Non-goals:** No verified compilation of MLIR/LLVM; those remain TCB. No broadening beyond the Phase 35 supported Arrow semantic matrix. No StarRocks live runtime claim. No ABI freeze; Phase 51 owns the frozen contract after this phase.
 **Ordering decision:** This phase must precede ABI freeze. Freezing first would risk locking an ABI shaped by placeholders rather than by real native output buffers, validation admission, backend identity, and cache requirements.
 **Plans:** 4 planned slices across 3 waves (Wave 1: codegen contract + supported-matrix lowering; Wave 2: JIT/native output + Phase 40 validation admission; Wave 3: cache/backend identity + release-gate closeout).
 
@@ -1139,12 +1132,12 @@ Plans:
 - [x] 43.1-01-PLAN.md - Arrow semantic native-codegen contract, verifier-gated support classification, and real value/validity buffer extraction (CODEGEN-01, CODEGEN-03)
 - [x] 43.1-02-PLAN.md - Production MLIR/LLVM/JIT output for typed primitive values, Boolean bitmaps, and nullable validity bitmaps (CODEGEN-01)
 - [x] 43.1-03-PLAN.md - Phase 40 validation admission, fail-closed/fallback routing, and production codegen cache identity (CODEGEN-01, CODEGEN-02, CODEGEN-03)
-- [x] 43.1-04-PLAN.md - Focused release gate, final native-codegen report, docs, and Phase 44 ABI-freeze handoff (CODEGEN-01, CODEGEN-02, CODEGEN-03)
+- [x] 43.1-04-PLAN.md - Focused release gate, final native-codegen report, docs, and Phase 51 ABI-freeze handoff (CODEGEN-01, CODEGEN-02, CODEGEN-03)
 
 ### Phase 43.2: Production Native Codegen Stabilization and Production Readiness (INSERTED)
 
-**Status:** Complete as of 2026-06-09. Plans 43.2-01 through 43.2-05 completed deterministic replay, shape-aware cache identity, production route closure, real JIT route evidence, fail-closed/fallback route negatives, adversarial output validation, bounded soak/resource/timing evidence, the focused stabilization gate, public docs, and the Phase 44 ABI-freeze dossier.
-**Goal:** 44-pre stabilization phase: take the real Phase 43.1 MLIR/LLVM/JIT/native Arrow semantic path from "implemented and validated on the focused matrix" to "stable enough to freeze around." The phase must harden deterministic replay, production runtime routing, adversarial validation, resource/performance behavior, diagnostics, and ABI-pressure evidence before Phase 44 freezes any host/runtime contract.
+**Status:** Complete as of 2026-06-09. Plans 43.2-01 through 43.2-05 completed deterministic replay, shape-aware cache identity, production route closure, real JIT route evidence, fail-closed/fallback route negatives, adversarial output validation, bounded soak/resource/timing evidence, the focused stabilization gate, public docs, and the Phase 51 ABI-freeze dossier.
+**Goal:** 44-pre stabilization phase: take the real Phase 43.1 MLIR/LLVM/JIT/native Arrow semantic path from "implemented and validated on the focused matrix" to "stable enough to freeze around." The phase must harden deterministic replay, production runtime routing, adversarial validation, resource/performance behavior, diagnostics, and ABI-pressure evidence before Phase 51 freezes any host/runtime contract.
 **Requirements:** CODEGEN-STABLE-01, CODEGEN-STABLE-02, CODEGEN-STABLE-03, CODEGEN-STABLE-04, CODEGEN-STABLE-05
 **Depends on:** Phase 43.1 production native codegen realization, Phase 40 native/model validation, Phase 35 supported Arrow semantic matrix, Phase 42 coverage surface, Phase 43 ABI findings, and MVP1 Phase 22 runtime ABI. Does not depend on closing suspended `ENGINE-01`.
 **Success Criteria** (what must be TRUE):
@@ -1153,9 +1146,9 @@ Plans:
   2. The production runtime path, not only test-local helpers, exercises the Phase 43.1 JIT/native backend under the supported matrix with strict fail-closed behavior for unsupported shapes, cancellation, missing toolchains, validation divergence, cache mismatch, and output buffer corruption.
   3. Adversarial and boundary coverage stress the real native output contract: nullable/non-null columns, Boolean bitmaps, sliced buffers, zero-row and one-row batches, multi-column primitive matrices, invalid buffer lengths, wrong null counts, offset/bitmap drift, schema mismatch, trace divergence, and malformed `LMC2`/direct `LMA1` bridge inputs.
   4. Production readiness evidence records resource and performance behavior: repeated execution/soak, cache hit/miss/replay behavior, cancellation latency, memory ownership and release discipline, native-vs-interpreter timing on representative Phase 35 rows, and no accepted path that relies on `LOOM_ALLOW_NATIVE_TOOL_SKIP=1`.
-  5. A Phase 44 handoff dossier names the exact ABI pressures discovered by real native codegen: buffer ownership, alignment, lifetime, error/status codes, backend/toolchain identity fields, trace fingerprints, validation/fallback statuses, cache-key schema, observability fields, concurrency/reentrancy assumptions, and remaining TCB/non-claims.
+  5. A Phase 51 handoff dossier names the exact ABI pressures discovered by real native codegen: buffer ownership, alignment, lifetime, error/status codes, backend/toolchain identity fields, trace fingerprints, validation/fallback statuses, cache-key schema, observability fields, concurrency/reentrancy assumptions, and remaining TCB/non-claims.
 
-**Non-goals:** No expansion beyond the Phase 35 supported Arrow semantic matrix except edge/boundary cases needed to stabilize that matrix. No ABI freeze; Phase 44 owns the frozen contract. No verified MLIR/LLVM compilation proof. No live StarRocks runtime claim. No performance promise beyond measured evidence for the bounded matrix.
+**Non-goals:** No expansion beyond the Phase 35 supported Arrow semantic matrix except edge/boundary cases needed to stabilize that matrix. No ABI freeze; Phase 51 owns the frozen contract. No verified MLIR/LLVM compilation proof. No live StarRocks runtime claim. No performance promise beyond measured evidence for the bounded matrix.
 **Ordering decision:** Phase 43.1 proved the path can produce real native buffers; Phase 43.2 must prove the path is stable, diagnosable, replayable, and production-routable before ABI freeze. Freezing immediately after first-pass codegen risks locking an ABI that has not yet absorbed failure modes, cache replay, lifecycle, observability, and resource behavior.
 **Plans:** 5/5 complete. Five planned slices across 3 waves (Wave 1: determinism/replay + production route closure; Wave 2: adversarial validation + resource/performance hardening; Wave 3: production readiness gate + ABI-freeze dossier).
 
@@ -1165,13 +1158,27 @@ Plans:
 - [x] 43.2-02-PLAN.md - Production runtime route closure for real JIT/native backend execution, fallback, cancellation, and cache admission (CODEGEN-STABLE-02, CODEGEN-STABLE-04)
 - [x] 43.2-03-PLAN.md - Adversarial native output validation matrix for buffers, bitmaps, offsets, schemas, traces, and malformed artifacts (CODEGEN-STABLE-02, CODEGEN-STABLE-03)
 - [x] 43.2-04-PLAN.md - Soak, resource ownership, memory/lifetime checks, and bounded native-vs-interpreter performance evidence (CODEGEN-STABLE-04)
-- [x] 43.2-05-PLAN.md - Production readiness gate, diagnostics/observability contract, and Phase 44 ABI-freeze dossier (CODEGEN-STABLE-01, CODEGEN-STABLE-02, CODEGEN-STABLE-03, CODEGEN-STABLE-04, CODEGEN-STABLE-05)
+- [x] 43.2-05-PLAN.md - Production readiness gate, diagnostics/observability contract, and Phase 51 ABI-freeze dossier (CODEGEN-STABLE-01, CODEGEN-STABLE-02, CODEGEN-STABLE-03, CODEGEN-STABLE-04, CODEGEN-STABLE-05)
 
-### Phase 44: ABI Freeze and Compatibility Contract
+### Phase 44: MVP1.5 Closeout and Milestone Archive
 
-**Status:** Not started.
+> **Status: PLACEHOLDER — not yet specced.** Stubbed to mark the MVP1.5 milestone closeout position. The MVP1.5 verified-lineage milestone (Phases 36-41) is complete; this phase archives its evidence and transitions fully into MVP2. Do not plan/execute until specced. Refine via `/gsd-spec-phase 44` → `/gsd-plan-phase 44`.
+
+**Goal (provisional):** Archive MVP1.5 verified-lineage evidence, close the milestone formally, and transition to MVP2 ABI/distribution/GA work. (TBD — spec before planning)
+
+**Depends on:** Phase 42 (verified + native coverage expansion), Phase 43.2 (production native codegen stabilization/readiness).
+
+**Plans:** TBD (placeholder — spec before planning).
+
+Plans:
+
+- [ ] TBD (run /gsd-spec-phase 44, then /gsd-plan-phase 44 to break down)
+
+### Phase 51: ABI Freeze and Compatibility Contract
+
+**Status:** Not started. (Moved from original Phase 44.)
 **Goal:** Freeze the host native runtime ABI with a versioned, documented compatibility policy.
-**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), Phase 43.2 (production native codegen stabilization/readiness), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 44 entry blocker.
+**Depends on:** Phase 42 (coverage surface), Phase 43.1 (production native codegen realization), Phase 43.2 (production native codegen stabilization/readiness), MVP1 Phase 22 runtime ABI, and Phase 43's completed ABI-findings/contract work. Live StarRocks runtime evidence (`ENGINE-01`) is explicitly deferred to pre-GA reactivation and is not a Phase 51 entry blocker.
 **Requirements:** ABI2-01, ABI2-02, ABI2-03
 **Success Criteria** (what must be TRUE):
 
@@ -1182,54 +1189,6 @@ Plans:
 **Non-goals:** No new engines or formats. No distribution/security transport. The freeze does not claim toolchain verification (MLIR/LLVM stays in TCB).
 **Ordering decision:** Freeze after the coverage matrix, Phase 43.1 real native codegen, Phase 43.2 production-readiness evidence, and Phase 43 ABI findings have shaped the contract, while preserving an explicit live-second-engine caveat. The freeze must not claim that StarRocks runtime evidence exists until `ENGINE-01` is reactivated and closed.
 **Plans:** 2 plans across 2 waves (Wave 1: freeze + version handshake; Wave 2: conformance + drift gate).
-
-### Phase 45: Content-Addressed Distribution and Signing
-
-**Status:** Not started.
-**Goal:** Give artifacts a content-addressed identity, signatures, and an attestation that binds the MVP1.5 verified-lineage record.
-**Depends on:** Phase 44 (frozen ABI), MVP1.5 Phase 41 (lineage record).
-**Requirements:** DIST2-01, DIST2-02, DIST2-03
-**Success Criteria** (what must be TRUE):
-
-  1. Artifacts carry a content-hash URI as stable identity; tampering invalidates the hash and fails closed before decode.
-  2. Artifacts can be signed and verified; the attestation binds the verified-lineage record (which evidence layers established safety) to the artifact identity and ABI version.
-  3. Attestation language is precise: it attests "this artifact passed the verified-lineage gate under TCB assumptions X," never "execution is proven correct end-to-end."
-
-**Non-goals:** Not remote transport (Phase 46). Not a key-management/PKI product; integrate with an existing trust root. No correctness attestation.
-**Ordering decision:** Identity/signing on top of a frozen ABI and a real lineage record; both must exist first or the attestation has nothing stable to bind.
-**Plans:** 2 plans across 2 waves (Wave 1: content-hash identity; Wave 2: signing + lineage-bound attestation).
-
-### Phase 46: Remote Fetch and Encryption
-
-**Status:** Not started.
-**Goal:** Fetch artifacts from remote/object stores with fail-closed remote verification and encryption.
-**Depends on:** Phase 45.
-**Requirements:** DIST2-04, DIST2-05
-**Success Criteria** (what must be TRUE):
-
-  1. Remote/object-store ingress fetches artifacts by content-hash URI and verifies hash + signature + lineage attestation **before** any decode; a failed check aborts fail-closed with diagnostics.
-  2. Encryption in transit and at rest is supported; decryption failure or integrity failure never produces partial output.
-  3. Remote ingress reuses the same verifier/lineage path as local ingress — no privileged remote shortcut.
-
-**Non-goals:** No CDN/cache service, no multi-tenant cloud product. No new decode semantics.
-**Ordering decision:** Remote comes after signing/identity so that what is fetched can be verified before trust; fetching unverifiable bytes first would be unsafe.
-**Plans:** 2 plans across 2 waves (Wave 1: verified remote fetch; Wave 2: encryption + parity with local path).
-
-### Phase 47: Production Hardening and GA Gate
-
-**Status:** Not started.
-**Goal:** Make the verified, covered, distributable system production-grade and declare GA.
-**Depends on:** Phases 42–46 plus reactivated Phase 43 live StarRocks runtime evidence (`ENGINE-01`).
-**Requirements:** HARDEN-01, HARDEN-02, HARDEN-03
-**Success Criteria** (what must be TRUE):
-
-  1. Performance at scale is measured on representative datasets (native vs interpreter vs reference engines) with published numbers; the native path demonstrates a real, repeatable speed advantage on the supported matrix.
-  2. Continuous fuzzing and a soak test run against ingress, verifier, decode, ABI, and remote paths with no fail-open findings; a third-party-style security review of the FFI/ABI/crypto surface is recorded.
-  3. A single `scripts/ga-verify.sh` gate composes mvp0/mvp1/verified-lineage/coverage/engine-conformance/distribution gates and is green from a clean checkout; docs state the supported matrix, the TCB, the explicit non-claims, and accepted live StarRocks runtime evidence from the reactivated Phase 43 gate.
-
-**Non-goals:** Not new features. GA covers the supported matrix and stated TCB only — not arbitrary shapes, not toolchain verification, not correctness.
-**Ordering decision:** Hardening last; it composes every prior gate and is the honest GA boundary.
-**Plans:** 3 plans across 2 waves (Wave 1: perf + fuzz/soak; Wave 2: security review + GA gate).
 
 ## Out of Scope (deferred beyond MVP2 / permanent TCB)
 
@@ -1246,9 +1205,12 @@ MVP1 (P1–35) ──> P35 native execution ─┐
 MVP1.5 P36→37→38→39 (no P35 dep) ───────┘
 MVP1.5 P36–41 ──> verified-lineage record ─┐
                                             ├─> MVP2 P42 (coverage, lineage-backed)
-                                            └─> MVP2 P45 (attestation binds record)
-MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P44 ABI freeze ──> P45 signing ──> P46 remote ──> P47 GA
-      P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before P47
+                                            └─> (attestation deferred)
+MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabilization ──> P51 ABI freeze
+      P43 StarRocks ── suspended after contract/gate/ABI findings; ENGINE-01 reactivates before GA
+
+Repositioning (整理稿): P48 kloom ──> P49 independent IR codec ──> P50.1 container demotion ──> P50 sidecar overlay
+      (P48–50 run independent of MVP2 chain; P49 is the substrate for future artifact-level hash)
 ```
 
 ## Progress
@@ -1256,7 +1218,7 @@ MVP2: P42 coverage ──> P43.1 native codegen ──> P43.2 production stabili
 **Execution Order:**
 MVP1 phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28 -> 29 -> 30 -> 31 -> 32 -> 33 -> 34 -> 35
 
-MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear dependency graph rather than a single numeric chain — see the "Milestone dependency summary" above. They are planned, not active; activate via `/gsd-new-milestone` (which also defines their `LINEAGE-*`/`COV2-*`/`ENGINE-*`/`ABI2-*`/`DIST2-*`/`HARDEN-*` requirements).
+MVP1.5 (36–41) is complete. MVP2 (42–47 + 51) and Repositioning (48–50) are active with a non-linear dependency graph — see the "Milestone dependency summary" above.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -1296,22 +1258,21 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 34. DuckDB Arrow Semantic SQL Surface for LMC2(LMA1) | 5/5 | Complete | 2026-06-09 |
 | 35. Native Arrow Semantic Execution | 5/5 | Complete | 2026-06-09 |
 | 36. Verified-Lineage Contract and TCB Declaration | 1/1 | Complete | 2026-06-09 |
-| 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 0/0 | Planned (MVP1.5) | - |
-| 38. Lean Stage C — Operational Semantics + Soundness | 0/0 | Planned (MVP1.5) | - |
-| 39. Model↔Rust Interpreter Consistency | 0/0 | Planned (MVP1.5) | - |
+| 37. Lean Stage B — Lean↔Rust Verifier Correspondence | 2/2 | Complete | 2026-06-09 |
+| 38. Lean Stage C — Operational Semantics + Soundness | 2/2 | Complete | 2026-06-09 |
+| 39. Model↔Rust Interpreter Consistency | 2/2 | Complete | 2026-06-09 |
 | 40. Native↔Model Validation | 2/2 | Complete | 2026-06-09 |
 | 41. Verified-Lineage Closeout | 2/2 | Complete | 2026-06-09 |
 | 42. Verified + Native Coverage Expansion | 3/3 | Complete (MVP2) | 42-03 complete |
 | 43. StarRocks Live Runtime Integration | 3/3 | Suspended pending live evidence (MVP2; reactivates before GA) | - |
 | 43.1. Production Native Codegen Realization | 4/4 | Complete (MVP2 44-pre) | 2026-06-09 |
 | 43.2. Production Native Codegen Stabilization and Production Readiness | 5/5 | Complete (MVP2 44-pre) | 2026-06-09 |
-| 44. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
-| 45. Content-Addressed Distribution and Signing | 0/0 | Planned (MVP2) | - |
-| 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
-| 47. Production Hardening and GA Gate | 0/0 | Planned (MVP2) | - |
+| 44. MVP1.5 Closeout and Milestone Archive | 0/0 | Placeholder | - |
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
-| 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 0/0 | Not planned (Repositioning 决定一) | - |
-| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/0 | Placeholder (Repositioning 决定二) | - |
+| 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 3/3 | Complete (Repositioning 决定一) | 2026-06-11 |
+| 50.1. Container Demotion and Thin Host Adapters | 0/0 | Placeholder (Repositioning 决定二 slice 1) | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/0 | Placeholder (Repositioning 决定二 slice 2) | - |
+| 51. ABI Freeze and Compatibility Contract | 0/0 | Planned (MVP2) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
 
@@ -1341,7 +1302,7 @@ Plans:
 
 **Requirements**: `IRID-01` independent L2Core IR codec (magic/version, deterministic binary wire format, zero container dependency); `IRID-02` content-hash identity (FNV-1a over canonical bytes, stable across processes); `IRID-03` fail-closed parse-and-verify (`verify_l2_core_bytes` rejects malformed/truncated/bad-discriminant input before producing facts).
 
-**Depends on:** Phase 48 (kloom v4 spec-oracle + the `scripts/l2core-sync-checklist.py` 22-construct L2Core↔kloom.k↔Lean sync — the codec must cover exactly that construct surface so the content-hash anchors the same object all three artifacts reason about). Also leans on Phase 36/41 verified-lineage, whose digest field currently holds an MD5 placeholder pending a real IR identity to bind. Independent of Phases 44–47; the IR-level content-hash here is the substrate Phase 45's artifact-level content-addressing later builds on (do not duplicate).
+**Depends on:** Phase 48 (kloom v4 spec-oracle + the `scripts/l2core-sync-checklist.py` 22-construct L2Core↔kloom.k↔Lean sync — the codec must cover exactly that construct surface so the content-hash anchors the same object all three artifacts reason about). Also leans on Phase 36/41 verified-lineage, whose digest field currently holds an MD5 placeholder pending a real IR identity to bind. Independent of MVP2 phases; the IR-level content-hash here is the substrate that future artifact-level identity builds on (do not duplicate).
 
 **Success Criteria** (what must be TRUE):
 
@@ -1361,13 +1322,38 @@ Plans:
 - [x] 49-02 — Content-hash identity: `L2CoreProgram::content_hash()` → `l2ir:<hex>` via FNV-1a over canonical codec bytes; deterministic encode-decode-reencode proven byte-identical; diverse-program corpus collision-free
 - [x] 49-03 — Fail-closed parse-and-verify: `verify_l2_core_bytes` in `full_verifier.rs` decodes then verifies, returning `ExplicitFailClosed` diagnostic on any `L2CoreCodecError` (bad magic, unsupported version, truncated payload, bad discriminant); valid bytes yield identical `VerifiedArtifactFacts` to in-memory AST path
 
+### Phase 50.1: Container Demotion and Thin Host Adapters
+
+> **Status: PLACEHOLDER — not yet specced.** First slice of Decision Two: before building the sidecar overlay, the old top-level container artifacts must be demoted and the existing ingress crates must degrade into thin adapters. Refine via `/gsd-spec-phase 50.1` → `/gsd-plan-phase 50.1`.
+
+**Repositioning anchor:** Part of **决定二** (§9 reconciliation): the repositioning doc mandates that `LMC2`/`LMA1` be demoted from top-level format to two things — (1) an optional out-of-TCB Loom verification + lineage section hung inside host packaging, and (2) a dev-time canonical reference packaging for tests. The three existing ingress crates (`loom-vortex-ingress`, `loom-parquet-ingress`, `loom-lance-ingress`) must degrade into **thin host adapters** that only mount/extract the sidecar overlay and bind the content-hash to host data — never a second IR, never a second decode path (§8 item 4: 一段 IR + 三个薄适配器).
+
+**Goal (provisional):** (a) Demote `LMC2`/`LMA1` from public top-level artifact to an optional lineage section + dev-time reference packaging; the packaging layer is out-of-TCB. (b) Degrade the three ingress crates into thin host adapters: each adapter handles only "how to mount into / extract from the host + how to bind the hash to host data," never reimplementing decode logic. After this phase, the L2Core IR (Phase 49) is the sole in-TCB artifact; all packaging is out-of-TCB and swappable.
+
+**Depends on:** Phase 49 (independent L2Core IR codec + content-hash identity — the IR must exist as an independent artifact before containers can be demoted and adapters can bind to it). Relates to Phases 26–31 ingress crates (which are the sources being degraded).
+
+**Success Criteria** (to be firmed in spec):
+  1. `LMC2`/`LMA1` are demoted: they are no longer the default top-level distribution artifact; they exist only as an optional lineage evidence section and a dev-time reference packaging for kloom/verifier tests.
+  2. The three ingress crates are degraded to thin adapters: each adapter's public API is "mount host file → extract sidecar bytes + bind content-hash to host data range"; no decode logic lives in the adapter.
+  3. All existing release gates and tests pass with the demoted containers (backward compat); the dev-time reference packaging round-trips through kloom differential and verifier tests.
+
+**Non-goals:** No sidecar overlay contract yet (Phase 50). No hash-binding granularity decisions yet (Phase 50). No fallback routing yet (Phase 50). No Wasm track. No new host formats beyond the existing three (Parquet/Vortex/Lance). No correctness claims.
+
+**Ordering decision:** Container demotion must precede the sidecar overlay (Phase 50) because the sidecar overlay replaces the old container as the distribution model — you cannot build a new packaging model on top of old containers that are still "top-level."
+
+**Plans:** TBD (spec before planning). Estimated 2-3 plans across 2 waves.
+
+Plans:
+
+- [ ] TBD (run /gsd-spec-phase 50.1, then /gsd-plan-phase 50.1 to break down)
+
 ### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
 
-> **Status: PLACEHOLDER — not yet specced.** Stubbed to make the two-slice repositioning intent visible. Do not plan/execute until Phase 49 lands the independent IR identity it binds to. Refine via `/gsd-spec-phase 50` → `/gsd-plan-phase 50`.
+> **Status: PLACEHOLDER — not yet specced.** Second slice of Decision Two: the sidecar overlay contract itself, building on demoted containers (Phase 50.1) and the independent IR identity (Phase 49). Do not plan/execute until Phase 50.1 lands. Refine via `/gsd-spec-phase 50` → `/gsd-plan-phase 50`.
 
-**Repositioning anchor:** Second slice of the Loom repositioning (整理稿) — **决定二: 参考 AnyBlox(思想参考、工程独立)、无 Wasm 回退、回退即宿主原生 reader**. Where Phase 49 makes the decode IR an independent, hashable artifact, this phase makes Loom a *sidecar overlay* on host formats rather than a top-level format: a Loom-aware engine takes the verifiable native track; everything else falls back to the host's own native reader. Single execution track (Loom 原生 — 可验证 + 宽向量 + 64 位); **no Wasm fallback** (§2.2), **no second IR execution implementation**, **no equivalence-diff burden**.
+**Repositioning anchor:** Second slice of the Loom repositioning (整理稿) — **决定二: 参考 AnyBlox(思想参考、工程独立)、无 Wasm 回退、回退即宿主原生 reader**. Where Phase 49 makes the decode IR an independent, hashable artifact and Phase 50.1 demotes containers/degrades ingress to thin adapters, this phase makes Loom a *sidecar overlay* on host formats rather than a top-level format: a Loom-aware engine takes the verifiable native track; everything else falls back to the host's own native reader. Single execution track (Loom 原生 — 可验证 + 宽向量 + 64 位); **no Wasm fallback** (§2.2), **no second IR execution implementation**, **no equivalence-diff burden**.
 
-**Goal (provisional):** Establish the sidecar contract so a Loom artifact rides *on top of* an unmodified host file (Parquet/Vortex/Lance) as a strippable overlay, with content-hash binding the host data at column-chunk/fragment granularity to the Phase 49 IR identity, and a fail-closed decision: **(integrated engine ∧ hash matches ∧ encoding supported) → Loom verifiable-native track; otherwise → host's own native reader** (§2.3, §3). The existing ingress crates (`loom-vortex-ingress`, `loom-parquet-ingress`, `loom-lance-ingress`) degrade into **thin host adapters** that only mount/extract the overlay and bind the hash to host data — never a second IR (§8 item 4: 一段 IR + 三个薄适配器).
+**Goal (provisional):** Establish the sidecar contract so a Loom artifact rides *on top of* an unmodified host file (Parquet/Vortex/Lance) as a strippable overlay, with content-hash binding the host data at column-chunk/fragment granularity to the Phase 49 IR identity, and a fail-closed decision: **(integrated engine ∧ hash matches ∧ encoding supported) → Loom verifiable-native track; otherwise → host's own native reader** (§2.3, §3). Container demotion and thin-adapter degradation are Phase 50.1 prerequisites.
 
 **Core discipline to hold (§2.3 前提):** Loom must be **叠加而非替换** — a host file carrying a Loom sidecar must still be readable as ordinary Parquet/Vortex/Lance by an engine with no Loom. The overlay is strippable; data is never re-encoded into a Loom-only form, or "fall back to host native reader" breaks.
 
@@ -1377,7 +1363,7 @@ Plans:
   2. Content-hash binds host data to the Phase 49 IR identity at column-chunk/fragment granularity; an independent rewrite of the host invalidates only the affected granule's sidecar, the rest still accelerates; verification cost does not cancel the native speedup (§8 item 3).
   3. Fail-closed routing is exhaustive and honest: integrated + hash-match + supported → verifiable-native; any miss (no Loom / hash mismatch / unsupported encoding) → host-native reader, zero risk to the host user (worst case: the sidecar is ignored).
 
-**Depends on:** Phase 49 (independent L2Core IR codec + content-hash identity — the sidecar binds host granules to *that* identity; cannot precede it). Relates to Phases 26–31 ingress crates (which degrade into the thin host adapters here) and Phase 45 artifact-level content-hash.
+**Depends on:** Phase 50.1 (container demotion + thin adapters — the sidecar needs the packaging layer cleared before the overlay contract is built) and Phase 49 (independent L2Core IR codec + content-hash identity — the sidecar binds host granules to *that* identity).
 
 **Non-goals:** No Wasm track (rejected, §2.2 — browser is a pseudo-need; cross-arch is solved by LLVM; sandbox contradicts verifiable safety; no AnyBlox free-ride). No second IR execution / no equivalence differential. No new top-level user-facing container competing for adoption — `LMC2`/`LMA1` demote to an optional out-of-TCB lineage section + a dev-time canonical reference packaging (§9). No host PKI/key-management product. Core IR is designed server-side-optimal — degradation is the fallback side's responsibility, never a constraint pushed back onto the IR (§8 item 5). No correctness claims — verifiable safety + well-formedness + graceful degradation only.
 
