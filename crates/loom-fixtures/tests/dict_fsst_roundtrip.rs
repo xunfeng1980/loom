@@ -2,8 +2,8 @@
 
 use arrow::array::{Array, StringArray};
 use arrow_schema::DataType;
-use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::l1_model::{decode_layout_to_array_data, LayoutDescription};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use vortex_array::arrays::{DictArray, PrimitiveArray, VarBinArray};
 use vortex_array::dtype::{DType, Nullability};
 use vortex_array::IntoArray;

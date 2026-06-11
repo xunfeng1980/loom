@@ -27,7 +27,7 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use arrow_schema::DataType;
-use loom_core::l1_model::{LayoutDescription, LayoutNode};
+use loom_ffi::l1_model::{LayoutDescription, LayoutNode};
 use vortex_array::arrays::primitive::PrimitiveArrayExt;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::dtype::{DType, Nullability, PType};

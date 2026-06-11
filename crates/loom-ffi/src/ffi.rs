@@ -37,7 +37,7 @@ use loom_parquet_ingress::sidecar_parquet::extract_sidecar_from_parquet_metadata
 /// Module-private error type — not exposed through the C ABI.  Every
 /// `extern "C"` function returns `i32`; consumers interpret these codes.
 /// This enum is excluded from the cbindgen output so it never appears in
-/// `loom_sidecar.h`.
+/// `loom.h`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
 enum LoomSidecarError {

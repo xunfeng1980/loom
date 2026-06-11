@@ -1,10 +1,10 @@
-use loom_core::l2_core::L2DataType;
+use loom_ffi::l2_core::L2DataType;
 
-use loom_core::production_native_lowering::{
+use loom_ffi::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
     ProductionLoweringShape,
 };
-use loom_core::runtime_abi::{
+use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeAbiVersion, RuntimeBackendIdentity, RuntimeCacheKey,
     RuntimeCacheKeyInput, RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimePlan,
     RuntimeSafetyPolicy, SplitDescriptor,
@@ -178,7 +178,7 @@ fn missing_cache_cancelled_and_unsupported_facts_fail_before_pipeline() {
     let mut facts = lowering_facts();
     // Use empty columns to trigger unsupported lowering facts,
     // since constraints_discharged no longer gates.
-    facts.shape = loom_core::production_native_lowering::ProductionLoweringShape::PrimitiveTable {
+    facts.shape = loom_ffi::production_native_lowering::ProductionLoweringShape::PrimitiveTable {
         row_count: 4,
         columns: vec![],
     };

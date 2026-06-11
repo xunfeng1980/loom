@@ -8,7 +8,7 @@
 //! # Modules
 //!
 //! - [`vortex_reader`] — inspects in-memory Vortex `BitPackedArray`/`FoRArray`
-//!   and emits a `loom_core::l1_model::LayoutNode` + raw packed bytes. The sole
+//!   and emits a `loom_ffi::l1_model::LayoutNode` + raw packed bytes. The sole
 //!   gateway between the Vortex ecosystem and `loom-core` (D-02 isolation).
 //! - [`oracle`] — decodes the same array via Vortex's own `execute` path,
 //!   returning plain Rust values for row-for-row comparison against `loom-core`.

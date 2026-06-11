@@ -2,7 +2,7 @@ use std::fs;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use loom_core::arrow_buffer_lowering::{
+use loom_ffi::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 
@@ -652,8 +652,8 @@ fn temp_mlir_path(prefix: &str) -> std::path::PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use loom_core::full_verifier::verify_l2_core;
-    use loom_core::l2_core::{
+    use loom_ffi::full_verifier::verify_l2_core;
+    use loom_ffi::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };

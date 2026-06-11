@@ -5,15 +5,15 @@ use arrow_array::{
     StringArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic::ArrowSemanticPayload;
-use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
+use loom_ffi::arrow_semantic::ArrowSemanticPayload;
+use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 #[cfg(feature = "melior")]
-use loom_core::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
-use loom_core::runtime_abi::{
+use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
+use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeFallbackPolicy, RuntimeSafetyPolicy, SplitDescriptor,
 };
 #[cfg(feature = "melior")]
-use loom_core::runtime_abi::{PredicateOperator, ProjectionColumn};
+use loom_ffi::runtime_abi::{PredicateOperator, ProjectionColumn};
 use loom_native_melior::backend::{NativeBackendCancellation, NativeBackendDiagnosticCode};
 #[cfg(feature = "melior")]
 use loom_native_melior::jit::{
@@ -295,7 +295,7 @@ fn route_cancellation_is_distinct_and_non_cacheable() {
 #[cfg(feature = "melior")]
 fn assert_metadata_drift_fails_closed(
     bytes: &[u8],
-    support: loom_core::native_arrow_semantic::NativeArrowSemanticCodegenSupportReport,
+    support: loom_ffi::native_arrow_semantic::NativeArrowSemanticCodegenSupportReport,
     jit: loom_native_melior::jit::ArrowSemanticCodegenJitOutput,
     expected_code: NativeBackendDiagnosticCode,
     expected_path: &str,

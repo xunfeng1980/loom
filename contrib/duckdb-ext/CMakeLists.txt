@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---------------------------------------------------------------------------
 set(WORKSPACE_ROOT "${CMAKE_SOURCE_DIR}/../..")
 set(WORKSPACE_CARGO_TOML "${WORKSPACE_ROOT}/Cargo.toml")
-set(LIBLOOM_SIDECAR_FFI "${WORKSPACE_ROOT}/target/release/libloom_sidecar_ffi.a")
+set(LIBLOOM_FFI "${WORKSPACE_ROOT}/target/release/libloom_ffi.a")
 
 # ---------------------------------------------------------------------------
 # Step 1: cargo build trigger — ensures the sidecar staticlib is fresh before link.
@@ -23,20 +23,20 @@ set(LIBLOOM_SIDECAR_FFI "${WORKSPACE_ROOT}/target/release/libloom_sidecar_ffi.a"
 # Phase 101: sidecar-only mode is now the only code path.
 # ---------------------------------------------------------------------------
 add_custom_command(
-    OUTPUT "${LIBLOOM_SIDECAR_FFI}"
-    COMMAND cargo build -p loom-sidecar-ffi --release
+    OUTPUT "${LIBLOOM_FFI}"
+    COMMAND cargo build -p loom-ffi --release
             --manifest-path "${WORKSPACE_CARGO_TOML}"
     WORKING_DIRECTORY "${WORKSPACE_ROOT}"
-    COMMENT "Building libloom_sidecar_ffi.a (sidecar-only staticlib)"
+    COMMENT "Building libloom_ffi.a (sidecar-only staticlib)"
 )
 add_custom_target(loom_ffi_build ALL
-    DEPENDS "${LIBLOOM_SIDECAR_FFI}"
+    DEPENDS "${LIBLOOM_FFI}"
 )
 
 # ---------------------------------------------------------------------------
 # Step 2: The DuckDB extension shared library.
 # Source: single C++ file.
-# Includes: duckdb.hpp (amalgam) and loom_sidecar.h (sidecar FFI header).
+# Includes: duckdb.hpp (amalgam) and loom.h (sidecar FFI header).
 # Phase 101: LOOM_SIDECAR_ONLY is always defined — the only code path.
 # ---------------------------------------------------------------------------
 add_library(loom_loadable_extension SHARED
@@ -47,14 +47,14 @@ add_dependencies(loom_loadable_extension loom_ffi_build)
 
 target_include_directories(loom_loadable_extension PRIVATE
     "${CMAKE_SOURCE_DIR}/vendor/duckdb-src"
-    "${WORKSPACE_ROOT}/crates/loom-sidecar-ffi/include"
+    "${WORKSPACE_ROOT}/crates/loom-ffi/include"
 )
 target_compile_definitions(loom_loadable_extension PRIVATE LOOM_SIDECAR_ONLY)
 
 # Link the Rust staticlib.  Do NOT link libduckdb — DuckDB symbols are resolved
 # at dlopen time from the CLI binary.
 target_link_libraries(loom_loadable_extension PRIVATE
-    "${LIBLOOM_SIDECAR_FFI}"
+    "${LIBLOOM_FFI}"
 )
 
 # ---------------------------------------------------------------------------

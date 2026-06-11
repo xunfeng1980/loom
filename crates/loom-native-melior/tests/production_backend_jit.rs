@@ -1,10 +1,10 @@
-use loom_core::l2_core::L2DataType;
+use loom_ffi::l2_core::L2DataType;
 
-use loom_core::production_native_lowering::{
+use loom_ffi::production_native_lowering::{
     ProductionColumnShape, ProductionLoweringBackend, ProductionLoweringFacts,
     ProductionLoweringShape,
 };
-use loom_core::runtime_abi::{
+use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeAbiVersion, RuntimeBackendIdentity, RuntimeCacheKey,
     RuntimeCacheKeyInput, RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimePlan,
     RuntimeSafetyPolicy, SplitDescriptor,

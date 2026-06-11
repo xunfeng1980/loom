@@ -17,7 +17,7 @@
 //!     .build();
 //! ```
 
-use loom_core::l2_core::{
+use loom_ffi::l2_core::{
     Capability, L2CoreProgram, L2CoreStmt, L2DataType, OutputBuilderCapability,
     ResourceBudget, ScalarExpr, ScalarType, ScalarValue,
 };

@@ -3,12 +3,12 @@ use std::sync::LazyLock;
 
 use arrow_array::RecordBatch;
 use arrow_schema::Schema;
-use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::{
+use loom_ffi::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_ffi::arrow_semantic_codec::{
     decode_arrow_semantic_container_payload, encode_arrow_semantic_container_payload,
 };
-use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::artifact_types::{verify_artifact, ArtifactVerificationStatus};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceEmissionDisposition, SourceEmissionKind,
     SourceIngressAcceptedArtifact, SourceIngressReport, SourceIngressStatus,

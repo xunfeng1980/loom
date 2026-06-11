@@ -1,24 +1,24 @@
 #[cfg(feature = "melior")]
 use arrow_schema::DataType;
 #[cfg(feature = "melior")]
-use loom_core::arrow_buffer_lowering::{
+use loom_ffi::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
-use loom_core::arrow_buffer_lowering::{
+use loom_ffi::arrow_buffer_lowering::{
     plan_arrow_buffers_from_decode_dialect, ArrowTableBufferPlan,
 };
-use loom_core::full_verifier::FullVerificationReport;
-use loom_core::l2_core::L2CoreProgram;
+use loom_ffi::full_verifier::FullVerificationReport;
+use loom_ffi::l2_core::L2CoreProgram;
 #[cfg(feature = "melior")]
-use loom_core::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
-use loom_core::native_arrow_semantic::{
+use loom_ffi::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
+use loom_ffi::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
     validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
     NativeArrowSemanticCodegenSupportReport, NativeArrowSemanticDiagnosticCode,
 };
-use loom_core::native_lowering::{
+use loom_ffi::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
@@ -32,7 +32,7 @@ use crate::pipeline::LLVM_LOWERING_PIPELINE;
 use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
 use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 use crate::toolchain::probe_toolchain;
-use loom_core::runtime_abi::{
+use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
 };
@@ -2016,8 +2016,8 @@ fn map_lowering_code(code: LoweringDiagnosticCode) -> MeliorBackendDiagnosticCod
 
 #[cfg(test)]
 mod tests {
-    use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
-    use loom_core::l2_core::{
+    use loom_ffi::full_verifier::{verify_l2_core, FullVerificationReport};
+    use loom_ffi::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr,
     };

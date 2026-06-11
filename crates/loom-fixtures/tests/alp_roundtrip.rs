@@ -7,9 +7,9 @@
 
 use arrow::array::{Array, Float32Array, Float64Array};
 use arrow_schema::DataType;
-use loom_core::alp_params::{AlpOutputType, AlpParams};
-use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::alp_params::{AlpOutputType, AlpParams};
+use loom_ffi::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use loom_fixtures::oracle::{decode_f32_oracle, decode_f64_oracle};
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::IntoArray;

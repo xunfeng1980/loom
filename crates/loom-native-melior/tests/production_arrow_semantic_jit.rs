@@ -4,17 +4,17 @@ use arrow_array::{
     ArrayRef, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic::ArrowSemanticPayload;
-use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
-use loom_core::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
+use loom_ffi::arrow_semantic::ArrowSemanticPayload;
+use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
+use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
 #[cfg(feature = "melior")]
-use loom_core::native_arrow_semantic::{
+use loom_ffi::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     validate_native_arrow_semantic_codegen_output,
     validated_native_arrow_semantic_codegen_runtime_cache_key,
 };
 #[cfg(feature = "melior")]
-use loom_core::runtime_abi::{ProjectionSet, RuntimeExecutionDecision, RuntimeSafetyPolicy};
+use loom_ffi::runtime_abi::{ProjectionSet, RuntimeExecutionDecision, RuntimeSafetyPolicy};
 use loom_native_melior::backend::NativeBackendCancellation;
 #[cfg(not(feature = "melior"))]
 use loom_native_melior::backend::NativeBackendDiagnosticCode;

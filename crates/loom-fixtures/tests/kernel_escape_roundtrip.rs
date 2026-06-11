@@ -1,10 +1,10 @@
 //! KernelEscape routing tests through the public Phase-4 decode helper.
 
 use arrow_schema::DataType;
-use loom_core::error::LoomDecodeError;
-use loom_core::fsst_params::FsstParams;
-use loom_core::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::error::LoomDecodeError;
+use loom_ffi::fsst_params::FsstParams;
+use loom_ffi::l1_model::{decode_layout_to_array_data, LayoutDescription, LayoutNode};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 
 #[test]
 fn kernel_escape_zero_returns_empty_utf8_array() {

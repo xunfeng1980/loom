@@ -1,15 +1,23 @@
-//! `loom-common` — Loom production-core types, codecs, lowering, and runtime ABI.
+//! `loom-ffi` — Loom sidecar FFI staticlib.
 //!
-//! This crate owns all production-core logic with zero dependency on
-//! the legacy container packaging layer. The legacy container
-//! layer (`loom-container`) depends on this crate for shared types.
+//! This crate combines the production-core types and codecs (formerly `loom-common`)
+//! with the sidecar extract/verify/routing C ABI (formerly `loom-sidecar-ffi`).
+//!
+//! # Safety boundary
+//!
+//! All `unsafe` code lives in `ffi.rs` at the `extern "C"` entry points, wrapped
+//! in `std::panic::catch_unwind(AssertUnwindSafe(...))` to prevent panics from
+//! unwinding across the C ABI. The `ffi` module uses `#![allow(unsafe_code)]`;
+//! all other modules are free of `unsafe` code.
 
-#![forbid(unsafe_code)]
+use std::alloc::System;
+
+#[global_allocator]
+static GLOBAL: System = System;
 
 use arrow_schema::DataType;
 use loom_ir_core::l2_core::L2DataType;
 
-/// Convert a production-core [`L2DataType`] to a native Arrow [`DataType`].
 pub fn l2_to_arrow(dt: &L2DataType) -> DataType {
     match dt {
         L2DataType::Boolean => DataType::Boolean,
@@ -21,8 +29,6 @@ pub fn l2_to_arrow(dt: &L2DataType) -> DataType {
     }
 }
 
-/// Attempt to convert a native Arrow [`DataType`] to a production-core [`L2DataType`].
-/// Returns `None` for unsupported types.
 pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
     match dt {
         DataType::Boolean => Some(L2DataType::Boolean),
@@ -35,6 +41,7 @@ pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
     }
 }
 
+// --- Production-core modules (from loom-common) ---
 pub mod artifact_types;
 pub mod verify_layout_types;
 pub mod fsst_params;
@@ -52,3 +59,25 @@ pub mod native_arrow_semantic;
 pub mod l1_model;
 pub mod l2_kernel_registry;
 pub mod kloom_harness;
+
+// --- FFI surface (from loom-sidecar-ffi) ---
+pub mod ffi;
+
+// --- Re-export loom-ir-core modules for convenience ---
+pub use loom_ir_core::error;
+pub use loom_ir_core::full_verifier;
+pub use loom_ir_core::l2_core;
+pub use loom_ir_core::l2core_codec;
+pub use loom_ir_core::sidecar;
+pub use loom_ir_core::sidecar_routing;
+
+// --- Re-export key dependencies ---
+pub use arrow;
+pub use arrow_array;
+pub use arrow_buffer;
+pub use arrow_schema;
+pub use arrow_data;
+pub use arrow_ipc;
+pub use ron;
+pub use serde;
+pub use fnv;

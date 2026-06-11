@@ -9,10 +9,10 @@ use arrow_array::{
 use arrow_schema::{DataType, Field, Schema};
 use lance::Dataset;
 use futures::TryStreamExt;
-use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::encode_arrow_semantic_container_payload;
-use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
+use loom_ffi::artifact_types::{verify_artifact, ArtifactVerificationStatus};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,

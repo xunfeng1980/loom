@@ -19,7 +19,7 @@ description = "Reference fixtures and oracle decoder — the ONLY crate permitte
 vortex-array     = { workspace = true }
 vortex-fastlanes = { workspace = true }
 vortex-fsst      = { workspace = true }
-loom-core        = { path = "../loom-core" }
+loom-ffi        = { path = "../loom-ffi" }
 arrow-array      = { workspace = true }
 arrow-schema     = { workspace = true }
 
@@ -34,7 +34,7 @@ path = "src/bin/emit_arrow_semantic_lmc2_sql_fixture.rs"
 [dev-dependencies]
 # fastlanes is added for the Wave-0 fl_transpose_matches_fastlanes check ONLY.
 # It must NEVER be added to [dependencies] — D-02 forbids the vortex ecosystem
-# in loom-core, and fastlanes is a transitive dep of vortex-fastlanes (already
+# in loom-ffi, and fastlanes is a transitive dep of vortex-fastlanes (already
 # in Cargo.lock at 0.5.1). The exact version pin ensures we compare against the
 # same formula as Vortex uses.
 fastlanes        = "=0.5.1"

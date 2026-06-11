@@ -1,15 +1,15 @@
 //! Host-neutral production backend request/report model.
 //!
-//! This module is the Phase 23 bridge from `loom_core::runtime_abi` into the
+//! This module is the Phase 23 bridge from `loom_ffi::runtime_abi` into the
 //! optional native backend crate. It performs policy preflight only; later plans
 //! attach ODS, LLVM lowering, and JIT execution evidence behind the same model.
 
 use std::fmt;
 
-use loom_core::production_native_lowering::{
+use loom_ffi::production_native_lowering::{
     ProductionLoweringBackend, ProductionLoweringFacts, ProductionNativeKernel,
 };
-use loom_core::runtime_abi::{
+use loom_ffi::runtime_abi::{
     RuntimeAbiVersion, RuntimeCacheKey, RuntimeExecutionDecision, RuntimePlan,
 };
 

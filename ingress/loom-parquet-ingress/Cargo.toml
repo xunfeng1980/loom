@@ -13,5 +13,5 @@ loom-source-ingress = { path = "../loom-source-ingress" }
 parquet = { workspace = true }
 
 [dev-dependencies]
-loom-core = { path = "../../crates/loom-core" }
+loom-ffi = { path = "../../crates/loom-ffi" }
 tempfile = { workspace = true }

@@ -7,12 +7,12 @@ use arrow_array::{
     Array, ArrayRef, BooleanArray, Int32Array, ListArray, RecordBatch, StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
-use loom_core::arrow_semantic_codec::{
+use loom_ffi::arrow_semantic::{ArrowSemanticBatch, ArrowSemanticPayload};
+use loom_ffi::arrow_semantic_codec::{
     decode_arrow_semantic_container_payload, encode_arrow_semantic_container_payload,
 };
-use loom_core::artifact_types::{verify_artifact, ArtifactVerificationStatus};
-use loom_core::l2_kernel_registry::L2KernelRegistry;
+use loom_ffi::artifact_types::{verify_artifact, ArtifactVerificationStatus};
+use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use loom_parquet_ingress::parquet_source_facts_from_path;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,

@@ -1,5 +1,5 @@
-use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
-use loom_core::l2_core::{
+use loom_ffi::full_verifier::{verify_l2_core, FullVerificationReport};
+use loom_ffi::l2_core::{
     Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
     OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
 };

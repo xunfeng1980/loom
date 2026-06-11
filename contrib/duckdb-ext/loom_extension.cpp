@@ -15,7 +15,7 @@
 #include "vendor/duckdb-src/duckdb.hpp"  // DuckDB v1.5.3 amalgamated header
 
 extern "C" {
-#include "../../crates/loom-sidecar-ffi/include/loom_sidecar.h"
+#include "../../crates/loom-ffi/include/loom.h"
 }
 
 #include <cstdint>

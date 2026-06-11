@@ -10,8 +10,8 @@ use arrow_array::{
     StringArray, StructArray,
 };
 use arrow_schema::{DataType, Field, Schema};
-use loom_core::arrow_semantic::ArrowSemanticPayload;
-use loom_core::arrow_semantic_codec::{
+use loom_ffi::arrow_semantic::ArrowSemanticPayload;
+use loom_ffi::arrow_semantic_codec::{
     encode_arrow_semantic_container_payload, encode_arrow_semantic_payload,
 };
 

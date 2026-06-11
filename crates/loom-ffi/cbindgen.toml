@@ -1,6 +1,6 @@
 # cbindgen.toml — configuration for C header generation for the lean sidecar FFI.
 #
-# Generates include/loom_sidecar.h from the extern "C" surface in src/ffi.rs.
+# Generates include/loom.h from the extern "C" surface in src/ffi.rs.
 #
 # Unlike the full loom-ffi, no Arrow FFI types cross the sidecar boundary —
 # all functions deal only with raw byte pointers and C strings.  The generated

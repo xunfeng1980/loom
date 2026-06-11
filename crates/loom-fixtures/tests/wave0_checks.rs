@@ -21,7 +21,7 @@
 //!
 //! [`bitpack_11bit_roundtrip`] — build a Vortex BitPackedArray with 11-bit
 //! packing, translate to `LayoutNode` via `vortex_reader`, decode via
-//! `loom_core::synthesized_read_loop`, and assert values match the oracle
+//! `loom_ffi::synthesized_read_loop`, and assert values match the oracle
 //! row-for-row including both the first and second 1024-element block.
 //!
 //! # Check #4: nullable roundtrip (null-position bit-for-bit)
@@ -35,9 +35,9 @@ use std::sync::LazyLock;
 use arrow::array::Int32Array;
 use arrow_schema::DataType;
 use fastlanes::transpose;
-use loom_core::arrow_builder_output::OutputBuilder;
-use loom_core::l1_model::bitpack::fl_transpose_index;
-use loom_core::l1_model::synthesized_read_loop;
+use loom_ffi::arrow_builder_output::OutputBuilder;
+use loom_ffi::l1_model::bitpack::fl_transpose_index;
+use loom_ffi::l1_model::synthesized_read_loop;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::IntoArray;
 use vortex_array::VortexSessionExecute;

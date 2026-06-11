@@ -9,6 +9,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define LMC2_VERSION 1
+
+typedef struct RuntimeAbiVersion RuntimeAbiVersion;
+
+
+
 /**
  * Extract the sidecar overlay from a Parquet file.
  *

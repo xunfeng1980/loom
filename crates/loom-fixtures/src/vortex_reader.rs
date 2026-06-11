@@ -3,7 +3,7 @@
 //! This module is the **only** place in the Loom workspace that calls into the
 //! Vortex ecosystem for decoding purposes (D-02). It inspects an in-memory
 //! Vortex `BitPackedArray` or `FoRArray` and emits a
-//! [`loom_core::l1_model::LayoutNode`] + raw packed bytes.
+//! [`loom_ffi::l1_model::LayoutNode`] + raw packed bytes.
 //!
 //! # D-02 invariant
 //!
@@ -12,8 +12,8 @@
 //! `i128`) before being handed to `loom-core`. The D-02 boundary is enforced
 //! by `cargo tree -p loom-core | grep -c -E 'vortex|fastlanes'` == 0.
 
-use loom_core::fsst_params::FsstParams;
-use loom_core::l1_model::LayoutNode;
+use loom_ffi::fsst_params::FsstParams;
+use loom_ffi::l1_model::LayoutNode;
 use vortex_array::arrays::bool::BoolArrayExt;
 use vortex_array::arrays::dict::DictArraySlotsExt;
 use vortex_array::arrays::primitive::PrimitiveArrayExt;

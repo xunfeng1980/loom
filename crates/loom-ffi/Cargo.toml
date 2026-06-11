@@ -1,18 +1,26 @@
 [package]
-name = "loom-common"
+name = "loom-ffi"
 version = "0.1.0"
 edition = "2021"
-description = "Loom production-core types, codecs, lowering, and runtime ABI"
+description = "Loom sidecar FFI staticlib — production-core types, codecs, Arrow materialization, and sidecar extract/verify/routing C ABI"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-loom-ir-core  = { path = "../loom-ir-core" }
+loom-ir-core = { path = "../loom-ir-core" }
+loom-parquet-ingress = { path = "../../ingress/loom-parquet-ingress" }
 arrow         = { workspace = true }
 arrow-array   = { workspace = true }
 arrow-buffer  = { workspace = true }
 arrow-schema  = { workspace = true }
 arrow-data    = { workspace = true }
 arrow-ipc     = { workspace = true }
+parquet       = { workspace = true }
 fsst          = { workspace = true }
 ron           = { workspace = true }
 serde         = { workspace = true }
 fnv           = { workspace = true }
+
+[build-dependencies]
+cbindgen = { workspace = true }

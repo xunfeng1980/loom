@@ -4,8 +4,8 @@ use std::sync::LazyLock;
 
 use arrow::array::{Array, Int32Array};
 use arrow_schema::DataType;
-use loom_core::arrow_builder_output::OutputBuilder;
-use loom_core::l1_model::synthesized_read_loop;
+use loom_ffi::arrow_builder_output::OutputBuilder;
+use loom_ffi::l1_model::synthesized_read_loop;
 use vortex_array::arrays::{DictArray, PrimitiveArray};
 use vortex_array::{IntoArray, VortexSessionExecute};
 use vortex_fastlanes::BitPackedData;

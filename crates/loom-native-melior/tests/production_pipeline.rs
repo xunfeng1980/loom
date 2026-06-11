@@ -1,11 +1,11 @@
-use loom_core::arrow_buffer_lowering::{
+use loom_ffi::arrow_buffer_lowering::{
     lower_arrow_buffers_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
-use loom_core::artifact_types::{
+use loom_ffi::artifact_types::{
     ArtifactVerificationFacts, ArtifactVerificationReport,
 };
-use loom_core::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
-use loom_core::production_native_lowering::check_production_lowering_support;
+use loom_ffi::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
+use loom_ffi::production_native_lowering::check_production_lowering_support;
 use loom_native_melior::pipeline::{
     validate_production_standard_mlir, MlirValidationOptions, ProductionMlirArtifact,
 };

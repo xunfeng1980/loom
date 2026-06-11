@@ -1,6 +1,6 @@
-use loom_core::full_verifier::FullVerificationReport;
-use loom_core::l2_core::L2CoreProgram;
-use loom_core::native_lowering::{
+use loom_ffi::full_verifier::FullVerificationReport;
+use loom_ffi::l2_core::L2CoreProgram;
+use loom_ffi::native_lowering::{
     check_lowering_support, lower_to_textual_mlir, LoweringDiagnosticCode,
 };
 
@@ -83,8 +83,8 @@ fn map_lowering_code(code: LoweringDiagnosticCode) -> MeliorBackendDiagnosticCod
 
 #[cfg(test)]
 mod tests {
-    use loom_core::full_verifier::{verify_l2_core, FullVerificationReport};
-    use loom_core::l2_core::{
+    use loom_ffi::full_verifier::{verify_l2_core, FullVerificationReport};
+    use loom_ffi::l2_core::{
         Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
         OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
     };

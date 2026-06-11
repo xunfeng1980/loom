@@ -1,10 +1,10 @@
-//! build.rs — runs cbindgen to generate `include/loom_sidecar.h` from the
+//! build.rs — runs cbindgen to generate `include/loom.h` from the
 //! crate's `extern "C"` surface.
 //!
 //! # What this does
 //!
 //! 1. Parses `src/ffi.rs` for `#[no_mangle] pub extern "C"` functions.
-//! 2. Emits a C header to `include/loom_sidecar.h`.
+//! 2. Emits a C header to `include/loom.h`.
 //!
 //! # What this must NOT do
 //!
@@ -26,7 +26,7 @@ fn main() {
     let include_dir = std::path::PathBuf::from(&crate_dir).join("include");
     std::fs::create_dir_all(&include_dir).expect("failed to create include/ directory");
 
-    let out_file = include_dir.join("loom_sidecar.h");
+    let out_file = include_dir.join("loom.h");
 
     // Build and generate.
     let config =

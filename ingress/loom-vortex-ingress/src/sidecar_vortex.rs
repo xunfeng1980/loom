@@ -1,7 +1,7 @@
 //! Vortex-specific sidecar extract and embed — Phase 50.
 //!
 //! This module provides the Vortex host-adapter functions for extracting and
-//! embedding [`loom_core::sidecar::SidecarOverlay`] payloads in Vortex files.
+//! embedding [`loom_ffi::sidecar::SidecarOverlay`] payloads in Vortex files.
 //!
 //! # Format limitation
 //!
@@ -29,7 +29,7 @@
 //! not occur, preventing the situation where a user believes a sidecar was
 //! embedded when it was not.
 
-use loom_core::sidecar::{SidecarCodecError, SidecarOverlay};
+use loom_ffi::sidecar::{SidecarCodecError, SidecarOverlay};
 
 /// Extract a sidecar overlay from a Vortex file buffer.
 ///
@@ -85,7 +85,7 @@ pub fn embed_sidecar_into_vortex_buffer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use loom_core::sidecar::{ChunkBinding, SidecarOverlay};
+    use loom_ffi::sidecar::{ChunkBinding, SidecarOverlay};
 
     fn make_overlay() -> SidecarOverlay {
         SidecarOverlay {

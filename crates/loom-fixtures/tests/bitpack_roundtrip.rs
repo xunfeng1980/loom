@@ -1,6 +1,6 @@
 //! Bit-packing roundtrip test suite (success criteria 1, 3 closure).
 //!
-//! Tests verify that `loom_core::synthesized_read_loop` decodes BitPacked
+//! Tests verify that `loom_ffi::synthesized_read_loop` decodes BitPacked
 //! arrays to Arrow output matching the Vortex oracle row-for-row.
 //!
 //! All fixtures are built programmatically in-memory via `BitPackedData::encode`.
@@ -10,8 +10,8 @@ use std::sync::LazyLock;
 
 use arrow::array::Int32Array;
 use arrow_schema::DataType;
-use loom_core::arrow_builder_output::OutputBuilder;
-use loom_core::l1_model::synthesized_read_loop;
+use loom_ffi::arrow_builder_output::OutputBuilder;
+use loom_ffi::l1_model::synthesized_read_loop;
 use vortex_array::arrays::PrimitiveArray;
 use vortex_array::IntoArray;
 use vortex_array::VortexSessionExecute;

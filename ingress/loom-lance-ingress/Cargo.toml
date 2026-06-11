@@ -9,7 +9,7 @@ arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
 futures = { workspace = true }
 lance = { workspace = true }
-loom-core = { path = "../../crates/loom-core" }
+loom-ffi = { path = "../../crates/loom-ffi" }
 loom-source-ingress = { path = "../loom-source-ingress" }
 tokio = { workspace = true }
 

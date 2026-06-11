@@ -1,7 +1,7 @@
 //! Lance-specific sidecar extract and embed — Phase 50.
 //!
 //! This module provides the Lance host-adapter functions for extracting and
-//! embedding [`loom_core::sidecar::SidecarOverlay`] payloads in Lance datasets.
+//! embedding [`loom_ffi::sidecar::SidecarOverlay`] payloads in Lance datasets.
 //!
 //! # Format limitation
 //!
@@ -29,7 +29,7 @@
 //! not occur, preventing the situation where a user believes a sidecar was
 //! embedded when it was not.
 
-use loom_core::sidecar::{SidecarCodecError, SidecarOverlay};
+use loom_ffi::sidecar::{SidecarCodecError, SidecarOverlay};
 
 /// Extract a sidecar overlay from a Lance dataset.
 ///
@@ -81,7 +81,7 @@ pub fn embed_sidecar_into_lance_dataset(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use loom_core::sidecar::{ChunkBinding, SidecarOverlay};
+    use loom_ffi::sidecar::{ChunkBinding, SidecarOverlay};
 
     fn make_overlay() -> SidecarOverlay {
         SidecarOverlay {
