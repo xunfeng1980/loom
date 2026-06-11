@@ -5,11 +5,14 @@
 //! batches into Loom-owned source-ingress reports without exposing
 //! Parquet SDK readers, file handles, credentials, object-store state, public
 //! SQL routes, DuckDB APIs, or FFI surfaces.
+//!
+//! Phase 50.1: Degraded to thin host adapter — mount + extract facts + sidecar stubs.
+//! Arrow materialization and LMC2/LMA1 emission removed from public API.
 
 pub mod source_contract;
 
 pub use source_contract::{
-    emit_source_ingress_lma1_from_parquet_path, emit_source_ingress_lmc2_from_parquet_path,
-    parquet_arrow_oracle_batches_from_path, parquet_source_facts_from_path,
-    source_ingress_report_from_parquet_path,
+    bind_content_hash_to_parquet_data,
+    extract_sidecar_bytes_from_parquet_path,
+    parquet_source_facts_from_path,
 };
