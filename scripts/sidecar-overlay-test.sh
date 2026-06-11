@@ -213,9 +213,19 @@ if [ $FAILED -eq 0 ]; then
     echo "${GRN}PASS${RST} FULL_BUILD"
     echo "${GRN}PASS${RST} CLI_BUILD"
 else
-    # Print status for each section based on failure messages
+    # Print status for each section based on failure messages.
+    # Use array iteration rather than echo|grep, because echo joins all
+    # array elements onto one line, so only the first failing section's
+    # prefix appears at start-of-line and all later failures show PASS.
     for section in MARKERS CORE_SIDECAR_TESTS PARQUET_SIDECAR_ROUNDTRIP VORTEX_SIDECAR_MARKER LANCE_SIDECAR_MARKER STRIPPABLE_OVERLAY FULL_BUILD CLI_BUILD; do
-        if echo "${FAILURE_MESSAGES[@]}" | grep -q "^${section}:"; then
+        matched=false
+        for msg in "${FAILURE_MESSAGES[@]}"; do
+            if [[ "$msg" == "${section}:"* ]]; then
+                matched=true
+                break
+            fi
+        done
+        if $matched; then
             echo "${RED}FAIL${RST} ${section}"
         else
             echo "${GRN}PASS${RST} ${section}"
