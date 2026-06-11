@@ -234,3 +234,232 @@ pub fn decide_sidecar_routing(input: SidecarRoutingInput) -> SidecarRoutingDecis
         verified_bindings,
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sidecar::ChunkBinding;
+
+    // -- test helpers -------------------------------------------------------
+
+    fn make_binding(
+        granule_id: &str,
+        content_hash: &str,
+        matches: bool,
+    ) -> (ChunkBinding, HashVerificationResult) {
+        let binding = ChunkBinding {
+            granule_id: granule_id.to_string(),
+            host_data_range: (0, 1024),
+            content_hash: content_hash.to_string(),
+            ir_identity: "l2ir:aaaaaaaaaaaaaaaa".to_string(),
+        };
+        let recomputed_hash = if matches {
+            content_hash.to_string()
+        } else {
+            "l2ir:ffffffffffffffff".to_string()
+        };
+        let hv = HashVerificationResult {
+            granule_id: granule_id.to_string(),
+            binding: binding.clone(),
+            recomputed_hash,
+            matches,
+        };
+        (binding, hv)
+    }
+
+    fn make_sidecar() -> SidecarOverlay {
+        SidecarOverlay {
+            ir_bytes: vec![0x4C, 0x32, 0x49, 0x52, 0x01, 0x00], // L2IR magic + v1
+            bindings: vec![],
+        }
+    }
+
+    fn make_input(
+        engine: bool,
+        sidecar: Option<SidecarOverlay>,
+        hash_results: Vec<HashVerificationResult>,
+        encoding_ok: bool,
+    ) -> SidecarRoutingInput {
+        SidecarRoutingInput {
+            engine_integrated: engine,
+            sidecar,
+            hash_verification: hash_results,
+            encoding_supported: encoding_ok,
+        }
+    }
+
+    // -- positive tests (LoomNative) ---------------------------------------
+
+    #[test]
+    fn test_all_gates_pass_loom_native() {
+        let (b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar.clone()), vec![hv1], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::LoomNative {
+                sidecar: s,
+                verified_bindings,
+            } => {
+                assert_eq!(s.ir_bytes, sidecar.ir_bytes);
+                assert_eq!(verified_bindings.len(), 1);
+                assert_eq!(verified_bindings[0].granule_id, b1.granule_id);
+            }
+            other => panic!("expected LoomNative, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_empty_bindings_loom_native() {
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar.clone()), vec![], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::LoomNative {
+                sidecar: s,
+                verified_bindings,
+            } => {
+                assert_eq!(s.ir_bytes, sidecar.ir_bytes);
+                assert!(verified_bindings.is_empty());
+            }
+            other => panic!("expected LoomNative with empty bindings, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_no_mismatches_multi_binding_loom_native() {
+        let (b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let (b2, hv2) = make_binding("col_b", "l2ir:2222222222222222", true);
+        let (b3, hv3) = make_binding("col_c", "l2ir:3333333333333333", true);
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar.clone()), vec![hv1, hv2, hv3], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::LoomNative {
+                verified_bindings, ..
+            } => {
+                assert_eq!(verified_bindings.len(), 3);
+                let ids: Vec<&str> = verified_bindings.iter().map(|b| b.granule_id.as_str()).collect();
+                assert_eq!(ids, vec![b1.granule_id.as_str(), b2.granule_id.as_str(), b3.granule_id.as_str()]);
+            }
+            other => panic!("expected LoomNative with 3 bindings, got {other:?}"),
+        }
+    }
+
+    // -- negative tests (HostNativeReader) ---------------------------------
+
+    #[test]
+    fn test_engine_not_integrated_falls_back() {
+        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let input = make_input(false, Some(make_sidecar()), vec![hv], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::HostNativeReader {
+                reason,
+                diagnostics,
+            } => {
+                assert_eq!(reason, HostNativeReaderReason::EngineNotIntegrated);
+                assert_eq!(diagnostics.len(), 1);
+                assert_eq!(diagnostics[0].path, "$.engine");
+                assert_eq!(diagnostics[0].code, SidecarDiagnosticCode::EngineNotIntegrated);
+            }
+            other => panic!("expected HostNativeReader(EngineNotIntegrated), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_no_sidecar_falls_back() {
+        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let input = make_input(true, None, vec![hv], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::HostNativeReader {
+                reason,
+                diagnostics,
+            } => {
+                assert_eq!(reason, HostNativeReaderReason::NoSidecarPresent);
+                assert_eq!(diagnostics.len(), 1);
+                assert_eq!(diagnostics[0].path, "$.sidecar");
+                assert_eq!(diagnostics[0].code, SidecarDiagnosticCode::NoSidecarPresent);
+            }
+            other => panic!("expected HostNativeReader(NoSidecarPresent), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hash_mismatch_falls_back() {
+        let (_b, hv) = make_binding("col_x", "l2ir:expected_hash0001", false);
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar), vec![hv], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::HostNativeReader {
+                reason,
+                diagnostics,
+            } => {
+                assert_eq!(reason, HostNativeReaderReason::HashMismatch);
+                assert_eq!(diagnostics.len(), 1);
+                assert_eq!(diagnostics[0].code, SidecarDiagnosticCode::HashMismatch);
+                assert!(diagnostics[0].path.contains("col_x"), "path should reference granule_id");
+            }
+            other => panic!("expected HostNativeReader(HashMismatch), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_multiple_hash_mismatches_all_diagnosed() {
+        let (_b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", false);
+        let (_b2, hv2) = make_binding("col_b", "l2ir:2222222222222222", true);
+        let (_b3, hv3) = make_binding("col_c", "l2ir:3333333333333333", false);
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar), vec![hv1, hv2, hv3], true);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::HostNativeReader {
+                reason,
+                diagnostics,
+            } => {
+                assert_eq!(reason, HostNativeReaderReason::HashMismatch);
+                // Only mismatched granules get diagnostics
+                assert_eq!(diagnostics.len(), 2);
+                let paths: Vec<&str> = diagnostics.iter().map(|d| d.path.as_str()).collect();
+                assert!(paths.iter().any(|p| p.contains("col_a")));
+                assert!(paths.iter().any(|p| p.contains("col_c")));
+                assert!(!paths.iter().any(|p| p.contains("col_b")));
+            }
+            other => panic!("expected HostNativeReader(HashMismatch) with 2 diagnostics, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_encoding_unsupported_falls_back() {
+        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let sidecar = make_sidecar();
+        let input = make_input(true, Some(sidecar), vec![hv], false);
+
+        let decision = decide_sidecar_routing(input);
+        match decision {
+            SidecarRoutingDecision::HostNativeReader {
+                reason,
+                diagnostics,
+            } => {
+                assert_eq!(reason, HostNativeReaderReason::EncodingUnsupported);
+                assert_eq!(diagnostics.len(), 1);
+                assert_eq!(diagnostics[0].code, SidecarDiagnosticCode::EncodingUnsupported);
+                assert_eq!(diagnostics[0].path, "$.sidecar.ir");
+            }
+            other => panic!("expected HostNativeReader(EncodingUnsupported), got {other:?}"),
+        }
+    }
+}
