@@ -1310,6 +1310,8 @@ MVP1.5 (36–41) and MVP2 (42–47) are future milestones with a non-linear depe
 | 46. Remote Fetch and Encryption | 0/0 | Planned (MVP2) | - |
 | 47. Production Hardening and GA Gate | 0/0 | Planned (MVP2) | - |
 | 48. K Spec-Oracle Differential Gate Completion (方案 A) | 3/3 | Complete | 2026-06-10 |
+| 49. Independent L2Core Decode IR Codec and Content-Hash Identity | 0/0 | Not planned (Repositioning 决定一) | - |
+| 50. Sidecar Overlay Model and Host-Native Reader Fallback | 0/0 | Placeholder (Repositioning 决定二) | - |
 
 ### Phase 48: K Spec-Oracle Differential Gate Completion (方案 A)
 
@@ -1328,3 +1330,59 @@ Plans:
 - [x] 48-P3-PLAN.md — Persistent cross-process disable store: `DisableStore` JSON with atomic temp-rename, `$XDG_CACHE_HOME` default, `LOOM_DISABLE_STORE_PATH` env override, load-on-init in `disabled_shapes_registry()`, unit tests in jit.rs
 - [x] 48-P4-PLAN.md — Equivalence-class corpus generator: `loom-fixtures::corpus::CorpusBuilder` with schema shape × expr depth × stmt mix determinism, `include_min_max` toggle, valid `ResourceBudget`
 - [x] 48-P5-PLAN.md — L2Core↔kloom.k↔Lean AST sync checklist: `scripts/l2core-sync-checklist.py` checking 22 mapped constructs across three artifacts + Phase 48 completion flags
+
+### Phase 49: Independent L2Core Decode IR Codec and Content-Hash Identity
+
+**Repositioning anchor:** This is the first slice of the Loom repositioning (整理稿) — **决定一: decode IR 与 container 分离**. The repositioning recasts Loom from a top-level distribution container into a *decode-IR sidecar* that parasitizes host formats (Parquet/Vortex/Lance). For that to be a physical fact rather than a concept, the L2Core decode IR must become an artifact that can be **independently serialized, independently hashed, independently verified, and independently distributed** — decoupled from any container. §8 item 1 names this "决定一的真正工作量" (the former Phase 17 deferred item). The complementary slice — **决定二: sidecar 叠加模型 + 回退宿主原生 reader** — is the announced follow-up (Phase 50) and depends on the IR identity landed here.
+
+**Current-state gap (verified against codebase):** `L2CoreProgram` in `crates/loom-core/src/l2_core.rs` is a mature in-memory AST with **no `Serialize`/`Deserialize`, no dedicated codec, and no content-hash**. Containers (`LMC1`/`LMC2`/`LMP1`/`LMT1`/`LMA1`) bundle schema + payload + feature flags but **never the IR program**. The verifier (`full_verifier.rs` / `artifact_verifier.rs`) produces **ephemeral, in-memory `VerifiedArtifactFacts`** — the verified object has no serialized form and no stable identity. The IR's identity is therefore implicit and container-entangled. This phase makes it explicit and independent.
+
+**Goal:** Give the L2Core decode IR a standalone, canonical, content-addressed identity that exists independently of every container format. Deliver (a) an **independent L2Core IR codec** — a deterministic, versioned, round-trippable serialization of `L2CoreProgram` (capabilities, `ResourceBudget`, body, feature sets) with its own magic/version, free of any `LMC*`/`LMP*`/`LMT*`/`LMA*` dependency; (b) a **content-hash identity** computed over the canonical codec bytes, so the same program always yields the same bytes and the same hash; and (c) **fail-closed independent verification** — the verifier accepts/rejects an IR program *parsed from its own codec bytes* (rejecting malformed/garbled/truncated input), so the verified object and the distributed object are byte-identical. After this phase, the formal-assurance assets (kloom v4 spec-oracle, Lean soundness model, Rust verifier) all anchor to one stable, hashable IR artifact regardless of how it is later packaged.
+
+**Requirements**: TBD (define via `/gsd-new-milestone` or `/gsd-plan-phase 49`; candidate IDs `IRID-01` independent codec, `IRID-02` content-hash identity, `IRID-03` fail-closed parse-and-verify).
+
+**Depends on:** Phase 48 (kloom v4 spec-oracle + the `scripts/l2core-sync-checklist.py` 22-construct L2Core↔kloom.k↔Lean sync — the codec must cover exactly that construct surface so the content-hash anchors the same object all three artifacts reason about). Also leans on Phase 36/41 verified-lineage, whose digest field currently holds an MD5 placeholder pending a real IR identity to bind. Independent of Phases 44–47; the IR-level content-hash here is the substrate Phase 45's artifact-level content-addressing later builds on (do not duplicate).
+
+**Success Criteria** (what must be TRUE):
+
+  1. `L2CoreProgram` round-trips through the independent codec byte-identically (encode → decode → re-encode is stable), the codec carries its own magic + version, and it links/serializes with **zero reference to any container codec** (`container_codec.rs`, `table_codec.rs`, `layout_codec.rs`, `arrow_semantic_codec.rs`) — proven by a dependency/visibility check, not just convention.
+  2. Encoding is **canonical and deterministic**: identical programs produce identical bytes across processes/runs, so the content-hash over those bytes is a stable identity; differing programs produce differing hashes (no collisions across the Phase 48 equivalence-class corpus).
+  3. Verification is **fail-closed on the wire form**: the verifier consumes IR *parsed from codec bytes* and rejects malformed/garbled/truncated/over-budget input with a typed error before any facts are produced; a valid program parsed from bytes yields the same `VerifiedArtifactFacts` as the in-memory AST path. The IR can be hashed, verified, and handed off as a freestanding artifact with no container present.
+
+**Non-goals:** Not the sidecar overlay model or host-reader fallback — that is **决定二 / Phase 50** (mount on host, content-hash bind at column-chunk/fragment granularity, fail-closed → host native reader). No artifact-level signing/attestation/remote fetch (Phases 45/46); this phase delivers IR-level identity only. No new L2Core constructs and no expressiveness expansion — the codec covers exactly the existing verified surface (the 22 synced constructs); the core-bet "列式 decode 窄域里 total-function 够用" is validated elsewhere, not widened here. Containers (`LMC1`/`LMC2`/`LMA1`) are **not deleted** in this phase — their demotion to an optional out-of-TCB lineage section + a dev-time canonical reference packaging is the broader reframe (§9), staged after the IR is independently real. No Wasm track and no SMT (stay removed, per "安全来自限制"). No correctness claims — safety + well-formedness + stable identity only; correctness stays oracle-validated.
+
+**Ordering decision:** First slice of the repositioning because every later piece depends on it: the sidecar overlay (Phase 50) binds a host data range to *an IR identity*, the three thin host adapters (§8 item 4) each bind their host's bytes to *the same one IR*, and the assurance stack must anchor to *one stable hashable artifact*. Without an independent codec + identity, "decode IR 与 container 分离" remains conceptual — so it must land before sidecar, adapters, or container demotion.
+
+**Plans:** TBD (run `/gsd-plan-phase 49` to break down).
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 49 to break down)
+
+### Phase 50: Sidecar Overlay Model and Host-Native Reader Fallback
+
+> **Status: PLACEHOLDER — not yet specced.** Stubbed to make the two-slice repositioning intent visible. Do not plan/execute until Phase 49 lands the independent IR identity it binds to. Refine via `/gsd-spec-phase 50` → `/gsd-plan-phase 50`.
+
+**Repositioning anchor:** Second slice of the Loom repositioning (整理稿) — **决定二: 参考 AnyBlox(思想参考、工程独立)、无 Wasm 回退、回退即宿主原生 reader**. Where Phase 49 makes the decode IR an independent, hashable artifact, this phase makes Loom a *sidecar overlay* on host formats rather than a top-level format: a Loom-aware engine takes the verifiable native track; everything else falls back to the host's own native reader. Single execution track (Loom 原生 — 可验证 + 宽向量 + 64 位); **no Wasm fallback** (§2.2), **no second IR execution implementation**, **no equivalence-diff burden**.
+
+**Goal (provisional):** Establish the sidecar contract so a Loom artifact rides *on top of* an unmodified host file (Parquet/Vortex/Lance) as a strippable overlay, with content-hash binding the host data at column-chunk/fragment granularity to the Phase 49 IR identity, and a fail-closed decision: **(integrated engine ∧ hash matches ∧ encoding supported) → Loom verifiable-native track; otherwise → host's own native reader** (§2.3, §3). The existing ingress crates (`loom-vortex-ingress`, `loom-parquet-ingress`, `loom-lance-ingress`) degrade into **thin host adapters** that only mount/extract the overlay and bind the hash to host data — never a second IR (§8 item 4: 一段 IR + 三个薄适配器).
+
+**Core discipline to hold (§2.3 前提):** Loom must be **叠加而非替换** — a host file carrying a Loom sidecar must still be readable as ordinary Parquet/Vortex/Lance by an engine with no Loom. The overlay is strippable; data is never re-encoded into a Loom-only form, or "fall back to host native reader" breaks.
+
+**Candidate success criteria** (to be firmed in spec):
+
+  1. A Loom sidecar mounts on an unmodified host file and is fully strippable — a Loom-unaware engine reads the host file unchanged (叠加-not-替换 proven by reading the same file through a vanilla host reader).
+  2. Content-hash binds host data to the Phase 49 IR identity at column-chunk/fragment granularity; an independent rewrite of the host invalidates only the affected granule's sidecar, the rest still accelerates; verification cost does not cancel the native speedup (§8 item 3).
+  3. Fail-closed routing is exhaustive and honest: integrated + hash-match + supported → verifiable-native; any miss (no Loom / hash mismatch / unsupported encoding) → host-native reader, zero risk to the host user (worst case: the sidecar is ignored).
+
+**Depends on:** Phase 49 (independent L2Core IR codec + content-hash identity — the sidecar binds host granules to *that* identity; cannot precede it). Relates to Phases 26–31 ingress crates (which degrade into the thin host adapters here) and Phase 45 artifact-level content-hash.
+
+**Non-goals:** No Wasm track (rejected, §2.2 — browser is a pseudo-need; cross-arch is solved by LLVM; sandbox contradicts verifiable safety; no AnyBlox free-ride). No second IR execution / no equivalence differential. No new top-level user-facing container competing for adoption — `LMC2`/`LMA1` demote to an optional out-of-TCB lineage section + a dev-time canonical reference packaging (§9). No host PKI/key-management product. Core IR is designed server-side-optimal — degradation is the fallback side's responsibility, never a constraint pushed back onto the IR (§8 item 5). No correctness claims — verifiable safety + well-formedness + graceful degradation only.
+
+**Host priority (§7, data-decided, not pre-bet):** Parquet first and deepest (oldest encodings → clearest incremental value), Vortex next (already-advanced encodings → Loom adds safety/native-execution, not compression), Lance a question mark (random-access vs sequential decode IR). "回退=宿主原生 reader" makes mounting any host zero-risk, so priority is decided by real usage, not a symmetric upfront bet.
+
+**Plans:** TBD (placeholder — spec before planning).
+
+Plans:
+
+- [ ] TBD (run /gsd-spec-phase 50, then /gsd-plan-phase 50 to break down)
