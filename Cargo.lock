@@ -3607,6 +3607,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-self-ingress"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "loom-container",
+]
+
+[[package]]
 name = "loom-sidecar-ffi"
 version = "0.1.0"
 dependencies = [
