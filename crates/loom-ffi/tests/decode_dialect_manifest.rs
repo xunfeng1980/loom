@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs;
 
 use loom_ffi::decode_dialect::DecodeDialectOp;
-use loom_native_melior::decode_dialect_manifest::{
+use loom_ffi::decode_dialect_manifest::{
     decode_dialect_manifest, manifest_entry, ods_source_paths, DecodeDialectDisposition,
 };
 

@@ -3504,9 +3504,11 @@ dependencies = [
  "fsst-rs",
  "loom-ir-core",
  "loom-parquet-ingress",
+ "melior",
  "parquet",
  "ron",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3528,19 +3530,6 @@ dependencies = [
  "loom-source-ingress",
  "tempfile",
  "tokio",
-]
-
-[[package]]
-name = "loom-native-melior"
-version = "0.1.0"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "loom-ffi",
- "melior",
- "serde",
- "serde_json",
- "tempfile",
 ]
 
 [[package]]

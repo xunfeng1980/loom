@@ -11,6 +11,8 @@
 
 #define LMC2_VERSION 1
 
+#define EXPECTED_MLIR_MAJOR 22
+
 typedef struct RuntimeAbiVersion RuntimeAbiVersion;
 
 

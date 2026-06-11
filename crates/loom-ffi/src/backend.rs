@@ -13,10 +13,10 @@ use loom_ffi::runtime_abi::{
     RuntimeAbiVersion, RuntimeCacheKey, RuntimeExecutionDecision, RuntimePlan,
 };
 
-use crate::report::MlirToolchainFacts;
-use crate::toolchain::EXPECTED_MLIR_MAJOR;
+use loom_ffi::report::MlirToolchainFacts;
+use loom_ffi::toolchain::EXPECTED_MLIR_MAJOR;
 
-pub const NATIVE_BACKEND_NAME: &str = "loom-native-melior";
+pub const NATIVE_BACKEND_NAME: &str = "loom-ffi";
 pub const PRODUCTION_BACKEND_PIPELINE_ID: &str = "phase23-preflight-v0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]

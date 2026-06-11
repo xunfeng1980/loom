@@ -15,12 +15,12 @@ use loom_ffi::native_arrow_semantic::{
 };
 #[cfg(feature = "melior")]
 use loom_ffi::runtime_abi::{ProjectionSet, RuntimeExecutionDecision, RuntimeSafetyPolicy};
-use loom_native_melior::backend::NativeBackendCancellation;
+use loom_ffi::backend::NativeBackendCancellation;
 #[cfg(not(feature = "melior"))]
-use loom_native_melior::backend::NativeBackendDiagnosticCode;
-use loom_native_melior::jit::execute_arrow_semantic_codegen_jit;
+use loom_ffi::backend::NativeBackendDiagnosticCode;
+use loom_ffi::jit::execute_arrow_semantic_codegen_jit;
 #[cfg(feature = "melior")]
-use loom_native_melior::jit::ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL;
+use loom_ffi::jit::ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL;
 
 #[cfg(feature = "melior")]
 #[test]

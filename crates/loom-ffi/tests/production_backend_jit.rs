@@ -9,16 +9,16 @@ use loom_ffi::runtime_abi::{
     RuntimeCacheKeyInput, RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimePlan,
     RuntimeSafetyPolicy, SplitDescriptor,
 };
-use loom_native_melior::backend::{
+use loom_ffi::backend::{
     validate_backend_request, NativeBackendCancellation, NativeBackendDiagnosticCode,
     NativeBackendIdentity, NativeBackendReport, NativeBackendRequestInput, NativeBackendStatus,
     NATIVE_BACKEND_NAME,
 };
-use loom_native_melior::jit::{
+use loom_ffi::jit::{
     compare_production_jit_output, execute_prepared_production_jit, ProductionJitOptions,
     PRODUCTION_JIT_ENTRY_SYMBOL,
 };
-use loom_native_melior::pipeline::{
+use loom_ffi::pipeline::{
     prepare_production_backend_pipeline, ProductionBackendPipelineOptions,
 };
 

@@ -3,8 +3,8 @@ use loom_ffi::l2_core::{
     Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
     OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue, ScratchCapability,
 };
-use loom_native_melior::builder::build_melior_module;
-use loom_native_melior::report::MeliorBackendDiagnosticCode;
+use loom_ffi::builder::build_melior_module;
+use loom_ffi::report::MeliorBackendDiagnosticCode;
 
 fn sample_program() -> L2CoreProgram {
     L2CoreProgram {

@@ -9,7 +9,7 @@ use loom_ffi::runtime_abi::{
     RuntimeCacheKeyInput, RuntimeDiagnostic, RuntimeDiagnosticCode, RuntimeExecutionDecision,
     RuntimeFallbackPolicy, RuntimePlan, RuntimeSafetyPolicy, SplitDescriptor,
 };
-use loom_native_melior::backend::{
+use loom_ffi::backend::{
     validate_backend_request, NativeBackendCancellation, NativeBackendDiagnosticCode,
     NativeBackendIdentity, NativeBackendRequestInput, NativeBackendStatus, NATIVE_BACKEND_NAME,
     PRODUCTION_BACKEND_PIPELINE_ID,
@@ -102,7 +102,7 @@ fn backend_identity_and_diagnostic_strings_are_stable() {
 fn native_candidate_runtime_plan_builds_validated_request() {
     let input = request_input();
     let request = validate_backend_request(input).expect("native request should validate");
-    let report = loom_native_melior::backend::NativeBackendReport::accepted(&request);
+    let report = loom_ffi::backend::NativeBackendReport::accepted(&request);
 
     assert!(report.is_ok());
     assert_eq!(report.status, NativeBackendStatus::Accepted);

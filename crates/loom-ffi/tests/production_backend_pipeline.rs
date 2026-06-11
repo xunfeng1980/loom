@@ -9,18 +9,18 @@ use loom_ffi::runtime_abi::{
     RuntimeCacheKeyInput, RuntimeExecutionDecision, RuntimeFallbackPolicy, RuntimePlan,
     RuntimeSafetyPolicy, SplitDescriptor,
 };
-use loom_native_melior::backend::{
+use loom_ffi::backend::{
     NativeBackendCancellation, NativeBackendDiagnosticCode, NativeBackendIdentity,
     NativeBackendRequestInput, NativeBackendStatus, NATIVE_BACKEND_NAME,
 };
-use loom_native_melior::pipeline::{
+use loom_ffi::pipeline::{
     prepare_production_backend_pipeline, validate_and_prepare_production_backend,
     validate_production_standard_mlir, validate_production_translation_to_llvm_ir,
     MlirValidationOptions, ProductionBackendPipelineOptions, ProductionMlirArtifact,
     LLVM_LOWERING_PIPELINE, PRODUCTION_LLVM_LOWERING_PIPELINE_ID,
     PRODUCTION_MLIR_VALIDATION_PIPELINE_ID,
 };
-use loom_native_melior::report::MeliorBackendDiagnosticCode;
+use loom_ffi::report::MeliorBackendDiagnosticCode;
 
 fn runtime_plan(decision: RuntimeExecutionDecision) -> RuntimePlan {
     RuntimePlan {
@@ -195,7 +195,7 @@ fn missing_cache_cancelled_and_unsupported_facts_fail_before_pipeline() {
 #[test]
 fn validated_request_can_be_prepared_directly() {
     let request =
-        loom_native_melior::backend::validate_backend_request(request_input()).expect("request");
+        loom_ffi::backend::validate_backend_request(request_input()).expect("request");
     let report =
         prepare_production_backend_pipeline(&request, ProductionBackendPipelineOptions::default());
     assert!(matches!(
@@ -246,7 +246,7 @@ fn strict_toolchain_outcome_is_reported() {
 #[test]
 fn production_translation_to_llvm_ir_is_skip_aware() {
     let request =
-        loom_native_melior::backend::validate_backend_request(request_input()).expect("request");
+        loom_ffi::backend::validate_backend_request(request_input()).expect("request");
     let report = prepare_production_backend_pipeline(
         &request,
         ProductionBackendPipelineOptions {

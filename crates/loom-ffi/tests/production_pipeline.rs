@@ -6,10 +6,10 @@ use loom_ffi::artifact_types::{
 };
 use loom_ffi::l2_core::{L2DataType, OutputSchemaFact, ResourceBudget, VerifiedArtifactFacts};
 use loom_ffi::production_native_lowering::check_production_lowering_support;
-use loom_native_melior::pipeline::{
+use loom_ffi::pipeline::{
     validate_production_standard_mlir, MlirValidationOptions, ProductionMlirArtifact,
 };
-use loom_native_melior::report::MeliorBackendDiagnosticCode;
+use loom_ffi::report::MeliorBackendDiagnosticCode;
 
 fn output(builder_id: &str, data_type: L2DataType) -> OutputSchemaFact {
     OutputSchemaFact {

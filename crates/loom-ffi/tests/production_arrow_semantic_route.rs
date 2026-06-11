@@ -14,12 +14,12 @@ use loom_ffi::runtime_abi::{
 };
 #[cfg(feature = "melior")]
 use loom_ffi::runtime_abi::{PredicateOperator, ProjectionColumn};
-use loom_native_melior::backend::{NativeBackendCancellation, NativeBackendDiagnosticCode};
+use loom_ffi::backend::{NativeBackendCancellation, NativeBackendDiagnosticCode};
 #[cfg(feature = "melior")]
-use loom_native_melior::jit::{
+use loom_ffi::jit::{
     execute_arrow_semantic_codegen_jit, validate_arrow_semantic_codegen_production_route_output,
 };
-use loom_native_melior::jit::{
+use loom_ffi::jit::{
     execute_arrow_semantic_codegen_production_route, reset_disabled_shapes,
     ArrowSemanticCodegenRouteStatus,
 };
@@ -296,7 +296,7 @@ fn route_cancellation_is_distinct_and_non_cacheable() {
 fn assert_metadata_drift_fails_closed(
     bytes: &[u8],
     support: loom_ffi::native_arrow_semantic::NativeArrowSemanticCodegenSupportReport,
-    jit: loom_native_melior::jit::ArrowSemanticCodegenJitOutput,
+    jit: loom_ffi::jit::ArrowSemanticCodegenJitOutput,
     expected_code: NativeBackendDiagnosticCode,
     expected_path: &str,
 ) {

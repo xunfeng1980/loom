@@ -22,16 +22,16 @@ use loom_ffi::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
-use crate::backend::{
+use loom_ffi::backend::{
     NativeBackendCancellation, NativeBackendDiagnostic, NativeBackendDiagnosticCode,
     NativeBackendReport, NativeBackendStatus,
 };
-use crate::builder::{build_melior_module, MeliorModuleArtifact};
+use loom_ffi::builder::{build_melior_module, MeliorModuleArtifact};
 #[cfg(feature = "melior")]
-use crate::pipeline::LLVM_LOWERING_PIPELINE;
-use crate::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
-use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
-use crate::toolchain::probe_toolchain;
+use loom_ffi::pipeline::LLVM_LOWERING_PIPELINE;
+use loom_ffi::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
+use loom_ffi::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use loom_ffi::toolchain::probe_toolchain;
 use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
@@ -1052,7 +1052,7 @@ fn execute_arrow_semantic_codegen_jit_backend(
         row_count: support.row_count,
         column_count: support.column_count,
         backend_identity: format!(
-            "backend=loom-native-melior;entry={};pipeline={};feature=melior",
+            "backend=loom-ffi;entry={};pipeline={};feature=melior",
             ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL, LLVM_LOWERING_PIPELINE
         ),
         columns,
@@ -1066,7 +1066,7 @@ fn execute_arrow_semantic_codegen_jit_backend(
     Err(NativeBackendDiagnostic::new(
         NativeBackendDiagnosticCode::JitUnavailable,
         "$.jit.arrow_semantic",
-        "production Arrow semantic codegen JIT requires the loom-native-melior melior feature",
+        "production Arrow semantic codegen JIT requires the loom-ffi melior feature",
     ))
 }
 
@@ -1182,7 +1182,7 @@ fn execute_raw_copy_mlir_backend(
     Err(NativeBackendDiagnostic::new(
         NativeBackendDiagnosticCode::JitUnavailable,
         "$.jit",
-        "production JIT requires the loom-native-melior melior feature",
+        "production JIT requires the loom-ffi melior feature",
     ))
 }
 

@@ -1,5 +1,5 @@
-use loom_native_melior::report::MlirToolKind;
-use loom_native_melior::toolchain::{
+use loom_ffi::report::MlirToolKind;
+use loom_ffi::toolchain::{
     parse_llvm_major_version, probe_toolchain, EXPECTED_MLIR_MAJOR,
 };
 

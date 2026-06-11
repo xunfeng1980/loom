@@ -4,7 +4,7 @@ use loom_ffi::native_lowering::{
     check_lowering_support, lower_to_textual_mlir, LoweringDiagnosticCode,
 };
 
-use crate::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
+use loom_ffi::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MeliorModuleArtifact {

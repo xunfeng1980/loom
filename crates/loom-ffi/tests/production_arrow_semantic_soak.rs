@@ -13,8 +13,8 @@ use loom_ffi::native_arrow_semantic::execute_native_arrow_semantic;
 use loom_ffi::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeSafetyPolicy, SplitDescriptor,
 };
-use loom_native_melior::backend::NativeBackendDiagnosticCode;
-use loom_native_melior::jit::{
+use loom_ffi::backend::NativeBackendDiagnosticCode;
+use loom_ffi::jit::{
     execute_arrow_semantic_codegen_production_route,
     execute_arrow_semantic_codegen_production_route_with_cancellation_checkpoint,
     ArrowSemanticCodegenCancellationCheckpoint, ArrowSemanticCodegenRouteStatus,

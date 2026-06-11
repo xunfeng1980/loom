@@ -14,8 +14,8 @@ use arrow_schema::{DataType, Field, Schema};
 use loom_ffi::arrow_semantic::ArrowSemanticPayload;
 use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
-use loom_native_melior::backend::NativeBackendCancellation;
-use loom_native_melior::jit::{
+use loom_ffi::backend::NativeBackendCancellation;
+use loom_ffi::jit::{
     disable_shape, is_shape_disabled, reset_disabled_shapes,
 };
 
@@ -37,13 +37,13 @@ mod melior_tests {
     use loom_ffi::runtime_abi::{
         PredicateEnvelope, ProjectionSet, RuntimeSafetyPolicy, SplitDescriptor,
     };
-    use loom_native_melior::jit::{
+    use loom_ffi::jit::{
         validate_arrow_semantic_codegen_production_route_output_with_cancellation,
         ArrowSemanticCodegenJitOutput,
     };
-    use loom_native_melior::backend::NativeBackendDiagnosticCode;
-    use loom_native_melior::jit::ArrowSemanticCodegenRouteStatus;
-    use loom_native_melior::jit::{
+    use loom_ffi::backend::NativeBackendDiagnosticCode;
+    use loom_ffi::jit::ArrowSemanticCodegenRouteStatus;
+    use loom_ffi::jit::{
         disable_shape, execute_arrow_semantic_codegen_jit,
         execute_arrow_semantic_codegen_production_route,
         is_shape_disabled, reset_disabled_shapes,

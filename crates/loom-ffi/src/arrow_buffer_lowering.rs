@@ -254,7 +254,7 @@ pub fn lower_arrow_buffers_to_standard_mlir(
     Ok(text)
 }
 
-/// Deprecated: retained only for `loom-native-melior` internal use until Phase 40
+/// Deprecated: retained only for `loom-ffi` internal use until Phase 40
 /// validation replaces the raw-copy MLIR lowering path.
 #[doc(hidden)]
 pub fn lower_arrow_raw_copy_to_standard_mlir(
