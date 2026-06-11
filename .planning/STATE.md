@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5.3
 milestone_name: milestone
-status: executing
-stopped_at: Phase 49 complete; next is Phase 44 MVP1.5 Closeout or Phase 51 ABI Freeze and Compatibility Contract
-last_updated: "2026-06-10T09:30:00.000Z"
-last_activity: 2026-06-10 -- K spec-oracle differential gate completed under narrowed Plan-A scope: typed KOracleOutcome, krun-absent skip semantics, garbled-output hard-fail, per-shape native-route disable on K divergence, strict skip wiring in kloom-diff.sh/CI, LLVM-backend feasibility script with findings doc, and contrib/kloom doc sync
+status: completed
+stopped_at: Phase 40 complete; ready for Phase 41
+last_updated: "2026-06-11T04:29:57.935Z"
+last_activity: 2026-06-09 -- DuckDB default native route fix completed
 progress:
   total_phases: 49
   completed_phases: 48
