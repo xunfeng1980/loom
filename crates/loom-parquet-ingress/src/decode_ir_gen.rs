@@ -40,26 +40,25 @@ fn arrow_to_l2(dt: &arrow_schema::DataType) -> Option<L2DataType> {
     }
 }
 
-/// Fixed-width byte size for a Tier 1 type in the raw host layout, or `None`
-/// for variable-length types (Utf8 — handled in a later tier).
-fn tier1_width(t: &L2DataType) -> Option<u64> {
-    match t {
-        L2DataType::Boolean => Some(1),
-        L2DataType::Int32 | L2DataType::Float32 => Some(4),
-        L2DataType::Int64 | L2DataType::Float64 => Some(8),
-        L2DataType::Utf8 => None,
-    }
-}
-
-/// Decide whether a field is a Tier 1 decodable column: non-nullable and
-/// fixed-width. Returns its `(L2DataType, width)` when supported.
+/// Decide whether a field is a Tier 1a decodable column and return its
+/// `(L2DataType, width)`.
+///
+/// Tier 1a covers **non-null integer** columns (Int32/Int64). The full verifier
+/// infers a `ReadInput`'s value type from its byte width (4 → Int32, 8 → Int64)
+/// and requires `AppendValue`'s value type to match the output builder exactly,
+/// so Float32/Float64/Boolean cannot be expressed until an IR-level typed-read
+/// / bitcast extension lands (Tier 1b). Those, nullable columns (Tier 2), and
+/// Utf8 (Tier 3) are skipped here.
 fn tier1_column(field: &arrow_schema::Field) -> Option<(L2DataType, u64)> {
     if field.is_nullable() {
-        return None; // Tier 1 is non-null only (nullable is Tier 2).
+        return None; // Tier 2.
     }
-    let t = arrow_to_l2(field.data_type())?;
-    let w = tier1_width(&t)?;
-    Some((t, w))
+    match arrow_to_l2(field.data_type())? {
+        L2DataType::Int32 => Some((L2DataType::Int32, 4)),
+        L2DataType::Int64 => Some((L2DataType::Int64, 8)),
+        // Float32/Float64/Boolean: Tier 1b (typed-read IR extension). Utf8: Tier 3.
+        _ => None,
+    }
 }
 
 /// Generate an executable L2Core IR program from a Parquet file's schema.

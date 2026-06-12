@@ -7,9 +7,7 @@
 
 use std::sync::Arc;
 
-use arrow_array::{
-    Array, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch,
-};
+use arrow_array::{Float32Array, Int32Array, Int64Array, RecordBatch};
 use arrow_schema::{DataType, Field, Schema};
 
 use loom_ffi::l2core_interp::{interpret_l2core, InputSlices};
@@ -42,28 +40,24 @@ fn inputs_from_program<'a>(
 }
 
 #[test]
-fn tier1_mixed_fixed_width_roundtrip() {
+fn tier1_integer_columns_roundtrip_and_skip_float() {
+    // i32 + i64 are Tier 1a; a non-null f32 column is Tier 1b and must be skipped
+    // (needs an IR typed-read extension before it can be expressed/verified).
     let schema = Arc::new(Schema::new(vec![
-        Field::new("i32", DataType::Int32, false),
-        Field::new("i64", DataType::Int64, false),
-        Field::new("f32", DataType::Float32, false),
-        Field::new("f64", DataType::Float64, false),
-        Field::new("flag", DataType::Boolean, false),
+        Field::new("amount", DataType::Int32, false),
+        Field::new("big", DataType::Int64, false),
+        Field::new("ratio", DataType::Float32, false),
     ]));
     let i32s = vec![10i32, -20, 30, 0, 2_000_000, 7];
     let i64s = vec![1i64, 2, 3, -4, 5, 6_000_000_000];
     let f32s = vec![0.0f32, -3.5, 1.25, 2.5, 100.0, -0.001];
-    let f64s = vec![1.5f64, 2.5, 3.5, 4.5, 5.5, 6.5];
-    let bools = vec![true, false, true, true, false, false];
 
     let batch = RecordBatch::try_new(
         schema,
         vec![
             Arc::new(Int32Array::from(i32s.clone())),
             Arc::new(Int64Array::from(i64s.clone())),
-            Arc::new(Float32Array::from(f32s.clone())),
-            Arc::new(Float64Array::from(f64s.clone())),
-            Arc::new(BooleanArray::from(bools.clone())),
+            Arc::new(Float32Array::from(f32s)),
         ],
     )
     .expect("batch");
@@ -84,25 +78,25 @@ fn tier1_mixed_fixed_width_roundtrip() {
         report.diagnostics()
     );
 
+    // The f32 column is Tier 1b → skipped; only the two integer columns emit.
+    let builders = program
+        .capabilities
+        .iter()
+        .filter(|c| matches!(c, Capability::OutputBuilder(_)))
+        .count();
+    assert_eq!(builders, 2, "only the two integer columns are Tier 1a");
+
     // Pack the host buffer and run the interpreter.
     let host = parquet_to_raw_host(&path).expect("raw host");
     let inputs = inputs_from_program(&program, &host);
     let columns = interpret_l2core(&program, &inputs).expect("interpret ok");
-    assert_eq!(columns.len(), 5);
+    assert_eq!(columns.len(), 2);
 
-    // Each decoded column reproduces the source Parquet values.
+    // Each decoded integer column reproduces the source Parquet values.
     let dec_i32 = Int32Array::from(columns[0].data.clone());
     assert_eq!(dec_i32.values(), &i32s[..]);
     let dec_i64 = Int64Array::from(columns[1].data.clone());
     assert_eq!(dec_i64.values(), &i64s[..]);
-    let dec_f32 = Float32Array::from(columns[2].data.clone());
-    assert_eq!(dec_f32.values(), &f32s[..]);
-    let dec_f64 = Float64Array::from(columns[3].data.clone());
-    assert_eq!(dec_f64.values(), &f64s[..]);
-    let dec_bool = BooleanArray::from(columns[4].data.clone());
-    for (i, want) in bools.iter().enumerate() {
-        assert_eq!(dec_bool.value(i), *want, "bool row {i}");
-    }
 }
 
 #[test]
