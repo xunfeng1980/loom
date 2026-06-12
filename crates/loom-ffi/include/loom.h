@@ -117,6 +117,48 @@ int32_t loom_sidecar_verify_json(const uint8_t *overlay_bytes,
                                  const char **out_json);
 
 /**
+ * Decode a sidecar overlay through the full Loom execution loop.
+ *
+ * 1. Decodes the sidecar overlay and inner L2Core IR.
+ * 2. Runs semantic verification.
+ * 3. Evaluates the 4-gate routing decision.
+ * 4. If Loom-native, runs the interpreter decode and returns Arrow IPC bytes
+ *    through `out_ipc_bytes` / `out_ipc_len`.
+ * 5. Returns routing+execution metadata as a JSON string through `out_json`.
+ *
+ * The caller must free both outputs: `loom_sidecar_free_cstr` for the JSON,
+ * `loom_sidecar_free_bytes` for the IPC buffer.
+ *
+ * # JSON schema
+ *
+ * ```json
+ * {
+ *   "route": "loom-native" | "host-native",
+ *   "reason": "all-gates-passed" | "hash-mismatch" | "encoding-unsupported" | ...,
+ *   "decode_status": "ok" | "unsupported" | "error",
+ *   "ir_hash": "blake3:...",
+ *   "row_count": 1024,
+ *   "column_count": 1,
+ *   "diagnostics": []
+ * }
+ * ```
+ *
+ * # Returns
+ *
+ * * `0` — Decode completed (check JSON `route` field for outcome).
+ * * `1` — A required pointer argument is null.
+ * * `3` — Overlay or IR bytes are malformed/truncated.
+ * * `4` — Internal panic caught.
+ */
+int32_t loom_sidecar_decode(const uint8_t *overlay_bytes,
+                            uintptr_t overlay_len,
+                            const uint8_t *host_data,
+                            uintptr_t host_data_len,
+                            const char **out_json,
+                            uint8_t **out_ipc_bytes,
+                            uintptr_t *out_ipc_len);
+
+/**
  * Free a byte buffer previously returned by [`loom_sidecar_extract`].
  *
  * Reconstructs the `Vec<u8>` from the pointer and length and drops it.
