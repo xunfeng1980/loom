@@ -88,50 +88,47 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
 ## Correctness Model
 
-**Three-layer differential verification** anchors Loom's correctness.
-Layers 1–2 run offline (build/CI time); layer 3 runs online (query time).
+**Three-layer differential verification** with a clear offline/online boundary.
 
 ```
-                     ── OFFLINE (build/CI) ──
+                     ── OFFLINE (build/CI, fixed corpus) ──
 
  L2Core IR program
     │
-    ├──→ serialize to kloom.k syntax
-    │      → krun (K formal semantics engine)
-    │      → parse <events> cell → K trace (reference baseline)
+    ├──→ kloom (K formal semantics engine)
+    │      → krun → parse <events> → K trace (spec baseline)
     │
-    ├──→ Rust interp decode execution
-    │      → TracedBuilder records every append_value / append_null event
-    │      → native trace
+    ├──→ Rust interp (fast implementation of K spec)
+    │      → TracedBuilder → native trace
     │
     └──→ compare (offline gate)
-           reference_trace == native_trace  → per-event diff
-           output == reference              → final RecordBatch value diff
-           mismatch → interp bug, fail CI
+           K trace == interp trace          → per-event diff
+           interp output == K output        → final RecordBatch diff
+           mismatch → interp bug, CI fails
+
+ L2Core IR program + fixed test corpus
+    │
+    ├──→ Rust interp → reference output
+    ├──→ JIT (melior/LLVM) → native output
+    │
+    └──→ compare (offline gate)
+           JIT trace == interp trace        → per-event diff
+           JIT output == interp output      → RecordBatch diff
+           mismatch → JIT bug, CI fails
 
 
-                     ── ONLINE (query time) ──
+                     ── ONLINE (production query) ──
 
  Host data + sidecar
     │
-    ├──→ Rust interp (ground truth, offline-verified)
-    │      → produces RecordBatch output
-    │
-    ├──→ JIT (melior/LLVM)
-    │      → L2Core IR → MLIR → LLVM → native machine code
-    │      → produces RecordBatch output
-    │
-    └──→ compare (online gate, every query)
-           JIT trace == interp trace  → JIT result used
-           mismatch → NativeModelTraceMismatch
-                    → discard JIT output
-                    → fallback: interp result (always safe)
-                    → or fallback: host-native reader
+    └──→ JIT (melior/LLVM)
+           L2Core IR → MLIR → LLVM → native machine code
+           → Arrow RecordBatch → DuckDB / Spark / Arrow consumer
 ```
 
-- **kloom** (offline) — 14 semantics tests, K framework spec-oracle, differential verification (14/14 passing)
-- **Rust interp** (offline-verified, online-executed) — pure-Rust L1/L2 decoder, TracedBuilder event stream verified against kloom
-- **JIT** (online) — melior/LLVM compiles L2Core IR → native code, validated against interp + K trace on every query
+- **kloom** (offline) — K framework formal semantics, 14 spec tests (14/14 passing)
+- **Rust interp** (offline verification, not in production path) — fast implementation of K spec, validated against kloom in CI
+- **JIT** (offline-verified, production runtime) — melior/LLVM native codegen, validated against interp in CI; runs solo in production
 - **Lean** (offline, planned) — formal classification of IR programs
 
 ## 4-Gate Routing
