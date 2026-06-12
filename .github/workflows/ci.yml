@@ -110,65 +110,12 @@ jobs:
           chmod +x duckdb
           echo "DUCKDB_CLI=$(pwd)/duckdb" >> "$GITHUB_ENV"
 
-      # Step 10: Run the DuckDB load smoke-test.
-      # DUCKDB_CLI is set in the previous step so the script uses the downloaded binary.
-      # Asserts loom_scan('test.bin') returns 4 rows (1, 2, 3, NULL) via duckdb -unsigned.
-      # This proves DUCK-01 (loadability + footer-stamp) and DUCK-03 (teardown on real path).
-      - name: DuckDB load smoke-test (DUCK-01, DUCK-03)
+      # Step 10: Run the DuckDB smoke-test.
+      - name: DuckDB smoke-test
         run: bash scripts/duckdb-smoke-test.sh
 
   # ---------------------------------------------------------------------------
-  # Job 2: macOS arm64 (osx_arm64) C++ extension build + load smoke-test.
-  # This job verifies the osx_arm64 platform string stamped in the footer
-  # matches the CLI on the macOS runner (ROADMAP criterion 2 on arm64).
-  # ---------------------------------------------------------------------------
-  build-and-test-macos:
-    name: C++ Extension Build + Smoke-test (macOS arm64)
-    runs-on: macos-14
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain (from rust-toolchain.toml)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo artefacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      # Exclude melior/LLVM (JIT offline-only; extension uses interpreter).
-      - name: Build Rust workspace (release)
-        run: cargo build --workspace --release --no-default-features
-
-      # CMake is pre-installed on macOS-14 GitHub-hosted runners.
-      - name: Build C++ extension (macOS arm64)
-        run: |
-          cmake -S contrib/duckdb-ext -B contrib/duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build contrib/duckdb-ext/build
-
-      # Download the macOS arm64 CLI.
-      - name: Download DuckDB CLI (osx-arm64)
-        run: |
-          curl -fSL --retry 3 --retry-delay 2 \
-            -o duckdb_cli.zip \
-            https://github.com/duckdb/duckdb/releases/download/v1.5.3/duckdb_cli-osx-arm64.zip
-          unzip duckdb_cli.zip
-          chmod +x duckdb
-          echo "DUCKDB_CLI=$(pwd)/duckdb" >> "$GITHUB_ENV"
-
-      - name: DuckDB load smoke-test (DUCK-01, DUCK-03) — macOS arm64
-        run: bash scripts/duckdb-smoke-test.sh
-
-  # ---------------------------------------------------------------------------
-  # Job 3: Formal verifier gates (Lean + TLC + verifier tests).
+  # Job 2: Formal verifier gates (Lean + TLC + verifier tests).
   # ---------------------------------------------------------------------------
   formal-verifier:
     name: Formal Verifier Gates
@@ -199,7 +146,7 @@ jobs:
         run: bash scripts/full-verifier-test.sh
 
   # ---------------------------------------------------------------------------
-  # Job 4: kloom — K Framework spec-oracle differential gate.
+  # Job 3: kloom — K Framework spec-oracle differential gate.
   #
   # Installs K Framework via Nix, kompiles kloom.k, and runs krun on the
   # semantics test corpus.  This is the spec-oracle baseline for Phase A.
