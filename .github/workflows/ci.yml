@@ -166,10 +166,10 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - name: Install K Framework (via kup)
+      - name: Install K Framework
         run: |
-          curl -sSL https://raw.githubusercontent.com/runtimeverification/k/master/kup | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          bash <(curl -sSL https://kframework.org/install)
+          kup install k
 
       - name: Verify K tools
         run: |
