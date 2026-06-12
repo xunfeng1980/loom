@@ -956,6 +956,29 @@ mod decode_tests {
         OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue,
     };
 
+    #[test]
+    fn extract_external_sidecar_from_assets() {
+        // Verify the external sidecar extract path works on the bundled assets.
+        use std::ffi::CString;
+        let path = CString::new(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../assets/data.parquet")
+                .to_string_lossy()
+                .as_ref(),
+        )
+        .unwrap();
+        let mut out_bytes: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        let rc = unsafe { loom_sidecar_extract(path.as_ptr(), &mut out_bytes, &mut out_len) };
+        assert_eq!(rc, 0, "extract failed with code {rc}");
+        assert!(out_len > 0);
+        // Verify the bytes are a valid sidecar overlay
+        let bytes = unsafe { std::slice::from_raw_parts(out_bytes, out_len) };
+        let overlay = SidecarOverlay::decode(bytes).expect("valid sidecar");
+        assert!(!overlay.ir_bytes.is_empty());
+        unsafe { loom_sidecar_free_bytes(out_bytes, out_len) };
+    }
+
     fn i32_copy_program(rows: u64) -> L2CoreProgram {
         L2CoreProgram {
             artifact_version: 1,

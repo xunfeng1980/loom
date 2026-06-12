@@ -278,7 +278,7 @@ pub fn chunk_bindings_from_parquet(
             granule_id: field.name().clone(),
             host_data_range: (0, data.len() as u64),
             content_hash,
-            ir_identity: String::new(),
+            ir_identity: "blake3:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
         });
     }
 
