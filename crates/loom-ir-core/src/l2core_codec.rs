@@ -557,6 +557,11 @@ fn write_scalar_expr(buf: &mut Vec<u8>, expr: &ScalarExpr) {
             write_scalar_expr(buf, l);
             write_scalar_expr(buf, r);
         }
+        ScalarExpr::Bitcast { target, value } => {
+            write_u8(buf, 10);
+            write_scalar_type(buf, target);
+            write_scalar_expr(buf, value);
+        }
     }
 }
 
@@ -572,6 +577,13 @@ fn read_scalar_expr(cur: &mut Cursor<&[u8]>) -> Result<ScalarExpr, L2CoreCodecEr
         7 => ScalarExpr::Eq(Box::new(read_scalar_expr(cur)?), Box::new(read_scalar_expr(cur)?)),
         8 => ScalarExpr::Lt(Box::new(read_scalar_expr(cur)?), Box::new(read_scalar_expr(cur)?)),
         9 => ScalarExpr::Le(Box::new(read_scalar_expr(cur)?), Box::new(read_scalar_expr(cur)?)),
+        10 => {
+            let target = read_scalar_type(cur)?;
+            ScalarExpr::Bitcast {
+                target,
+                value: Box::new(read_scalar_expr(cur)?),
+            }
+        }
         v => {
             return Err(L2CoreCodecError::BadDiscriminant {
                 context: "ScalarExpr".to_string(),

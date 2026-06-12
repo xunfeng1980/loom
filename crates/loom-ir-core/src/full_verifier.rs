@@ -487,6 +487,12 @@ fn verify_expr(
             verify_expr(rhs, &format!("{path}.rhs"), state, report);
             Some(ScalarType::Bool)
         }
+        ScalarExpr::Bitcast { target, value } => {
+            // Verify the inner value (resolves variables / reports unknowns);
+            // the bitcast result is typed as `target`.
+            verify_expr(value, &format!("{path}.value"), state, report);
+            Some(target.clone())
+        }
     }
 }
 
@@ -698,6 +704,7 @@ fn constraint_term(expr: &ScalarExpr) -> ConstraintTerm {
         | ScalarExpr::Eq(_, _)
         | ScalarExpr::Lt(_, _)
         | ScalarExpr::Le(_, _) => ConstraintTerm::var("<expr>"),
+        ScalarExpr::Bitcast { value, .. } => constraint_term(value),
     }
 }
 

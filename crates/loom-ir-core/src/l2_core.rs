@@ -138,6 +138,14 @@ pub enum ScalarExpr {
     Eq(Box<ScalarExpr>, Box<ScalarExpr>),
     Lt(Box<ScalarExpr>, Box<ScalarExpr>),
     Le(Box<ScalarExpr>, Box<ScalarExpr>),
+    /// Reinterpret the little-endian bytes of `value` as `target`. Used to read
+    /// a typed scalar (Float32/Float64/Bool, ...) out of a width-sized
+    /// `ReadInput` bind whose width alone is type-ambiguous (e.g. 4 bytes could
+    /// be Int32 or Float32). The verifier types this expression as `target`.
+    Bitcast {
+        target: ScalarType,
+        value: Box<ScalarExpr>,
+    },
 }
 
 impl ScalarExpr {

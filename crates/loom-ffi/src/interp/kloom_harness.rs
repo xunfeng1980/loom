@@ -125,6 +125,10 @@ fn expr_uses_unsupported(expr: &ScalarExpr) -> Option<&'static str> {
         | ScalarExpr::Le(l, r) => {
             expr_uses_unsupported(l).or_else(|| expr_uses_unsupported(r))
         }
+        // Bitcast is verified by the full verifier and executed by the
+        // interpreter, but is not yet modelled in the kloom K-semantics — flag
+        // it so the kloom differential is skipped rather than mis-modelled.
+        ScalarExpr::Bitcast { .. } => Some("bitcast not yet modelled in kloom"),
     }
 }
 
@@ -371,6 +375,13 @@ fn serialize_expr(out: &mut String, expr: &ScalarExpr) -> Result<(), KloomHarnes
             out.push_str(", ");
             serialize_expr(out, rhs)?;
             out.push(')');
+        }
+        // Unreachable: bitcast programs are flagged UnsupportedProgram before
+        // serialization (see expr_uses_unsupported).
+        ScalarExpr::Bitcast { .. } => {
+            return Err(KloomHarnessError::new(
+                "bitcast is not serializable to kloom syntax",
+            ));
         }
     }
     Ok(())

@@ -38,7 +38,7 @@ use arrow_data::ArrayData;
 use arrow_schema::{DataType, Field, Schema};
 
 use loom_ir_core::l2_core::{
-    Capability, L2CoreProgram, L2CoreStmt, L2DataType, ScalarExpr, ScalarValue,
+    Capability, L2CoreProgram, L2CoreStmt, L2DataType, ScalarExpr, ScalarType, ScalarValue,
 };
 
 use super::arrow_builder_output::OutputBuilder;
@@ -495,7 +495,73 @@ fn eval_scalar(
         ScalarExpr::Eq(a, b) => Ok(ScalarValue::Bool(eval_int(a, env)? == eval_int(b, env)?)),
         ScalarExpr::Lt(a, b) => Ok(ScalarValue::Bool(eval_int(a, env)? < eval_int(b, env)?)),
         ScalarExpr::Le(a, b) => Ok(ScalarValue::Bool(eval_int(a, env)? <= eval_int(b, env)?)),
+        ScalarExpr::Bitcast { target, value } => {
+            let inner = eval_scalar(value, env)?;
+            reinterpret_scalar(&inner, target)
+        }
     }
+}
+
+/// Reinterpret a scalar's little-endian bytes as `target`. The inner value is
+/// typically `Bytes` (from `ReadInput`); a typed scalar is also accepted.
+fn reinterpret_scalar(value: &ScalarValue, target: &ScalarType) -> Result<ScalarValue, InterpError> {
+    let bytes: Vec<u8> = match value {
+        ScalarValue::Bytes(b) => b.clone(),
+        ScalarValue::Bool(b) => vec![*b as u8],
+        ScalarValue::Int32(x) => x.to_le_bytes().to_vec(),
+        ScalarValue::UInt32(x) | ScalarValue::Float32Bits(x) => x.to_le_bytes().to_vec(),
+        ScalarValue::Int64(x) => x.to_le_bytes().to_vec(),
+        ScalarValue::UInt64(x) | ScalarValue::Float64Bits(x) => x.to_le_bytes().to_vec(),
+    };
+    let need = |n: usize| -> Result<(), InterpError> {
+        if bytes.len() == n {
+            Ok(())
+        } else {
+            Err(InterpError::UnsupportedExpr("bitcast width mismatch"))
+        }
+    };
+    Ok(match target {
+        ScalarType::Bool => {
+            if bytes.is_empty() {
+                return Err(InterpError::UnsupportedExpr("bitcast to bool needs >=1 byte"));
+            }
+            ScalarValue::Bool(bytes[0] != 0)
+        }
+        ScalarType::Int32 => {
+            need(4)?;
+            ScalarValue::Int32(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+        }
+        ScalarType::UInt32 => {
+            need(4)?;
+            ScalarValue::UInt32(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+        }
+        ScalarType::Float32 => {
+            need(4)?;
+            ScalarValue::Float32Bits(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+        }
+        ScalarType::Int64 => {
+            need(8)?;
+            let mut a = [0u8; 8];
+            a.copy_from_slice(&bytes);
+            ScalarValue::Int64(i64::from_le_bytes(a))
+        }
+        ScalarType::UInt64 => {
+            need(8)?;
+            let mut a = [0u8; 8];
+            a.copy_from_slice(&bytes);
+            ScalarValue::UInt64(u64::from_le_bytes(a))
+        }
+        ScalarType::Float64 => {
+            need(8)?;
+            let mut a = [0u8; 8];
+            a.copy_from_slice(&bytes);
+            ScalarValue::Float64Bits(u64::from_le_bytes(a))
+        }
+        ScalarType::Bytes => ScalarValue::Bytes(bytes),
+        ScalarType::RowIndex => {
+            Err(InterpError::UnsupportedExpr("bitcast to RowIndex unsupported"))?
+        }
+    })
 }
 
 /// Evaluate a scalar expression to an integer (for loop bounds, offsets, widths).
@@ -515,6 +581,9 @@ fn eval_int(expr: &ScalarExpr, env: &HashMap<String, ScalarValue>) -> Result<i12
         ScalarExpr::Max(a, b) => Ok(eval_int(a, env)?.max(eval_int(b, env)?)),
         ScalarExpr::Eq(..) | ScalarExpr::Lt(..) | ScalarExpr::Le(..) => {
             Err(InterpError::UnsupportedExpr("comparison used where integer required"))
+        }
+        ScalarExpr::Bitcast { .. } => {
+            Err(InterpError::UnsupportedExpr("bitcast used where integer required"))
         }
     }
 }

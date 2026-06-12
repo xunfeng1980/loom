@@ -22,7 +22,7 @@
 
 use loom_ir_core::l2_core::{
     Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
-    OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue,
+    OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarType, ScalarValue,
 };
 use loom_ir_core::sidecar::SidecarCodecError;
 use std::path::Path;
@@ -40,15 +40,14 @@ fn arrow_to_l2(dt: &arrow_schema::DataType) -> Option<L2DataType> {
     }
 }
 
-/// Decide whether a field is a Tier 1a decodable column and return its
+/// Decide whether a field is a Tier 1 decodable column and return its
 /// `(L2DataType, width)`.
 ///
-/// Tier 1a covers **non-null integer** columns (Int32/Int64). The full verifier
-/// infers a `ReadInput`'s value type from its byte width (4 → Int32, 8 → Int64)
-/// and requires `AppendValue`'s value type to match the output builder exactly,
-/// so Float32/Float64/Boolean cannot be expressed until an IR-level typed-read
-/// / bitcast extension lands (Tier 1b). Those, nullable columns (Tier 2), and
-/// Utf8 (Tier 3) are skipped here.
+/// Tier 1 covers **non-null fixed-width** columns: integers (Int32/Int64),
+/// floats (Float32/Float64), and Boolean. Integers append the width-typed read
+/// directly; floats/Boolean wrap it in a `Bitcast` (the verifier infers a read
+/// type from byte width alone, which is ambiguous for floats). Nullable columns
+/// (Tier 2) and Utf8 (Tier 3) are skipped here.
 fn tier1_column(field: &arrow_schema::Field) -> Option<(L2DataType, u64)> {
     if field.is_nullable() {
         return None; // Tier 2.
@@ -56,8 +55,32 @@ fn tier1_column(field: &arrow_schema::Field) -> Option<(L2DataType, u64)> {
     match arrow_to_l2(field.data_type())? {
         L2DataType::Int32 => Some((L2DataType::Int32, 4)),
         L2DataType::Int64 => Some((L2DataType::Int64, 8)),
-        // Float32/Float64/Boolean: Tier 1b (typed-read IR extension). Utf8: Tier 3.
-        _ => None,
+        L2DataType::Float32 => Some((L2DataType::Float32, 4)),
+        L2DataType::Float64 => Some((L2DataType::Float64, 8)),
+        L2DataType::Boolean => Some((L2DataType::Boolean, 1)),
+        L2DataType::Utf8 => None, // Tier 3.
+    }
+}
+
+/// The `AppendValue` expression for a Tier 1 column: integers append the
+/// width-typed read directly; floats/Boolean reinterpret it via `Bitcast`.
+fn append_expr_for(l2_type: &L2DataType, bind: String) -> ScalarExpr {
+    let var = ScalarExpr::Var(bind);
+    match l2_type {
+        L2DataType::Int32 | L2DataType::Int64 => var,
+        L2DataType::Float32 => ScalarExpr::Bitcast {
+            target: ScalarType::Float32,
+            value: Box::new(var),
+        },
+        L2DataType::Float64 => ScalarExpr::Bitcast {
+            target: ScalarType::Float64,
+            value: Box::new(var),
+        },
+        L2DataType::Boolean => ScalarExpr::Bitcast {
+            target: ScalarType::Bool,
+            value: Box::new(var),
+        },
+        L2DataType::Utf8 => var, // unreachable for Tier 1
     }
 }
 
@@ -109,7 +132,7 @@ pub fn generate_decode_ir_from_parquet(
         }));
         capabilities.push(Capability::OutputBuilder(OutputBuilderCapability {
             id: output_id.clone(),
-            arrow_type: l2_type,
+            arrow_type: l2_type.clone(),
             nullable: false,
             max_events: total_rows,
         }));
@@ -131,7 +154,7 @@ pub fn generate_decode_ir_from_parquet(
                 },
                 L2CoreStmt::AppendValue {
                     builder: output_id,
-                    value: ScalarExpr::Var(bind),
+                    value: append_expr_for(&l2_type, bind),
                 },
             ],
         });
