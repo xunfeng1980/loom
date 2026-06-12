@@ -632,7 +632,6 @@ fn scalar_type_for_arrow(data_type: &L2DataType) -> Option<ScalarType> {
         L2DataType::Float32 => Some(ScalarType::Float32),
         L2DataType::Float64 => Some(ScalarType::Float64),
         L2DataType::Utf8 => Some(ScalarType::Bytes),
-        _ => None,
     }
 }
 

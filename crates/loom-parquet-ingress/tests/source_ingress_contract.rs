@@ -11,7 +11,7 @@ use arrow_schema::{DataType, Field, Schema};
 use loom_parquet_ingress::parquet_source_facts_from_path;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnosticCode, SourceEmissionDisposition,
-    SourceEmissionKind, SourceIngressAcceptedArtifact, SourceIngressReport, SourceIngressStatus,
+    SourceEmissionKind, SourceIngressReport, SourceIngressStatus,
     SourceLoweringDisposition,
 };
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;

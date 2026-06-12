@@ -337,7 +337,6 @@ fn write_data_type(buf: &mut Vec<u8>, dt: &L2DataType) {
         L2DataType::Float32 => 3,
         L2DataType::Float64 => 4,
         L2DataType::Utf8 => 5,
-        _ => panic!("L2CoreCodec: unsupported L2DataType {dt:?} — only Boolean/Int32/Int64/Float32/Float64/Utf8 are supported"),
     };
     write_u8(buf, disc);
 }
@@ -1019,7 +1018,6 @@ use crate::l2_core::L2DataType;
                 L2DataType::Float32 => ScalarExpr::Const(ScalarValue::Float32Bits(3.14f32.to_bits())),
                 L2DataType::Float64 => ScalarExpr::Const(ScalarValue::Float64Bits(3.14f64.to_bits())),
                 L2DataType::Utf8 => ScalarExpr::Const(ScalarValue::Bytes(vec![0xAB, 0xCD])),
-                _ => ScalarExpr::Const(ScalarValue::Int32(0)),
             };
         }
         let inner = mk_expr(depth - 1, arrow_type);

@@ -15,9 +15,7 @@ use loom_ffi::arrow_semantic::ArrowSemanticPayload;
 use loom_ffi::arrow_semantic_codec::encode_arrow_semantic_container_payload;
 use loom_ffi::native_arrow_semantic::prepare_native_arrow_semantic_codegen_support;
 use loom_ffi::backend::NativeBackendCancellation;
-use loom_ffi::jit::{
-    disable_shape, is_shape_disabled, reset_disabled_shapes,
-};
+
 
 // ---------------------------------------------------------------------------
 // Registry smoke tests (no melior required)
@@ -33,7 +31,6 @@ use loom_ffi::jit::{
 
 mod melior_tests {
     use super::*;
-    use arrow_array::Array;
     use loom_ffi::runtime_abi::{
         PredicateEnvelope, ProjectionSet, RuntimeSafetyPolicy, SplitDescriptor,
     };
@@ -295,80 +292,7 @@ mod melior_tests {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
 
-fn full_primitive_nullable_batch() -> RecordBatch {
-    let schema = Arc::new(Schema::new(vec![
-        Field::new("ok", DataType::Boolean, true),
-        Field::new("id", DataType::Int32, true),
-        Field::new("count", DataType::Int64, true),
-        Field::new("ratio", DataType::Float32, true),
-        Field::new("score", DataType::Float64, true),
-    ]));
-    RecordBatch::try_new(
-        schema,
-        vec![
-            Arc::new(BooleanArray::from(vec![
-                Some(true),
-                None,
-                Some(false),
-                Some(true),
-                Some(false),
-                None,
-                Some(true),
-                Some(false),
-                Some(true),
-            ])) as ArrayRef,
-            Arc::new(Int32Array::from(vec![
-                Some(7),
-                None,
-                Some(-1),
-                Some(128),
-                Some(-2048),
-                None,
-                Some(33),
-                Some(44),
-                Some(55),
-            ])) as ArrayRef,
-            Arc::new(Int64Array::from(vec![
-                Some(70),
-                None,
-                Some(-10),
-                Some(7000),
-                Some(-9000),
-                None,
-                Some(330),
-                Some(440),
-                Some(550),
-            ])) as ArrayRef,
-            Arc::new(Float32Array::from(vec![
-                Some(0.25),
-                None,
-                Some(-1.5),
-                Some(3.75),
-                Some(-8.5),
-                None,
-                Some(9.25),
-                Some(10.5),
-                Some(11.75),
-            ])) as ArrayRef,
-            Arc::new(Float64Array::from(vec![
-                Some(1.5),
-                None,
-                Some(-2.25),
-                Some(4.5),
-                Some(-16.75),
-                None,
-                Some(18.25),
-                Some(20.5),
-                Some(22.75),
-            ])) as ArrayRef,
-        ],
-    )
-    .expect("full primitive nullable batch")
-}
 
 /// Same data shape as `full_primitive_nullable_batch` but with different column
 /// names so the schema fingerprint is distinct.  Used by tests that must not
@@ -442,11 +366,6 @@ fn full_primitive_nullable_batch_v2() -> RecordBatch {
         ],
     )
     .expect("full primitive nullable batch v2")
-}
-
-fn encode_lmc2(batch: &RecordBatch) -> Vec<u8> {
-    let payload = ArrowSemanticPayload::from_record_batches(&[batch.clone()]).expect("payload");
-    encode_arrow_semantic_container_payload(&payload).expect("encode LMC2")
 }
 
 /// Third variant with distinct column names so tests that manipulate the

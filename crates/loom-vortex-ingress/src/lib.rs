@@ -1635,6 +1635,7 @@ fn reader_emission_kind(_file: &VortexFile) -> VortexReaderEmissionKind {
     VortexReaderEmissionKind::None
 }
 
+#[allow(dead_code)]
 fn primitive_array_to_layout(
     canonical: PrimitiveArray,
     support: &SingleColumnSupport,

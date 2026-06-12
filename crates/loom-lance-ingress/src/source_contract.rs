@@ -6,12 +6,7 @@
 use std::path::Path;
 
 #[cfg(test)]
-use std::sync::Arc;
-
-#[cfg(test)]
 use arrow_array::RecordBatch;
-#[cfg(test)]
-use arrow_schema::SchemaRef;
 use arrow_schema::{DataType, Field, Schema};
 #[cfg(test)]
 use futures::TryStreamExt;
@@ -144,6 +139,7 @@ pub fn bind_content_hash_to_lance_data(
 /// This is source evidence only. Accepted Loom artifact bytes come from
 /// `LMC2(LMA1)` Arrow semantic emission plus artifact verification.
 #[cfg(test)]
+#[allow(dead_code)]
 pub async fn lance_native_oracle_batches_from_path(
     path: &Path,
 ) -> Result<Vec<RecordBatch>, SourceIngressReport> {
@@ -417,6 +413,7 @@ fn child_field_names(data_type: &DataType) -> Vec<String> {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 async fn open_local_dataset(
     path: &Path,
     diagnostic_path: &'static str,

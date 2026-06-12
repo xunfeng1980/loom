@@ -291,6 +291,7 @@ fn assert_lmc2_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8])
     assert_eq!(decoded, source);
 }
 
+#[allow(dead_code)]
 fn assert_direct_lma1_matches_vortex_oracle(source_bytes: &[u8], artifact_bytes: &[u8]) {
     let source =
         dev_time_vortex_oracle_batches(source_bytes).expect("Vortex Arrow oracle");

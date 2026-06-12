@@ -17,7 +17,6 @@ use loom_ffi::native_arrow_semantic::{
 use loom_ffi::runtime_abi::{ProjectionSet, RuntimeExecutionDecision, RuntimeSafetyPolicy};
 use loom_ffi::backend::NativeBackendCancellation;
 
-use loom_ffi::backend::NativeBackendDiagnosticCode;
 use loom_ffi::jit::execute_arrow_semantic_codegen_jit;
 
 use loom_ffi::jit::ARROW_SEMANTIC_CODEGEN_JIT_ENTRY_SYMBOL;

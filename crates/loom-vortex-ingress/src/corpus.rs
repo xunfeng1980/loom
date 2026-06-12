@@ -293,6 +293,7 @@ fn const_u64_or(expr: &ScalarExpr, default: u64) -> u64 {
     }
 }
 
+#[allow(dead_code)]
 fn scalar_type_to_arrow(ty: &ScalarType) -> arrow_schema::DataType {
     match ty {
         ScalarType::Int32 => arrow_schema::DataType::Int32,

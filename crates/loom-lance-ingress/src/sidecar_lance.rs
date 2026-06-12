@@ -60,6 +60,7 @@ pub fn extract_sidecar_from_lance_dataset(
 /// user-defined metadata. This function is a documented no-op that returns
 /// `Ok(())` — embedding did not occur, but the function correctly reports
 /// this instead of silently pretending to succeed.
+#[allow(dead_code)]
 pub fn embed_sidecar_into_lance_dataset(
     _overlay: &SidecarOverlay,
 ) -> Result<(), SidecarCodecError> {

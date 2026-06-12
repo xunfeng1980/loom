@@ -16,7 +16,7 @@ use loom_ffi::l2_kernel_registry::L2KernelRegistry;
 use loom_lance_ingress::lance_source_facts_from_path;
 use loom_source_ingress::{
     SourceArtifactVerificationSummary, SourceDiagnostic, SourceDiagnosticCode,
-    SourceEmissionDisposition, SourceEmissionKind, SourceIngressAcceptedArtifact,
+    SourceEmissionDisposition, SourceEmissionKind,
     SourceIngressReport, SourceIngressStatus, SourceLoweringDisposition, SourceOracleEvidence,
     SourceOracleStrategy,
 };
@@ -201,7 +201,7 @@ fn lance_contract_does_not_leak_sdk_types_to_generic_crates() {
             "-n",
             "pub struct Lance|Dataset|FileFragment|object_store",
             "crates/loom-source-ingress",
-            "crates/loom-core",
+            "crates/loom-ir-core",
             "crates/loom-ffi",
         ])
         .current_dir(&workspace_root)
