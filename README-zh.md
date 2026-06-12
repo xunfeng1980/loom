@@ -80,20 +80,32 @@ loom_sidecar_free_bytes    → 释放返回的字节缓冲
 
 ## 正确性模型
 
+**三层差分验证**是 Loom 正确性的基石：
+
 ```
-      kloom (K trace) ──── 离线差分 ─────┐
-      Lean (证明) ────── 分类 ───────────┤
-                                          ├──→ Rust 解释器（ground truth）
-                                          │         │
-                                  JIT (melior/LLVM) ── 在线对比 ──→ 解释器输出
-                                          │
-                                  一致？→ JIT 结果
-                                  不一致？→ 丢弃，回退宿主原生 reader
+L2Core IR 程序
+    │
+    ├──→ 序列化为 kloom.k 语法
+    │      → krun（K 形式化语义引擎）
+    │      → 解析 <events> cell → K trace（参考基准）
+    │
+    ├──→ Rust 解释器解码执行
+    │      → TracedBuilder 记录每个 append_value / append_null 事件
+    │      → native trace
+    │
+    └──→ 对比
+           reference_trace == native_trace  → 逐事件比对
+           output == reference              → 最终 RecordBatch 值比对
+           不一致 → NativeModelTraceMismatch → 丢弃，回退宿主原生 reader
 ```
 
-- **Rust 解释器** — 纯 Rust L1/L2 解码器，与 kloom 离线差分验证
-- **JIT** — melior/LLVM 将 L2Core IR 编译为原生代码，在线与解释器对比
-- **kloom** — K 框架 spec-oracle，用于离线差分验证
+**JIT 层**：JIT 输出经过同一套模型验证——JIT 产出的 Arrow 列数据重建为
+RecordBatch，然后与 K trace 和解释器输出逐事件比对。每次生产路由调用都会
+执行此验证（`production_arrow_semantic_route`）。
+
+- **kloom** — 14 个语义测试，K 框架 spec-oracle，离线差分验证（14/14 通过）
+- **Rust 解释器** — 纯 Rust L1/L2 解码器，TracedBuilder 事件流经 kloom 验证
+- **JIT** — melior/LLVM 将 L2Core IR 编译为原生代码，在线与解释器 + K trace 对比
 - **Lean** — IR 程序的形式化分类证明（计划中）
 
 ## 4 关路由

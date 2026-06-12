@@ -88,20 +88,33 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
 ## Correctness Model
 
+**Three-layer differential verification** anchors Loom's correctness:
+
 ```
-      kloom (K trace) ──── offline diff ─────┐
-      Lean (proof) ────── classification ────┤
-                                              ├──→ Rust interp (ground truth)
-                                              │         │
-                                      JIT (melior/LLVM) ── online compare ──→ interp output
-                                              │
-                                      match? → JIT result
-                                      diverge? → discard, fallback host-native
+L2Core IR program
+    │
+    ├──→ serialize to kloom.k syntax
+    │      → krun (K formal semantics engine)
+    │      → parse <events> cell → K trace (reference baseline)
+    │
+    ├──→ Rust interp decode execution
+    │      → TracedBuilder records every append_value / append_null event
+    │      → native trace
+    │
+    └──→ compare
+           reference_trace == native_trace  → per-event diff
+           output == reference              → final RecordBatch value diff
+           mismatch → NativeModelTraceMismatch → discard, fallback host-native
 ```
 
-- **Rust interp** — pure-Rust L1/L2 decoder, differentially verified against kloom offline
-- **JIT** — melior/LLVM compiles L2Core IR → native code, validated against interp online
-- **kloom** — K framework spec-oracle for offline differential verification
+**JIT layer**: JIT output goes through the same model validation — JIT-produced
+Arrow columns are reconstructed into a RecordBatch and compared against the
+K trace and interp output event-by-event. This runs on every production route
+invocation (`production_arrow_semantic_route`).
+
+- **kloom** — 14 semantics tests, K framework spec-oracle, offline differential verification (14/14 passing)
+- **Rust interp** — pure-Rust L1/L2 decoder, TracedBuilder event stream verified against kloom
+- **JIT** — melior/LLVM compiles L2Core IR → native code, validated against interp + K trace online
 - **Lean** — formal classification of IR programs (planned)
 
 ## 4-Gate Routing
