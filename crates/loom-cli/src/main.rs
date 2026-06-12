@@ -29,6 +29,10 @@ fn run() -> Result<(), String> {
             let mode = args.next().ok_or_else(|| sidecar_usage())?;
             sidecar(&mode, args.collect())
         }
+        "gen-ir" => {
+            let path = args.next().ok_or_else(|| "USAGE: loom gen-ir <output.l2ir>".to_string())?;
+            gen_ir(&path)
+        }
         "verify-l2core" => {
             let mode = args.next().ok_or_else(usage)?;
             if args.next().is_some() {
@@ -50,6 +54,7 @@ fn usage() -> String {
     s.push_str("USAGE:\n");
     s.push_str("  loom sidecar embed <parquet_file> [ir_file]          Embed sidecar inline (dev only)\n");
     s.push_str("  loom sidecar embed-external <parquet_file> [ir_file] Write external .loomsidecar file\n");
+    s.push_str("  loom gen-ir <output.l2ir>                          Generate default L2Core IR file\n");
     s.push_str("  loom verify-l2core <mode>                            Verify an L2Core IR program\n");
     s.push_str("  loom help                                            Print this message\n");
     s
@@ -146,6 +151,18 @@ fn sidecar_embed_external(mut args: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
+/// Generate a default L2Core IR program and write it to a file.
+fn gen_ir(path: &str) -> Result<(), String> {
+    let program = default_sidecar_program();
+    let bytes = encode_l2core_program(&program);
+    fs::write(path, &bytes)
+        .map_err(|e| format!("failed to write IR file {path}: {e}"))?;
+    let hash = program.content_hash();
+    println!("Wrote L2Core IR: {path}");
+    println!("Content hash: {hash}");
+    Ok(())
+}
+
 fn default_sidecar_program() -> L2CoreProgram {
     L2CoreProgram {
         artifact_version: 1,
@@ -155,23 +172,23 @@ fn default_sidecar_program() -> L2CoreProgram {
             Capability::InputSlice(InputSliceCapability {
                 id: "input".to_string(),
                 offset: 0,
-                length: 1024,
+                length: 20,
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
                 id: "output".to_string(),
                 arrow_type: L2DataType::Int32,
                 nullable: false,
-                max_events: 1024,
+                max_events: 5,
             }),
         ],
-        resource_budget: ResourceBudget::bounded_rows(1024),
+        resource_budget: ResourceBudget::bounded_rows(5),
         body: vec![L2CoreStmt::ForRange {
             index: "i".to_string(),
             start: ScalarExpr::Const(ScalarValue::UInt64(0)),
-            end: ScalarExpr::Const(ScalarValue::UInt64(1024)),
+            end: ScalarExpr::Const(ScalarValue::UInt64(5)),
             body: vec![L2CoreStmt::AppendValue {
                 builder: "output".to_string(),
-                value: ScalarExpr::Var("i".to_string()),
+                value: ScalarExpr::Const(ScalarValue::Int32(42)),
             }],
         }],
     }

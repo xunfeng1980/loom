@@ -28,19 +28,22 @@ Sidecar 是携带在宿主数据旁的可剥离元数据：
 cargo build --release -p loom-cli
 ```
 
-### 2. 生成外部 sidecar（生产路径）
+### 2. 生成 sidecar（生产路径）
 
 ```bash
-cargo run --release -p loom-cli -- sidecar embed-external data.parquet [program.l2ir]
+# 生成默认 L2Core IR（或自行编写）
+cargo run --release -p loom-cli -- gen-ir assets/quickstart.l2ir
+
+# 嵌入为外部 sidecar（原始文件不变）
+cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
 ```
 
-生成 `data.parquet.loomsidecar` — 原始文件不变。
+生成 `assets/data.parquet.loomsidecar` — 原始文件不变。
 
-### 3. 验证 + 检查
+### 3. 验证 IR
 
 ```bash
-# 验证 IR 并返回内容哈希标识
-cargo run --release -p loom-cli -- verify-l2core program.l2ir
+cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
 ```
 
 ### 4. DuckDB 扩展

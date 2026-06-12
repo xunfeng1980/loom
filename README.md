@@ -35,19 +35,22 @@ don't keep reading with their own host-native reader.
 cargo build --release -p loom-cli
 ```
 
-### 2. Generate external sidecar (production)
+### 2. Generate a sidecar (production path)
 
 ```bash
-cargo run --release -p loom-cli -- sidecar embed-external data.parquet [program.l2ir]
+# Generate default L2Core IR (or write your own)
+cargo run --release -p loom-cli -- gen-ir assets/quickstart.l2ir
+
+# Embed as external sidecar (original file unchanged)
+cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
 ```
 
-Writes `data.parquet.loomsidecar` — original file unchanged.
+Writes `assets/data.parquet.loomsidecar` — original file untouched.
 
-### 3. Verify + inspect
+### 3. Verify the IR
 
 ```bash
-# Verify IR and return content-hash identity
-cargo run --release -p loom-cli -- verify-l2core program.l2ir
+cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
 ```
 
 ### 4. DuckDB extension
