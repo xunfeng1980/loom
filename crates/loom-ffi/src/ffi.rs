@@ -295,6 +295,152 @@ pub unsafe extern "C" fn loom_sidecar_route(
 }
 
 // ---------------------------------------------------------------------------
+// loom_sidecar_verify_json (P1-1: structured facts/diagnostics)
+// ---------------------------------------------------------------------------
+
+/// Verify a sidecar overlay's L2Core IR and return structured facts and
+/// diagnostics as a JSON string.
+///
+/// Decodes the overlay, runs full semantic verification via
+/// [`verify_l2_core_bytes`], and emits a JSON object with the verification
+/// result, content-hash identity, artifact facts, and diagnostic messages.
+/// The JSON is returned as a null-terminated C string through `out_json`.
+/// The caller must free this string via `loom_sidecar_free_cstr`.
+///
+/// # JSON schema
+///
+/// ```json
+/// {
+///   "accepted": true,
+///   "ir_hash": "blake3:...",
+///   "artifact_version": 1,
+///   "required_features": [],
+///   "input_ranges": [],
+///   "output_schema": [],
+///   "row_count_bound": 1024,
+///   "constraint_count": 0,
+///   "proof_obligation_count": 0,
+///   "diagnostics": []
+/// }
+/// ```
+///
+/// # Returns
+///
+/// * `0` — Verification completed, JSON written to `out_json`.
+/// * `1` — A required pointer argument is null.
+/// * `3` — Overlay or IR bytes are malformed/truncated.
+/// * `4` — Internal panic caught.
+#[no_mangle]
+pub unsafe extern "C" fn loom_sidecar_verify_json(
+    overlay_bytes: *const u8,
+    overlay_len: usize,
+    out_json: *mut *const c_char,
+) -> i32 {
+    if overlay_bytes.is_null() || out_json.is_null() {
+        return LoomSidecarError::NullPointer.code();
+    }
+
+    let result: std::result::Result<std::result::Result<i32, LoomSidecarError>, _> =
+        panic::catch_unwind(AssertUnwindSafe(|| {
+        let bytes = std::slice::from_raw_parts(overlay_bytes, overlay_len);
+        let overlay =
+            SidecarOverlay::decode(bytes).map_err(|_| LoomSidecarError::DecodeFailed)?;
+
+        let report = verify_l2_core_bytes(&overlay.ir_bytes);
+
+        // Compute hash from successfully decoded program (or empty if
+        // decode failed — fail-closed: no hash on malformed input).
+        let ir_hash = l2core_codec::decode_l2core_program(&overlay.ir_bytes)
+            .as_ref()
+            .map(l2core_codec::l2core_program_hash)
+            .unwrap_or_default();
+
+        let facts = report.facts();
+        let diags = report.diagnostics();
+
+        let mut diagnostics_json = String::new();
+        for (i, d) in diags.iter().enumerate() {
+            if i > 0 {
+                diagnostics_json.push(',');
+            }
+            diagnostics_json.push_str(&format!(
+                r#"{{"code":"{:?}","path":"{}","message":"{}"}}"#,
+                d.code, d.path, d.message
+            ));
+        }
+
+        let mut input_ranges_json = String::new();
+        let mut output_schema_json = String::new();
+        let mut artifact_version: u16 = 0;
+        let mut required_features_json = String::new();
+        let mut row_count_bound: Option<u64> = None;
+        let mut constraint_count: usize = 0;
+        let mut proof_count: usize = 0;
+
+        if let Some(f) = facts {
+            artifact_version = f.artifact_version;
+            row_count_bound = f.row_count_bound;
+            constraint_count = f.constraint_ids.len();
+            proof_count = f.proof_obligation_ids.len();
+
+            for (i, feat) in f.required_features.iter().enumerate() {
+                if i > 0 {
+                    required_features_json.push(',');
+                }
+                required_features_json.push_str(&format!(r#""{}""#, feat));
+            }
+
+            for (i, ir) in f.input_ranges.iter().enumerate() {
+                if i > 0 {
+                    input_ranges_json.push(',');
+                }
+                input_ranges_json.push_str(&format!(
+                    r#"{{"id":"{}","offset":{},"length":{}}}"#,
+                    ir.capability_id, ir.offset, ir.length
+                ));
+            }
+
+            for (i, os) in f.output_schema.iter().enumerate() {
+                if i > 0 {
+                    output_schema_json.push(',');
+                }
+                output_schema_json.push_str(&format!(
+                    r#"{{"id":"{}","arrow_type":"{:?}","nullable":{}}}"#,
+                    os.builder_id, os.arrow_type, os.nullable
+                ));
+            }
+        }
+
+        let json = format!(
+            r#"{{"accepted":{},"ir_hash":"{}","artifact_version":{},"required_features":[{}],"input_ranges":[{}],"output_schema":[{}],"row_count_bound":{},"constraint_count":{},"proof_obligation_count":{},"diagnostics":[{}]}}"#,
+            report.is_ok(),
+            ir_hash,
+            artifact_version,
+            required_features_json,
+            input_ranges_json,
+            output_schema_json,
+            row_count_bound.map_or("null".to_string(), |v| v.to_string()),
+            constraint_count,
+            proof_count,
+            diagnostics_json,
+        );
+
+        let cstr =
+            CString::new(json).map_err(|_| LoomSidecarError::DecodeFailed)?;
+        let ptr = cstr.into_raw();
+        std::ptr::write(out_json, ptr);
+        Ok(0)
+    }));
+
+    match result {
+        Ok(Ok(0)) => LoomSidecarError::Success.code(),
+        Ok(Err(e)) => e.code(),
+        Ok(_) => LoomSidecarError::DecodeFailed.code(),
+        Err(_) => LoomSidecarError::Panicked.code(),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // loom_sidecar_free_bytes
 // ---------------------------------------------------------------------------
 

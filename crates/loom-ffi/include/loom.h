@@ -79,6 +79,44 @@ int32_t loom_sidecar_route(const uint8_t *overlay_bytes,
                            const char **out_decision);
 
 /**
+ * Verify a sidecar overlay's L2Core IR and return structured facts and
+ * diagnostics as a JSON string.
+ *
+ * Decodes the overlay, runs full semantic verification via
+ * [`verify_l2_core_bytes`], and emits a JSON object with the verification
+ * result, content-hash identity, artifact facts, and diagnostic messages.
+ * The JSON is returned as a null-terminated C string through `out_json`.
+ * The caller must free this string via `loom_sidecar_free_cstr`.
+ *
+ * # JSON schema
+ *
+ * ```json
+ * {
+ *   "accepted": true,
+ *   "ir_hash": "blake3:...",
+ *   "artifact_version": 1,
+ *   "required_features": [],
+ *   "input_ranges": [],
+ *   "output_schema": [],
+ *   "row_count_bound": 1024,
+ *   "constraint_count": 0,
+ *   "proof_obligation_count": 0,
+ *   "diagnostics": []
+ * }
+ * ```
+ *
+ * # Returns
+ *
+ * * `0` — Verification completed, JSON written to `out_json`.
+ * * `1` — A required pointer argument is null.
+ * * `3` — Overlay or IR bytes are malformed/truncated.
+ * * `4` — Internal panic caught.
+ */
+int32_t loom_sidecar_verify_json(const uint8_t *overlay_bytes,
+                                 uintptr_t overlay_len,
+                                 const char **out_json);
+
+/**
  * Free a byte buffer previously returned by [`loom_sidecar_extract`].
  *
  * Reconstructs the `Vec<u8>` from the pointer and length and drops it.
