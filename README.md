@@ -118,14 +118,23 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
  Host data + sidecar
     │
-    └──→ JIT (melior/LLVM)
-           L2Core IR → MLIR → LLVM → native machine code
-           → Arrow RecordBatch → DuckDB / Spark / Arrow consumer
+    └──→ L2Core interpreter  (loom_sidecar_decode)
+           extract → verify → 4-gate route → interpret
+           → Arrow RecordBatch (IPC + C Data Interface)
+           → DuckDB / Spark / Arrow consumer
 ```
 
 - **kloom** (offline) — K framework formal semantics, 14 spec tests (14/14 passing)
-- **Rust interp** (offline verification, not in production path) — fast implementation of K spec, validated against kloom in CI
-- **JIT** (offline-verified, production runtime) — melior/LLVM native codegen, validated against interp in CI; runs solo in production
+- **Rust interp** (production decoder) — the general L2Core interpreter
+  (`interp/l2core_interp.rs`) wired into `loom_sidecar_decode`; verified against
+  kloom in CI. Decodes i32/i64/f32/f64/bool, nullable, and Utf8 columns from
+  auto-generated IR and emits real Arrow (`StreamWriter` IPC +
+  `arrow::ffi` C Data Interface), materialized into typed rows by the DuckDB
+  `loom_scan` table function.
+- **JIT** (offline-verified, not yet wired to the production FFI) — melior/LLVM
+  native codegen, validated against the interpreter in CI. The decode-chain
+  work made the interpreter the production runtime; routing the sidecar FFI to
+  the JIT is future work.
 - **Lean** (offline, planned) — formal classification of IR programs
 
 ## 4-Gate Routing
@@ -222,7 +231,7 @@ Parquet / Lance / Vortex
    ▼         ▼
 Loom-native  Host-native
    decode      fallback
-(JIT → LLVM)     │
+(L2Core interp)  │
    │             │
    └─────┬───────┘
          ▼
@@ -235,12 +244,21 @@ Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST,
 ALP Float32/Float64. L2Core IR supports Boolean, Int32, Int64, Float32,
 Float64, Utf8.
 
-## JIT Backend
+## Decode runtime & JIT
 
-melior/LLVM JIT is compiled in and validates against the interpreter online.
-Production-level JIT codegen tests pass for supported shapes. The current
-sidecar FFI surface exposes extract/verify/route/decode. JIT is exercised
-in the production route tests (`production_arrow_semantic_*`).
+The production decode runtime is the **L2Core interpreter**: `loom_sidecar_decode`
+extracts the sidecar, verifies the IR, evaluates the 4-gate route, and — on the
+Loom-native path — interprets the program to a real Arrow `RecordBatch`, returned
+as a bare IPC stream and via the Arrow C Data Interface. The DuckDB `loom_scan`
+table function materializes those columns into typed SQL rows. Auto-generated IR
+(`generate_decode_ir_from_parquet`) covers non-null i32/i64/f32/f64/bool, nullable
+fixed-width, and non-null Utf8 columns.
+
+The melior/LLVM **JIT** is compiled in and validated against the interpreter in
+CI (offline differential, `production_arrow_semantic_*`), but is **not yet wired
+to the production sidecar FFI** — routing decode through the JIT is future work.
+The DuckDB extension links `libloom_ffi.a` built `--no-default-features`, so the
+JIT/LLVM is excluded from the loadable extension.
 
 ## Why Loom
 

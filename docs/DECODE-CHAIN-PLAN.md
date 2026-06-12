@@ -9,11 +9,14 @@
 >   - `loom_sidecar_decode` 产出**真实 bare Arrow IPC**（`StreamWriter`）；新增 `loom_sidecar_decode_carray` 经 **Arrow C Data Interface**（`arrow::ffi::to_ffi` 导出 struct 数组）零拷贝交给宿主。E2E FFI 测试 [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs)：IPC 经 `StreamReader` 读回正确 + carray 经 `from_ffi` 往返正确 + `free_bytes` 释放。loom.h 契约更新（裸 IPC）。
 >   - **DuckDB 扩展端到端跑通**：JIT 经 cargo feature 门控（`--no-default-features`），扩展无 LLVM 符号、可被仓库自带 `vendor/duckdb-cli/duckdb`（v1.5.3）`LOAD`。`loom_scan` 现把解码列**物化为 DuckDB typed 行**（i32/i64/f32/f64/bool/utf8 泛型 `FillVector`，未知类型 fail-soft 回退诊断列）。实测：`SELECT * FROM loom_scan('<fixture>')` 返回 10 行 int32=42；`SELECT COUNT/SUM/MIN` → 10/420/42。fixture 生成器 [`examples/make_fixture.rs`](../crates/loom-ffi/examples/make_fixture.rs)。
 >   - **DoD#2 达成**：SQL 查出真实解码值，端到端 DuckDB SQL → 解释器 → Arrow C 接口 → typed 结果行。
-> - **Plan 3 ⏳ Tier 1a 完成 / Tier 1b 待 IR 扩展**：
->   - **Tier 1a ✅（非空 i32/i64）**：`generate_decode_ir_from_parquet` 产真实可执行 `body`（ForRange+ReadInput+AppendValue），`parquet_to_raw_host` 按列主序 LE 打包对应 host 缓冲。E2E 测试 [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs)：parquet→自动 IR（过 full verifier）→解释器复现源 i32/i64 值；f32 列正确跳过；nullable+Utf8 仅发非空整型列。
->   - **关键发现 → Tier 1b（f32/f64/bool）需先扩展 IR**：full verifier 把 `ReadInput` 值类型**仅按字节宽推断**（4→Int32, 8→Int64）且要求 `AppendValue` 与 builder 类型精确匹配，无 bitcast/typed-read。浮点/布尔因此无法在当前 IR 表达——需一次 loom-ir-core 扩展（`ReadInput` 带类型或新增 bitcast ScalarExpr，连带 codec + full_verifier + kloom + 解释器），即 Tier 1b 工作量。
->   - 注：DuckDB 扩展物化层已支持全部 6 种 primitive + utf8，Tier 1b/2/3 一旦 IR 产出真实 body 即可直接消费。
-> - **Plan 4/5**：未开始。
+> - **Plan 3 ✅ Tier 1–4 全绿**（E2E 测试 [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs)：parquet→自动 IR→full verifier→解释器→值/null 位正确）：
+>   - **Tier 1a（非空 i32/i64）**：`generate_decode_ir_from_parquet` 产真实 `body`（ForRange+ReadInput+AppendValue）；`parquet_to_raw_host` 按列主序 LE 打包。
+>   - **Tier 1b（f32/f64/bool）**：新增 `ScalarExpr::Bitcast { target, value }`（codec tag 10 + full_verifier + 解释器；kloom 跳过），解决"width→类型"歧义。浮点/布尔的 AppendValue 包一层 Bitcast。
+>   - **Tier 2（nullable）**：新增 `L2CoreStmt::If { cond, then_body, else_body }`（codec tag 7 + verifier 双分支 + 解释器 + vortex corpus 计数）；nullable 列＝validity 切片 + `If(bitcast bool 校验位){AppendValue} else {AppendNull}`。
+>   - **Tier 3（非空 Utf8）**：复用既有 IR——offsets+data 双切片，按行读 lo/hi 偏移、Bitcast 为 Int32、动态宽 `ReadInput data[lo..hi]`、Bytes→Utf8 append。生成器读 batch 给 data 切片定长。
+>   - **Tier 4（字典）**：Parquet 字典是**物理编码**，Arrow 读取时已物化为普通列，故字典编码输入经 Tier 1–3 透明解码（测试强制开启字典验证）。产出 dictionary-**typed** Arrow（DictionaryArray）属表示优化，留作后续（需 OutputBuilder::Dictionary + DuckDB 字典物化）。
+> - **Plan 5 ✅**：README / README-zh 的"correctness model / 生产运行时"叙述据实修正——生产解码运行时＝L2Core **解释器**（接进 `loom_sidecar_decode`，产真实 Arrow，DuckDB `loom_scan` 物化为 typed 行）；JIT 为**离线验证、尚未接入生产 FFI**（扩展 `--no-default-features` 不含 LLVM）。
+> - **Plan 4 ⏳ 未完成（剩余前沿）**：当前 host 数据是**raw 列主序布局**（`parquet_to_raw_host` 从 Arrow 物化值打包），尚未绑定真实 Parquet **物理 column-chunk 字节**（`File::seek` 直读 + page header 解析 + 编码内解压）。即"自动 IR 读的是 raw 重排布局，而非原始 parquet 物理字节"。这是与生产零转码直读之间的最后一段。
 > 范围：把前次分析定位的五项未完成项收敛为一个 phase、拆成 5 个有依赖序的 plan。
 > **终态目标：全类型覆盖**——i32/i64/f32/f64/bool + nullable + Utf8 + 字典，端到端经 sidecar 路径解码出真实 Arrow。i32 只是第一个打通用纵切片，不是终点。
 

@@ -111,14 +111,19 @@ loom_sidecar_free_bytes    → 释放返回的字节缓冲
 
  宿主数据 + sidecar
     │
-    └──→ JIT（melior/LLVM）
-           L2Core IR → MLIR → LLVM → 原生机器码
-           → Arrow RecordBatch → DuckDB / Spark / Arrow 消费
+    └──→ L2Core 解释器（loom_sidecar_decode）
+           extract → verify → 4 门路由 → 解释执行
+           → Arrow RecordBatch（IPC + C Data Interface）
+           → DuckDB / Spark / Arrow 消费
 ```
 
 - **kloom**（离线）— K 框架形式化语义，14 个规范测试（14/14 通过）
-- **Rust 解释器**（离线验证，不在生产路径中）— K 规范的快速实现，CI 中经 kloom 验证
-- **JIT**（离线验证，生产运行时）— melior/LLVM 原生代码生成，CI 中经解释器验证；生产独自运行
+- **Rust 解释器**（生产解码器）— 通用 L2Core 解释器（`interp/l2core_interp.rs`）
+  接进 `loom_sidecar_decode`，CI 中经 kloom 验证。从自动生成的 IR 解码
+  i32/i64/f32/f64/bool、可空、Utf8 列，产出真实 Arrow（`StreamWriter` IPC +
+  `arrow::ffi` C Data Interface），由 DuckDB `loom_scan` 表函数物化为 typed 行。
+- **JIT**（离线验证，尚未接入生产 FFI）— melior/LLVM 原生代码生成，CI 中经解释器
+  对比验证。decode-chain 工作让解释器成为生产运行时；把 sidecar FFI 路由到 JIT 是后续工作。
 - **Lean**（离线，计划中）— IR 程序的形式化分类证明
 
 ## 4 关路由
@@ -214,8 +219,8 @@ Parquet / Lance / Vortex
    ▼         ▼
 Loom 原生    宿主原生
    解码        回退
-(JIT 默认 →      │
-  LLVM 机器码)    │
+(L2Core 解释器)  │
+    │             │
     │             │
     └─────┬───────┘
           ▼
@@ -228,12 +233,18 @@ Raw、bitpack、frame-of-reference、dictionary、RLE、FSST、dict-over-FSST、
 ALP Float32/Float64。L2Core IR 支持 Boolean、Int32、Int64、Float32、
 Float64、Utf8。
 
-## JIT 后端
+## 解码运行时与 JIT
 
-melior/LLVM JIT 已编译在二进制中，并在线上与解释器对比验证。生产级 JIT
-代码生成测试对受支持的 shape 通过。当前 sidecar FFI surface 暴露
-extract/verify/route/decode。JIT 在生产路由测试中充分覆盖
-（`production_arrow_semantic_*`）。
+生产解码运行时是 **L2Core 解释器**：`loom_sidecar_decode` 提取 sidecar、验证 IR、
+评估 4 门路由，并在 Loom 原生路径上解释执行程序得到真实 Arrow `RecordBatch`，
+以裸 IPC 流和 Arrow C Data Interface 返回；DuckDB `loom_scan` 表函数把这些列物化
+为 typed SQL 行。自动生成的 IR（`generate_decode_ir_from_parquet`）覆盖非空
+i32/i64/f32/f64/bool、可空定宽、以及非空 Utf8 列。
+
+melior/LLVM **JIT** 已编译在二进制中，并在 CI 中与解释器离线对比验证
+（`production_arrow_semantic_*`），但**尚未接入生产 sidecar FFI**——把解码路由到
+JIT 是后续工作。DuckDB 扩展链接的 `libloom_ffi.a` 以 `--no-default-features` 构建，
+因此 JIT/LLVM 不进入可加载扩展。
 
 ## 为什么需要 Loom
 
