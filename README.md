@@ -29,69 +29,56 @@ don't keep reading with their own host-native reader.
 
 ## Quickstart
 
-### 1. Build the CLI
+All commands run from the repository root. Copy-paste ready.
+
+### 1. Build
 
 ```bash
 cargo build --release -p loom-cli
 ```
 
-This produces `target/release/loom`.
-
-### 2. Write or generate a Decode IR program
+### 2. Inspect the example Decode IR
 
 ```bash
-# Option A: use the pre-built example (human-readable RON format)
 cat assets/quickstart.ron
-
-# Option B: generate a default program
-cargo run --release -p loom-cli -- gen-ir my_program.ron
 ```
 
-Edit `my_program.ron` to describe your decode logic, then convert to binary:
+This is a 5-row program: for each row, append `Int32(42)` to the output.
+Edit `assets/quickstart.ron` or write your own.
+
+### 3. Convert and verify
 
 ```bash
-cargo run --release -p loom-cli -- convert my_program.ron my_program.l2ir
-```
-
-### 3. Verify the IR
-
-```bash
-cargo run --release -p loom-cli -- verify-l2core my_program.l2ir
-# Output: Verification: passed  (or lists diagnostics)
+cargo run --release -p loom-cli -- convert assets/quickstart.ron assets/quickstart.l2ir
+cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
 ```
 
 ### 4. Embed as external sidecar
 
 ```bash
-cargo run --release -p loom-cli -- sidecar embed-external data.parquet my_program.l2ir
-# Writes data.parquet.loomsidecar — original file unchanged
-```
-
-You can also use the bundled example files:
-
-```bash
 cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
 ```
 
+Writes `assets/data.parquet.loomsidecar`. The original `assets/data.parquet` is never touched.
+
 ### 5. Run the DuckDB extension
 
-The DuckDB CLI is vendored at `contrib/duckdb-ext/vendor/duckdb-cli/duckdb`.
-Build the extension once:
+Build the extension:
 
 ```bash
-cd contrib/duckdb-ext/build && cmake .. && make -j$(sysctl -n hw.logicalcpu)
+cd contrib/duckdb-ext && mkdir -p build && cd build && cmake .. && make -j$(sysctl -n hw.logicalcpu) && cd ../../..
 ```
 
-Then start DuckDB and query (use absolute paths):
+Launch DuckDB (vendored CLI, no external install needed):
 
 ```bash
-./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned \
+  -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-```sql
-LOAD '<repo_root>/contrib/duckdb-ext/build/loom.duckdb_extension';
-SELECT * FROM loom_scan('<repo_root>/assets/data.parquet');
-```
+> **Note:** The DuckDB extension currently returns a diagnostic row (code 3).
+> The `loom_sidecar_decode_carray` path is under active development.
+> The CLI steps above are fully functional.
 
 ### 6. Run tests
 

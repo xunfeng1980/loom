@@ -22,69 +22,55 @@ Sidecar 是携带在宿主数据旁的可剥离元数据：
 
 ## 快速开始
 
-### 1. 编译 CLI
+所有命令在项目根目录执行，可直接复制粘贴。
+
+### 1. 编译
 
 ```bash
 cargo build --release -p loom-cli
 ```
 
-生成 `target/release/loom`。
-
-### 2. 编写或生成 Decode IR 程序
+### 2. 查看示例 Decode IR
 
 ```bash
-# 方案 A：使用预置示例（人类可读的 RON 格式）
 cat assets/quickstart.ron
-
-# 方案 B：生成默认程序
-cargo run --release -p loom-cli -- gen-ir my_program.ron
 ```
 
-编辑 `my_program.ron` 描述解码逻辑，然后转为二进制：
+这是一个 5 行的程序：每行向输出追加 `Int32(42)`。
+可编辑 `assets/quickstart.ron` 或自行编写。
+
+### 3. 转换并验证
 
 ```bash
-cargo run --release -p loom-cli -- convert my_program.ron my_program.l2ir
-```
-
-### 3. 验证 IR
-
-```bash
-cargo run --release -p loom-cli -- verify-l2core my_program.l2ir
-# 输出：Verification: passed（或列出诊断信息）
+cargo run --release -p loom-cli -- convert assets/quickstart.ron assets/quickstart.l2ir
+cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
 ```
 
 ### 4. 嵌入为外部 sidecar
 
 ```bash
-cargo run --release -p loom-cli -- sidecar embed-external data.parquet my_program.l2ir
-# 生成 data.parquet.loomsidecar — 原始文件不变
-```
-
-也可以直接用预置文件：
-
-```bash
 cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
 ```
 
+生成 `assets/data.parquet.loomsidecar`。原始 `assets/data.parquet` 不变。
+
 ### 5. 运行 DuckDB 扩展
 
-DuckDB CLI 已内置在 `contrib/duckdb-ext/vendor/duckdb-cli/duckdb`。
-先编译扩展：
+编译扩展：
 
 ```bash
-cd contrib/duckdb-ext/build && cmake .. && make -j$(sysctl -n hw.logicalcpu)
+cd contrib/duckdb-ext && mkdir -p build && cd build && cmake .. && make -j$(sysctl -n hw.logicalcpu) && cd ../../..
 ```
 
-然后启动 DuckDB 并查询（使用绝对路径）：
+启动 DuckDB（内置 CLI，无需额外安装）：
 
 ```bash
-./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned \
+  -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-```sql
-LOAD '<项目根目录>/contrib/duckdb-ext/build/loom.duckdb_extension';
-SELECT * FROM loom_scan('<项目根目录>/assets/data.parquet');
-```
+> **注意：** DuckDB 扩展当前返回诊断行（code 3），`loom_sidecar_decode_carray`
+> 路径正在开发中。上面的 CLI 步骤完全可用。
 
 ### 6. 运行测试
 
