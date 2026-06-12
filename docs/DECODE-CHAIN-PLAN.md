@@ -9,7 +9,11 @@
 >   - `loom_sidecar_decode` 产出**真实 bare Arrow IPC**（`StreamWriter`）；新增 `loom_sidecar_decode_carray` 经 **Arrow C Data Interface**（`arrow::ffi::to_ffi` 导出 struct 数组）零拷贝交给宿主。E2E FFI 测试 [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs)：IPC 经 `StreamReader` 读回正确 + carray 经 `from_ffi` 往返正确 + `free_bytes` 释放。loom.h 契约更新（裸 IPC）。
 >   - **DuckDB 扩展端到端跑通**：JIT 经 cargo feature 门控（`--no-default-features`），扩展无 LLVM 符号、可被仓库自带 `vendor/duckdb-cli/duckdb`（v1.5.3）`LOAD`。`loom_scan` 现把解码列**物化为 DuckDB typed 行**（i32/i64/f32/f64/bool/utf8 泛型 `FillVector`，未知类型 fail-soft 回退诊断列）。实测：`SELECT * FROM loom_scan('<fixture>')` 返回 10 行 int32=42；`SELECT COUNT/SUM/MIN` → 10/420/42。fixture 生成器 [`examples/make_fixture.rs`](../crates/loom-ffi/examples/make_fixture.rs)。
 >   - **DoD#2 达成**：SQL 查出真实解码值，端到端 DuckDB SQL → 解释器 → Arrow C 接口 → typed 结果行。
-> - **Plan 3/4/5**：未开始。（注：扩展的物化层已支持全部 6 种 primitive + utf8，Plan 3 推进 tier 时它能直接消费 decode_ir_gen 产出的真实 body。）
+> - **Plan 3 ⏳ Tier 1a 完成 / Tier 1b 待 IR 扩展**：
+>   - **Tier 1a ✅（非空 i32/i64）**：`generate_decode_ir_from_parquet` 产真实可执行 `body`（ForRange+ReadInput+AppendValue），`parquet_to_raw_host` 按列主序 LE 打包对应 host 缓冲。E2E 测试 [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs)：parquet→自动 IR（过 full verifier）→解释器复现源 i32/i64 值；f32 列正确跳过；nullable+Utf8 仅发非空整型列。
+>   - **关键发现 → Tier 1b（f32/f64/bool）需先扩展 IR**：full verifier 把 `ReadInput` 值类型**仅按字节宽推断**（4→Int32, 8→Int64）且要求 `AppendValue` 与 builder 类型精确匹配，无 bitcast/typed-read。浮点/布尔因此无法在当前 IR 表达——需一次 loom-ir-core 扩展（`ReadInput` 带类型或新增 bitcast ScalarExpr，连带 codec + full_verifier + kloom + 解释器），即 Tier 1b 工作量。
+>   - 注：DuckDB 扩展物化层已支持全部 6 种 primitive + utf8，Tier 1b/2/3 一旦 IR 产出真实 body 即可直接消费。
+> - **Plan 4/5**：未开始。
 > 范围：把前次分析定位的五项未完成项收敛为一个 phase、拆成 5 个有依赖序的 plan。
 > **终态目标：全类型覆盖**——i32/i64/f32/f64/bool + nullable + Utf8 + 字典，端到端经 sidecar 路径解码出真实 Arrow。i32 只是第一个打通用纵切片，不是终点。
 
