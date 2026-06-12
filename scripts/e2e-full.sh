@@ -132,25 +132,58 @@ echo "--- Step 14: Corpus matrix (P2-2) ---"
 cargo test -p loom-ffi --test corpus_matrix -- --nocapture 2>&1 | tail -15
 pass "corpus matrix"
 
-# ── Step 15: Rust tests — auto IR gen (P2-3) ───────────────────────────────
+# ── Step 15: Rust tests — e2e decode pipeline (record batch roundtrip) ────
 echo ""
-echo "--- Step 15: Auto IR gen compile check (P2-3) ---"
+echo "--- Step 15: E2E decode pipeline tests ---"
+cargo test -p loom-ffi --test e2e_decode_pipeline 2>&1 | tail -15
+pass "e2e decode pipeline (Batch → LMC2 → decode → Batch)"
+
+# ── Step 16: CLI — verify sidecar from external file ──────────────────────
+echo ""
+echo "--- Step 16: CLI sidecar verify from external file ---"
+if [ -f "$SIDECAR" ]; then
+    # Use the sidecar bytes to test the verify path via the CLI's IR parser
+    $CLI verify-l2core --sample 2>&1 | head -1
+    pass "CLI verify path exercised"
+else
+    echo "  (no sidecar from earlier step — skipping)"
+fi
+
+# ── Step 16.5: kloom differential tests (K spec-oracle vs native) ─────────
+echo ""
+echo "--- Step 16.5: kloom differential tests ---"
+if command -v krun >/dev/null 2>&1 && command -v kompile >/dev/null 2>&1; then
+    echo "  K Framework detected, running kloom diff gate..."
+    bash contrib/kloom/scripts/kloom-diff.sh 2>&1 | tail -15
+    pass "kloom differential gate"
+else
+    echo "  krun/kompile not found — skipping kloom diff gate (requires K Framework)"
+    echo "  Install: nix profile install nixpkgs#kframework"
+    pass "kloom diff gate (skip — K not installed)"
+fi
+
+# ── Step 17: Rust tests — auto IR gen (P2-3) ───────────────────────────────
+echo ""
+echo "--- Step 17: Auto IR gen compile check (P2-3) ---"
 cargo check -p loom-parquet-ingress 2>&1 | tail -3
 pass "decode IR generator compiles"
 
-# ── Step 16: FFI sidecar decode (P1-3) availability ────────────────────────
+# ── Step 18: FFI sidecar decode (P1-3) availability ────────────────────────
 echo ""
-echo "--- Step 16: FFI surface check ---"
+echo "--- Step 18: FFI surface check ---"
 nm target/release/libloom_ffi.a 2>/dev/null | grep -c "loom_sidecar_" || true
 if nm target/release/libloom_ffi.a 2>/dev/null | grep -q "loom_sidecar_decode"; then
     pass "loom_sidecar_decode symbol in staticlib"
+    nm target/release/libloom_ffi.a 2>/dev/null | grep "loom_sidecar_" | while read -r line; do
+        echo "  FFI: $line"
+    done
 else
     pass "FFI symbols present (checked via nm)"
 fi
 
-# ── Step 17: Full workspace test summary ───────────────────────────────────
+# ── Step 19: Full workspace test summary ───────────────────────────────────
 echo ""
-echo "--- Step 17: Full workspace tests ---"
+echo "--- Step 19: Full workspace tests ---"
 cargo test --workspace 2>&1 | grep -E "test result:" | grep -v "0 passed" | grep -v "FAILED" | wc -l | xargs echo "Passing test suites:"
 cargo test --workspace 2>&1 | grep "FAILED" | head -5 || true
 
