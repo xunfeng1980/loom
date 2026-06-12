@@ -44,7 +44,7 @@ vortex-fsst      = { version = "=0.74.0" }
 
 # Source adapter family — Phase 27 keeps these SDKs isolated to adapter crates.
 lance = { version = "=7.0.0", default-features = false }
-parquet = { version = "=58.3.0", default-features = false, features = ["arrow"] }
+parquet = { version = "=58.3.0", default-features = false, features = ["arrow", "snap"] }
 futures = { version = "=0.3.32" }
 tokio = { version = "=1.52.3", default-features = false, features = ["rt", "macros"] }
 tempfile = { version = "=3.27.0" }

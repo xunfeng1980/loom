@@ -4,75 +4,121 @@
   <img src="assets/loom-logo-minimal.svg" width="180" alt="Loom logo">
 </p>
 
-# Loom
+# Loom — 自解码数据集的 Decode IR
 
-Loom 是一个**面向分发的解码器 IR**：一门故意受限、非图灵完备的总函数语言，其唯一可能的输出是符合规范的 Apache Arrow。
+Loom 是 [AnyBlox](https://gienieczko.com/anyblox-paper) 论文（VLDB 2025 最佳论文）预言的 **Decode IR** 实现。它是一门故意受限、非图灵完备的总函数语言，唯一可能的输出是符合规范的 Apache Arrow。
 
-集成模式是 **sidecar overlay**：将 Loom IR 程序作为可剥离的元数据嵌入到已有的 Parquet、Lance 或 Vortex 文件中。理解 Loom 的引擎走可验证的原生快速路径；不理解的引擎继续用自己的原生 reader 读取。
+Loom 实现了**自解码数据集**愿景：将经过验证的微型解码器与数据绑定，任何引擎无需学习源格式即可读取。Decode IR 足够小、可形式化验证，足够总函数以保证终止，输出 Arrow 形状使宿主引擎无需格式特定逻辑即可消费。
+
+同时被 [F3](https://dl.acm.org/doi/pdf/10.1145/3749163) 引用 — 面向未来的开源数据文件格式（ACM SIGMOD）。
+
+## 集成模型：Sidecar Overlay
+
+Sidecar 是携带在宿主数据旁的可剥离元数据：
+
+- **外部 sidecar**（生产）：`data.parquet.loomsidecar` — 不触碰原始文件
+- **内嵌 sidecar**（开发）：Parquet 的 `loom.sidecar.v1` KeyValue 元数据
+- **Iceberg/Puffin**（计划中）：指向外部 sidecar blob 的元数据引用
+
+理解 Loom 的引擎走可验证的原生快速路径；不理解的引擎继续用自己的原生 reader 读取。
 
 ## 快速开始
 
-### 1. 编译 CLI
+### 1. 编译
 
 ```bash
-cargo build -p loom-cli --release
+cargo build --release -p loom-cli
 ```
 
-### 2. 将 sidecar 嵌入 Parquet 文件
+### 2. 生成外部 sidecar（生产路径）
 
 ```bash
-cargo run -p loom-cli -- sidecar embed data.parquet [program.l2ir]
+cargo run --release -p loom-cli -- sidecar embed-external data.parquet [program.l2ir]
 ```
 
-这会添加 `loom.sidecar.v1` KeyValue 元数据，原始数据不变。
+生成 `data.parquet.loomsidecar` — 原始文件不变。
 
-### 3. 编译 DuckDB 扩展
+### 3. 验证 + 检查
+
+```bash
+# 验证 IR 并返回内容哈希标识
+cargo run --release -p loom-cli -- verify-l2core program.l2ir
+```
+
+### 4. DuckDB 扩展
 
 ```bash
 cd contrib/duckdb-ext && mkdir -p build && cd build
 cmake .. && make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 ```
 
-### 4. 查询
-
 ```sql
 LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
 SELECT * FROM loom_scan('data.parquet');
 ```
 
-### 5. 运行测试
+### 5. 测试
 
 ```bash
 cargo test --workspace
-bash scripts/sidecar-overlay-test.sh
+bash scripts/e2e-full.sh
+```
+
+## FFI 接口
+
+七个 C ABI 入口点提供完整的 sidecar 生命周期：
+
+```
+loom_sidecar_extract       → 读取 sidecar（先外部文件，再内嵌元数据）
+loom_sidecar_verify        → 语义验证 + BLAKE3 内容哈希
+loom_sidecar_verify_json   → 结构化 facts/diagnostics JSON
+loom_sidecar_route         → 4 关路由决策
+loom_sidecar_decode         → 完整解码闭环（route → verify → decode）
+loom_sidecar_free_cstr     → 释放返回的字符串
+loom_sidecar_free_bytes    → 释放返回的字节缓冲
 ```
 
 ## 正确性模型
 
 ```
-kloom (K 语义 + krun) ──离线差分──→ Rust 解码器 (ground truth)
+      kloom (K trace) ──── 离线差分 ─────┐
+      Lean (证明) ────── 分类 ───────────┤
+                                          ├──→ Rust 解释器（ground truth）
+                                          │         │
+                                  JIT (melior/LLVM) ── 在线对比 ──→ 解释器输出
                                           │
-                                    JIT (melior/LLVM) ──在线对比──→ 解码器输出
-                                          │
-                                    一致？→ JIT 结果
-                                    不一致？→ 丢弃，回退宿主 native reader
+                                  一致？→ JIT 结果
+                                  不一致？→ 丢弃，回退宿主原生 reader
 ```
 
-- **kloom** — 离线，K 形式化语义 + krun 执行，trace 逐条对齐，证明解码器实现正确
-- **解码器** — 在线，纯 Rust L1/L2 解码器，被 kloom 验证过的 ground truth
-- **JIT** — 在线，每次执行后和解码器逐行对比，不一致则丢弃
+- **Rust 解释器** — 纯 Rust L1/L2 解码器，与 kloom 离线差分验证
+- **JIT** — melior/LLVM 将 L2Core IR 编译为原生代码，在线与解释器对比
+- **kloom** — K 框架 spec-oracle，用于离线差分验证
+- **Lean** — IR 程序的形式化分类证明（计划中）
+
+## 4 关路由
+
+每次 sidecar 读取经过四个 fail-closed 关：
+
+1. 引擎已集成？→ 否 → 回退
+2. sidecar 存在？→ 否 → 回退
+3. 内容哈希匹配？→ 否 → 回退
+4. 编码受支持？→ 否 → 回退
+5. 全部通过 → Loom 原生解码
+
+内容哈希使用 **BLAKE3-256**（`blake3:<hex>`），支持防篡改绑定。
 
 ## 仓库结构
 
 | 路径 | 用途 |
 |------|------|
-| `crates/loom-ir-core` | 零依赖解码 IR — L2Core 程序模型、sidecar overlay、内容哈希标识、4 关路由、验证器 |
-| `crates/loom-ffi` | 生产核心 + C ABI — `interp/` Rust 解码器（kloom 验证）、`jit/` melior/LLVM 加速、sidecar C ABI |
-| `crates/loom-parquet-ingress` | Parquet 入口适配器 — 通过 KeyValue 元数据实现 sidecar 提取/嵌入 |
-| `crates/loom-vortex-ingress` | Vortex 入口适配器 + oracle 测试夹具 |
-| `crates/loom-lance-ingress` | Lance 入口适配器（sidecar 暂缓 — 7.0.0 manifest 缺乏可写元数据） |
+| `crates/loom-ir-core` | 零依赖解码 IR — L2Core 程序模型、sidecar overlay、BLAKE3 内容哈希、4 关路由、验证器 |
+| `crates/loom-ffi` | 生产核心 + C ABI — `interp/` Rust 解码器（kloom 验证）、`jit/` melior/LLVM 加速、7 函数 FFI |
+| `crates/loom-parquet-ingress` | Parquet 适配器 — sidecar 提取/嵌入、解码 IR 自动生成、chunk binding 计算 |
+| `crates/loom-vortex-ingress` | Vortex 适配器 — 真实 Vortex 文件入口 |
+| `crates/loom-lance-ingress` | Lance 适配器 — 入口边界（sidecar 暂缓） |
 | `crates/loom-source-ingress` | 共享的源无关合约类型 |
-| `crates/loom-cli` | 命令行工具 — `sidecar embed`、`verify-l2core` |
+| `crates/loom-cli` | 命令行 — `sidecar embed`、`sidecar embed-external`、`verify-l2core` |
 | `contrib/duckdb-ext` | C++ DuckDB 扩展（链接 `libloom_ffi.a`） |
 | `contrib/kloom` | K 框架 spec-oracle，用于差分验证 |
 
@@ -81,38 +127,39 @@ kloom (K 语义 + krun) ──离线差分──→ Rust 解码器 (ground truth
 ```
 Parquet / Lance / Vortex
         │
+  .loomsidecar (外部)  或  内嵌元数据
+        │
         ▼
   loom-ffi (C ABI)
-  提取 → 验证 → 4 关路由
+  提取 → 验证 → 4 关路由 → 解码
         │
    ┌────┴────┐
    ▼         ▼
- Loom 原生    宿主原生
+Loom 原生    宿主原生
    解码        回退
 (JIT 默认 →      │
-  LLVM 机器码)   │
-    │           │
-    └─────┬─────┘
-         ▼
+  LLVM 机器码)    │
+    │             │
+    └─────┬───────┘
+          ▼
   DuckDB / Arrow 消费者
 ```
-
-**4 关路由：**
-1. 引擎已集成？→ 否 → 回退
-2. sidecar 存在？→ 否 → 回退
-3. 内容哈希匹配？→ 否 → 回退
-4. 编码受支持？→ 否 → 回退
-5. 全部通过 → Loom 原生解码
-
-安全模型：每关都是 fail-closed。sidecar 可剥离 — 未知的 `loom.*` 键会被标准 reader 静默忽略。如果 Loom 失败，文件仍然是有效的 Parquet/Lance/Vortex。
-
-**JIT 加速（计划中）：** JIT 后端（melior/LLVM）已编译在内，并在线上与解释器对比验证。当前 sidecar ABI 暴露 extract/verify/route 关。完整的 sidecar decode 集成（Loom 原生解码 → JIT → Arrow → DuckDB）是下一里程碑。JIT 输出始终与解释器对比——不一致则丢弃并回退宿主原生 reader。
 
 ## 编码
 
 Raw、bitpack、frame-of-reference、dictionary、RLE、FSST、dict-over-FSST、
-ALP Float32/Float64。
+ALP Float32/Float64。L2Core IR 支持 Boolean、Int32、Int64、Float32、
+Float64、Utf8。
+
+## JIT 后端
+
+melior/LLVM JIT 已编译在二进制中，并在线上与解释器对比验证。生产级 JIT
+代码生成测试对受支持的 shape 通过。当前 sidecar FFI surface 暴露
+extract/verify/route/decode。JIT 在生产路由测试中充分覆盖
+（`production_arrow_semantic_*`）。
 
 ## 为什么需要 Loom
 
-数据引擎已经共享了查询计划和列式内存，但还没有共享解码器。Loom 把解码器做得够小、够可验证、够 Arrow 化，让宿主引擎不需要学习每种源格式就能消费结果。
+数据引擎共享了查询计划和列式内存，但没有共享解码器。AnyBlox 预言 Decode IR
+是桥梁。Loom 将它实现：一个足够小、可验证、总函数保证终止、Arrow 形状输出
+的解码器，让任何宿主引擎无需学习每种源格式就能消费结果。

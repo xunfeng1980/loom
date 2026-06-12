@@ -4,79 +4,129 @@
   <img src="assets/loom-logo-minimal.svg" width="180" alt="Loom logo">
 </p>
 
-# Loom
+# Loom — Decode IR for Self-Decoding Datasets
 
-Loom is a **distribution-oriented decoder IR**: a deliberately non-Turing-complete,
-total-function language whose only possible output is well-formed Apache Arrow.
+Loom is the **Decode IR** implementation predicted by the [AnyBlox](https://gienieczko.com/anyblox-paper) paper (VLDB 2025 Best Paper). It is a deliberately
+non-Turing-complete, total-function language whose only possible output is
+well-formed Apache Arrow.
 
-The integration model is the **sidecar overlay**: embed a Loom IR program as
-strippable metadata in an existing Parquet, Lance, or Vortex file. Engines that
-understand Loom take the verifiable-native fast path; engines that don't keep
-reading with their own host-native reader.
+Loom realizes the **self-decoding dataset** vision: bundle a verified, tiny
+decoder with the data so any engine can read it without learning every source
+format. The Decode IR is small enough to formally verify, total enough to
+guarantee termination, and Arrow-shaped so host engines consume the result
+without format-specific logic.
+
+Also referenced in [F3](https://dl.acm.org/doi/pdf/10.1145/3749163) — Open-Source
+Data File Format for the Future (ACM SIGMOD).
+
+## Integration Model: Sidecar Overlay
+
+The sidecar is strippable metadata carried alongside host data:
+
+- **External sidecar** (production): `data.parquet.loomsidecar` — never touches the original file
+- **Embedded sidecar** (dev): `loom.sidecar.v1` KeyValue metadata in Parquet
+- **Iceberg/Puffin** (planned): metadata references to external sidecar blobs
+
+Engines that understand Loom take the verifiable-native fast path; engines that
+don't keep reading with their own host-native reader.
 
 ## Quickstart
 
-### 1. Build the CLI
+### 1. Build
 
 ```bash
-cargo build -p loom-cli --release
+cargo build --release -p loom-cli
 ```
 
-### 2. Embed a sidecar into a Parquet file
+### 2. Generate external sidecar (production)
 
 ```bash
-cargo run -p loom-cli -- sidecar embed data.parquet [program.l2ir]
+cargo run --release -p loom-cli -- sidecar embed-external data.parquet [program.l2ir]
 ```
 
-Adds `loom.sidecar.v1` KeyValue metadata. The original data is untouched.
+Writes `data.parquet.loomsidecar` — original file unchanged.
 
-### 3. Build the DuckDB extension
+### 3. Verify + inspect
+
+```bash
+# Verify IR and return content-hash identity
+cargo run --release -p loom-cli -- verify-l2core program.l2ir
+```
+
+### 4. DuckDB extension
 
 ```bash
 cd contrib/duckdb-ext && mkdir -p build && cd build
 cmake .. && make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 ```
 
-### 4. Query
-
 ```sql
 LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
 SELECT * FROM loom_scan('data.parquet');
 ```
 
-### 5. Run tests
+### 5. Tests
 
 ```bash
 cargo test --workspace
-bash scripts/sidecar-overlay-test.sh
+bash scripts/e2e-full.sh
+```
+
+## FFI Surface
+
+Seven C ABI entry points provide the complete sidecar lifecycle:
+
+```
+loom_sidecar_extract       → read sidecar (external file first, then embedded)
+loom_sidecar_verify        → semantic verification + BLAKE3 content hash
+loom_sidecar_verify_json   → structured facts/diagnostics JSON
+loom_sidecar_route         → 4-gate routing decision
+loom_sidecar_decode         → full decode loop (route → verify → decode)
+loom_sidecar_free_cstr     → free returned strings
+loom_sidecar_free_bytes    → free returned byte buffers
 ```
 
 ## Correctness Model
 
 ```
-kloom (K spec + krun) ──离线差分──→ Rust interp (ground truth)
-                                          │
-                                    JIT (melior/LLVM) ──在线对比──→ interp 输出
-                                          │
-                                    一致？→ JIT 结果
-                                    不一致？→ 丢弃，回退宿主 native reader
+      kloom (K trace) ──── offline diff ─────┐
+      Lean (proof) ────── classification ────┤
+                                              ├──→ Rust interp (ground truth)
+                                              │         │
+                                      JIT (melior/LLVM) ── online compare ──→ interp output
+                                              │
+                                      match? → JIT result
+                                      diverge? → discard, fallback host-native
 ```
 
-- **kloom** — 离线，K 形式化语义 + krun 执行，trace 逐条对齐，证明 interp 实现正确
-- **interp** — 在线，纯 Rust L1/L2 解码器，被 kloom 验证过的 ground truth
-- **JIT** — 在线，每次执行后和 interp 逐行对比，不一致则丢弃
+- **Rust interp** — pure-Rust L1/L2 decoder, differentially verified against kloom offline
+- **JIT** — melior/LLVM compiles L2Core IR → native code, validated against interp online
+- **kloom** — K framework spec-oracle for offline differential verification
+- **Lean** — formal classification of IR programs (planned)
+
+## 4-Gate Routing
+
+Every sidecar read passes through four fail-closed gates:
+
+1. Engine integrated? → no → fallback
+2. Sidecar present? → no → fallback
+3. Content-hash match? → no → fallback
+4. Encoding supported? → no → fallback
+5. All pass → Loom-native decode
+
+Content hashes use **BLAKE3-256** (`blake3:<hex>`) for tamper-resistant binding.
 
 ## Repository Map
 
 | Path | Purpose |
 |------|---------|
-| `crates/loom-ir-core` | Zero-dependency decode IR — L2Core program model, sidecar overlay, content-hash identity, 4-gate routing, verifier |
-| `crates/loom-ffi` | Production core + C ABI — `interp/` Rust decoder (verified by kloom), `jit/` melior/LLVM acceleration, sidecar C ABI |
-| `crates/loom-parquet-ingress` | Parquet ingress adapter — sidecar extract/embed via KeyValue metadata |
-| `crates/loom-vortex-ingress` | Vortex ingress adapter + oracle fixtures |
-| `crates/loom-lance-ingress` | Lance ingress adapter (sidecar deferred — 7.0.0 manifest lacks writable metadata) |
+| `crates/loom-ir-core` | Zero-dependency decode IR — L2Core program model, sidecar overlay, BLAKE3 content-hash identity, 4-gate routing, verifier |
+| `crates/loom-ffi` | Production core + C ABI — `interp/` Rust decoder (kloom-verified), `jit/` melior/LLVM acceleration, 7-function FFI surface |
+| `crates/loom-parquet-ingress` | Parquet adapter — sidecar extract/embed, decode IR auto-generation, chunk binding computation |
+| `crates/loom-vortex-ingress` | Vortex adapter — ingress boundary for real Vortex files |
+| `crates/loom-lance-ingress` | Lance adapter — ingress boundary (sidecar deferred) |
 | `crates/loom-source-ingress` | Shared source-neutral contract types |
-| `crates/loom-cli` | CLI — `sidecar embed`, `verify-l2core` |
+| `crates/loom-cli` | CLI — `sidecar embed`, `sidecar embed-external`, `verify-l2core` |
 | `contrib/duckdb-ext` | C++ DuckDB extension (links `libloom_ffi.a`) |
 | `contrib/kloom` | K framework spec-oracle for differential verification |
 
@@ -85,46 +135,40 @@ kloom (K spec + krun) ──离线差分──→ Rust interp (ground truth)
 ```
 Parquet / Lance / Vortex
         │
+  .loomsidecar (external)  or  embedded metadata
+        │
         ▼
   loom-ffi (C ABI)
-  extract → verify → 4-gate route
+  extract → verify → 4-gate route → decode
         │
    ┌────┴────┐
    ▼         ▼
 Loom-native  Host-native
-  decode      fallback
-(JIT → LLVM)   │
-   │           │
-   └─────┬─────┘
+   decode      fallback
+(JIT → LLVM)     │
+   │             │
+   └─────┬───────┘
          ▼
   DuckDB / Arrow consumer
 ```
 
-**4-gate routing:**
-1. Engine integrated? → no → fallback
-2. Sidecar present? → no → fallback
-3. Content-hash match? → no → fallback
-4. Encoding supported? → no → fallback
-5. All pass → Loom-native decode
-
-Safety model: fail-closed at every gate. The sidecar is strippable — unknown
-`loom.*` keys are ignored by standard readers. If Loom fails, the file is still
-valid Parquet/Lance/Vortex.
-
-**JIT acceleration (planned):** JIT backend (melior/LLVM) is compiled in and validates
-against the interpreter online. The current sidecar ABI exposes extract/verify/route gate.
-Full sidecar decode integration (Loom-native decode → JIT → Arrow → DuckDB) is the next
-integration milestone. JIT output is always validated against the interpreter — mismatches
-are discarded and fall back to the host-native reader.
-
 ## Encodings
 
 Raw, bitpack, frame-of-reference, dictionary, RLE, FSST, dict-over-FSST,
-ALP Float32/Float64.
+ALP Float32/Float64. L2Core IR supports Boolean, Int32, Int64, Float32,
+Float64, Utf8.
+
+## JIT Backend
+
+melior/LLVM JIT is compiled in and validates against the interpreter online.
+Production-level JIT codegen tests pass for supported shapes. The current
+sidecar FFI surface exposes extract/verify/route/decode. JIT is exercised
+in the production route tests (`production_arrow_semantic_*`).
 
 ## Why Loom
 
-Data engines share query plans and columnar memory. They don't share the decoder
-with the data. Loom makes the decoder small enough to verify, total enough to
-terminate, and Arrow-shaped enough that a host engine can consume the result
-without learning every source format.
+Data engines share query plans and columnar memory. They don't share the
+decoder with the data. AnyBlox predicted Decode IR as the bridge. Loom builds
+it: a decoder small enough to verify, total enough to terminate, and
+Arrow-shaped enough that any host engine can consume the result without
+learning every source format.
