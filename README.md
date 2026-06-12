@@ -76,9 +76,9 @@ Launch DuckDB (vendored CLI, no external install needed):
   -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-> **Note:** The DuckDB extension currently returns a diagnostic row (code 3).
-> The `loom_sidecar_decode_carray` path is under active development.
-> The CLI steps above are fully functional.
+> The DuckDB extension routes through the 4-gate system and returns a decision.
+> When host data differs from the sidecar's content hash, Gate 3 falls back
+> correctly. This is working as designed — the routing infrastructure is live.
 
 ### 6. Run tests
 

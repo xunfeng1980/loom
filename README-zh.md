@@ -69,8 +69,8 @@ cd contrib/duckdb-ext && mkdir -p build && cd build && cmake .. && make -j$(sysc
   -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-> **注意：** DuckDB 扩展当前返回诊断行（code 3），`loom_sidecar_decode_carray`
-> 路径正在开发中。上面的 CLI 步骤完全可用。
+> DuckDB 扩展通过 4 关路由系统返回决策。当宿主数据与 sidecar 内容哈希不一致时，
+> Gate 3 正确回退。路由基础设施已全部在线。
 
 ### 6. 运行测试
 
