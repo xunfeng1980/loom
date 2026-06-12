@@ -350,6 +350,21 @@ fn exec_stmt(stmt: &L2CoreStmt, state: &mut ExecState) -> Result<(), InterpError
             Ok(())
         }
         L2CoreStmt::FailClosed { code } => Err(InterpError::FailClosed(code.clone())),
+        L2CoreStmt::If {
+            cond,
+            then_body,
+            else_body,
+        } => {
+            let truthy = match eval_scalar(cond, &state.env)? {
+                ScalarValue::Bool(b) => b,
+                other => scalar_as_int(&other)? != 0,
+            };
+            if truthy {
+                exec_block(then_body, state)
+            } else {
+                exec_block(else_body, state)
+            }
+        }
     }
 }
 

@@ -636,6 +636,12 @@ fn write_stmt(buf: &mut Vec<u8>, stmt: &L2CoreStmt) {
             write_u8(buf, 6);
             write_string(buf, code);
         }
+        L2CoreStmt::If { cond, then_body, else_body } => {
+            write_u8(buf, 7);
+            write_scalar_expr(buf, cond);
+            write_vec(buf, then_body, write_stmt);
+            write_vec(buf, else_body, write_stmt);
+        }
     }
 }
 
@@ -672,6 +678,11 @@ fn read_stmt(cur: &mut Cursor<&[u8]>) -> Result<L2CoreStmt, L2CoreCodecError> {
         },
         6 => L2CoreStmt::FailClosed {
             code: read_string(cur)?,
+        },
+        7 => L2CoreStmt::If {
+            cond: read_scalar_expr(cur)?,
+            then_body: read_vec(cur, read_stmt)?,
+            else_body: read_vec(cur, read_stmt)?,
         },
         v => {
             return Err(L2CoreCodecError::BadDiscriminant {

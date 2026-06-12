@@ -193,6 +193,14 @@ pub enum L2CoreStmt {
     FailClosed {
         code: String,
     },
+    /// Conditional: execute `then_body` when `cond` evaluates truthy, else
+    /// `else_body`. Used to drive per-row nullability (read a validity flag,
+    /// then append a value or a null). `cond` must be a Bool-typed expression.
+    If {
+        cond: ScalarExpr,
+        then_body: Vec<L2CoreStmt>,
+        else_body: Vec<L2CoreStmt>,
+    },
 }
 
 /// Event types emitted to typed Arrow builders.
@@ -382,6 +390,14 @@ fn collect_loop_bounds_inner(
                     max_iterations: fallback_bound,
                 });
                 collect_loop_bounds_inner(body, fallback_bound, out);
+            }
+            L2CoreStmt::If {
+                then_body,
+                else_body,
+                ..
+            } => {
+                collect_loop_bounds_inner(then_body, fallback_bound, out);
+                collect_loop_bounds_inner(else_body, fallback_bound, out);
             }
             L2CoreStmt::ReadInput { .. }
             | L2CoreStmt::LetScalar { .. }

@@ -108,6 +108,9 @@ fn stmt_uses_unsupported(stmt: &L2CoreStmt) -> Option<&'static str> {
                 .or_else(|| body.iter().find_map(stmt_uses_unsupported))
         }
         L2CoreStmt::FailClosed { .. } => None,
+        // Conditionals are verified + executed but not yet modelled in kloom —
+        // flag so the K differential is skipped rather than mis-modelled.
+        L2CoreStmt::If { .. } => Some("if/conditional not yet modelled in kloom"),
     }
 }
 
@@ -307,6 +310,13 @@ fn serialize_stmt(out: &mut String, stmt: &L2CoreStmt) -> Result<(), KloomHarnes
             out.push_str("failClosed(\"");
             out.push_str(code);
             out.push_str("\")");
+        }
+        // Unreachable: If programs are flagged UnsupportedProgram before
+        // serialization (see stmt_uses_unsupported).
+        L2CoreStmt::If { .. } => {
+            return Err(KloomHarnessError::new(
+                "if/conditional is not serializable to kloom syntax",
+            ));
         }
     }
     Ok(())

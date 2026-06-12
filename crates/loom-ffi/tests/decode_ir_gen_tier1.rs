@@ -112,44 +112,66 @@ fn tier1_mixed_fixed_width_roundtrip() {
 }
 
 #[test]
-fn tier1_skips_nullable_and_utf8_columns() {
-    // A nullable i32 and a Utf8 column are not Tier 1 — only the non-null i64
-    // column should be emitted.
+fn tier2_nullable_columns_roundtrip_and_skip_utf8() {
+    // Tier 2: nullable i32 + nullable f64 round-trip (null positions + values);
+    // a Utf8 column (Tier 3) is skipped.
     let schema = Arc::new(Schema::new(vec![
-        Field::new("nn_i64", DataType::Int64, false),
-        Field::new("nullable_i32", DataType::Int32, true),
+        Field::new("maybe_i32", DataType::Int32, true),
+        Field::new("maybe_f64", DataType::Float64, true),
         Field::new("name", DataType::Utf8, false),
     ]));
+    let i32s = vec![Some(1), None, Some(3), None, Some(5)];
+    let f64s = vec![None, Some(2.5), Some(3.5), None, Some(5.5)];
     let batch = RecordBatch::try_new(
         schema,
         vec![
-            Arc::new(Int64Array::from(vec![100i64, 200, 300])),
-            Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
-            Arc::new(arrow_array::StringArray::from(vec!["a", "b", "c"])),
+            Arc::new(Int32Array::from(i32s.clone())),
+            Arc::new(Float64Array::from(f64s.clone())),
+            Arc::new(arrow_array::StringArray::from(vec!["a", "b", "c", "d", "e"])),
         ],
     )
     .expect("batch");
 
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("mixed.parquet");
+    let path = dir.path().join("nullable.parquet");
     write_parquet(&batch, &path);
 
     let program = generate_decode_ir_from_parquet(&path)
         .expect("gen ir")
         .expect("some program");
-    // Only the one non-null i64 column → 1 InputSlice + 1 OutputBuilder.
+    let report = verify_l2_core(&program);
+    assert!(
+        report.is_ok(),
+        "nullable IR must verify: {:?}",
+        report.diagnostics()
+    );
+
+    // Two nullable columns decoded; Utf8 skipped.
     let builders = program
         .capabilities
         .iter()
         .filter(|c| matches!(c, Capability::OutputBuilder(_)))
         .count();
-    assert_eq!(builders, 1, "only the non-null i64 column is Tier 1");
+    assert_eq!(builders, 2, "the two nullable fixed-width columns are decoded");
 
     let host = parquet_to_raw_host(&path).expect("raw host");
     let inputs = inputs_from_program(&program, &host);
     let columns = interpret_l2core(&program, &inputs).expect("interpret ok");
-    assert_eq!(columns.len(), 1);
-    assert_eq!(columns[0].builder_id, "output_nn_i64");
-    let dec = Int64Array::from(columns[0].data.clone());
-    assert_eq!(dec.values(), &[100i64, 200, 300]);
+    assert_eq!(columns.len(), 2);
+
+    let dec_i32 = Int32Array::from(columns[0].data.clone());
+    assert_eq!(dec_i32.len(), 5);
+    for (i, want) in i32s.iter().enumerate() {
+        assert_eq!(dec_i32.is_null(i), want.is_none(), "i32 null@{i}");
+        if let Some(v) = want {
+            assert_eq!(dec_i32.value(i), *v, "i32 val@{i}");
+        }
+    }
+    let dec_f64 = Float64Array::from(columns[1].data.clone());
+    for (i, want) in f64s.iter().enumerate() {
+        assert_eq!(dec_f64.is_null(i), want.is_none(), "f64 null@{i}");
+        if let Some(v) = want {
+            assert_eq!(dec_f64.value(i), *v, "f64 val@{i}");
+        }
+    }
 }

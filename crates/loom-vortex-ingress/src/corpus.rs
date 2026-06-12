@@ -281,6 +281,11 @@ fn body_max_events(stmts: &[L2CoreStmt]) -> u64 {
             L2CoreStmt::LetScalar { .. } => 0,
             L2CoreStmt::AppendNull { .. } => 1,
             L2CoreStmt::FailClosed { .. } => 0,
+            L2CoreStmt::If {
+                then_body,
+                else_body,
+                ..
+            } => body_max_events(then_body).max(body_max_events(else_body)),
         })
         .sum()
 }

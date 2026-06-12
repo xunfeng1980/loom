@@ -446,6 +446,19 @@ fn verify_statements(
                     "explicit FailClosed statements are runtime diagnostics, not accepted verifier programs",
                 );
             }
+            L2CoreStmt::If {
+                cond,
+                then_body,
+                else_body,
+            } => {
+                // The condition is evaluated each iteration; both branches are
+                // statically verified. Builder-event counts add both branches
+                // (a conservative over-count vs. the single branch taken at
+                // runtime), which is sound for the fail-closed budget check.
+                verify_expr(cond, &format!("{stmt_path}.cond"), state, report);
+                verify_statements(then_body, &format!("{stmt_path}.then"), state, report);
+                verify_statements(else_body, &format!("{stmt_path}.else"), state, report);
+            }
         }
     }
 }
