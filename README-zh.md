@@ -69,21 +69,26 @@ cd contrib/duckdb-ext && mkdir -p build && cd build && cmake .. && make -j$(sysc
   -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-> 解码后的数据是真实 Arrow 列——DuckDB 可对其执行任意 SQL，包括聚合、过滤、连接。
-> Sidecar 对查询引擎完全透明。
+解码后的数据是真实 Arrow 列——任意 SQL 都可执行。尝试复杂查询：
 
-尝试复杂查询：
+```bash
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned -c "
+LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension';
 
-```sql
 SELECT out_name, COUNT(*), MIN(out_id), MAX(out_count), AVG(out_score)
 FROM loom_scan('$(pwd)/assets/data.parquet')
 GROUP BY out_name
 ORDER BY out_name;
+"
 ```
 
-```sql
+```bash
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned -c "
+LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension';
+
 SELECT * FROM loom_scan('$(pwd)/assets/data.parquet')
 WHERE out_ratio > 2.0 AND out_flag = true;
+"
 ```
 
 ### 6. 运行测试
