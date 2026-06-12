@@ -5,4 +5,4 @@ edition = "2021"
 description = "Loom offline verification interpreter — thin re-export of loom-ffi::interp"
 
 [dependencies]
-loom-ffi = { path = "../../crates/loom-ffi" }
+loom-ffi = { path = "../../crates/loom-ffi", default-features = false }

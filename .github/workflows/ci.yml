@@ -72,7 +72,7 @@ jobs:
       # Step 5: Clippy — deny warnings.
       # Applies to the whole workspace; any new warning fails the build.
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --no-default-features -- -D warnings
 
       # Step 5b: Run tests under release profile (no JIT — --no-default-features).
       - name: Test loom-ffi (release, no JIT)

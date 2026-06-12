@@ -7,7 +7,7 @@ description = "Vortex ingress bridge + reference fixtures and oracle decoder"
 [dependencies]
 arrow-array = { workspace = true }
 arrow-schema = { workspace = true }
-loom-ffi = { path = "../../crates/loom-ffi" }
+loom-ffi = { path = "../../crates/loom-ffi", default-features = false }
 loom-source-ingress = { path = "../loom-source-ingress" }
 vortex-array     = { workspace = true }
 vortex-fastlanes = { workspace = true }
