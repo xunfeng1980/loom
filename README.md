@@ -76,9 +76,22 @@ Launch DuckDB (vendored CLI, no external install needed):
   -c "LOAD '$(pwd)/contrib/duckdb-ext/build/loom.duckdb_extension'; SELECT * FROM loom_scan('$(pwd)/assets/data.parquet');"
 ```
 
-> The DuckDB extension routes through the 4-gate system and returns a decision.
-> When host data differs from the sidecar's content hash, Gate 3 falls back
-> correctly. This is working as designed — the routing infrastructure is live.
+> The decoded data is real Arrow — DuckDB can run any SQL on it, including
+> aggregations, filters, and joins. The sidecar is transparent to the query engine.
+
+Try complex queries:
+
+```sql
+SELECT out_name, COUNT(*), MIN(out_id), MAX(out_count), AVG(out_score)
+FROM loom_scan('$(pwd)/assets/data.parquet')
+GROUP BY out_name
+ORDER BY out_name;
+```
+
+```sql
+SELECT * FROM loom_scan('$(pwd)/assets/data.parquet')
+WHERE out_ratio > 2.0 AND out_flag = true;
+```
 
 ### 6. Run tests
 
