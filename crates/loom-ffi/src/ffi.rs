@@ -5,8 +5,10 @@
 //! wrapped in `catch_unwind(AssertUnwindSafe(...))` so panics never unwind
 //! across the C ABI (T-51-02).
 //!
-//! This FFI surface depends only on `loom-ir-core` and `loom-parquet-ingress`.
-//! Zero transitive dependency on `loom-core`, `loom-container`, or Arrow types.
+//! This FFI surface depends on `loom-ir-core`, `loom-parquet-ingress`, and the
+//! in-crate `interp` engine. The Loom-native decode path produces Arrow
+//! (`arrow_array::RecordBatch`) via the general L2Core interpreter; zero
+//! transitive dependency on `loom-core` or `loom-container`.
 //!
 //! # Error codes (LoomSidecarError, repr(i32))
 //!
@@ -20,7 +22,7 @@
 //! | 5    | NoSidecar          | No Loom sidecar found in the host file        |
 //! | 6    | VerificationFailed | L2Core IR program failed semantic verification|
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::panic::{self, AssertUnwindSafe};
 use std::path::Path;
 
@@ -467,17 +469,158 @@ pub unsafe extern "C" fn loom_sidecar_verify_json(
 // loom_sidecar_decode (P1-3: full decode execution loop)
 // ---------------------------------------------------------------------------
 
+/// Execute a verified Loom-native program through the general L2Core
+/// interpreter, returning the decoded Arrow [`RecordBatch`].
+///
+/// Input slices are windowed from the host data using each program
+/// `InputSlice` capability's declared `offset`/`length`. Any failure (slice
+/// out of bounds, interpreter rejection, ragged columns) returns `Err` so the
+/// caller fails closed to a host-native reader — no partial Arrow is emitted.
+fn decode_loom_native_batch(
+    program: &loom_ir_core::l2_core::L2CoreProgram,
+    host: &[u8],
+) -> Result<arrow_array::RecordBatch, LoomSidecarError> {
+    use crate::interp::l2core_interp::{interpret_l2core, schema_from_columns, InputSlices};
+    use loom_ir_core::l2_core::Capability;
+
+    let mut inputs: InputSlices = InputSlices::new();
+    for capability in &program.capabilities {
+        if let Capability::InputSlice(slice) = capability {
+            let start = slice.offset as usize;
+            let end = start
+                .checked_add(slice.length as usize)
+                .ok_or(LoomSidecarError::DecodeFailed)?;
+            if end > host.len() {
+                return Err(LoomSidecarError::DecodeFailed);
+            }
+            inputs.insert(slice.id.clone(), &host[start..end]);
+        }
+    }
+
+    let columns =
+        interpret_l2core(program, &inputs).map_err(|_| LoomSidecarError::DecodeFailed)?;
+    let schema = std::sync::Arc::new(schema_from_columns(&columns));
+    let arrays: Vec<arrow_array::ArrayRef> = columns
+        .iter()
+        .map(|c| arrow_array::make_array(c.data.clone()))
+        .collect();
+    arrow_array::RecordBatch::try_new(schema, arrays).map_err(|_| LoomSidecarError::DecodeFailed)
+}
+
+/// Serialize a decoded [`RecordBatch`] to a **bare Arrow IPC stream** (the
+/// Arrow C-Data / `arrow_scan`-consumable encoding — no `LMA1` container
+/// header). Returned through `out_ipc_bytes` so DuckDB / nanoarrow can ingest
+/// it directly without unwrapping a Loom container.
+fn record_batch_to_ipc(batch: &arrow_array::RecordBatch) -> Result<Vec<u8>, LoomSidecarError> {
+    let mut buf: Vec<u8> = Vec::new();
+    {
+        let mut writer = arrow_ipc::writer::StreamWriter::try_new(&mut buf, &batch.schema())
+            .map_err(|_| LoomSidecarError::DecodeFailed)?;
+        writer
+            .write(batch)
+            .map_err(|_| LoomSidecarError::DecodeFailed)?;
+        writer.finish().map_err(|_| LoomSidecarError::DecodeFailed)?;
+    }
+    Ok(buf)
+}
+
+// ---------------------------------------------------------------------------
+// loom_sidecar_decode_carray — decode + export via Arrow C Data Interface
+// ---------------------------------------------------------------------------
+
+/// Decode a sidecar overlay and export the decoded columns as a single Arrow
+/// C Data Interface **struct array**: one `ArrowSchema` + one `ArrowArray`
+/// whose children are the output columns. This is the zero-copy boundary a
+/// host engine (e.g. the DuckDB extension) uses to materialize typed rows.
+///
+/// `out_schema` / `out_array` are pointers to caller-allocated C
+/// `ArrowSchema` / `ArrowArray` structs (passed as `void*`). On success (`0`)
+/// both are populated and the **caller owns them** — it must invoke each
+/// struct's `release` callback per the Arrow C Data Interface contract. On any
+/// non-success code the out structs are left untouched and the caller falls
+/// back to a host-native reader.
+///
+/// # Returns
+/// * `0` — decoded; struct array written to the out pointers.
+/// * `1` — a required pointer argument is null.
+/// * `3` — overlay/IR malformed, or the program is not materializable.
+/// * `4` — internal panic caught.
+/// * `6` — the L2Core IR failed semantic verification.
+///
+/// # Safety
+/// `overlay_bytes`/`host_data` must be valid for their stated lengths;
+/// `out_schema`/`out_array` must point to writable `ArrowSchema`/`ArrowArray`.
+#[no_mangle]
+pub unsafe extern "C" fn loom_sidecar_decode_carray(
+    overlay_bytes: *const u8,
+    overlay_len: usize,
+    host_data: *const u8,
+    host_data_len: usize,
+    out_schema: *mut c_void,
+    out_array: *mut c_void,
+) -> i32 {
+    if overlay_bytes.is_null() || out_schema.is_null() || out_array.is_null() {
+        return LoomSidecarError::NullPointer.code();
+    }
+
+    let result: std::result::Result<std::result::Result<i32, LoomSidecarError>, _> =
+        panic::catch_unwind(AssertUnwindSafe(|| {
+            let bytes = std::slice::from_raw_parts(overlay_bytes, overlay_len);
+            let overlay =
+                SidecarOverlay::decode(bytes).map_err(|_| LoomSidecarError::DecodeFailed)?;
+            let program = l2core_codec::decode_l2core_program(&overlay.ir_bytes)
+                .map_err(|_| LoomSidecarError::DecodeFailed)?;
+            let report = verify_l2_core_bytes(&overlay.ir_bytes);
+            if !report.is_ok() {
+                return Err(LoomSidecarError::VerificationFailed);
+            }
+
+            let host_slice = if host_data.is_null() {
+                &[][..]
+            } else {
+                std::slice::from_raw_parts(host_data, host_data_len)
+            };
+            let batch = decode_loom_native_batch(&program, host_slice)?;
+
+            // Export the whole batch as one Arrow C struct array.
+            let struct_array = arrow_array::StructArray::from(batch);
+            let data = arrow_data::ArrayData::from(struct_array);
+            let (ffi_array, ffi_schema) =
+                arrow::ffi::to_ffi(&data).map_err(|_| LoomSidecarError::DecodeFailed)?;
+
+            std::ptr::write(out_schema as *mut arrow::ffi::FFI_ArrowSchema, ffi_schema);
+            std::ptr::write(out_array as *mut arrow::ffi::FFI_ArrowArray, ffi_array);
+            Ok(0)
+        }));
+
+    match result {
+        Ok(Ok(0)) => LoomSidecarError::Success.code(),
+        Ok(Err(e)) => e.code(),
+        Ok(_) => LoomSidecarError::DecodeFailed.code(),
+        Err(_) => LoomSidecarError::Panicked.code(),
+    }
+}
+
 /// Decode a sidecar overlay through the full Loom execution loop.
 ///
 /// 1. Decodes the sidecar overlay and inner L2Core IR.
 /// 2. Runs semantic verification.
 /// 3. Evaluates the 4-gate routing decision.
-/// 4. If Loom-native, runs the interpreter decode and returns Arrow IPC bytes
-///    through `out_ipc_bytes` / `out_ipc_len`.
+/// 4. If Loom-native, runs the general L2Core interpreter and returns the
+///    decoded columns as a **bare Arrow IPC stream** through `out_ipc_bytes` /
+///    `out_ipc_len`. The buffer is a plain Arrow IPC stream (the encoding
+///    produced by `arrow_ipc::writer::StreamWriter`) with **no `LMA1`/`LMC2`
+///    container header** — consume it directly with `arrow_scan` / nanoarrow /
+///    `StreamReader` without unwrapping a Loom container.
 /// 5. Returns routing+execution metadata as a JSON string through `out_json`.
 ///
+/// On any non-`loom-native` route (host-native fallback, verifier rejection,
+/// unsupported encoding), `out_ipc_len` is `0` and the caller must use a
+/// host-native reader. Always check the JSON `route` field before reading IPC.
+///
 /// The caller must free both outputs: `loom_sidecar_free_cstr` for the JSON,
-/// `loom_sidecar_free_bytes` for the IPC buffer.
+/// `loom_sidecar_free_bytes` for the IPC buffer (safe to call on a zero-length
+/// buffer).
 ///
 /// # JSON schema
 ///
@@ -563,23 +706,51 @@ pub unsafe extern "C" fn loom_sidecar_decode(
             encoding_supported: encoding_ok,
         });
 
-        let (route, reason, decode_status): (&str, String, &str) = match &routing {
+        // Loom-native decode runs the general L2Core interpreter and serializes
+        // its output to a bare Arrow IPC stream. On any interpreter failure we
+        // fail closed to a host-native reader (empty IPC) rather than emitting a
+        // partial result.
+        let mut decoded_batch: Option<arrow_array::RecordBatch> = None;
+        let (route, reason, decode_status, row_count, col_count): (
+            &str,
+            String,
+            &str,
+            u64,
+            usize,
+        ) = match &routing {
             SidecarRoutingDecision::LoomNative { .. } => {
-                if report.is_ok() {
-                    ("loom-native", "all-gates-passed".to_string(), "ok")
+                if !report.is_ok() {
+                    ("host-native", "verifier-rejected".to_string(), "error", 0, 0)
                 } else {
-                    ("host-native", "verifier-rejected".to_string(), "error")
+                    match decode_loom_native_batch(&program, host_slice) {
+                        Ok(batch) => {
+                            let rows = batch.num_rows() as u64;
+                            let cols = batch.num_columns();
+                            decoded_batch = Some(batch);
+                            ("loom-native", "all-gates-passed".to_string(), "ok", rows, cols)
+                        }
+                        Err(_) => (
+                            "host-native",
+                            "decode-unsupported".to_string(),
+                            "unsupported",
+                            0,
+                            0,
+                        ),
+                    }
                 }
             }
             SidecarRoutingDecision::HostNativeReader { reason: r, .. } => {
-                ("host-native", r.to_string(), "unsupported")
+                ("host-native", r.to_string(), "unsupported", 0, 0)
             }
         };
 
-        // Allocate IPC output (empty for non-Loom-native paths)
-        let ipc_output: Vec<u8> = Vec::new();
-        let row_count: u64 = 0;
-        let col_count: usize = 0;
+        // Serialize the decoded batch to Arrow IPC (loom-native only); other
+        // routes return an empty buffer and the caller falls back to a host
+        // reader.
+        let ipc_output: Vec<u8> = match &decoded_batch {
+            Some(batch) => record_batch_to_ipc(batch)?,
+            None => Vec::new(),
+        };
 
         let json = format!(
             r#"{{"route":"{}","reason":"{}","decode_status":"{}","ir_hash":"{}","row_count":{},"column_count":{},"accepted":{}}}"#,
@@ -774,4 +945,107 @@ fn json_string(s: &str) -> String {
     }
     out.push('"');
     out
+}
+
+#[cfg(test)]
+mod decode_tests {
+    use super::*;
+    use arrow_array::{Array, Int32Array};
+    use loom_ir_core::l2_core::{
+        Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
+        OutputBuilderCapability, ResourceBudget, ScalarExpr, ScalarValue,
+    };
+
+    fn i32_copy_program(rows: u64) -> L2CoreProgram {
+        L2CoreProgram {
+            artifact_version: 1,
+            required_features: vec!["l2core.copy.v0".to_string()],
+            optional_features: vec![],
+            capabilities: vec![
+                Capability::InputSlice(InputSliceCapability {
+                    id: "in".to_string(),
+                    offset: 0,
+                    length: rows * 4,
+                }),
+                Capability::OutputBuilder(OutputBuilderCapability {
+                    id: "output_col".to_string(),
+                    arrow_type: L2DataType::Int32,
+                    nullable: false,
+                    max_events: rows,
+                }),
+            ],
+            resource_budget: ResourceBudget::bounded_rows(rows),
+            body: vec![L2CoreStmt::ForRange {
+                index: "i".to_string(),
+                start: ScalarExpr::Const(ScalarValue::UInt64(0)),
+                end: ScalarExpr::Const(ScalarValue::UInt64(rows)),
+                body: vec![
+                    L2CoreStmt::ReadInput {
+                        capability: "in".to_string(),
+                        offset: ScalarExpr::Mul(
+                            Box::new(ScalarExpr::Var("i".to_string())),
+                            Box::new(ScalarExpr::Const(ScalarValue::UInt64(4))),
+                        ),
+                        width: ScalarExpr::Const(ScalarValue::UInt64(4)),
+                        bind: "v".to_string(),
+                    },
+                    L2CoreStmt::AppendValue {
+                        builder: "output_col".to_string(),
+                        value: ScalarExpr::Var("v".to_string()),
+                    },
+                ],
+            }],
+        }
+    }
+
+    #[test]
+    fn decode_loom_native_batch_i32_roundtrip() {
+        let vals = [5i32, 6, 7, 8];
+        let program = i32_copy_program(vals.len() as u64);
+        let host: Vec<u8> = vals.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let batch = decode_loom_native_batch(&program, &host).expect("decode ok");
+        assert_eq!(batch.num_rows(), 4);
+        assert_eq!(batch.num_columns(), 1);
+        assert_eq!(batch.schema().field(0).name(), "col");
+        let arr = batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(arr.values(), &vals);
+    }
+
+    #[test]
+    fn decode_loom_native_batch_short_host_fails_closed() {
+        // Program needs 4 rows (16 bytes) but host only provides 8.
+        let program = i32_copy_program(4);
+        let host = vec![0u8; 8];
+        assert!(decode_loom_native_batch(&program, &host).is_err());
+    }
+
+    #[test]
+    fn record_batch_to_ipc_roundtrips_via_stream_reader() {
+        let vals = [101i32, 202, 303];
+        let program = i32_copy_program(vals.len() as u64);
+        let host: Vec<u8> = vals.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let batch = decode_loom_native_batch(&program, &host).expect("decode ok");
+
+        let ipc = record_batch_to_ipc(&batch).expect("serialize ipc");
+        assert!(!ipc.is_empty(), "IPC buffer must be non-empty for loom-native");
+
+        // Read the bare IPC stream back and confirm values survive the boundary.
+        let reader = arrow_ipc::reader::StreamReader::try_new(std::io::Cursor::new(ipc), None)
+            .expect("stream reader");
+        let batches: Vec<_> = reader.map(|b| b.expect("batch")).collect();
+        assert_eq!(batches.len(), 1);
+        let out = &batches[0];
+        assert_eq!(out.num_rows(), 3);
+        assert_eq!(out.schema().field(0).name(), "col");
+        let arr = out
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(arr.values(), &vals);
+    }
 }

@@ -24,10 +24,10 @@ set(LIBLOOM_FFI "${WORKSPACE_ROOT}/target/release/libloom_ffi.a")
 # ---------------------------------------------------------------------------
 add_custom_command(
     OUTPUT "${LIBLOOM_FFI}"
-    COMMAND cargo build -p loom-ffi --release
+    COMMAND cargo build -p loom-ffi --release --no-default-features
             --manifest-path "${WORKSPACE_CARGO_TOML}"
     WORKING_DIRECTORY "${WORKSPACE_ROOT}"
-    COMMENT "Building libloom_ffi.a (sidecar-only staticlib)"
+    COMMENT "Building libloom_ffi.a (sidecar-only staticlib, JIT/LLVM excluded)"
 )
 add_custom_target(loom_ffi_build ALL
     DEPENDS "${LIBLOOM_FFI}"

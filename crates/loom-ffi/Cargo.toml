@@ -7,6 +7,15 @@ description = "Loom sidecar FFI staticlib — production-core, Arrow materializa
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+[features]
+# `jit` pulls in melior/LLVM (the offline JIT verification backend). On by
+# default so the full test suite exercises the JIT differential checks. The
+# DuckDB sidecar extension builds with `--no-default-features` so the staticlib
+# it links carries no LLVM symbols (the extension only needs the interp decode
+# path). See contrib/duckdb-ext/CMakeLists.txt.
+default = ["jit"]
+jit = ["dep:melior"]
+
 [dependencies]
 loom-ir-core = { path = "../loom-ir-core" }
 loom-parquet-ingress = { path = "../loom-parquet-ingress" }
@@ -22,7 +31,7 @@ ron           = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
 fnv           = { workspace = true }
-melior        = "=0.27.0"
+melior        = { version = "=0.27.0", optional = true }
 
 [build-dependencies]
 cbindgen = { workspace = true }

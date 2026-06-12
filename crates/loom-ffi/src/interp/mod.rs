@@ -10,6 +10,7 @@ pub mod fsst_params;
 pub mod kloom_harness;
 pub mod l1_model;
 pub mod l2_kernel_registry;
+pub mod l2core_interp;
 pub mod native_arrow_semantic;
 pub mod native_lowering;
 pub mod production_native_lowering;

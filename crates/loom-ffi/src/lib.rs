@@ -41,6 +41,7 @@ pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
 
 // --- Internal modules ---
 pub mod interp;
+#[cfg(feature = "jit")]
 pub mod jit;
 
 // --- Re-export interp modules at crate root ---
@@ -56,18 +57,25 @@ pub use interp::fsst_params;
 pub use interp::kloom_harness;
 pub use interp::l1_model;
 pub use interp::l2_kernel_registry;
+pub use interp::l2core_interp;
 pub use interp::native_arrow_semantic;
 pub use interp::native_lowering;
 pub use interp::production_native_lowering;
 pub use interp::runtime_abi;
 pub use interp::verify_layout_types;
 
-// --- Re-export jit modules at crate root ---
+// --- Re-export jit modules at crate root (jit feature only) ---
+#[cfg(feature = "jit")]
 pub use jit::backend;
+#[cfg(feature = "jit")]
 pub use jit::builder;
+#[cfg(feature = "jit")]
 pub use jit::decode_dialect_manifest;
+#[cfg(feature = "jit")]
 pub use jit::pipeline;
+#[cfg(feature = "jit")]
 pub use jit::report;
+#[cfg(feature = "jit")]
 pub use jit::toolchain;
 
 // --- C ABI surface ---
