@@ -129,6 +129,59 @@ Every sidecar read passes through four fail-closed gates:
 
 Content hashes use **BLAKE3-256** (`blake3:<hex>`) for tamper-resistant binding.
 
+## End-to-End Flow
+
+```
+ ┌──────────────────────────────────────────────────────────────────────┐
+ │                        DATA PRODUCER                                 │
+ │                                                                      │
+ │  Parquet / Lance / Vortex                        L2Core Decode IR    │
+ │  ┌──────────────────┐                           ┌──────────────┐    │
+ │  │  id  name  score │     loom sidecar          │ for i in 0..N │    │
+ │  │   1  alice  0.5  │──── embed-external ──────→│   copy input  │    │
+ │  │   2  bob    1.2  │                           │   → output    │    │
+ │  └──────────────────┘                           └──────────────┘    │
+ │         │                                              │             │
+ │         │         data.parquet.loomsidecar             │             │
+ │         └──────────────┬───────────────────────────────┘             │
+ └────────────────────────┼────────────────────────────────────────────┘
+                          │
+               ship / distribute / Iceberg snapshot
+                          │
+ ┌────────────────────────┼────────────────────────────────────────────┐
+ │                        │         DATA CONSUMER                       │
+ │                        ▼                                             │
+ │  ┌─────────────────────────────────────────────────────────────┐    │
+ │  │                    loom-ffi (C ABI)                          │    │
+ │  │                                                              │    │
+ │  │  extract ──→ verify ──→ 4-gate route ──→ decode             │    │
+ │  │     │           │         ┌───┴───┐           │              │    │
+ │  │     │    verify_l2core    │ Loom  │ Host     │              │    │
+ │  │     │    + kloom diff     │ native│ native   │              │    │
+ │  │     │                     │ decode│ fallback │              │    │
+ │  │     │                     └───┬───┴─────┬────┘              │    │
+ │  │     │                         │         │                   │    │
+ │  │     │                    interp/JIT   host reader           │    │
+ │  └─────┼─────────────────────────┼─────────┼──────────────────┘    │
+ │        │                         │         │                        │
+ │        ▼                         ▼         ▼                        │
+ │  ┌─────────────────────────────────────────────────────────────┐    │
+ │  │              DuckDB / Spark / DataFusion / Arrow             │    │
+ │  │                                                              │    │
+ │  │  SELECT * FROM loom_scan('data.parquet')                     │    │
+ │  │  ┌──────────────────────────────┐                            │    │
+ │  │  │  id  name   score            │                            │    │
+ │  │  │   1  alice   0.5             │                            │    │
+ │  │  │   2  bob     1.2             │                            │    │
+ │  │  └──────────────────────────────┘                            │    │
+ │  └─────────────────────────────────────────────────────────────┘    │
+ └──────────────────────────────────────────────────────────────────────┘
+```
+
+The Decode IR is the contract: verified once at write time, replayed at read time.
+The sidecar is strippable — engines that don't understand it fall back to their
+own native reader seamlessly.
+
 ## Repository Map
 
 | Path | Purpose |
