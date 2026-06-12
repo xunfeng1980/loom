@@ -76,12 +76,15 @@ impl LoomSidecarError {
 // loom_sidecar_extract
 // ---------------------------------------------------------------------------
 
-/// Extract the sidecar overlay from a Parquet file.
+/// Extract the sidecar overlay from a host file.
 ///
-/// Opens the Parquet file at `file_path`, reads its metadata, and attempts to
-/// extract a `"loom.sidecar.v1"` key-value entry.  On success, the encoded
-/// overlay bytes are boxed and returned through `out_bytes`/`out_len`.
-/// The caller must free the returned buffer via [`loom_sidecar_free_bytes`].
+/// Tries in order:
+/// 1. External sidecar file at `<file_path>.loomsidecar` (production path).
+/// 2. Embedded `"loom.sidecar.v1"` KeyValue metadata in Parquet metadata.
+///
+/// On success, the encoded overlay bytes are boxed and returned through
+/// `out_bytes`/`out_len`. The caller must free the returned buffer via
+/// [`loom_sidecar_free_bytes`].
 ///
 /// # Returns
 ///
@@ -90,7 +93,7 @@ impl LoomSidecarError {
 /// * `2` — File could not be opened or read.
 /// * `3` — Sidecar data found but could not be decoded.
 /// * `4` — Internal panic caught.
-/// * `5` — No sidecar key found in the file's metadata.
+/// * `5` — No sidecar found (neither external nor embedded).
 #[no_mangle]
 pub unsafe extern "C" fn loom_sidecar_extract(
     file_path: *const c_char,
@@ -103,8 +106,28 @@ pub unsafe extern "C" fn loom_sidecar_extract(
 
     let result: std::result::Result<std::result::Result<i32, LoomSidecarError>, _> =
         panic::catch_unwind(AssertUnwindSafe(|| {
-        let path = CStr::from_ptr(file_path).to_string_lossy();
-        let file = std::fs::File::open(Path::new(path.as_ref()))
+        let path_str = CStr::from_ptr(file_path).to_string_lossy();
+        let path = Path::new(path_str.as_ref());
+
+        // P2-1: Try external sidecar file first (production path).
+        let external_path_str = format!("{}.loomsidecar", path.display());
+        let external = Path::new(&external_path_str);
+        if external.exists() {
+            let raw = std::fs::read(external)
+                .map_err(|_| LoomSidecarError::IoError)?;
+            // Validate that the bytes are a valid sidecar overlay.
+            let _ = SidecarOverlay::decode(&raw)
+                .map_err(|_| LoomSidecarError::DecodeFailed)?;
+            let boxed = raw.into_boxed_slice();
+            let (ptr, len) = (boxed.as_ptr(), boxed.len());
+            std::mem::forget(boxed);
+            std::ptr::write(out_bytes, ptr as *mut u8);
+            std::ptr::write(out_len, len);
+            return Ok(0);
+        }
+
+        // Fall back to embedded Parquet metadata.
+        let file = std::fs::File::open(path)
             .map_err(|_| LoomSidecarError::IoError)?;
 
         let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)

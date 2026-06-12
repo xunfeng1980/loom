@@ -48,22 +48,24 @@ fn usage() -> String {
     let mut s = String::new();
     s.push_str("loom — Loom sidecar CLI (Phase 101)\n\n");
     s.push_str("USAGE:\n");
-    s.push_str("  loom sidecar embed <parquet_file> [ir_file]    Embed a L2Core sidecar overlay in a Parquet file\n");
-    s.push_str("  loom verify-l2core <mode>                     Verify an L2Core IR program\n");
-    s.push_str("  loom help                                     Print this message\n");
+    s.push_str("  loom sidecar embed <parquet_file> [ir_file]          Embed sidecar inline (dev only)\n");
+    s.push_str("  loom sidecar embed-external <parquet_file> [ir_file] Write external .loomsidecar file\n");
+    s.push_str("  loom verify-l2core <mode>                            Verify an L2Core IR program\n");
+    s.push_str("  loom help                                            Print this message\n");
     s
 }
 
 fn sidecar_usage() -> String {
-    "USAGE: loom sidecar embed <parquet_file> [ir_file]".to_string()
+    "USAGE: loom sidecar <embed|embed-external> <parquet_file> [ir_file]".to_string()
 }
 
-// ── sidecar embed ────────────────────────────────────────────────────────
+// ── sidecar ───────────────────────────────────────────────────────────────
 
 fn sidecar(mode: &str, args: Vec<String>) -> Result<(), String> {
     match mode {
         "embed" => sidecar_embed(args),
-        _ => Err(format!("unknown sidecar command: {mode}. Use `sidecar embed`.")),
+        "embed-external" => sidecar_embed_external(args),
+        _ => Err(format!("unknown sidecar command: {mode}. Use `sidecar embed` or `sidecar embed-external`.")),
     }
 }
 
@@ -102,6 +104,44 @@ fn sidecar_embed(mut args: Vec<String>) -> Result<(), String> {
     eprintln!("WARNING: embed rewrites data pages via ArrowWriter (non-production).");
     eprintln!("  For production, use metadata-only embed or the external sidecar model.");
     println!("Embedded sidecar in {}", parquet_path);
+    println!("Sidecar content hash: {}", hash);
+    Ok(())
+}
+
+/// Write a sidecar overlay to a separate `.loomsidecar` file.
+///
+/// This is the production path: the original file is never touched.
+/// The sidecar lives alongside the data file as `<path>.loomsidecar`.
+fn sidecar_embed_external(mut args: Vec<String>) -> Result<(), String> {
+    if args.is_empty() {
+        return Err(sidecar_usage());
+    }
+    let parquet_path = args.remove(0);
+
+    let program = match args.first() {
+        Some(ref path) => {
+            let bytes = fs::read(path)
+                .map_err(|e| format!("failed to read IR file {path}: {e}"))?;
+            decode_l2core_program(&bytes)
+                .map_err(|e| format!("failed to decode L2Core program: {e}"))?
+        }
+        None => default_sidecar_program(),
+    };
+
+    let ir_bytes = encode_l2core_program(&program);
+    let bindings = chunk_bindings_from_parquet(std::path::Path::new(&parquet_path))
+        .map_err(|e| format!("failed to compute chunk bindings: {e}"))?;
+
+    let overlay = SidecarOverlay { ir_bytes, bindings };
+    let sidecar_bytes = overlay.encode();
+
+    let sidecar_path = format!("{parquet_path}.loomsidecar");
+    fs::write(&sidecar_path, &sidecar_bytes)
+        .map_err(|e| format!("failed to write sidecar file {sidecar_path}: {e}"))?;
+
+    let hash = program.content_hash();
+    println!("Wrote external sidecar: {}", sidecar_path);
+    println!("  original: {} (unchanged)", parquet_path);
     println!("Sidecar content hash: {}", hash);
     Ok(())
 }

@@ -18,12 +18,15 @@ typedef struct RuntimeAbiVersion RuntimeAbiVersion;
 
 
 /**
- * Extract the sidecar overlay from a Parquet file.
+ * Extract the sidecar overlay from a host file.
  *
- * Opens the Parquet file at `file_path`, reads its metadata, and attempts to
- * extract a `"loom.sidecar.v1"` key-value entry.  On success, the encoded
- * overlay bytes are boxed and returned through `out_bytes`/`out_len`.
- * The caller must free the returned buffer via [`loom_sidecar_free_bytes`].
+ * Tries in order:
+ * 1. External sidecar file at `<file_path>.loomsidecar` (production path).
+ * 2. Embedded `"loom.sidecar.v1"` KeyValue metadata in Parquet metadata.
+ *
+ * On success, the encoded overlay bytes are boxed and returned through
+ * `out_bytes`/`out_len`. The caller must free the returned buffer via
+ * [`loom_sidecar_free_bytes`].
  *
  * # Returns
  *
@@ -32,7 +35,7 @@ typedef struct RuntimeAbiVersion RuntimeAbiVersion;
  * * `2` — File could not be opened or read.
  * * `3` — Sidecar data found but could not be decoded.
  * * `4` — Internal panic caught.
- * * `5` — No sidecar key found in the file's metadata.
+ * * `5` — No sidecar found (neither external nor embedded).
  */
 int32_t loom_sidecar_extract(const char *file_path, uint8_t **out_bytes, uintptr_t *out_len);
 
