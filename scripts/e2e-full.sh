@@ -171,10 +171,10 @@ pass "decode IR generator compiles"
 # ── Step 18: FFI sidecar decode (P1-3) availability ────────────────────────
 echo ""
 echo "--- Step 18: FFI surface check ---"
-nm target/release/libloom_ffi.a 2>/dev/null | grep -c "loom_sidecar_" || true
-if nm target/release/libloom_ffi.a 2>/dev/null | grep -q "loom_sidecar_decode"; then
-    pass "loom_sidecar_decode symbol in staticlib"
-    nm target/release/libloom_ffi.a 2>/dev/null | grep "loom_sidecar_" | while read -r line; do
+nm target/release/libloom_ffi.a 2>/dev/null | grep -c "loom_" || true
+if nm target/release/libloom_ffi.a 2>/dev/null | grep -q "loom_decode"; then
+    pass "loom_decode symbol in staticlib"
+    nm target/release/libloom_ffi.a 2>/dev/null | grep "loom_" | while read -r line; do
         echo "  FFI: $line"
     done
 else

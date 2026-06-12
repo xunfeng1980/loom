@@ -374,7 +374,7 @@ impl NativeArrowSemanticModelValidationReport {
 /// **not** decode physical bytes via the L2Core IR.
 ///
 /// The production decode path is [`crate::interp::l2core_interp::interpret_l2core`]
-/// (wired into [`crate::ffi::loom_sidecar_decode`]). This LMA1 path is retained
+/// (wired into [`crate::ffi::loom_decode`]). This LMA1 path is retained
 /// only as the offline differential oracle that the interpreter is checked
 /// against in tests (see `tests/interp_lma1_differential.rs`). Per
 /// [`execute_verified_native_arrow_semantic`]'s Phase-50.1 note, LMC2/LMA1

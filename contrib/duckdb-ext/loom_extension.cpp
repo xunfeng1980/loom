@@ -4,10 +4,10 @@
 // Registers: loom_scan(VARCHAR) — table function.
 //
 // Sidecar decode path: extracts a Loom sidecar overlay from a file via
-// loom_sidecar_extract, evaluates the 4-gate routing decision via
-// loom_sidecar_route (with host data), and — when the file routes LoomNative —
+// loom_extract, evaluates the 4-gate routing decision via
+// loom_route (with host data), and — when the file routes LoomNative —
 // decodes it through the production L2Core interpreter
-// (loom_sidecar_decode_carray) and materializes the decoded columns as the
+// (loom_decode_carray) and materializes the decoded columns as the
 // table function's typed result rows via the Arrow C Data Interface.
 //
 // Files routing to HostNativeReader (or with no sidecar) yield a single
@@ -241,7 +241,7 @@ static unique_ptr<FunctionData> SidecarBind(
 
     uint8_t *overlay_bytes = nullptr;
     uintptr_t overlay_len = 0;
-    int32_t extract_rc = loom_sidecar_extract(bind_data->file_path.c_str(),
+    int32_t extract_rc = loom_extract(bind_data->file_path.c_str(),
                                               &overlay_bytes, &overlay_len);
 
     if (extract_rc != 0 || overlay_bytes == nullptr || overlay_len == 0) {
@@ -262,17 +262,17 @@ static unique_ptr<FunctionData> SidecarBind(
     uintptr_t host_len = host_ok ? host.size() : 0;
 
     const char *decision_json = nullptr;
-    int32_t route_rc = loom_sidecar_route(overlay_bytes, overlay_len,
+    int32_t route_rc = loom_route(overlay_bytes, overlay_len,
                                           host_ptr, host_len, &decision_json);
     string decision = (route_rc == 0) ? CStringOrEmpty(decision_json) : string();
     if (decision_json != nullptr) {
-        loom_sidecar_free_cstr(const_cast<char *>(decision_json));
+        loom_free_cstr(const_cast<char *>(decision_json));
     }
 
     bool is_loom_native = decision.find("\"decision\":\"LoomNative\"") != string::npos;
 
     if (!is_loom_native) {
-        loom_sidecar_free_bytes(overlay_bytes, overlay_len);
+        loom_free_bytes(overlay_bytes, overlay_len);
         fallback("loom_scan[sidecar/host-native]: routed to host-native reader. "
                  "Use DuckDB's native reader for this file. (" + decision + ")");
         return std::move(bind_data);
@@ -281,13 +281,13 @@ static unique_ptr<FunctionData> SidecarBind(
     // Loom-native: decode through the interpreter and export columns as an
     // Arrow C struct array.
     auto decoded = make_shared_ptr<DecodedArrow>();
-    int32_t decode_rc = loom_sidecar_decode_carray(overlay_bytes, overlay_len,
+    int32_t decode_rc = loom_decode_carray(overlay_bytes, overlay_len,
                                                     host_ptr, host_len,
                                                     &decoded->schema, &decoded->array);
-    loom_sidecar_free_bytes(overlay_bytes, overlay_len);
+    loom_free_bytes(overlay_bytes, overlay_len);
 
     if (decode_rc != 0 || decoded->schema.release == nullptr) {
-        fallback("loom_scan[decode/failed]: loom_sidecar_decode_carray returned code " +
+        fallback("loom_scan[decode/failed]: loom_decode_carray returned code " +
                  std::to_string(static_cast<int>(decode_rc)));
         return std::move(bind_data);
     }

@@ -75,7 +75,7 @@ impl LoomSidecarError {
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_extract
+// loom_extract
 // ---------------------------------------------------------------------------
 
 /// Extract the sidecar overlay from a host file.
@@ -86,7 +86,7 @@ impl LoomSidecarError {
 ///
 /// On success, the encoded overlay bytes are boxed and returned through
 /// `out_bytes`/`out_len`. The caller must free the returned buffer via
-/// [`loom_sidecar_free_bytes`].
+/// [`loom_free_bytes`].
 ///
 /// # Returns
 ///
@@ -97,7 +97,7 @@ impl LoomSidecarError {
 /// * `4` — Internal panic caught.
 /// * `5` — No sidecar found (neither external nor embedded).
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_extract(
+pub unsafe extern "C" fn loom_extract(
     file_path: *const c_char,
     out_bytes: *mut *mut u8,
     out_len: *mut usize,
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn loom_sidecar_extract(
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_verify
+// loom_verify
 // ---------------------------------------------------------------------------
 
 /// Verify a sidecar overlay's L2Core IR and compute its content-hash identity.
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn loom_sidecar_extract(
 /// L2Core IR program via [`verify_l2_core_bytes`], and computes the FNV-1a
 /// content-hash identity string. The hash is returned as a null-terminated
 /// C string through `out_hash`. The caller must free this string via
-/// `loom_sidecar_free_cstr`.
+/// `loom_free_cstr`.
 ///
 /// # Returns
 ///
@@ -182,7 +182,7 @@ pub unsafe extern "C" fn loom_sidecar_extract(
 /// * `6` — IR program failed semantic verification.
 /// * `4` — Internal panic caught.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_verify(
+pub unsafe extern "C" fn loom_verify(
     overlay_bytes: *const u8,
     overlay_len: usize,
     out_hash: *mut *const c_char,
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn loom_sidecar_verify(
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_route
+// loom_route
 // ---------------------------------------------------------------------------
 
 /// Evaluate the 4-gate sidecar routing decision.
@@ -233,7 +233,7 @@ pub unsafe extern "C" fn loom_sidecar_verify(
 /// Decodes the overlay, verifies each chunk binding against the provided host
 /// data bytes (if any), and runs the full routing gate.  The routing decision
 /// is returned as a JSON string through `out_decision`.
-/// The caller must free this string via `loom_sidecar_free_cstr`.
+/// The caller must free this string via `loom_free_cstr`.
 ///
 /// # Returns
 ///
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn loom_sidecar_verify(
 /// * `3` — Overlay decode or routing failure.
 /// * `4` — Internal panic caught.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_route(
+pub unsafe extern "C" fn loom_route(
     overlay_bytes: *const u8,
     overlay_len: usize,
     host_data: *const u8,
@@ -320,7 +320,7 @@ pub unsafe extern "C" fn loom_sidecar_route(
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_verify_json (P1-1: structured facts/diagnostics)
+// loom_verify_json (P1-1: structured facts/diagnostics)
 // ---------------------------------------------------------------------------
 
 /// Verify a sidecar overlay's L2Core IR and return structured facts and
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn loom_sidecar_route(
 /// [`verify_l2_core_bytes`], and emits a JSON object with the verification
 /// result, content-hash identity, artifact facts, and diagnostic messages.
 /// The JSON is returned as a null-terminated C string through `out_json`.
-/// The caller must free this string via `loom_sidecar_free_cstr`.
+/// The caller must free this string via `loom_free_cstr`.
 ///
 /// # JSON schema
 ///
@@ -356,7 +356,7 @@ pub unsafe extern "C" fn loom_sidecar_route(
 /// * `3` — Overlay or IR bytes are malformed/truncated.
 /// * `4` — Internal panic caught.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_verify_json(
+pub unsafe extern "C" fn loom_verify_json(
     overlay_bytes: *const u8,
     overlay_len: usize,
     out_json: *mut *const c_char,
@@ -466,7 +466,7 @@ pub unsafe extern "C" fn loom_sidecar_verify_json(
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_decode (P1-3: full decode execution loop)
+// loom_decode (P1-3: full decode execution loop)
 // ---------------------------------------------------------------------------
 
 /// Execute a verified Loom-native program through the general L2Core
@@ -525,7 +525,7 @@ fn record_batch_to_ipc(batch: &arrow_array::RecordBatch) -> Result<Vec<u8>, Loom
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_decode_carray — decode + export via Arrow C Data Interface
+// loom_decode_carray — decode + export via Arrow C Data Interface
 // ---------------------------------------------------------------------------
 
 /// Decode a sidecar overlay and export the decoded columns as a single Arrow
@@ -551,7 +551,7 @@ fn record_batch_to_ipc(batch: &arrow_array::RecordBatch) -> Result<Vec<u8>, Loom
 /// `overlay_bytes`/`host_data` must be valid for their stated lengths;
 /// `out_schema`/`out_array` must point to writable `ArrowSchema`/`ArrowArray`.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_decode_carray(
+pub unsafe extern "C" fn loom_decode_carray(
     overlay_bytes: *const u8,
     overlay_len: usize,
     host_data: *const u8,
@@ -618,8 +618,8 @@ pub unsafe extern "C" fn loom_sidecar_decode_carray(
 /// unsupported encoding), `out_ipc_len` is `0` and the caller must use a
 /// host-native reader. Always check the JSON `route` field before reading IPC.
 ///
-/// The caller must free both outputs: `loom_sidecar_free_cstr` for the JSON,
-/// `loom_sidecar_free_bytes` for the IPC buffer (safe to call on a zero-length
+/// The caller must free both outputs: `loom_free_cstr` for the JSON,
+/// `loom_free_bytes` for the IPC buffer (safe to call on a zero-length
 /// buffer).
 ///
 /// # JSON schema
@@ -643,7 +643,7 @@ pub unsafe extern "C" fn loom_sidecar_decode_carray(
 /// * `3` — Overlay or IR bytes are malformed/truncated.
 /// * `4` — Internal panic caught.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_decode(
+pub unsafe extern "C" fn loom_decode(
     overlay_bytes: *const u8,
     overlay_len: usize,
     host_data: *const u8,
@@ -780,14 +780,14 @@ pub unsafe extern "C" fn loom_sidecar_decode(
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_free_bytes
+// loom_free_bytes
 // ---------------------------------------------------------------------------
 
-/// Free a byte buffer previously returned by [`loom_sidecar_extract`].
+/// Free a byte buffer previously returned by [`loom_extract`].
 ///
 /// Reconstructs the `Vec<u8>` from the pointer and length and drops it.
 /// The caller must ensure `ptr` and `len` came from a prior call to
-/// `loom_sidecar_extract` and that this function is called at most once
+/// `loom_extract` and that this function is called at most once
 /// per allocation.
 ///
 /// # Returns
@@ -795,7 +795,7 @@ pub unsafe extern "C" fn loom_sidecar_decode(
 /// * `0` — Buffer freed.
 /// * `1` — `ptr` is null.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_free_bytes(ptr: *mut u8, len: usize) -> i32 {
+pub unsafe extern "C" fn loom_free_bytes(ptr: *mut u8, len: usize) -> i32 {
     if ptr.is_null() {
         return LoomSidecarError::NullPointer.code();
     }
@@ -804,7 +804,7 @@ pub unsafe extern "C" fn loom_sidecar_free_bytes(ptr: *mut u8, len: usize) -> i3
         panic::catch_unwind(AssertUnwindSafe(|| {
         // Safety: ptr+len must describe a valid allocation from the global
         // allocator (guaranteed by the contract — caller must pass values
-        // obtained from loom_sidecar_extract).  The capacity equals the
+        // obtained from loom_extract).  The capacity equals the
         // length because the buffer was constructed from an owned Vec<u8>
         // via into_boxed_slice().
         unsafe {
@@ -822,15 +822,15 @@ pub unsafe extern "C" fn loom_sidecar_free_bytes(ptr: *mut u8, len: usize) -> i3
 }
 
 // ---------------------------------------------------------------------------
-// loom_sidecar_free_cstr
+// loom_free_cstr
 // ---------------------------------------------------------------------------
 
-/// Free a C string previously returned by [`loom_sidecar_verify`] or
-/// [`loom_sidecar_route`].
+/// Free a C string previously returned by [`loom_verify`] or
+/// [`loom_route`].
 ///
 /// Reconstructs the `CString` from the raw pointer and drops it.  The caller
-/// must ensure `ptr` came from a prior call to `loom_sidecar_verify` or
-/// `loom_sidecar_route` and that this function is called at most once per
+/// must ensure `ptr` came from a prior call to `loom_verify` or
+/// `loom_route` and that this function is called at most once per
 /// allocation.
 ///
 /// # Returns
@@ -838,7 +838,7 @@ pub unsafe extern "C" fn loom_sidecar_free_bytes(ptr: *mut u8, len: usize) -> i3
 /// * `0` — String freed.
 /// * `1` — `ptr` is null.
 #[no_mangle]
-pub unsafe extern "C" fn loom_sidecar_free_cstr(ptr: *mut c_char) -> i32 {
+pub unsafe extern "C" fn loom_free_cstr(ptr: *mut c_char) -> i32 {
     if ptr.is_null() {
         return LoomSidecarError::NullPointer.code();
     }
@@ -847,7 +847,7 @@ pub unsafe extern "C" fn loom_sidecar_free_cstr(ptr: *mut c_char) -> i32 {
         panic::catch_unwind(AssertUnwindSafe(|| {
         // Safety: ptr must describe a valid CString allocation from the
         // global allocator (guaranteed by the contract — caller must pass
-        // values obtained from loom_sidecar_verify or loom_sidecar_route).
+        // values obtained from loom_verify or loom_route).
         unsafe {
             let _ = CString::from_raw(ptr);
         }
@@ -969,14 +969,14 @@ mod decode_tests {
         .unwrap();
         let mut out_bytes: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
-        let rc = unsafe { loom_sidecar_extract(path.as_ptr(), &mut out_bytes, &mut out_len) };
+        let rc = unsafe { loom_extract(path.as_ptr(), &mut out_bytes, &mut out_len) };
         assert_eq!(rc, 0, "extract failed with code {rc}");
         assert!(out_len > 0);
         // Verify the bytes are a valid sidecar overlay
         let bytes = unsafe { std::slice::from_raw_parts(out_bytes, out_len) };
         let overlay = SidecarOverlay::decode(bytes).expect("valid sidecar");
         assert!(!overlay.ir_bytes.is_empty());
-        unsafe { loom_sidecar_free_bytes(out_bytes, out_len) };
+        unsafe { loom_free_bytes(out_bytes, out_len) };
     }
 
     fn i32_copy_program(rows: u64) -> L2CoreProgram {

@@ -110,13 +110,13 @@ bash scripts/e2e-full.sh
 Seven C ABI entry points provide the complete sidecar lifecycle:
 
 ```
-loom_sidecar_extract       → read sidecar (external file first, then embedded)
-loom_sidecar_verify        → semantic verification + BLAKE3 content hash
-loom_sidecar_verify_json   → structured facts/diagnostics JSON
-loom_sidecar_route         → 4-gate routing decision
-loom_sidecar_decode         → full decode loop (route → verify → decode)
-loom_sidecar_free_cstr     → free returned strings
-loom_sidecar_free_bytes    → free returned byte buffers
+loom_extract       → read sidecar (external file first, then embedded)
+loom_verify        → semantic verification + BLAKE3 content hash
+loom_verify_json   → structured facts/diagnostics JSON
+loom_route         → 4-gate routing decision
+loom_decode         → full decode loop (route → verify → decode)
+loom_free_cstr     → free returned strings
+loom_free_bytes    → free returned byte buffers
 ```
 
 ## Correctness Model
@@ -154,7 +154,7 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
  Host data + sidecar
     │
-    └──→ L2Core interpreter  (loom_sidecar_decode)
+    └──→ L2Core interpreter  (loom_decode)
            extract → verify → 4-gate route → interpret
            → Arrow RecordBatch (IPC + C Data Interface)
            → DuckDB / Spark / Arrow consumer
@@ -162,7 +162,7 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
 - **kloom** (offline) — K framework formal semantics, 14 spec tests (14/14 passing)
 - **Rust interp** (production decoder) — the general L2Core interpreter
-  (`interp/l2core_interp.rs`) wired into `loom_sidecar_decode`; verified against
+  (`interp/l2core_interp.rs`) wired into `loom_decode`; verified against
   kloom in CI. Decodes i32/i64/f32/f64/bool, nullable, and Utf8 columns from
   auto-generated IR and emits real Arrow (`StreamWriter` IPC +
   `arrow::ffi` C Data Interface), materialized into typed rows by the DuckDB
@@ -282,7 +282,7 @@ Float64, Utf8.
 
 ## Decode runtime & JIT
 
-The production decode runtime is the **L2Core interpreter**: `loom_sidecar_decode`
+The production decode runtime is the **L2Core interpreter**: `loom_decode`
 extracts the sidecar, verifies the IR, evaluates the 4-gate route, and — on the
 Loom-native path — interprets the program to a real Arrow `RecordBatch`, returned
 as a bare IPC stream and via the Arrow C Data Interface. The DuckDB `loom_scan`

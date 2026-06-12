@@ -26,7 +26,7 @@ typedef struct RuntimeAbiVersion RuntimeAbiVersion;
  *
  * On success, the encoded overlay bytes are boxed and returned through
  * `out_bytes`/`out_len`. The caller must free the returned buffer via
- * [`loom_sidecar_free_bytes`].
+ * [`loom_free_bytes`].
  *
  * # Returns
  *
@@ -37,7 +37,7 @@ typedef struct RuntimeAbiVersion RuntimeAbiVersion;
  * * `4` — Internal panic caught.
  * * `5` — No sidecar found (neither external nor embedded).
  */
-int32_t loom_sidecar_extract(const char *file_path, uint8_t **out_bytes, uintptr_t *out_len);
+int32_t loom_extract(const char *file_path, uint8_t **out_bytes, uintptr_t *out_len);
 
 /**
  * Verify a sidecar overlay's L2Core IR and compute its content-hash identity.
@@ -46,7 +46,7 @@ int32_t loom_sidecar_extract(const char *file_path, uint8_t **out_bytes, uintptr
  * L2Core IR program via [`verify_l2_core_bytes`], and computes the FNV-1a
  * content-hash identity string. The hash is returned as a null-terminated
  * C string through `out_hash`. The caller must free this string via
- * `loom_sidecar_free_cstr`.
+ * `loom_free_cstr`.
  *
  * # Returns
  *
@@ -56,9 +56,7 @@ int32_t loom_sidecar_extract(const char *file_path, uint8_t **out_bytes, uintptr
  * * `6` — IR program failed semantic verification.
  * * `4` — Internal panic caught.
  */
-int32_t loom_sidecar_verify(const uint8_t *overlay_bytes,
-                            uintptr_t overlay_len,
-                            const char **out_hash);
+int32_t loom_verify(const uint8_t *overlay_bytes, uintptr_t overlay_len, const char **out_hash);
 
 /**
  * Evaluate the 4-gate sidecar routing decision.
@@ -66,7 +64,7 @@ int32_t loom_sidecar_verify(const uint8_t *overlay_bytes,
  * Decodes the overlay, verifies each chunk binding against the provided host
  * data bytes (if any), and runs the full routing gate.  The routing decision
  * is returned as a JSON string through `out_decision`.
- * The caller must free this string via `loom_sidecar_free_cstr`.
+ * The caller must free this string via `loom_free_cstr`.
  *
  * # Returns
  *
@@ -75,11 +73,11 @@ int32_t loom_sidecar_verify(const uint8_t *overlay_bytes,
  * * `3` — Overlay decode or routing failure.
  * * `4` — Internal panic caught.
  */
-int32_t loom_sidecar_route(const uint8_t *overlay_bytes,
-                           uintptr_t overlay_len,
-                           const uint8_t *host_data,
-                           uintptr_t host_data_len,
-                           const char **out_decision);
+int32_t loom_route(const uint8_t *overlay_bytes,
+                   uintptr_t overlay_len,
+                   const uint8_t *host_data,
+                   uintptr_t host_data_len,
+                   const char **out_decision);
 
 /**
  * Verify a sidecar overlay's L2Core IR and return structured facts and
@@ -89,7 +87,7 @@ int32_t loom_sidecar_route(const uint8_t *overlay_bytes,
  * [`verify_l2_core_bytes`], and emits a JSON object with the verification
  * result, content-hash identity, artifact facts, and diagnostic messages.
  * The JSON is returned as a null-terminated C string through `out_json`.
- * The caller must free this string via `loom_sidecar_free_cstr`.
+ * The caller must free this string via `loom_free_cstr`.
  *
  * # JSON schema
  *
@@ -115,9 +113,9 @@ int32_t loom_sidecar_route(const uint8_t *overlay_bytes,
  * * `3` — Overlay or IR bytes are malformed/truncated.
  * * `4` — Internal panic caught.
  */
-int32_t loom_sidecar_verify_json(const uint8_t *overlay_bytes,
-                                 uintptr_t overlay_len,
-                                 const char **out_json);
+int32_t loom_verify_json(const uint8_t *overlay_bytes,
+                         uintptr_t overlay_len,
+                         const char **out_json);
 
 /**
  * Decode a sidecar overlay and export the decoded columns as a single Arrow
@@ -143,12 +141,12 @@ int32_t loom_sidecar_verify_json(const uint8_t *overlay_bytes,
  * `overlay_bytes`/`host_data` must be valid for their stated lengths;
  * `out_schema`/`out_array` must point to writable `ArrowSchema`/`ArrowArray`.
  */
-int32_t loom_sidecar_decode_carray(const uint8_t *overlay_bytes,
-                                   uintptr_t overlay_len,
-                                   const uint8_t *host_data,
-                                   uintptr_t host_data_len,
-                                   void *out_schema,
-                                   void *out_array);
+int32_t loom_decode_carray(const uint8_t *overlay_bytes,
+                           uintptr_t overlay_len,
+                           const uint8_t *host_data,
+                           uintptr_t host_data_len,
+                           void *out_schema,
+                           void *out_array);
 
 /**
  * Decode a sidecar overlay through the full Loom execution loop.
@@ -168,8 +166,8 @@ int32_t loom_sidecar_decode_carray(const uint8_t *overlay_bytes,
  * unsupported encoding), `out_ipc_len` is `0` and the caller must use a
  * host-native reader. Always check the JSON `route` field before reading IPC.
  *
- * The caller must free both outputs: `loom_sidecar_free_cstr` for the JSON,
- * `loom_sidecar_free_bytes` for the IPC buffer (safe to call on a zero-length
+ * The caller must free both outputs: `loom_free_cstr` for the JSON,
+ * `loom_free_bytes` for the IPC buffer (safe to call on a zero-length
  * buffer).
  *
  * # JSON schema
@@ -193,20 +191,20 @@ int32_t loom_sidecar_decode_carray(const uint8_t *overlay_bytes,
  * * `3` — Overlay or IR bytes are malformed/truncated.
  * * `4` — Internal panic caught.
  */
-int32_t loom_sidecar_decode(const uint8_t *overlay_bytes,
-                            uintptr_t overlay_len,
-                            const uint8_t *host_data,
-                            uintptr_t host_data_len,
-                            const char **out_json,
-                            uint8_t **out_ipc_bytes,
-                            uintptr_t *out_ipc_len);
+int32_t loom_decode(const uint8_t *overlay_bytes,
+                    uintptr_t overlay_len,
+                    const uint8_t *host_data,
+                    uintptr_t host_data_len,
+                    const char **out_json,
+                    uint8_t **out_ipc_bytes,
+                    uintptr_t *out_ipc_len);
 
 /**
- * Free a byte buffer previously returned by [`loom_sidecar_extract`].
+ * Free a byte buffer previously returned by [`loom_extract`].
  *
  * Reconstructs the `Vec<u8>` from the pointer and length and drops it.
  * The caller must ensure `ptr` and `len` came from a prior call to
- * `loom_sidecar_extract` and that this function is called at most once
+ * `loom_extract` and that this function is called at most once
  * per allocation.
  *
  * # Returns
@@ -214,15 +212,15 @@ int32_t loom_sidecar_decode(const uint8_t *overlay_bytes,
  * * `0` — Buffer freed.
  * * `1` — `ptr` is null.
  */
-int32_t loom_sidecar_free_bytes(uint8_t *ptr, uintptr_t len);
+int32_t loom_free_bytes(uint8_t *ptr, uintptr_t len);
 
 /**
- * Free a C string previously returned by [`loom_sidecar_verify`] or
- * [`loom_sidecar_route`].
+ * Free a C string previously returned by [`loom_verify`] or
+ * [`loom_route`].
  *
  * Reconstructs the `CString` from the raw pointer and drops it.  The caller
- * must ensure `ptr` came from a prior call to `loom_sidecar_verify` or
- * `loom_sidecar_route` and that this function is called at most once per
+ * must ensure `ptr` came from a prior call to `loom_verify` or
+ * `loom_route` and that this function is called at most once per
  * allocation.
  *
  * # Returns
@@ -230,6 +228,6 @@ int32_t loom_sidecar_free_bytes(uint8_t *ptr, uintptr_t len);
  * * `0` — String freed.
  * * `1` — `ptr` is null.
  */
-int32_t loom_sidecar_free_cstr(char *ptr);
+int32_t loom_free_cstr(char *ptr);
 
 #endif  /* LOOM_SIDECAR_H */

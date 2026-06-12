@@ -4,9 +4,9 @@
 > Date: 2026-06-12 (revised: Plan 1 upgraded to a general interpreter; Plan 3 became a tier ladder; goal = full coverage)
 >
 > **Implementation progress (2026-06-12):**
-> - **Plan 1 ✅ done**: general L2Core interpreter [`l2core_interp.rs`](../crates/loom-ffi/src/interp/l2core_interp.rs) wired into the `LoomNative` branch of `loom_sidecar_decode`; subsumes the i32 shortcut (equivalence regression passes); the LMA1 path is annotated as an offline oracle + an interp-vs-LMA1 differential test. 109 lib tests + integration all green.
+> - **Plan 1 ✅ done**: general L2Core interpreter [`l2core_interp.rs`](../crates/loom-ffi/src/interp/l2core_interp.rs) wired into the `LoomNative` branch of `loom_decode`; subsumes the i32 shortcut (equivalence regression passes); the LMA1 path is annotated as an offline oracle + an interp-vs-LMA1 differential test. 109 lib tests + integration all green.
 > - **Plan 2 ✅ complete (incl. typed-row materialization, verified via end-to-end SQL)**:
->   - `loom_sidecar_decode` emits **real bare Arrow IPC** (`StreamWriter`); new `loom_sidecar_decode_carray` exports a struct array over the **Arrow C Data Interface** (`arrow::ffi::to_ffi`) for zero-copy hand-off. E2E FFI test [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs): IPC reads back via `StreamReader`, the C-array round-trips via `from_ffi`, `free_bytes` releases. loom.h contract updated (bare IPC).
+>   - `loom_decode` emits **real bare Arrow IPC** (`StreamWriter`); new `loom_decode_carray` exports a struct array over the **Arrow C Data Interface** (`arrow::ffi::to_ffi`) for zero-copy hand-off. E2E FFI test [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs): IPC reads back via `StreamReader`, the C-array round-trips via `from_ffi`, `free_bytes` releases. loom.h contract updated (bare IPC).
 >   - **DuckDB extension runs end-to-end**: the JIT is behind a cargo feature (`--no-default-features`), so the extension carries no LLVM symbols and loads in the bundled `vendor/duckdb-cli/duckdb` (v1.5.3). `loom_scan` materializes decoded columns into **typed DuckDB rows** (generic `FillVector` for i32/i64/f32/f64/bool/utf8; unknown types fail-soft to a diagnostic column). Verified: `SELECT * FROM loom_scan('<fixture>')` returns 10 rows of int32=42; `SELECT COUNT/SUM/MIN` → 10/420/42. Fixture generator [`examples/make_fixture.rs`](../crates/loom-ffi/examples/make_fixture.rs).
 >   - **DoD#2 met**: SQL returns real decoded values, end-to-end DuckDB SQL → interpreter → Arrow C interface → typed result rows.
 > - **Plan 3 ✅ Tiers 1–4 green** (E2E test [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs): parquet → auto IR → full verifier → interpreter → correct values/null positions):
@@ -15,7 +15,7 @@
 >   - **Tier 2 (nullable)**: new `L2CoreStmt::If { cond, then_body, else_body }` (codec tag 7 + verifier two-branch + interpreter + vortex corpus counter); a nullable column = a validity slice + `If(bitcast bool validity){AppendValue} else {AppendNull}`.
 >   - **Tier 3 (non-null Utf8)**: reuses existing IR — offsets+data slices; per row read lo/hi offsets, Bitcast to Int32, dynamic-width `ReadInput data[lo..hi]`, Bytes→Utf8 append. The generator reads batches to size the data slice.
 >   - **Tier 4 (dictionary)**: Parquet dictionary is a **physical encoding**; the Arrow reader materializes it to a plain column, so dictionary-encoded input decodes transparently through Tiers 1–3 (test forces dictionary encoding). Producing a dictionary-**typed** Arrow output (DictionaryArray) is a representation optimization left as future work (needs OutputBuilder::Dictionary + DuckDB dictionary materialization).
-> - **Plan 5 ✅**: the README / README-zh "correctness model / production runtime" narrative is corrected to match the code — the production decode runtime is the L2Core **interpreter** (wired into `loom_sidecar_decode`, emits real Arrow, materialized into typed rows by DuckDB `loom_scan`); the JIT is **offline-verified and not yet wired to the production FFI** (the extension is built `--no-default-features`, excluding LLVM).
+> - **Plan 5 ✅**: the README / README-zh "correctness model / production runtime" narrative is corrected to match the code — the production decode runtime is the L2Core **interpreter** (wired into `loom_decode`, emits real Arrow, materialized into typed rows by DuckDB `loom_scan`); the JIT is **offline-verified and not yet wired to the production FFI** (the extension is built `--no-default-features`, excluding LLVM).
 > - **Plan 4 ⏳ building block done / zero-transcode direct read remaining**:
 >   - **Done**: `read_column_chunk_physical_bytes` (`File::seek` + `byte_range` reads the raw physical column-chunk bytes directly, no Arrow materialization) + `parquet_column_chunk_hash` (BLAKE3 over the physical bytes, usable for sidecar binding verification). Test [`physical_bytes.rs`](../crates/loom-parquet-ingress/tests/physical_bytes.rs): deterministic reads, distinct bytes/hashes across columns, out-of-range fails closed. This closes the original gap where `bind_content_hash_to_parquet_data` was a no-op and physical ranges were used only for diagnostics.
 >   - **Remaining frontier**: have the auto-generated IR **decode the physical bytes directly** (page-header parse + per-encoding decompress: PLAIN/dict/RLE) to drop the current raw transcode (`parquet_to_raw_host` materializes via Arrow then repacks). That amounts to rebuilding Parquet page decoding inside the L2Core IR — the last large step toward zero-transcode direct read in production.
@@ -29,7 +29,7 @@
 
 The five items are not five separate gaps — they are facets of one broken chain:
 
-> **The `LoomNative` branch of the production FFI entry [`loom_sidecar_decode`](../crates/loom-ffi/src/ffi.rs#L503) neither executed nor output anything** —
+> **The `LoomNative` branch of the production FFI entry [`loom_decode`](../crates/loom-ffi/src/ffi.rs#L503) neither executed nor output anything** —
 > it decoded the IR, verified hashes, and ran the 4-gate route, then at the decode step it returned [`let ipc_output: Vec<u8> = Vec::new();`](../crates/loom-ffi/src/ffi.rs#L580), and the function had **no caller at all** (only declared in [loom.h:156](../crates/loom-ffi/include/loom.h#L156)).
 
 Fix this one point and R1/R2/R4 gain real support; R3/R5 are the depth and alignment work on top.
@@ -65,7 +65,7 @@ The codebase has **two parallel decode machines**, and the code already states t
 
 | ID | Outstanding item | Owning plan |
 |---|---|---|
-| R1 | `loom_sidecar_decode` real Arrow IPC output | Plan 2 (depends on Plan 1) |
+| R1 | `loom_decode` real Arrow IPC output | Plan 2 (depends on Plan 1) |
 | R2 | L2Core interpreter/JIT wired to the sidecar FFI | Plan 1 |
 | R3 | Parquet raw physical byte binding | Plan 4 |
 | R4 | README production JIT/online-decode narrative aligned with code | Plan 5 |
@@ -88,7 +88,7 @@ Plan 5 must be written **after** Plan 1/2 land. Plan 3 is the bulk of this phase
 
 ## Plan 1 — wire the general L2Core interpreter into the `LoomNative` branch (R2)
 
-**Goal**: write a **general** `L2CoreProgram` body interpreter as the single production decoder, wire it into `loom_sidecar_decode`, subsume the i32 shortcut, and demote the LMA1 path to an offline oracle. This plan delivers the **engine skeleton + Tier 1 (fixed-width non-null) green**, with dispatch points reserved for later tiers from the start.
+**Goal**: write a **general** `L2CoreProgram` body interpreter as the single production decoder, wire it into `loom_decode`, subsume the i32 shortcut, and demote the LMA1 path to an offline oracle. This plan delivers the **engine skeleton + Tier 1 (fixed-width non-null) green**, with dispatch points reserved for later tiers from the start.
 
 **Depends**: none.
 
@@ -129,8 +129,8 @@ Plan 5 must be written **after** Plan 1/2 land. Plan 3 is the bulk of this phase
 **Tasks**
 1. **A**: on success, serialize the batch to a bare Arrow IPC stream into `out_ipc_bytes/out_ipc_len`, with real `row_count/column_count`. **AC**: `ipc_len > 0`; arrow-rs `StreamReader` reads it back.
 2. **B**: document the bare-IPC contract in `loom.h`. **AC**: header doc matches the returned bytes.
-3. **C**: the DuckDB extension calls `loom_sidecar_decode` on `route=="loom-native"` and materializes the columns; non-loom-native falls back. **AC**: one SQL query returns real column values end-to-end.
-4. **D**: `loom_sidecar_free_bytes` correctly frees the non-empty buffer. **AC**: no leak / double free.
+3. **C**: the DuckDB extension calls `loom_decode` on `route=="loom-native"` and materializes the columns; non-loom-native falls back. **AC**: one SQL query returns real column values end-to-end.
+4. **D**: `loom_free_bytes` correctly frees the non-empty buffer. **AC**: no leak / double free.
 
 **must-have**: the non-loom-native path is byte-for-byte unchanged.
 
@@ -178,7 +178,7 @@ Dictionary-encoded input decodes transparently (Arrow materializes it). Producin
 
 **Files**: [README.md](../README.md), [README-zh.md](../README-zh.md)
 
-**Tasks**: change "JIT is the sole production runtime / online decode" to match code — the production path uses the **general L2Core interpreter** via `loom_sidecar_decode`; the JIT remains **offline differential verification** and is not wired to the production FFI; LMA1 is the offline oracle.
+**Tasks**: change "JIT is the sole production runtime / online decode" to match code — the production path uses the **general L2Core interpreter** via `loom_decode`; the JIT remains **offline differential verification** and is not wired to the production FFI; LMA1 is the offline oracle.
 
 **must-have**: do not present "planned but not built" capability as fact; mark aspirational items as roadmap.
 

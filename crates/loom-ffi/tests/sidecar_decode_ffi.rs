@@ -1,4 +1,4 @@
-//! End-to-end FFI test for `loom_sidecar_decode` (Plan 2).
+//! End-to-end FFI test for `loom_decode` (Plan 2).
 //!
 //! Builds a real sidecar overlay that passes all four routing gates, calls the
 //! C ABI entry point, and asserts the Loom-native path now returns a non-empty
@@ -10,8 +10,8 @@ use std::ffi::{c_char, CStr};
 use arrow_array::{Array, Int32Array};
 
 use loom_ffi::ffi::{
-    loom_sidecar_decode, loom_sidecar_decode_carray, loom_sidecar_free_bytes,
-    loom_sidecar_free_cstr,
+    loom_decode, loom_decode_carray, loom_free_bytes,
+    loom_free_cstr,
 };
 use loom_ir_core::l2_core::{
     Capability, InputSliceCapability, L2CoreProgram, L2CoreStmt, L2DataType,
@@ -77,7 +77,7 @@ fn loom_native_decode_returns_readable_ipc() {
     let mut out_ipc_len: usize = 0;
 
     let code = unsafe {
-        loom_sidecar_decode(
+        loom_decode(
             overlay_bytes.as_ptr(),
             overlay_bytes.len(),
             host.as_ptr(),
@@ -113,9 +113,9 @@ fn loom_native_decode_returns_readable_ipc() {
     assert_eq!(col.values(), &[42i32; 10]);
 
     // Free both outputs through the C ABI (no-leak / safe contract).
-    let free_bytes = unsafe { loom_sidecar_free_bytes(out_ipc, out_ipc_len) };
+    let free_bytes = unsafe { loom_free_bytes(out_ipc, out_ipc_len) };
     assert_eq!(free_bytes, 0, "free_bytes should succeed");
-    let free_json = unsafe { loom_sidecar_free_cstr(out_json as *mut c_char) };
+    let free_json = unsafe { loom_free_cstr(out_json as *mut c_char) };
     assert_eq!(free_json, 0, "free_cstr should succeed");
 }
 
@@ -172,7 +172,7 @@ fn loom_native_decode_carray_roundtrips_via_c_data_interface() {
     let mut ffi_array = FFI_ArrowArray::empty();
 
     let code = unsafe {
-        loom_sidecar_decode_carray(
+        loom_decode_carray(
             overlay_bytes.as_ptr(),
             overlay_bytes.len(),
             host.as_ptr(),

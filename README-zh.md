@@ -103,13 +103,13 @@ bash scripts/e2e-full.sh
 七个 C ABI 入口点提供完整的 sidecar 生命周期：
 
 ```
-loom_sidecar_extract       → 读取 sidecar（先外部文件，再内嵌元数据）
-loom_sidecar_verify        → 语义验证 + BLAKE3 内容哈希
-loom_sidecar_verify_json   → 结构化 facts/diagnostics JSON
-loom_sidecar_route         → 4 关路由决策
-loom_sidecar_decode         → 完整解码闭环（route → verify → decode）
-loom_sidecar_free_cstr     → 释放返回的字符串
-loom_sidecar_free_bytes    → 释放返回的字节缓冲
+loom_extract       → 读取 sidecar（先外部文件，再内嵌元数据）
+loom_verify        → 语义验证 + BLAKE3 内容哈希
+loom_verify_json   → 结构化 facts/diagnostics JSON
+loom_route         → 4 关路由决策
+loom_decode         → 完整解码闭环（route → verify → decode）
+loom_free_cstr     → 释放返回的字符串
+loom_free_bytes    → 释放返回的字节缓冲
 ```
 
 ## 正确性模型
@@ -147,7 +147,7 @@ loom_sidecar_free_bytes    → 释放返回的字节缓冲
 
  宿主数据 + sidecar
     │
-    └──→ L2Core 解释器（loom_sidecar_decode）
+    └──→ L2Core 解释器（loom_decode）
            extract → verify → 4 门路由 → 解释执行
            → Arrow RecordBatch（IPC + C Data Interface）
            → DuckDB / Spark / Arrow 消费
@@ -155,7 +155,7 @@ loom_sidecar_free_bytes    → 释放返回的字节缓冲
 
 - **kloom**（离线）— K 框架形式化语义，14 个规范测试（14/14 通过）
 - **Rust 解释器**（生产解码器）— 通用 L2Core 解释器（`interp/l2core_interp.rs`）
-  接进 `loom_sidecar_decode`，CI 中经 kloom 验证。从自动生成的 IR 解码
+  接进 `loom_decode`，CI 中经 kloom 验证。从自动生成的 IR 解码
   i32/i64/f32/f64/bool、可空、Utf8 列，产出真实 Arrow（`StreamWriter` IPC +
   `arrow::ffi` C Data Interface），由 DuckDB `loom_scan` 表函数物化为 typed 行。
 - **JIT**（离线验证，尚未接入生产 FFI）— melior/LLVM 原生代码生成，CI 中经解释器
@@ -271,7 +271,7 @@ Float64、Utf8。
 
 ## 解码运行时与 JIT
 
-生产解码运行时是 **L2Core 解释器**：`loom_sidecar_decode` 提取 sidecar、验证 IR、
+生产解码运行时是 **L2Core 解释器**：`loom_decode` 提取 sidecar、验证 IR、
 评估 4 门路由，并在 Loom 原生路径上解释执行程序得到真实 Arrow `RecordBatch`，
 以裸 IPC 流和 Arrow C Data Interface 返回；DuckDB `loom_scan` 表函数把这些列物化
 为 typed SQL 行。自动生成的 IR（`generate_decode_ir_from_parquet`）覆盖非空

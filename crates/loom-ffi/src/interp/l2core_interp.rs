@@ -3,7 +3,7 @@
 //! Phase: decode-chain (Plan 1). This module replaces the i32-only shortcut in
 //! [`super::native_lowering::execute_supported_copy_i32`] with a *general*
 //! statement-walking interpreter over [`L2CoreProgram`]. It is the one execution
-//! engine wired into the sidecar FFI ([`crate::ffi::loom_sidecar_decode`]).
+//! engine wired into the sidecar FFI ([`crate::ffi::loom_decode`]).
 //!
 //! # Design contract
 //!
