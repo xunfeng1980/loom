@@ -22,46 +22,71 @@ Sidecar 是携带在宿主数据旁的可剥离元数据：
 
 ## 快速开始
 
-### 1. 编译
+### 1. 编译 CLI
 
 ```bash
 cargo build --release -p loom-cli
 ```
 
-### 2. 生成 sidecar（生产路径）
+生成 `target/release/loom`。
+
+### 2. 编写或生成 Decode IR 程序
 
 ```bash
-# 生成人类可读的 L2Core IR（RON 格式）
-cargo run --release -p loom-cli -- gen-ir assets/quickstart.ron
+# 方案 A：使用预置示例（人类可读的 RON 格式）
+cat assets/quickstart.ron
 
-# 转换为二进制 .l2ir（或直接从 .ron 嵌入）
-cargo run --release -p loom-cli -- convert assets/quickstart.ron assets/quickstart.l2ir
-
-# 嵌入为外部 sidecar（原始文件不变）
-cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
+# 方案 B：生成默认程序
+cargo run --release -p loom-cli -- gen-ir my_program.ron
 ```
 
-生成 `assets/data.parquet.loomsidecar` — 原始文件不变。
+编辑 `my_program.ron` 描述解码逻辑，然后转为二进制：
+
+```bash
+cargo run --release -p loom-cli -- convert my_program.ron my_program.l2ir
+```
 
 ### 3. 验证 IR
 
 ```bash
-cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
+cargo run --release -p loom-cli -- verify-l2core my_program.l2ir
+# 输出：Verification: passed（或列出诊断信息）
 ```
 
-### 4. DuckDB 扩展
+### 4. 嵌入为外部 sidecar
 
 ```bash
-cd contrib/duckdb-ext && mkdir -p build && cd build
-cmake .. && make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
+cargo run --release -p loom-cli -- sidecar embed-external data.parquet my_program.l2ir
+# 生成 data.parquet.loomsidecar — 原始文件不变
+```
+
+也可以直接用预置文件：
+
+```bash
+cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
+```
+
+### 5. 运行 DuckDB 扩展
+
+DuckDB CLI 已内置在 `contrib/duckdb-ext/vendor/duckdb-cli/duckdb`。
+先编译扩展：
+
+```bash
+cd contrib/duckdb-ext/build && cmake .. && make -j$(sysctl -n hw.logicalcpu)
+```
+
+然后启动 DuckDB 并查询（使用绝对路径）：
+
+```bash
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned
 ```
 
 ```sql
-LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
-SELECT * FROM loom_scan('data.parquet');
+LOAD '<项目根目录>/contrib/duckdb-ext/build/loom.duckdb_extension';
+SELECT * FROM loom_scan('<项目根目录>/assets/data.parquet');
 ```
 
-### 5. 测试
+### 6. 运行测试
 
 ```bash
 cargo test --workspace

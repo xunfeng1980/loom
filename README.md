@@ -29,46 +29,71 @@ don't keep reading with their own host-native reader.
 
 ## Quickstart
 
-### 1. Build
+### 1. Build the CLI
 
 ```bash
 cargo build --release -p loom-cli
 ```
 
-### 2. Generate a sidecar (production path)
+This produces `target/release/loom`.
+
+### 2. Write or generate a Decode IR program
 
 ```bash
-# Generate human-readable L2Core IR (RON format)
-cargo run --release -p loom-cli -- gen-ir assets/quickstart.ron
+# Option A: use the pre-built example (human-readable RON format)
+cat assets/quickstart.ron
 
-# Convert to binary .l2ir (or embed directly from .ron)
-cargo run --release -p loom-cli -- convert assets/quickstart.ron assets/quickstart.l2ir
-
-# Embed as external sidecar (original file unchanged)
-cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
+# Option B: generate a default program
+cargo run --release -p loom-cli -- gen-ir my_program.ron
 ```
 
-Writes `assets/data.parquet.loomsidecar` — original file untouched.
+Edit `my_program.ron` to describe your decode logic, then convert to binary:
+
+```bash
+cargo run --release -p loom-cli -- convert my_program.ron my_program.l2ir
+```
 
 ### 3. Verify the IR
 
 ```bash
-cargo run --release -p loom-cli -- verify-l2core assets/quickstart.l2ir
+cargo run --release -p loom-cli -- verify-l2core my_program.l2ir
+# Output: Verification: passed  (or lists diagnostics)
 ```
 
-### 4. DuckDB extension
+### 4. Embed as external sidecar
 
 ```bash
-cd contrib/duckdb-ext && mkdir -p build && cd build
-cmake .. && make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
+cargo run --release -p loom-cli -- sidecar embed-external data.parquet my_program.l2ir
+# Writes data.parquet.loomsidecar — original file unchanged
+```
+
+You can also use the bundled example files:
+
+```bash
+cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir
+```
+
+### 5. Run the DuckDB extension
+
+The DuckDB CLI is vendored at `contrib/duckdb-ext/vendor/duckdb-cli/duckdb`.
+Build the extension once:
+
+```bash
+cd contrib/duckdb-ext/build && cmake .. && make -j$(sysctl -n hw.logicalcpu)
+```
+
+Then start DuckDB and query (use absolute paths):
+
+```bash
+./contrib/duckdb-ext/vendor/duckdb-cli/duckdb -unsigned
 ```
 
 ```sql
-LOAD 'contrib/duckdb-ext/build/loom.duckdb_extension';
-SELECT * FROM loom_scan('data.parquet');
+LOAD '<repo_root>/contrib/duckdb-ext/build/loom.duckdb_extension';
+SELECT * FROM loom_scan('<repo_root>/assets/data.parquet');
 ```
 
-### 5. Tests
+### 6. Run tests
 
 ```bash
 cargo test --workspace
