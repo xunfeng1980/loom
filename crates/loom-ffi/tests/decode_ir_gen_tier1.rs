@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use arrow_array::{
     Array, BooleanArray, Float32Array, Float64Array, Int32Array, Int64Array, RecordBatch,
+    StringArray,
 };
 use arrow_schema::{DataType, Field, Schema};
 
@@ -112,13 +113,61 @@ fn tier1_mixed_fixed_width_roundtrip() {
 }
 
 #[test]
+fn tier3_utf8_roundtrip() {
+    // Tier 3: non-null Utf8 round-trips (incl. empty + multi-byte strings)
+    // alongside an integer column.
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("id", DataType::Int32, false),
+        Field::new("name", DataType::Utf8, false),
+    ]));
+    let ids = vec![1i32, 2, 3, 4, 5];
+    let names = vec!["alpha", "", "βγ", "hello world", "x"];
+    let batch = RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(Int32Array::from(ids.clone())),
+            Arc::new(StringArray::from(names.clone())),
+        ],
+    )
+    .expect("batch");
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("utf8.parquet");
+    write_parquet(&batch, &path);
+
+    let program = generate_decode_ir_from_parquet(&path)
+        .expect("gen ir")
+        .expect("some program");
+    let report = verify_l2_core(&program);
+    assert!(
+        report.is_ok(),
+        "utf8 IR must verify: {:?}",
+        report.diagnostics()
+    );
+
+    let host = parquet_to_raw_host(&path).expect("raw host");
+    let inputs = inputs_from_program(&program, &host);
+    let columns = interpret_l2core(&program, &inputs).expect("interpret ok");
+    assert_eq!(columns.len(), 2);
+
+    let dec_id = Int32Array::from(columns[0].data.clone());
+    assert_eq!(dec_id.values(), &ids[..]);
+    let dec_name = StringArray::from(columns[1].data.clone());
+    assert_eq!(dec_name.len(), 5);
+    for (i, want) in names.iter().enumerate() {
+        assert_eq!(dec_name.value(i), *want, "utf8 row {i}");
+    }
+}
+
+#[test]
 fn tier2_nullable_columns_roundtrip_and_skip_utf8() {
     // Tier 2: nullable i32 + nullable f64 round-trip (null positions + values);
     // a Utf8 column (Tier 3) is skipped.
     let schema = Arc::new(Schema::new(vec![
         Field::new("maybe_i32", DataType::Int32, true),
         Field::new("maybe_f64", DataType::Float64, true),
-        Field::new("name", DataType::Utf8, false),
+        // Nullable Utf8 is not yet supported (Tier 3 covers non-null Utf8) → skipped.
+        Field::new("name", DataType::Utf8, true),
     ]));
     let i32s = vec![Some(1), None, Some(3), None, Some(5)];
     let f64s = vec![None, Some(2.5), Some(3.5), None, Some(5.5)];

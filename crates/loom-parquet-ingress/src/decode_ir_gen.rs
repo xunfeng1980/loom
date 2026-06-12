@@ -103,17 +103,120 @@ pub fn generate_decode_ir_from_parquet(
     let total_rows = metadata.file_metadata().num_rows() as u64;
     let rows_expr = || ScalarExpr::Const(ScalarValue::UInt64(total_rows));
 
+    // Utf8 data-slice sizes are content-dependent, so read the batches to size
+    // them (and only them). Fixed-width sizes come from the schema alone.
+    let batches = builder
+        .build()
+        .map_err(|e| SidecarCodecError::Malformed(format!("parquet build: {e}")))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| SidecarCodecError::Malformed(format!("parquet read: {e}")))?;
+
     let mut capabilities = Vec::new();
     let mut body: Vec<L2CoreStmt> = Vec::new();
     let mut offset: u64 = 0;
     let mut column_count: u64 = 0;
 
-    for field in schema.fields() {
+    for (col_idx, field) in schema.fields().iter().enumerate() {
+        let col_name = field.name();
+
+        // ── Tier 3: non-null Utf8 (variable-length) ──────────────────────────
+        if !field.is_nullable()
+            && matches!(
+                field.data_type(),
+                arrow_schema::DataType::Utf8 | arrow_schema::DataType::LargeUtf8
+            )
+        {
+            let data_len = utf8_data_len(&batches, col_idx)?;
+            let offsets_id = format!("offsets_{col_name}");
+            let data_id = format!("data_{col_name}");
+            let output_id = format!("output_{col_name}");
+
+            // offsets slice: (rows+1) int32 cumulative byte offsets.
+            capabilities.push(Capability::InputSlice(InputSliceCapability {
+                id: offsets_id.clone(),
+                offset,
+                length: total_rows.saturating_add(1).saturating_mul(4),
+            }));
+            offset = offset.saturating_add(total_rows.saturating_add(1).saturating_mul(4));
+            capabilities.push(Capability::InputSlice(InputSliceCapability {
+                id: data_id.clone(),
+                offset,
+                length: data_len,
+            }));
+            offset = offset.saturating_add(data_len);
+            capabilities.push(Capability::OutputBuilder(OutputBuilderCapability {
+                id: output_id.clone(),
+                arrow_type: L2DataType::Utf8,
+                nullable: false,
+                max_events: total_rows,
+            }));
+
+            let i = || ScalarExpr::Var("i".to_string());
+            body.push(L2CoreStmt::ForRange {
+                index: "i".to_string(),
+                start: ScalarExpr::Const(ScalarValue::UInt64(0)),
+                end: rows_expr(),
+                body: vec![
+                    // lo = i32(offsets[i*4 .. +4]); hi = i32(offsets[i*4+4 .. +4])
+                    L2CoreStmt::ReadInput {
+                        capability: offsets_id.clone(),
+                        offset: ScalarExpr::Mul(
+                            Box::new(i()),
+                            Box::new(ScalarExpr::Const(ScalarValue::UInt64(4))),
+                        ),
+                        width: ScalarExpr::Const(ScalarValue::UInt64(4)),
+                        bind: "lo_raw".to_string(),
+                    },
+                    L2CoreStmt::LetScalar {
+                        name: "lo".to_string(),
+                        expr: ScalarExpr::Bitcast {
+                            target: ScalarType::Int32,
+                            value: Box::new(ScalarExpr::Var("lo_raw".to_string())),
+                        },
+                    },
+                    L2CoreStmt::ReadInput {
+                        capability: offsets_id.clone(),
+                        offset: ScalarExpr::Add(
+                            Box::new(ScalarExpr::Mul(
+                                Box::new(i()),
+                                Box::new(ScalarExpr::Const(ScalarValue::UInt64(4))),
+                            )),
+                            Box::new(ScalarExpr::Const(ScalarValue::UInt64(4))),
+                        ),
+                        width: ScalarExpr::Const(ScalarValue::UInt64(4)),
+                        bind: "hi_raw".to_string(),
+                    },
+                    L2CoreStmt::LetScalar {
+                        name: "hi".to_string(),
+                        expr: ScalarExpr::Bitcast {
+                            target: ScalarType::Int32,
+                            value: Box::new(ScalarExpr::Var("hi_raw".to_string())),
+                        },
+                    },
+                    // data[lo .. hi] → the string bytes for row i.
+                    L2CoreStmt::ReadInput {
+                        capability: data_id,
+                        offset: ScalarExpr::Var("lo".to_string()),
+                        width: ScalarExpr::Sub(
+                            Box::new(ScalarExpr::Var("hi".to_string())),
+                            Box::new(ScalarExpr::Var("lo".to_string())),
+                        ),
+                        bind: "s".to_string(),
+                    },
+                    L2CoreStmt::AppendValue {
+                        builder: output_id,
+                        value: ScalarExpr::Var("s".to_string()),
+                    },
+                ],
+            });
+            column_count += 1;
+            continue;
+        }
+
         let Some((l2_type, width)) = fixed_width_column(field) else {
-            continue; // Skip Utf8 / unsupported.
+            continue; // Skip nullable-Utf8 / unsupported.
         };
         let nullable = field.is_nullable();
-        let col_name = field.name();
         let input_id = format!("input_{col_name}");
         let output_id = format!("output_{col_name}");
         let value_bind = format!("v_{col_name}");
@@ -288,6 +391,26 @@ fn pack_value_bytes(
     Ok(())
 }
 
+/// Total Utf8 data-byte length of a non-null Utf8 column across all batches.
+fn utf8_data_len(
+    batches: &[arrow_array::RecordBatch],
+    col_idx: usize,
+) -> Result<u64, SidecarCodecError> {
+    use arrow_array::{Array, StringArray};
+    let mut total: u64 = 0;
+    for batch in batches {
+        let a = batch
+            .column(col_idx)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| SidecarCodecError::Malformed("expected StringArray".into()))?;
+        for i in 0..a.len() {
+            total = total.saturating_add(a.value(i).len() as u64);
+        }
+    }
+    Ok(total)
+}
+
 /// Pack a Parquet file's decodable column values into the raw column-major
 /// little-endian host buffer that [`generate_decode_ir_from_parquet`] reads.
 /// Nullable columns are prefixed with a validity byte per row.
@@ -316,6 +439,34 @@ pub fn parquet_to_raw_host(path: &Path) -> Result<Vec<u8>, SidecarCodecError> {
     let mut out = Vec::new();
 
     for (col_idx, field) in schema.fields().iter().enumerate() {
+        // Tier 3: non-null Utf8 → offsets ((rows+1) int32) then data bytes.
+        if !field.is_nullable()
+            && matches!(
+                field.data_type(),
+                arrow_schema::DataType::Utf8 | arrow_schema::DataType::LargeUtf8
+            )
+        {
+            use arrow_array::StringArray;
+            let mut offsets: Vec<i32> = vec![0];
+            let mut data: Vec<u8> = Vec::new();
+            for batch in &batches {
+                let a = batch
+                    .column(col_idx)
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or_else(|| SidecarCodecError::Malformed("expected StringArray".into()))?;
+                for i in 0..a.len() {
+                    data.extend_from_slice(a.value(i).as_bytes());
+                    offsets.push(data.len() as i32);
+                }
+            }
+            for o in &offsets {
+                out.extend_from_slice(&o.to_le_bytes());
+            }
+            out.extend_from_slice(&data);
+            continue;
+        }
+
         let Some((l2_type, _width)) = fixed_width_column(field) else {
             continue;
         };
