@@ -19,7 +19,7 @@
 //! roundtrip through the string field.
 
 use base64::Engine as _;
-use loom_ir_core::sidecar::{SidecarCodecError, SidecarOverlay};
+use loom_ir_core::sidecar::{ChunkBinding, SidecarCodecError, SidecarOverlay};
 use parquet::file::metadata::{KeyValue, ParquetMetaData};
 use std::path::Path;
 
@@ -101,12 +101,24 @@ pub fn embed_sidecar_into_key_value_metadata(
 
 /// Embed a sidecar overlay into an existing Parquet file on disk.
 ///
+/// **NON-PRODUCTION: This convenience function performs a full read-rewrite
+/// cycle, re-encoding all data pages through the ArrowWriter.** The original
+/// Parquet encoding parameters (compression, page sizes, encoding scheme) are
+/// not preserved.  Use [`embed_sidecar_into_key_value_metadata`] with a
+/// metadata-only rewrite path for production deployments.
+///
+/// **Prefer the external sidecar model** (separate `.loom` sidecar file
+/// distributed alongside the host data file) for production so data pages
+/// are never touched.
+///
 /// Reads the file, extracts existing metadata, embeds the sidecar overlay
 /// via [`embed_sidecar_into_key_value_metadata`], and rewrites the file
-/// with the modified metadata. All existing row data is preserved.
-///
-/// This convenience function handles file I/O so downstream consumers
-/// (e.g., the CLI) don't need to depend directly on `parquet`.
+/// with the modified metadata. All existing row data is preserved but
+/// re-encoded through the default ArrowWriter properties.
+#[deprecated(
+    since = "0.2.0",
+    note = "this function rewrites data pages through ArrowWriter. Use embed_sidecar_into_key_value_metadata with metadata-only paths, or the external sidecar model."
+)]
 pub fn embed_sidecar_into_parquet_file(
     path: &Path,
     overlay: &SidecarOverlay,
@@ -202,6 +214,75 @@ pub fn embed_sidecar_into_parquet_file(
     })?;
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Chunk binding generation from Parquet data
+// ---------------------------------------------------------------------------
+
+/// Generate per-column [`ChunkBinding`]s with real content hashes from a
+/// Parquet file's row data.
+///
+/// Reads all row batches, concatenates each column's data/validity buffers,
+/// and computes an FNV-1a content hash via [`loom_ir_core::sidecar::compute_chunk_hash`].
+/// One binding is produced per column. The `ir_identity` is a fixed placeholder
+/// (the IR identity belongs to the L2Core program, not the host data).
+///
+/// This function is used by the CLI to ensure sidecars carry real,
+/// verifiable bindings instead of empty `vec![]`.
+pub fn chunk_bindings_from_parquet(
+    path: &Path,
+) -> Result<Vec<ChunkBinding>, SidecarCodecError> {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+    use std::fs::File;
+
+    let file = File::open(path).map_err(|e| {
+        SidecarCodecError::Malformed(format!("open parquet file {}: {e}", path.display()))
+    })?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|e| {
+        SidecarCodecError::Malformed(format!("parquet reader for {}: {e}", path.display()))
+    })?;
+    let schema = builder.schema().clone();
+    let reader = builder.build().map_err(|e| {
+        SidecarCodecError::Malformed(format!("build parquet reader for {}: {e}", path.display()))
+    })?;
+
+    let batches: Vec<_> = reader
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            SidecarCodecError::Malformed(format!("read parquet {}: {e}", path.display()))
+        })?;
+
+    let mut bindings = Vec::with_capacity(schema.fields().len());
+    for (col_idx, field) in schema.fields().iter().enumerate() {
+        let mut data = Vec::new();
+        for batch in &batches {
+            let col = batch.column(col_idx);
+            let array_data = col.to_data();
+            for buf in array_data.buffers() {
+                data.extend_from_slice(&buf);
+            }
+            if let Some(nulls) = array_data.nulls() {
+                data.extend_from_slice(nulls.buffer().as_ref());
+            }
+        }
+
+        if data.is_empty() {
+            continue;
+        }
+
+        let content_hash = loom_ir_core::sidecar::compute_chunk_hash(&data);
+
+        bindings.push(ChunkBinding {
+            granule_id: field.name().clone(),
+            host_data_range: (0, data.len() as u64),
+            content_hash,
+            ir_identity: String::new(),
+        });
+    }
+
+    Ok(bindings)
 }
 
 // ---------------------------------------------------------------------------

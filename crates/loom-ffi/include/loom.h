@@ -39,16 +39,18 @@ int32_t loom_sidecar_extract(const char *file_path, uint8_t **out_bytes, uintptr
 /**
  * Verify a sidecar overlay's L2Core IR and compute its content-hash identity.
  *
- * Decodes the overlay bytes, decodes the inner IR bytes into a
- * [`L2CoreProgram`], and computes the FNV-1a content-hash identity string.
- * The hash is returned as a null-terminated C string through `out_hash`.
- * The caller must free this string via `loom_sidecar_free_cstr`.
+ * Decodes the overlay bytes, runs full semantic verification of the inner
+ * L2Core IR program via [`verify_l2_core_bytes`], and computes the FNV-1a
+ * content-hash identity string. The hash is returned as a null-terminated
+ * C string through `out_hash`. The caller must free this string via
+ * `loom_sidecar_free_cstr`.
  *
  * # Returns
  *
- * * `0` — Overlay decoded and verified, hash written to `out_hash`.
+ * * `0` — Overlay decoded, IR semantically verified, hash written to `out_hash`.
  * * `1` — `overlay_bytes` or `out_hash` is null.
  * * `3` — Overlay or IR bytes are malformed/truncated.
+ * * `6` — IR program failed semantic verification.
  * * `4` — Internal panic caught.
  */
 int32_t loom_sidecar_verify(const uint8_t *overlay_bytes,

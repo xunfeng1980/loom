@@ -10,24 +10,40 @@
 //!
 //! # Error codes (LoomSidecarError, repr(i32))
 //!
-//! | Code | Name              | Meaning                                      |
-//! |------|-------------------|----------------------------------------------|
-//! | 0    | Success           | Operation completed successfully             |
-//! | 1    | NullPointer       | A required pointer argument is null           |
-//! | 2    | IoError           | File I/O or path resolution failed           |
-//! | 3    | DecodeFailed      | Malformed, truncated, or invalid sidecar data |
-//! | 4    | Panicked          | A Rust panic was caught at the FFI boundary  |
-//! | 5    | NoSidecar         | No Loom sidecar found in the host file        |
+//! | Code | Name               | Meaning                                      |
+//! |------|--------------------|----------------------------------------------|
+//! | 0    | Success            | Operation completed successfully             |
+//! | 1    | NullPointer        | A required pointer argument is null           |
+//! | 2    | IoError            | File I/O or path resolution failed           |
+//! | 3    | DecodeFailed       | Malformed, truncated, or invalid sidecar data |
+//! | 4    | Panicked           | A Rust panic was caught at the FFI boundary  |
+//! | 5    | NoSidecar          | No Loom sidecar found in the host file        |
+//! | 6    | VerificationFailed | L2Core IR program failed semantic verification|
 
 use std::ffi::{c_char, CStr, CString};
 use std::panic::{self, AssertUnwindSafe};
 use std::path::Path;
 
+use loom_ir_core::full_verifier::verify_l2_core_bytes;
 use loom_ir_core::l2core_codec;
 use loom_ir_core::sidecar::SidecarOverlay;
 use loom_ir_core::sidecar_routing::{
     decide_sidecar_routing, SidecarRoutingDecision, SidecarRoutingInput,
 };
+
+// The set of L2Core IR features supported by this runtime.
+// Gate 4 (encoding_supported) checks programs against this set.
+const SUPPORTED_FEATURES: &[&str] = &["l2core.copy.v0"];
+
+fn check_encoding_supported(ir_bytes: &[u8]) -> bool {
+    let Ok(program) = l2core_codec::decode_l2core_program(ir_bytes) else {
+        return false;
+    };
+    program
+        .required_features
+        .iter()
+        .all(|f| SUPPORTED_FEATURES.contains(&f.as_str()))
+}
 use loom_parquet_ingress::sidecar_parquet::extract_sidecar_from_parquet_metadata;
 
 // ---------------------------------------------------------------------------
@@ -47,6 +63,7 @@ enum LoomSidecarError {
     DecodeFailed = 3,
     Panicked = 4,
     NoSidecar = 5,
+    VerificationFailed = 6,
 }
 
 impl LoomSidecarError {
@@ -126,16 +143,18 @@ pub unsafe extern "C" fn loom_sidecar_extract(
 
 /// Verify a sidecar overlay's L2Core IR and compute its content-hash identity.
 ///
-/// Decodes the overlay bytes, decodes the inner IR bytes into a
-/// [`L2CoreProgram`], and computes the FNV-1a content-hash identity string.
-/// The hash is returned as a null-terminated C string through `out_hash`.
-/// The caller must free this string via `loom_sidecar_free_cstr`.
+/// Decodes the overlay bytes, runs full semantic verification of the inner
+/// L2Core IR program via [`verify_l2_core_bytes`], and computes the FNV-1a
+/// content-hash identity string. The hash is returned as a null-terminated
+/// C string through `out_hash`. The caller must free this string via
+/// `loom_sidecar_free_cstr`.
 ///
 /// # Returns
 ///
-/// * `0` — Overlay decoded and verified, hash written to `out_hash`.
+/// * `0` — Overlay decoded, IR semantically verified, hash written to `out_hash`.
 /// * `1` — `overlay_bytes` or `out_hash` is null.
 /// * `3` — Overlay or IR bytes are malformed/truncated.
+/// * `6` — IR program failed semantic verification.
 /// * `4` — Internal panic caught.
 #[no_mangle]
 pub unsafe extern "C" fn loom_sidecar_verify(
@@ -153,10 +172,16 @@ pub unsafe extern "C" fn loom_sidecar_verify(
         let overlay =
             SidecarOverlay::decode(bytes).map_err(|_| LoomSidecarError::DecodeFailed)?;
 
-        // Decode the inner L2Core IR bytes to validate them, then compute
-        // the content-hash identity over the full L2IR-format encoding.
+        // Decode the inner L2Core IR program, then run full semantic
+        // verification and compute the content-hash identity.
         let program = l2core_codec::decode_l2core_program(&overlay.ir_bytes)
             .map_err(|_| LoomSidecarError::DecodeFailed)?;
+
+        let report = verify_l2_core_bytes(&overlay.ir_bytes);
+        if !report.is_ok() {
+            return Err(LoomSidecarError::VerificationFailed);
+        }
+
         let hash = l2core_codec::l2core_program_hash(&program);
 
         let cstr =
@@ -240,11 +265,14 @@ pub unsafe extern "C" fn loom_sidecar_route(
             }
         }
 
+        // Check encoding support against the runtime's supported feature set.
+        let encoding_ok = check_encoding_supported(&overlay.ir_bytes);
+
         let input = SidecarRoutingInput {
             engine_integrated: true,
             sidecar: Some(overlay),
             hash_verification: hash_results,
-            encoding_supported: true,
+            encoding_supported: encoding_ok,
         };
 
         let decision = decide_sidecar_routing(input);

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use std::env;
 use std::fs;
 
@@ -8,7 +9,9 @@ use loom_ir_core::l2_core::{
 };
 use loom_ir_core::l2core_codec::{decode_l2core_program, encode_l2core_program, l2core_program_hash};
 use loom_ir_core::sidecar::SidecarOverlay;
-use loom_parquet_ingress::sidecar_parquet::embed_sidecar_into_parquet_file;
+use loom_parquet_ingress::sidecar_parquet::{
+    chunk_bindings_from_parquet, embed_sidecar_into_parquet_file,
+};
 
 fn main() {
     if let Err(err) = run() {
@@ -64,6 +67,7 @@ fn sidecar(mode: &str, args: Vec<String>) -> Result<(), String> {
     }
 }
 
+#[allow(deprecated)]
 fn sidecar_embed(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() {
         return Err(sidecar_usage());
@@ -81,15 +85,22 @@ fn sidecar_embed(mut args: Vec<String>) -> Result<(), String> {
     };
 
     let ir_bytes = encode_l2core_program(&program);
+
+    // Generate real ChunkBindings from the Parquet file's column data.
+    let bindings = chunk_bindings_from_parquet(std::path::Path::new(&parquet_path))
+        .map_err(|e| format!("failed to compute chunk bindings: {e}"))?;
+
     let overlay = SidecarOverlay {
         ir_bytes,
-        bindings: vec![],
+        bindings,
     };
 
     embed_sidecar_into_parquet_file(std::path::Path::new(&parquet_path), &overlay)
         .map_err(|e| format!("failed to embed sidecar: {e}"))?;
 
     let hash = program.content_hash();
+    eprintln!("WARNING: embed rewrites data pages via ArrowWriter (non-production).");
+    eprintln!("  For production, use metadata-only embed or the external sidecar model.");
     println!("Embedded sidecar in {}", parquet_path);
     println!("Sidecar content hash: {}", hash);
     Ok(())
