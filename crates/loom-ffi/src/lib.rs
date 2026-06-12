@@ -99,3 +99,5 @@ pub use arrow_ipc;
 pub use ron;
 pub use serde;
 pub use fnv;
+pub use parquet;
+pub use loom_parquet_ingress;

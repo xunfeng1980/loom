@@ -16,9 +16,6 @@ format. The Decode IR is small enough to formally verify, total enough to
 guarantee termination, and Arrow-shaped so host engines consume the result
 without format-specific logic.
 
-Also referenced in [F3](https://dl.acm.org/doi/pdf/10.1145/3749163) — Open-Source
-Data File Format for the Future (ACM SIGMOD).
-
 ## Integration Model: Sidecar Overlay
 
 The sidecar is strippable metadata carried alongside host data:
