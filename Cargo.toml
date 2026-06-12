@@ -8,6 +8,7 @@ members = [
     "crates/loom-source-ingress",
     "crates/loom-lance-ingress",
     "crates/loom-parquet-ingress",
+    "contrib/interp",
 ]
 
 # Shared dependency versions — all downstream crates reference these via `.workspace = true`.

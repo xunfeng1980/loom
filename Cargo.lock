@@ -3495,21 +3495,34 @@ version = "0.1.0"
 dependencies = [
  "arrow",
  "arrow-array",
- "arrow-buffer",
- "arrow-data",
- "arrow-ipc",
  "arrow-schema",
  "cbindgen",
- "fnv",
- "fsst-rs",
+ "loom-interp",
  "loom-ir-core",
  "loom-parquet-ingress",
  "melior",
  "parquet",
- "ron",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "loom-interp"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-data",
+ "arrow-ipc",
+ "arrow-schema",
+ "fnv",
+ "fsst-rs",
+ "loom-ir-core",
+ "ron",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

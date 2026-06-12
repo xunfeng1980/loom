@@ -1,0 +1,19 @@
+[package]
+name = "loom-interp"
+version = "0.1.0"
+edition = "2021"
+description = "Loom offline verification interpreter — L1/L2 decoder, kloom harness, Arrow semantic execution"
+
+[dependencies]
+loom-ir-core = { path = "../../crates/loom-ir-core" }
+arrow         = { workspace = true }
+arrow-array   = { workspace = true }
+arrow-buffer  = { workspace = true }
+arrow-schema  = { workspace = true }
+arrow-data    = { workspace = true }
+arrow-ipc     = { workspace = true }
+fsst          = { workspace = true }
+ron           = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+fnv           = { workspace = true }

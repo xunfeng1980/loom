@@ -9,19 +9,13 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 loom-ir-core = { path = "../loom-ir-core" }
+loom-interp = { path = "../../contrib/interp" }
 loom-parquet-ingress = { path = "../loom-parquet-ingress" }
 arrow         = { workspace = true }
-arrow-array   = { workspace = true }
-arrow-buffer  = { workspace = true }
 arrow-schema  = { workspace = true }
-arrow-data    = { workspace = true }
-arrow-ipc     = { workspace = true }
 parquet       = { workspace = true }
-fsst          = { workspace = true }
-ron           = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
-fnv           = { workspace = true }
 melior        = "=0.27.0"
 
 [build-dependencies]
@@ -29,3 +23,5 @@ cbindgen = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+arrow-array = { workspace = true }
+arrow-schema = { workspace = true }

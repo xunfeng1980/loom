@@ -1,24 +1,24 @@
 
 use arrow_schema::DataType;
 
-use crate::interp::arrow_buffer_lowering::{
+use loom_interp::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, ArrowColumnBufferPlan, PrimitiveArrowType,
 };
-use crate::interp::arrow_buffer_lowering::{
+use loom_interp::arrow_buffer_lowering::{
     plan_arrow_buffers_from_decode_dialect, ArrowTableBufferPlan,
 };
 use crate::full_verifier::FullVerificationReport;
 use crate::l2_core::L2CoreProgram;
 
-use crate::interp::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
-use crate::interp::native_arrow_semantic::{
+use loom_interp::native_arrow_semantic::NativeArrowSemanticCodegenBufferKind;
+use loom_interp::native_arrow_semantic::{
     decide_validated_native_arrow_semantic_codegen_runtime,
     native_arrow_semantic_codegen_replay_evidence, prepare_native_arrow_semantic_codegen_support,
     validate_native_arrow_semantic_codegen_output, NativeArrowSemanticCodegenExecutionReport,
     NativeArrowSemanticCodegenOutputColumn, NativeArrowSemanticCodegenReplayEvidence,
     NativeArrowSemanticCodegenSupportReport, NativeArrowSemanticDiagnosticCode,
 };
-use crate::interp::native_lowering::{
+use loom_interp::native_lowering::{
     execute_supported_copy_i32, LoweringDiagnosticCode, LoweringSupportReport,
 };
 
@@ -32,7 +32,7 @@ use super::pipeline::LLVM_LOWERING_PIPELINE;
 use super::pipeline::{validate_translation_to_llvm_ir, MlirValidationOptions};
 use super::report::{MeliorBackendDiagnosticCode, MeliorBackendReport, ENTRY_SYMBOL};
 use super::toolchain::probe_toolchain;
-use crate::interp::runtime_abi::{
+use loom_interp::runtime_abi::{
     PredicateEnvelope, ProjectionSet, RuntimeExecutionDecision, RuntimeFallbackPolicy,
     RuntimePlanDecisionReport, RuntimeSafetyPolicy, SplitDescriptor,
 };
