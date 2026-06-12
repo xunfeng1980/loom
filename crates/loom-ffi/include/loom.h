@@ -120,17 +120,57 @@ int32_t loom_sidecar_verify_json(const uint8_t *overlay_bytes,
                                  const char **out_json);
 
 /**
+ * Decode a sidecar overlay and export the decoded columns as a single Arrow
+ * C Data Interface **struct array**: one `ArrowSchema` + one `ArrowArray`
+ * whose children are the output columns. This is the zero-copy boundary a
+ * host engine (e.g. the DuckDB extension) uses to materialize typed rows.
+ *
+ * `out_schema` / `out_array` are pointers to caller-allocated C
+ * `ArrowSchema` / `ArrowArray` structs (passed as `void*`). On success (`0`)
+ * both are populated and the **caller owns them** — it must invoke each
+ * struct's `release` callback per the Arrow C Data Interface contract. On any
+ * non-success code the out structs are left untouched and the caller falls
+ * back to a host-native reader.
+ *
+ * # Returns
+ * * `0` — decoded; struct array written to the out pointers.
+ * * `1` — a required pointer argument is null.
+ * * `3` — overlay/IR malformed, or the program is not materializable.
+ * * `4` — internal panic caught.
+ * * `6` — the L2Core IR failed semantic verification.
+ *
+ * # Safety
+ * `overlay_bytes`/`host_data` must be valid for their stated lengths;
+ * `out_schema`/`out_array` must point to writable `ArrowSchema`/`ArrowArray`.
+ */
+int32_t loom_sidecar_decode_carray(const uint8_t *overlay_bytes,
+                                   uintptr_t overlay_len,
+                                   const uint8_t *host_data,
+                                   uintptr_t host_data_len,
+                                   void *out_schema,
+                                   void *out_array);
+
+/**
  * Decode a sidecar overlay through the full Loom execution loop.
  *
  * 1. Decodes the sidecar overlay and inner L2Core IR.
  * 2. Runs semantic verification.
  * 3. Evaluates the 4-gate routing decision.
- * 4. If Loom-native, runs the interpreter decode and returns Arrow IPC bytes
- *    through `out_ipc_bytes` / `out_ipc_len`.
+ * 4. If Loom-native, runs the general L2Core interpreter and returns the
+ *    decoded columns as a **bare Arrow IPC stream** through `out_ipc_bytes` /
+ *    `out_ipc_len`. The buffer is a plain Arrow IPC stream (the encoding
+ *    produced by `arrow_ipc::writer::StreamWriter`) with **no `LMA1`/`LMC2`
+ *    container header** — consume it directly with `arrow_scan` / nanoarrow /
+ *    `StreamReader` without unwrapping a Loom container.
  * 5. Returns routing+execution metadata as a JSON string through `out_json`.
  *
+ * On any non-`loom-native` route (host-native fallback, verifier rejection,
+ * unsupported encoding), `out_ipc_len` is `0` and the caller must use a
+ * host-native reader. Always check the JSON `route` field before reading IPC.
+ *
  * The caller must free both outputs: `loom_sidecar_free_cstr` for the JSON,
- * `loom_sidecar_free_bytes` for the IPC buffer.
+ * `loom_sidecar_free_bytes` for the IPC buffer (safe to call on a zero-length
+ * buffer).
  *
  * # JSON schema
  *

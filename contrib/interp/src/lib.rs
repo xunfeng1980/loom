@@ -22,6 +22,7 @@ pub use loom_ffi::interp::fsst_params;
 pub use loom_ffi::interp::kloom_harness;
 pub use loom_ffi::interp::l1_model;
 pub use loom_ffi::interp::l2_kernel_registry;
+pub use loom_ffi::interp::l2core_interp;
 pub use loom_ffi::interp::native_arrow_semantic;
 pub use loom_ffi::interp::native_lowering;
 pub use loom_ffi::interp::production_native_lowering;

@@ -365,6 +365,20 @@ impl NativeArrowSemanticModelValidationReport {
     }
 }
 
+/// **Offline differential oracle — NOT a production decoder.**
+///
+/// This entry point consumes an `LMC2`/`LMA1` Arrow-semantic artifact whose
+/// payload *already contains* the answer as embedded Arrow, decodes that
+/// reference batch, and re-materializes each column under a support predicate.
+/// It proves the native model reproduces a known-good Arrow batch; it does
+/// **not** decode physical bytes via the L2Core IR.
+///
+/// The production decode path is [`crate::interp::l2core_interp::interpret_l2core`]
+/// (wired into [`crate::ffi::loom_sidecar_decode`]). This LMA1 path is retained
+/// only as the offline differential oracle that the interpreter is checked
+/// against in tests (see `tests/interp_lma1_differential.rs`). Per
+/// [`execute_verified_native_arrow_semantic`]'s Phase-50.1 note, LMC2/LMA1
+/// acceptance must not leak into the production FFI surface.
 pub fn execute_native_arrow_semantic(bytes: &[u8]) -> NativeArrowSemanticExecutionReport {
     execute_native_arrow_semantic_with_options(bytes, &ArtifactVerificationOptions::default())
 }
