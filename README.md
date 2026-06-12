@@ -1,4 +1,4 @@
-**English** | [中文](README-zh.md)
+**English** | [Chinese](README-zh.md)
 
 <p align="center">
   <img src="assets/loom-logo-minimal.svg" width="180" alt="Loom logo">

@@ -1,262 +1,205 @@
-# Phase: 生产解码链打通（sidecar decode → 真实 Arrow IPC，完全类型覆盖）
+# Phase: Production decode chain (sidecar decode → real Arrow IPC, full type coverage)
 
-> 状态：执行中（绕过 GSD 直接产出，非 .planning/PLAN.md 格式）
-> 产出日期：2026-06-12（修订：Plan 1 升级为通用解释器，Plan 3 改 tier 阶梯，目标=完全覆盖）
+> Status: executing (produced directly, not in .planning/PLAN.md format)
+> Date: 2026-06-12 (revised: Plan 1 upgraded to a general interpreter; Plan 3 became a tier ladder; goal = full coverage)
 >
-> **实施进度（2026-06-12）：**
-> - **Plan 1 ✅ 完成**：通用 L2Core 解释器 [`l2core_interp.rs`](../crates/loom-ffi/src/interp/l2core_interp.rs) 落地并接进 `loom_sidecar_decode` 的 LoomNative 分支；吞掉 i32 硬路径（等价回归测试通过）；LMA1 路径标注为离线 oracle + interp-vs-LMA1 差分测试。109 lib 测试 + 集成全绿。
-> - **Plan 2 ✅ 完整完成（含 typed-row 物化，已实跑端到端 SQL）**：
->   - `loom_sidecar_decode` 产出**真实 bare Arrow IPC**（`StreamWriter`）；新增 `loom_sidecar_decode_carray` 经 **Arrow C Data Interface**（`arrow::ffi::to_ffi` 导出 struct 数组）零拷贝交给宿主。E2E FFI 测试 [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs)：IPC 经 `StreamReader` 读回正确 + carray 经 `from_ffi` 往返正确 + `free_bytes` 释放。loom.h 契约更新（裸 IPC）。
->   - **DuckDB 扩展端到端跑通**：JIT 经 cargo feature 门控（`--no-default-features`），扩展无 LLVM 符号、可被仓库自带 `vendor/duckdb-cli/duckdb`（v1.5.3）`LOAD`。`loom_scan` 现把解码列**物化为 DuckDB typed 行**（i32/i64/f32/f64/bool/utf8 泛型 `FillVector`，未知类型 fail-soft 回退诊断列）。实测：`SELECT * FROM loom_scan('<fixture>')` 返回 10 行 int32=42；`SELECT COUNT/SUM/MIN` → 10/420/42。fixture 生成器 [`examples/make_fixture.rs`](../crates/loom-ffi/examples/make_fixture.rs)。
->   - **DoD#2 达成**：SQL 查出真实解码值，端到端 DuckDB SQL → 解释器 → Arrow C 接口 → typed 结果行。
-> - **Plan 3 ✅ Tier 1–4 全绿**（E2E 测试 [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs)：parquet→自动 IR→full verifier→解释器→值/null 位正确）：
->   - **Tier 1a（非空 i32/i64）**：`generate_decode_ir_from_parquet` 产真实 `body`（ForRange+ReadInput+AppendValue）；`parquet_to_raw_host` 按列主序 LE 打包。
->   - **Tier 1b（f32/f64/bool）**：新增 `ScalarExpr::Bitcast { target, value }`（codec tag 10 + full_verifier + 解释器；kloom 跳过），解决"width→类型"歧义。浮点/布尔的 AppendValue 包一层 Bitcast。
->   - **Tier 2（nullable）**：新增 `L2CoreStmt::If { cond, then_body, else_body }`（codec tag 7 + verifier 双分支 + 解释器 + vortex corpus 计数）；nullable 列＝validity 切片 + `If(bitcast bool 校验位){AppendValue} else {AppendNull}`。
->   - **Tier 3（非空 Utf8）**：复用既有 IR——offsets+data 双切片，按行读 lo/hi 偏移、Bitcast 为 Int32、动态宽 `ReadInput data[lo..hi]`、Bytes→Utf8 append。生成器读 batch 给 data 切片定长。
->   - **Tier 4（字典）**：Parquet 字典是**物理编码**，Arrow 读取时已物化为普通列，故字典编码输入经 Tier 1–3 透明解码（测试强制开启字典验证）。产出 dictionary-**typed** Arrow（DictionaryArray）属表示优化，留作后续（需 OutputBuilder::Dictionary + DuckDB 字典物化）。
-> - **Plan 5 ✅**：README / README-zh 的"correctness model / 生产运行时"叙述据实修正——生产解码运行时＝L2Core **解释器**（接进 `loom_sidecar_decode`，产真实 Arrow，DuckDB `loom_scan` 物化为 typed 行）；JIT 为**离线验证、尚未接入生产 FFI**（扩展 `--no-default-features` 不含 LLVM）。
-> - **Plan 4 ⏳ building block 完成 / 零转码直读待续**：
->   - **已完成**：`read_column_chunk_physical_bytes`（`File::seek` + `byte_range` 直读 column-chunk 原始物理字节，无 Arrow 物化）+ `parquet_column_chunk_hash`（对物理字节算 BLAKE3，可用于 sidecar 绑定校验）。测试 [`physical_bytes.rs`](../crates/loom-parquet-ingress/tests/physical_bytes.rs)：直读确定性、列间字节/哈希相异、越界 fail-closed。这把原分析中 `bind_content_hash_to_parquet_data` 无操作 + "物理范围仅用于诊断" 的缺口落到了真实物理读。
->   - **剩余前沿**：让自动 IR 直接**解码物理字节**（page header 解析 + 编码内解压：PLAIN/dict/RLE），从而省掉当前的 raw 重排（`parquet_to_raw_host` 经 Arrow 物化再打包）。这相当于在 L2Core IR 内重建 parquet 页解码，是与"生产零转码直读"之间的最后一段大工程。
-> 范围：把前次分析定位的五项未完成项收敛为一个 phase、拆成 5 个有依赖序的 plan。
-> **终态目标：全类型覆盖**——i32/i64/f32/f64/bool + nullable + Utf8 + 字典，端到端经 sidecar 路径解码出真实 Arrow。i32 只是第一个打通用纵切片，不是终点。
+> **Implementation progress (2026-06-12):**
+> - **Plan 1 ✅ done**: general L2Core interpreter [`l2core_interp.rs`](../crates/loom-ffi/src/interp/l2core_interp.rs) wired into the `LoomNative` branch of `loom_sidecar_decode`; subsumes the i32 shortcut (equivalence regression passes); the LMA1 path is annotated as an offline oracle + an interp-vs-LMA1 differential test. 109 lib tests + integration all green.
+> - **Plan 2 ✅ complete (incl. typed-row materialization, verified via end-to-end SQL)**:
+>   - `loom_sidecar_decode` emits **real bare Arrow IPC** (`StreamWriter`); new `loom_sidecar_decode_carray` exports a struct array over the **Arrow C Data Interface** (`arrow::ffi::to_ffi`) for zero-copy hand-off. E2E FFI test [`sidecar_decode_ffi.rs`](../crates/loom-ffi/tests/sidecar_decode_ffi.rs): IPC reads back via `StreamReader`, the C-array round-trips via `from_ffi`, `free_bytes` releases. loom.h contract updated (bare IPC).
+>   - **DuckDB extension runs end-to-end**: the JIT is behind a cargo feature (`--no-default-features`), so the extension carries no LLVM symbols and loads in the bundled `vendor/duckdb-cli/duckdb` (v1.5.3). `loom_scan` materializes decoded columns into **typed DuckDB rows** (generic `FillVector` for i32/i64/f32/f64/bool/utf8; unknown types fail-soft to a diagnostic column). Verified: `SELECT * FROM loom_scan('<fixture>')` returns 10 rows of int32=42; `SELECT COUNT/SUM/MIN` → 10/420/42. Fixture generator [`examples/make_fixture.rs`](../crates/loom-ffi/examples/make_fixture.rs).
+>   - **DoD#2 met**: SQL returns real decoded values, end-to-end DuckDB SQL → interpreter → Arrow C interface → typed result rows.
+> - **Plan 3 ✅ Tiers 1–4 green** (E2E test [`decode_ir_gen_tier1.rs`](../crates/loom-ffi/tests/decode_ir_gen_tier1.rs): parquet → auto IR → full verifier → interpreter → correct values/null positions):
+>   - **Tier 1a (non-null i32/i64)**: `generate_decode_ir_from_parquet` emits a real `body` (ForRange+ReadInput+AppendValue); `parquet_to_raw_host` packs a column-major LE buffer.
+>   - **Tier 1b (f32/f64/bool)**: new `ScalarExpr::Bitcast { target, value }` (codec tag 10 + full_verifier + interpreter; kloom skips it) resolves the "width→type" ambiguity. Float/bool AppendValue wraps the read in a Bitcast.
+>   - **Tier 2 (nullable)**: new `L2CoreStmt::If { cond, then_body, else_body }` (codec tag 7 + verifier two-branch + interpreter + vortex corpus counter); a nullable column = a validity slice + `If(bitcast bool validity){AppendValue} else {AppendNull}`.
+>   - **Tier 3 (non-null Utf8)**: reuses existing IR — offsets+data slices; per row read lo/hi offsets, Bitcast to Int32, dynamic-width `ReadInput data[lo..hi]`, Bytes→Utf8 append. The generator reads batches to size the data slice.
+>   - **Tier 4 (dictionary)**: Parquet dictionary is a **physical encoding**; the Arrow reader materializes it to a plain column, so dictionary-encoded input decodes transparently through Tiers 1–3 (test forces dictionary encoding). Producing a dictionary-**typed** Arrow output (DictionaryArray) is a representation optimization left as future work (needs OutputBuilder::Dictionary + DuckDB dictionary materialization).
+> - **Plan 5 ✅**: the README / README-zh "correctness model / production runtime" narrative is corrected to match the code — the production decode runtime is the L2Core **interpreter** (wired into `loom_sidecar_decode`, emits real Arrow, materialized into typed rows by DuckDB `loom_scan`); the JIT is **offline-verified and not yet wired to the production FFI** (the extension is built `--no-default-features`, excluding LLVM).
+> - **Plan 4 ⏳ building block done / zero-transcode direct read remaining**:
+>   - **Done**: `read_column_chunk_physical_bytes` (`File::seek` + `byte_range` reads the raw physical column-chunk bytes directly, no Arrow materialization) + `parquet_column_chunk_hash` (BLAKE3 over the physical bytes, usable for sidecar binding verification). Test [`physical_bytes.rs`](../crates/loom-parquet-ingress/tests/physical_bytes.rs): deterministic reads, distinct bytes/hashes across columns, out-of-range fails closed. This closes the original gap where `bind_content_hash_to_parquet_data` was a no-op and physical ranges were used only for diagnostics.
+>   - **Remaining frontier**: have the auto-generated IR **decode the physical bytes directly** (page-header parse + per-encoding decompress: PLAIN/dict/RLE) to drop the current raw transcode (`parquet_to_raw_host` materializes via Arrow then repacks). That amounts to rebuilding Parquet page decoding inside the L2Core IR — the last large step toward zero-transcode direct read in production.
+>
+> Scope: collapse the five outstanding items from the prior analysis into one phase, split into 5 dependency-ordered plans.
+> **End goal: full type coverage** — i32/i64/f32/f64/bool + nullable + Utf8 + dictionary, decoded end-to-end through the sidecar path into real Arrow. i32 is the first vertical slice, not the finish line.
 
 ---
 
-## 0. 根因、合并方向与单一杠杆点
+## 0. Root cause, merge direction, and the single lever
 
-五项不是五个孤立缺口，而是同一条断链的切面：
+The five items are not five separate gaps — they are facets of one broken chain:
 
-> **生产 FFI 入口 [`loom_sidecar_decode`](../crates/loom-ffi/src/ffi.rs#L503) 的 `LoomNative` 分支不执行、不输出**——
-> 它解码 IR、校验哈希、跑完 4 门路由后，到该解码那一步直接 [`let ipc_output: Vec<u8> = Vec::new();`](../crates/loom-ffi/src/ffi.rs#L580)，且该函数**当前无任何 caller**（仅 [loom.h:156](../crates/loom-ffi/include/loom.h#L156) 声明）。
+> **The `LoomNative` branch of the production FFI entry [`loom_sidecar_decode`](../crates/loom-ffi/src/ffi.rs#L503) neither executed nor output anything** —
+> it decoded the IR, verified hashes, and ran the 4-gate route, then at the decode step it returned [`let ipc_output: Vec<u8> = Vec::new();`](../crates/loom-ffi/src/ffi.rs#L580), and the function had **no caller at all** (only declared in [loom.h:156](../crates/loom-ffi/include/loom.h#L156)).
 
-打通这一点，①②④自动获得实质支撑；③⑤是其上的纵深与对齐工作。
+Fix this one point and R1/R2/R4 gain real support; R3/R5 are the depth and alignment work on top.
 
-### 关键架构真相（必须先认清，否则会"假合并"）
+### Key architectural truth (must be understood first, or you get a "fake merge")
 
-库里有**两套并行 decode 机器**，且代码已写明它们的命运：
+The codebase has **two parallel decode machines**, and the code already states their fate:
 
-| 层 | 文件 | 已支持 | 性质 |
+| Layer | File | Supported | Nature |
 |---|---|---|---|
-| 底层 builder | [arrow_builder_output.rs:78-83](../crates/loom-ffi/src/interp/arrow_builder_output.rs#L78) | Bool/i32/i64/f32/f64/**Utf8** + **AppendNull** | 原语，6 类型 + null 已齐 |
-| L2 kernel | [l2_kernel_registry.rs](../crates/loom-ffi/src/interp/l2_kernel_registry.rs) | **FSST**（字符串）、**ALP**（浮点） | 编码专用解码器，已存在 |
-| L1 model | [l1_model.rs](../crates/loom-ffi/src/interp/l1_model.rs) | **bitpack**（[l1_model/bitpack.rs](../crates/loom-ffi/src/interp/l1_model/bitpack.rs)） | 物理 L1 解码原语 |
-| **LMA1「Arrow 语义」机** | [native_arrow_semantic.rs:368](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L368) | Bool/i32/i64/f32/f64 | **不是解码器**——见下 |
-| **L2Core IR 机** | [native_lowering.rs:168](../crates/loom-ffi/src/interp/native_lowering.rs#L168) `execute_supported_copy_i32` | **仅 i32 非空** | 注释明说"intentionally **not** a general interpreter" |
+| low-level builder | [arrow_builder_output.rs:78-83](../crates/loom-ffi/src/interp/arrow_builder_output.rs#L78) | Bool/i32/i64/f32/f64/**Utf8** + **AppendNull** | primitive; 6 types + null ready |
+| L2 kernel | [l2_kernel_registry.rs](../crates/loom-ffi/src/interp/l2_kernel_registry.rs) | **FSST** (string), **ALP** (float) | encoding-specific decoders, present |
+| L1 model | [l1_model.rs](../crates/loom-ffi/src/interp/l1_model.rs) | **bitpack** ([l1_model/bitpack.rs](../crates/loom-ffi/src/interp/l1_model/bitpack.rs)) | physical L1 decode primitive |
+| **LMA1 "Arrow semantic" machine** | [native_arrow_semantic.rs:368](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L368) | Bool/i32/i64/f32/f64 | **not a decoder** — see below |
+| **L2Core IR machine** | [native_lowering.rs:168](../crates/loom-ffi/src/interp/native_lowering.rs#L168) `execute_supported_copy_i32` | **i32 non-null only** | comment says "intentionally **not** a general interpreter" |
 
-**两个不能搞错的事实：**
+**Two facts you cannot get wrong:**
 
-1. **`execute_native_arrow_semantic` 不是解码器，是「重放校验机」。** 它收的 LMA1 **内部已经嵌了答案（Arrow IPC）**——`decode_reference_batch` 解出参考 batch，再逐列 `copy_supported_column` 重物化。它证明"native 模型能否复现已嵌入的 Arrow"，不读物理字节。让 sidecar 去调它＝**假合并**（只因 LMA1 里埋了答案才"работает"）。
+1. **`execute_native_arrow_semantic` is not a decoder — it is a replay/validation machine.** The LMA1 it receives **already embeds the answer (Arrow IPC)**: `decode_reference_batch` produces a reference batch, then `copy_supported_column` re-materializes each column. It proves "can the native model reproduce the embedded Arrow", and does not read physical bytes. Wiring the sidecar to it would be a **fake merge** (it only "works" because LMA1 already contains the answer).
 
-2. **合并方向代码已写明。** [native_arrow_semantic.rs:401-403](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L401)：
+2. **The merge direction is already written in the code.** [native_arrow_semantic.rs:401-403](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L401):
    > Phase 50 will **re-anchor native execution to sidecar overlay**. LMC2/LMA1 kept for backward compat with **test fixtures**. DO NOT remove until sidecar-native track is production-ready.
 
-### 合并决策（本 phase 据此执行）
+### Merge decision (this phase executes accordingly)
 
-- **写一个通用 L2Core body 解释器**，作为**唯一生产解码器**接进 sidecar FFI。它**吞掉** `execute_supported_copy_i32`，走 `ForRange/ReadInput/AppendValue/AppendNull`，append 派发给 `arrow_builder_output`（6 类型 + null 现成），编码 op 派发给 FSST/ALP/bitpack 等 L1/L2 原语。
-- **LMA1 路径降级为离线差分 oracle**（测试问："IR 解释器能否复现参考 LMA1？"），不接生产 FFI。这与 README"interpreter 离线 / 生产单跑"叙述自洽。
-- **类型覆盖不是"加 match 分支"，而是先有通用解释器骨架**（现 i32 是硬编码捷径，刻意没做通用循环）；骨架就位后底层积木大多现成，类型推进＝分层接线。
+- **Write a general L2Core body interpreter** as the **single production decoder** wired into the sidecar FFI. It **subsumes** `execute_supported_copy_i32`, walks `ForRange/ReadInput/AppendValue/AppendNull`, dispatches appends to `arrow_builder_output` (6 types + null ready) and encoding ops to FSST/ALP/bitcast L1/L2 primitives.
+- **Demote the LMA1 path to an offline differential oracle** (the test asks "can the IR interpreter reproduce the reference LMA1?"), not wired to the production FFI. This is consistent with the README "interpreter offline / production runs solo" narrative.
+- **Type coverage is not "add a match arm" — it first needs the general interpreter skeleton** (today's i32 is a hardcoded shortcut, deliberately not a general loop); once the skeleton exists the low-level building blocks are mostly ready and adding types is incremental wiring.
 
 ---
 
-## 1. 需求映射
+## 1. Requirement mapping
 
-| ID | 未完成项 | 承载 Plan |
+| ID | Outstanding item | Owning plan |
 |---|---|---|
-| R1 | `loom_sidecar_decode` 真实 Arrow IPC 输出 | Plan 2（依赖 Plan 1） |
-| R2 | L2Core interpreter/JIT 与 sidecar FFI 打通 | Plan 1 |
+| R1 | `loom_sidecar_decode` real Arrow IPC output | Plan 2 (depends on Plan 1) |
+| R2 | L2Core interpreter/JIT wired to the sidecar FFI | Plan 1 |
 | R3 | Parquet raw physical byte binding | Plan 4 |
-| R4 | README production JIT/online decode 叙述与代码对齐 | Plan 5 |
-| R5 | auto IR gen 产真实 decode program（**全类型覆盖**） | Plan 3 |
+| R4 | README production JIT/online-decode narrative aligned with code | Plan 5 |
+| R5 | auto IR gen produces a real decode program (**full type coverage**) | Plan 3 |
 
-## 2. 依赖序（执行顺序）
+## 2. Dependency order (execution order)
 
 ```
-Plan 1 (R2: 通用 L2Core 解释器 + LMA1 降 oracle，Tier 1 引擎绿)
-   └─> Plan 2 (R1: 回填真实 Arrow IPC + 打通 caller)
-          ├─> Plan 3 (R5: tier 阶梯——全类型覆盖，每 tier 端到端)
+Plan 1 (R2: general L2Core interpreter + LMA1 demoted to oracle, Tier 1 engine green)
+   └─> Plan 2 (R1: backfill real Arrow IPC + wire the caller)
+          ├─> Plan 3 (R5: tier ladder — full type coverage, each tier end-to-end)
           │       Tier 1 → Tier 2 → Tier 3 → Tier 4
-          └─> Plan 5 (R4: 据实修正 README/correctness model)
-Plan 4 (R3: Parquet 物理字节直读，含变长/字典 chunk) —— 与 Plan 3 平行
+          └─> Plan 5 (R4: correct the README/correctness model to match code)
+Plan 4 (R3: direct Parquet physical-byte read, incl. variable-length/dict chunks) — parallel to Plan 3
 ```
 
-Plan 5 必须在 Plan 1/2 落地**之后**写。Plan 3 是本 phase 的主体工作量（爬完 tier 阶梯＝完全覆盖）。
+Plan 5 must be written **after** Plan 1/2 land. Plan 3 is the bulk of this phase (climbing the tier ladder = full coverage).
 
 ---
 
-## Plan 1 — 通用 L2Core 解释器接入 `LoomNative` 分支（R2）
+## Plan 1 — wire the general L2Core interpreter into the `LoomNative` branch (R2)
 
-**目标**：写一个**通用** `L2CoreProgram` body 解释器作为唯一生产解码器，接进 `loom_sidecar_decode`，吞掉 i32 硬路径；把 LMA1 路径降为离线 oracle。本 plan 交付**引擎骨架 + Tier 1（定宽原语非空）跑绿**，骨架从一开始就为后续 tier 预留派发点。
+**Goal**: write a **general** `L2CoreProgram` body interpreter as the single production decoder, wire it into `loom_sidecar_decode`, subsume the i32 shortcut, and demote the LMA1 path to an offline oracle. This plan delivers the **engine skeleton + Tier 1 (fixed-width non-null) green**, with dispatch points reserved for later tiers from the start.
 
-**依赖**：无。
+**Depends**: none.
 
-**涉及文件**
-- 新增：`crates/loom-ffi/src/interp/l2core_interp.rs`（通用解释器；`interpret_l2core(program, inputs) -> Result<Vec<ArrayData>>`）
-- 改：[crates/loom-ffi/src/ffi.rs:566-600](../crates/loom-ffi/src/ffi.rs#L566)（`LoomNative` 分支调通用解释器）
-- 复用：[arrow_builder_output.rs](../crates/loom-ffi/src/interp/arrow_builder_output.rs)（append 派发，6 类型 + null 现成）
-- 吞掉/复用：[native_lowering.rs:168](../crates/loom-ffi/src/interp/native_lowering.rs#L168) `execute_supported_copy_i32`（其 i32 语义并入通用解释器；保留为 thin wrapper 或迁测试）
-- 降级标注：[native_arrow_semantic.rs:401](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L401)（注释更新：LMA1＝offline oracle）
+**Files**
+- New: `crates/loom-ffi/src/interp/l2core_interp.rs` (general interpreter; `interpret_l2core(program, inputs) -> Result<Vec<ArrayData>>`)
+- Edit: [crates/loom-ffi/src/ffi.rs:566-600](../crates/loom-ffi/src/ffi.rs#L566) (`LoomNative` branch calls the general interpreter)
+- Reuse: [arrow_builder_output.rs](../crates/loom-ffi/src/interp/arrow_builder_output.rs) (append dispatch, 6 types + null ready)
+- Subsume/reuse: [native_lowering.rs:168](../crates/loom-ffi/src/interp/native_lowering.rs#L168) `execute_supported_copy_i32` (its i32 semantics fold into the general interpreter; kept as a thin wrapper or moved to tests)
+- Demotion note: [native_arrow_semantic.rs:401](../crates/loom-ffi/src/interp/native_arrow_semantic.rs#L401) (comment update: LMA1 = offline oracle)
 
-**任务**
-1. **A（引擎骨架）**：实现 `interpret_l2core`，按顺序执行 `body`：`ForRange`/`CursorLoop` 驱动行游标，`ReadInput` 按 `InputSlice.offset/length` 从 host 字节切片读，`LetScalar` 绑定，`AppendValue`/`AppendNull` 派发给 `OutputBuilder`，`FailClosed` 立即降级。**派发用 `match` 覆盖所有 `L2DataType`，未实现的 arm 显式返回类型化 `Unsupported` 错误（为 Tier 2-4 预留）。**
-   **AC**：解释器是通用的——加新类型＝填派发 arm，不改控制流；`execute_supported_copy_i32` 的 i32 用例由 `interpret_l2core` 复现，旧测试全过。
-2. **B（FFI 接入）**：`LoomNative` 分支取 `program` + `verified_bindings` 对应 host 切片，调 `interpret_l2core` 得 `Vec<ArrayData>`，构 `ArrowSemanticPayload`（[arrow_semantic.rs:36](../crates/loom-ffi/src/interp/arrow_semantic.rs#L36) `try_new`）暂存供 Plan 2 序列化。
-   **AC**：i32 非空程序 → 正确 `Int32Array`；越界/不支持 → fail-closed 转 `host-native`，无 panic。
-3. **C（LMA1 降级）**：把 `execute_native_arrow_semantic` 标注/迁移为**离线差分 oracle**（仅测试调用），新增"interp vs LMA1 参考"差分测试骨架。
-   **AC**：生产 FFI 路径不再引用 LMA1 执行；LMA1 仅出现在 `#[cfg(test)]`/oracle 模块。
+**Tasks**
+1. **A (engine skeleton)**: implement `interpret_l2core`, executing `body` in order: `ForRange`/`CursorLoop` drive a row cursor, `ReadInput` reads from the host byte slice per `InputSlice.offset/length`, `LetScalar` binds, `AppendValue`/`AppendNull` dispatch to `OutputBuilder`, `FailClosed` fails closed immediately. **Dispatch covers all `L2DataType` via `match`; unimplemented arms return a typed `Unsupported` error (reserved for Tiers 2-4).**
+   **AC**: the interpreter is general — adding a type is filling a dispatch arm, not changing control flow; the i32 case of `execute_supported_copy_i32` is reproduced by `interpret_l2core` and all old tests pass.
+2. **B (FFI wiring)**: the `LoomNative` branch takes the `program` + host slices, calls `interpret_l2core`, builds the batch and stores it for Plan 2 serialization.
+   **AC**: an i32 non-null program → correct `Int32Array`; out-of-bounds/unsupported → fail closed to `host-native`, no panic.
+3. **C (LMA1 demotion)**: annotate/move `execute_native_arrow_semantic` to an **offline differential oracle** (test-only); add an "interp vs LMA1 reference" differential test scaffold.
+   **AC**: the production FFI path no longer references LMA1 execution; LMA1 appears only in test/oracle modules.
 
-**验证**
-- 单测：手写 i32 非空 `L2CoreProgram` + host 字节 → 解释器出值正确。
-- 回归：原 `execute_supported_copy_i32` 全部用例经 `interpret_l2core` 通过。
-- 负路径：不支持 feature/类型/越界 → fail-closed 无 panic。
-- 差分：interp 输出 == LMA1 oracle 参考（i32 fixture）。
+**Verification**: unit tests; regression of `execute_supported_copy_i32`; negative paths fail closed without panic; interp output == LMA1 oracle reference (i32 fixture).
 
-**must-have**：解释器**必须是通用骨架**，不得再写第二个 i32 专用捷径。fail-closed 硬约束（CLAUDE.md）。
+**must-have**: the interpreter **must be a general skeleton** — no second i32-specific shortcut. Fail-closed is a hard constraint (CLAUDE.md).
 
-**风险/暗礁**
-- 别让 sidecar 调 `execute_native_arrow_semantic`（假合并）。
-- `verified_bindings` 与 program capability 的列对应（granule_id ↔ capability id）需显式核对，否则列错位。
+**Risks**: do not call `execute_native_arrow_semantic` from the sidecar (fake merge); the `verified_bindings`↔capability column mapping (granule_id ↔ capability id) must be checked explicitly.
 
 ---
 
-## Plan 2 — 回填真实 Arrow IPC 输出 + 打通 caller（R1）
+## Plan 2 — backfill real Arrow IPC output + wire the caller (R1)
 
-**目标**：把 Plan 1 的 payload 序列化为**真实 Arrow IPC 字节**回填 `out_ipc_bytes`，并让 DuckDB 扩展真正消费它。
+**Goal**: serialize Plan 1's output to **real Arrow IPC bytes** into `out_ipc_bytes`, and have the DuckDB extension actually consume it.
 
-**依赖**：Plan 1。
+**Depends**: Plan 1.
 
-**涉及文件**
-- 改：[crates/loom-ffi/src/ffi.rs:579-598](../crates/loom-ffi/src/ffi.rs#L579)（删 `Vec::new()` 空缓冲）
-- 复用：[arrow_semantic_codec.rs:52](../crates/loom-ffi/src/interp/arrow_semantic_codec.rs#L52) `encode_arrow_semantic_payload`（`StreamWriter`）
-- 改：[contrib/duckdb-ext/loom_extension.cpp:75-119](../contrib/duckdb-ext/loom_extension.cpp#L75)（新增 decode 调用 + IPC 摄取）
-- 改：[crates/loom-ffi/include/loom.h:156](../crates/loom-ffi/include/loom.h#L156)（契约对齐）
+**Files**
+- Edit: [crates/loom-ffi/src/ffi.rs:579-598](../crates/loom-ffi/src/ffi.rs#L579) (remove the `Vec::new()` empty buffer)
+- Edit: [contrib/duckdb-ext/loom_extension.cpp](../contrib/duckdb-ext/loom_extension.cpp) (call decode + ingest IPC)
+- Edit: [crates/loom-ffi/include/loom.h](../crates/loom-ffi/include/loom.h) (contract alignment)
 
-**任务**
-1. **A**：成功路径对 payload 取 IPC 段（或裸 `StreamWriter`）回填 `out_ipc_bytes/out_ipc_len`，写真实 `row_count/column_count`。
-   **AC**：`ipc_len > 0`；arrow-rs `StreamReader` 能读回，行数与 program bound 一致。
-2. **B**：明确**裸 IPC vs LMA1 容器**对外契约写进 `loom.h`。
-   **AC**：头文件注释与返回字节格式逐字一致。
-3. **C**：DuckDB 扩展在 `route=="loom-native"` 调 `loom_sidecar_decode`，IPC 喂 `arrow_scan`/nanoarrow；非 loom-native 保持回退。
-   **AC**：一条 SQL 经 sidecar 路径查出 i32 列真实值（端到端）。
-4. **D**：`loom_sidecar_free_bytes` 正确释放非空缓冲。
-   **AC**：无泄漏/双 free（`Box::from_raw` 配对）。
+**Tasks**
+1. **A**: on success, serialize the batch to a bare Arrow IPC stream into `out_ipc_bytes/out_ipc_len`, with real `row_count/column_count`. **AC**: `ipc_len > 0`; arrow-rs `StreamReader` reads it back.
+2. **B**: document the bare-IPC contract in `loom.h`. **AC**: header doc matches the returned bytes.
+3. **C**: the DuckDB extension calls `loom_sidecar_decode` on `route=="loom-native"` and materializes the columns; non-loom-native falls back. **AC**: one SQL query returns real column values end-to-end.
+4. **D**: `loom_sidecar_free_bytes` correctly frees the non-empty buffer. **AC**: no leak / double free.
 
-**验证**：decode→`StreamReader` 往返单测；C++/SQL 冒烟；free 路径测试。
-
-**must-have**：non-loom-native 路径**字节级不变**，不得回归。
-
-**风险/暗礁**：`arrow_semantic_codec` 产 `LMA1`（带 magic+len 头），不是裸 IPC。直接喂 arrow_scan 会失败——必须剥头或改裸 `StreamWriter`。最易翻车点。
+**must-have**: the non-loom-native path is byte-for-byte unchanged.
 
 ---
 
-## Plan 3 — `decode_ir_gen` 全类型覆盖（tier 阶梯）（R5）
+## Plan 3 — `decode_ir_gen` full type coverage (tier ladder) (R5)
 
-**目标**：让 [`generate_decode_ir_from_parquet`](../crates/loom-parquet-ingress/src/decode_ir_gen.rs#L37) 产真实可执行 `body`，并**爬完 tier 阶梯实现完全类型覆盖**。每个 tier 是一个垂直纵切片：(a) 解释器派发 arm（Plan 1 骨架的填空）+ (b) decode_ir_gen 产对应 body + (c) parquet→sidecar→IPC→值正确的端到端测试。**终态：四个 tier 全绿。**
+**Goal**: have [`generate_decode_ir_from_parquet`](../crates/loom-parquet-ingress/src/decode_ir_gen.rs) emit a real executable `body`, and **climb the tier ladder to full type coverage**. Each tier is a vertical slice: (a) interpreter dispatch + (b) decode_ir_gen body + (c) a parquet→sidecar→IPC→correct-values E2E test.
 
-**依赖**：Plan 1（引擎骨架）、Plan 2（可序列化+可验证下游）。Tier 间严格顺序：1→2→3→4。
+**Depends**: Plan 1 (engine skeleton), Plan 2 (serializable/verifiable downstream).
 
-**涉及文件**
-- 改：[crates/loom-parquet-ingress/src/decode_ir_gen.rs:55](../crates/loom-parquet-ingress/src/decode_ir_gen.rs#L55)（`body = Vec::new()` → 逐 tier 产指令）
-- 改：`crates/loom-ffi/src/interp/l2core_interp.rs`（逐 tier 填派发 arm）
-- 读：[l2_core.rs:155](../crates/loom-ir-core/src/l2_core.rs#L155)（`L2CoreStmt`）、[l2_kernel_registry.rs](../crates/loom-ffi/src/interp/l2_kernel_registry.rs)（FSST/ALP）
-
-### Tier 1 — 定宽原语非空（i32/i64/f32/f64/bool）
-- **代价**：低（builder 全有，解释器骨架已能跑 i32）。
-- **任务**：decode_ir_gen 对每个定宽非空列产 `ForRange + ReadInput(width) + AppendValue`；解释器补齐 i64/f32/f64/bool 派发 arm（bool 注意位宽）。
-- **AC**：含混合定宽列的 parquet → 各列值正确；端到端测试覆盖 5 种类型。
+### Tier 1 — fixed-width non-null (i32/i64/f32/f64/bool)
+Integers append the width-typed read directly; floats/bool wrap it in `Bitcast` (Tier 1b).
 
 ### Tier 2 — nullable
-- **代价**：中（IR 要携带 validity，解释器接 `AppendNull`，`ReadInput` 读 null bitmap）。
-- **任务**：`L2CoreProgram` 表达 validity（每行先判 null 再 AppendValue/AppendNull）；decode_ir_gen 从 parquet definition levels 推 validity；解释器按 validity 派发。
-- **AC**：含 null 的定宽列 → null 位置与值都正确（与 Arrow 参考逐行比对）。
-- **暗礁**：Parquet 用 definition levels 表达 null，不是 bitmap——IR/解释器要约定一种 validity 表示，转换在 ingress 侧。
+A validity slice + `If` per row drives AppendValue/AppendNull.
 
-### Tier 3 — Utf8（变长，经 FSST）
-- **代价**：中高（变长 InputSlice 语义 + L2 kernel 派发 + offset buffer）。
-- **任务**：解释器支持变长读（offsets + data 两段）并派发 FSST kernel（[l2_kernel_registry.rs](../crates/loom-ffi/src/interp/l2_kernel_registry.rs) id 0）；decode_ir_gen 对 Utf8/LargeUtf8 列产变长 body（替换当前 256 宽度估算）；`StringBuilder` 输出（builder 现成）。
-- **AC**：Utf8 列（含 FSST 压缩 fixture）→ 字符串值正确；空串/多字节 UTF-8 边界用例通过。
-- **暗礁**：当前 [decode_ir_gen.rs:69](../crates/loom-parquet-ingress/src/decode_ir_gen.rs#L69) Utf8=256 是假估算，必须删除换成真实 offset 语义。
+### Tier 3 — Utf8 (variable-length)
+offsets+data slices; dynamic-width `ReadInput data[lo..hi]` → Utf8 builder. (FSST kernel dispatch remains available for FSST-compressed fixtures; the default Arrow read path materializes strings.)
 
-### Tier 4 — 字典（dictionary）【本 phase 新增、净新增工作】
-- **代价**：高（**无现成 kernel、无 capability**，全新增）。
-- **任务**：
-  1. IR 侧：新增字典表达——dictionary 值表（InputSlice）+ indices（InputSlice）+ 输出 `DictionaryArray` 的 capability/语义。
-  2. 解释器：新增字典派发 arm（读 indices → 查值表 → 构 `DictionaryArray`，或物化为普通数组二选一，需定语义）。
-  3. decode_ir_gen：对 parquet dict-encoded 列产字典 body。
-  4. builder：`arrow_builder_output` 当前无 Dictionary 变体——需新增。
-- **AC**：parquet 字典编码列 → 正确 `DictionaryArray`（或约定的物化结果）；与 Arrow 参考一致。
-- **暗礁**：字典是编码也是类型，需先定"输出 DictionaryArray vs 物化展开"的契约（影响下游 DuckDB 摄取）。这是本 phase 最重的一块。
+### Tier 4 — dictionary
+Dictionary-encoded input decodes transparently (Arrow materializes it). Producing a dictionary-typed Arrow output is a representation optimization left as future work.
 
-**验证**：每 tier 一个端到端测试（真实 parquet → 自动生成 IR → 解释器 → IPC → 值正确）+ 与 LMA1/Arrow 参考差分。**四 tier 全绿＝R5 完成。**
-
-**must-have**：`decode_ir_gen` 当前**无人调用、无测试**——必须新增调用点与逐 tier 端到端测试。任一 tier 未覆盖的类型/编码必须 fail-closed，不产占位。
+**must-have**: any type/encoding not covered by a tier must fail closed — no placeholder output.
 
 ---
 
-## Plan 4 — Parquet raw physical byte binding（R3）
+## Plan 4 — Parquet raw physical byte binding (R3)
 
-**目标**：绕过 Arrow 物化，按 footer 元数据 `File::seek` 直读 column chunk 原始字节，给出精确物理偏移，落实内容哈希绑定。**需覆盖 Tier 1-4 各类编码的 chunk（定宽/变长/字典）字节范围**，否则 Plan 3 的精确 offset 无来源。
+**Goal**: bypass Arrow materialization, `File::seek` to read raw column-chunk bytes via footer metadata, and bind the content hash to real physical bytes.
 
-**依赖**：无（与 Plan 3 平行；Plan 3 Tier 各步消费本 plan 的精确偏移）。
+**Files**
+- [source_contract.rs](../crates/loom-parquet-ingress/src/source_contract.rs) (`read_column_chunk_physical_bytes`, `parquet_column_chunk_hash`)
+- Test [physical_bytes.rs](../crates/loom-parquet-ingress/tests/physical_bytes.rs)
 
-**涉及文件**
-- 改：[sidecar_parquet.rs:233-286](../crates/loom-parquet-ingress/src/sidecar_parquet.rs#L233)（`chunk_bindings_from_parquet` 直读而非 Arrow buffer）
-- 改：[source_contract.rs:110-116](../crates/loom-parquet-ingress/src/source_contract.rs#L110)（`bind_content_hash_to_parquet_data` 空操作 → 真实实现）
-- 复用：[source_contract.rs:251-262](../crates/loom-parquet-ingress/src/source_contract.rs#L251)（已能拿 `column.byte_range()`）
+**Status**: the direct-read + hash building block is done (see progress note). Decoding physical bytes in-IR (page-header parse + per-encoding decompress) to drop the raw transcode is the remaining frontier.
 
-**任务**
-1. **A**：用 `column.byte_range() -> (start, length)`，`File::seek(start)` 读 `length` 字节得 column chunk 原始字节。
-   **AC**：读出长度＝`byte_range` 长度；`host_data_range` 反映**真实文件偏移**。
-2. **B**：实现 `bind_content_hash_to_parquet_data`：对直读字节算 BLAKE3 与 binding 声明哈希比对。
-   **AC**：篡改字节 → 哈希不匹配 → Gate 3 失败 → `host-native`。
-3. **C**：为 Tier 3/4 提供变长 data/offset chunk 与字典 chunk 的字节范围切分。
-   **AC**：变长列、字典列各有一个 chunk 切分单测。
-
-**验证**：真实 parquet 直读 chunk 长度/哈希正确；篡改 → fail-closed；变长/字典 chunk 切分测试。
-
-**must-have**：page header 解析与 page 级解压**显式不在本 plan**——用注释/`log` 登记缺口，避免"全物理层已覆盖"的假象。
-
-**风险/暗礁**：`byte_range` 含 page header + 压缩字节；直读得压缩字节，与解码后逻辑字节不同。哈希契约要明确"对哪一层字节"，否则 Plan 3 offset 对不上。
+**must-have**: page-header parse and page-level decompress are explicitly **not** in the building-block step — record the gap rather than imply full physical coverage.
 
 ---
 
-## Plan 5 — README / correctness model 与代码对齐（R4）
+## Plan 5 — align README / correctness model with code (R4)
 
-**目标**：把 README/README-zh 超前于代码的强叙述据实修正——**在 Plan 1/2 落地后**，按"代码真实做到什么"写。
+**Goal**: correct the README/README-zh narrative that ran ahead of the code — **after** Plan 1/2 land, write what the code actually does.
 
-**依赖**：Plan 1、Plan 2。
+**Files**: [README.md](../README.md), [README-zh.md](../README-zh.md)
 
-**涉及文件**：[README.md](../README.md)、[README-zh.md](../README-zh.md)
+**Tasks**: change "JIT is the sole production runtime / online decode" to match code — the production path uses the **general L2Core interpreter** via `loom_sidecar_decode`; the JIT remains **offline differential verification** and is not wired to the production FFI; LMA1 is the offline oracle.
 
-**任务**
-1. **A**：把"JIT 是唯一生产运行时 / online decode → Arrow RecordBatch"改为与代码一致：生产路径经 `loom_sidecar_decode` 用**通用 L2Core 解释器**产 Arrow IPC（覆盖到哪个 tier 就写到哪）；JIT 仍为**离线差分验证**，未接生产 FFI（如本 phase 未接 JIT 就如实写"未接"）；LMA1 为离线 oracle。
-   **AC**：每条强 claim 指到 `file:line` 证据，无悬空承诺。
-2. **B**：校准"三层差分验证"叙述（kloom + interp + JIT 测试 + 新增 interp-vs-LMA1 oracle），确认未被改坏。
-   **AC**：与 [contrib/kloom](../contrib/kloom)、interp oracle 现状一致。
-
-**验证**：逐条 claim → 代码证据复核（沿用前次对齐表格式）。
-
-**must-have**：不得再写入"计划中但代码未做"的能力为既成事实；aspirational 显式标注 roadmap。
+**must-have**: do not present "planned but not built" capability as fact; mark aspirational items as roadmap.
 
 ---
 
-## 3. 完成定义（Definition of Done）——完全覆盖
+## 3. Definition of Done — full coverage
 
-本 phase 视为完成，当且仅当：
+This phase is done iff:
 
-1. **R2**：通用 L2Core 解释器为唯一生产解码器接进 sidecar FFI，吞掉 i32 硬路径；LMA1 降为离线 oracle 且有 interp-vs-LMA1 差分测试。
-2. **R1**：DuckDB 扩展经 sidecar `loom-native` 路径消费非空真实 Arrow IPC。
-3. **R5（完全类型覆盖）**：`generate_decode_ir_from_parquet` 产真实可执行 body，**Tier 1-4 全绿**——i32/i64/f32/f64/bool + nullable + Utf8 + 字典，每类型有 parquet→sidecar→IPC→值正确的端到端测试。
-4. **R3**：parquet column chunk（含定宽/变长/字典）物理字节可直读，哈希绑定 fail-closed 生效。
-5. **R4**：README 强叙述逐条有 `file:line` 支撑，无超前承诺。
-6. **全程 fail-closed**：未覆盖的类型/编码/越界/哈希不匹配一律降级 `host-native`，绝不产半成品 IPC。
-7. core/FFI 仍 **Vortex-free**；parquet 直读只在 `loom-parquet-ingress`。
+1. **R2**: the general L2Core interpreter is the single production decoder wired into the sidecar FFI, subsumes the i32 shortcut; LMA1 demoted to an offline oracle with an interp-vs-LMA1 differential test.
+2. **R1**: the DuckDB extension consumes non-empty real Arrow IPC via the sidecar `loom-native` path.
+3. **R5 (full type coverage)**: `generate_decode_ir_from_parquet` emits a real executable body, **Tiers 1-4 green** — i32/i64/f32/f64/bool + nullable + Utf8 + dictionary, each with a parquet→sidecar→IPC→correct-values E2E test.
+4. **R3**: parquet column-chunk physical bytes can be read directly, with hash binding failing closed.
+5. **R4**: README strong claims each have `file:line` support, no overpromising.
+6. **Fail-closed throughout**: any uncovered type/encoding/out-of-bounds/hash mismatch routes to `host-native` — never a half-built IPC.
+7. core/FFI remain **Vortex-free**; parquet direct-read lives only in `loom-parquet-ingress`.
 
-## 4. 明确不在本 phase 范围
+## 4. Explicitly out of scope for this phase
 
-- **JIT 接入生产 FFI**（本 phase JIT 保持离线验证；接入另起 phase）。
-- Parquet **page header 解析与 page 级解压**（Plan 4 登记缺口）。
-- 嵌套/复合类型（Struct/List/Map）、Decimal、时间戳等 Tier 1-4 之外的类型。
-- 字典之外的高级编码（RLE/FOR 直接执行——除非 Tier 推进顺带覆盖；bitpack 已有 L1 原语，按需接入）。
-- Lance / Vortex ingress 的对等打通。
+- **Wiring the JIT into the production FFI** (the JIT stays offline-verified here; wiring it is a separate phase).
+- Parquet **page-header parse and page-level decompress** (Plan 4 records the gap).
+- Nested/composite types (Struct/List/Map), Decimal, timestamps, and other types beyond Tiers 1-4.
+- Advanced encodings beyond dictionary (RLE/FOR direct execution — unless a tier covers them incidentally; bitpack already has an L1 primitive, wired as needed).
+- Parity wiring for Lance / Vortex ingress.
