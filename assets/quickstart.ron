@@ -1,0 +1,39 @@
+(
+    artifact_version: 1,
+    required_features: [],
+    optional_features: [],
+    capabilities: [
+        InputSlice((
+            id: "input",
+            offset: 0,
+            length: 20,
+        )),
+        OutputBuilder((
+            id: "output",
+            arrow_type: Int32,
+            nullable: false,
+            max_events: 5,
+        )),
+    ],
+    resource_budget: (
+        max_steps: 56,
+        max_input_bytes_read: 40,
+        max_scratch_bytes: 0,
+        max_builder_events: 5,
+        max_rows: 5,
+        max_constraint_count: 64,
+    ),
+    body: [
+        ForRange(
+            index: "i",
+            start: Const(UInt64(0)),
+            end: Const(UInt64(5)),
+            body: [
+                AppendValue(
+                    builder: "output",
+                    value: Const(Int32(42)),
+                ),
+            ],
+        ),
+    ],
+)

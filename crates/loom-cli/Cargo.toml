@@ -11,3 +11,5 @@ path = "src/main.rs"
 [dependencies]
 loom-ir-core = { path = "../loom-ir-core" }
 loom-parquet-ingress = { path = "../loom-parquet-ingress" }
+ron = { workspace = true }
+serde = { workspace = true }

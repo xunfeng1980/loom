@@ -37,7 +37,7 @@ use crate::l2core_codec;
 /// A host-neutral sidecar overlay that rides on a host file (Parquet, Vortex,
 /// Lance). Contains the encoded L2Core IR bytes plus per-granule content-hash
 /// bindings that tie host data ranges to the IR identity.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct SidecarOverlay {
     /// Encoded L2Core IR bytes (including L2IR magic + version header, as
     /// produced by `l2core_codec::encode_l2core_program`).
@@ -48,7 +48,7 @@ pub struct SidecarOverlay {
 
 /// A content-hash binding for one host data granule (column chunk, fragment,
 /// row group).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct ChunkBinding {
     /// Identifier for this granule (column name, column index, fragment id).
     pub granule_id: String,
@@ -66,7 +66,7 @@ pub struct ChunkBinding {
 // ---------------------------------------------------------------------------
 
 /// Failure modes for the sidecar overlay codec.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum SidecarCodecError {
     /// Malformed or unexpected format during decode.
     Malformed(String),
@@ -95,7 +95,7 @@ impl std::error::Error for SidecarCodecError {}
 // ---------------------------------------------------------------------------
 
 /// Result of verifying one granule's content-hash binding against host data.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct HashVerificationResult {
     /// Identifier for this granule (column name, fragment id, etc.).
     pub granule_id: String,

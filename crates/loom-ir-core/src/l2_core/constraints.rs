@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum IntegerType {
     Int32,
     Int64,
@@ -27,7 +27,7 @@ impl fmt::Display for IntegerType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum ConstraintTerm {
     Var(String),
     Int(i128),
@@ -58,7 +58,7 @@ impl fmt::Display for ConstraintTerm {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum LoomConstraint {
     Le {
         id: String,
@@ -176,7 +176,7 @@ impl LoomConstraint {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Default, PartialEq, Eq)]
 pub struct ConstraintSet {
     constraints: Vec<LoomConstraint>,
 }

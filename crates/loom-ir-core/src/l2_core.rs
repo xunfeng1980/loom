@@ -15,7 +15,7 @@ pub mod constraints;
 /// has zero `arrow-*` dependencies. The supported set is Boolean, Int32,
 /// Int64, Float32, Float64, and Utf8 — the same subset that the L2Core
 /// codec encodes.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum L2DataType {
     Boolean,
     Int32,
@@ -26,7 +26,7 @@ pub enum L2DataType {
 }
 
 /// A future Loom total-function artifact in the tiny Phase 13 core language.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct L2CoreProgram {
     pub artifact_version: u16,
     pub required_features: Vec<String>,
@@ -48,27 +48,27 @@ impl L2CoreProgram {
 }
 
 /// Explicit authority available to an `L2CoreProgram`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub enum Capability {
     InputSlice(InputSliceCapability),
     Scratch(ScratchCapability),
     OutputBuilder(OutputBuilderCapability),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct InputSliceCapability {
     pub id: String,
     pub offset: u64,
     pub length: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct ScratchCapability {
     pub id: String,
     pub max_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct OutputBuilderCapability {
     pub id: String,
     pub arrow_type: L2DataType,
@@ -77,7 +77,7 @@ pub struct OutputBuilderCapability {
 }
 
 /// Conservative per-artifact resource limits.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct ResourceBudget {
     pub max_steps: u64,
     pub max_input_bytes_read: u64,
@@ -101,7 +101,7 @@ impl ResourceBudget {
 }
 
 /// Scalar types admitted by the tiny `L2Core` slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum ScalarType {
     Bool,
     Int32,
@@ -114,7 +114,7 @@ pub enum ScalarType {
     RowIndex,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum ScalarValue {
     Bool(bool),
     Int32(i32),
@@ -126,7 +126,7 @@ pub enum ScalarValue {
     Bytes(Vec<u8>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum ScalarExpr {
     Const(ScalarValue),
     Var(String),
@@ -159,7 +159,7 @@ impl ScalarExpr {
 }
 
 /// Statements admitted by the tiny `L2Core` slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum L2CoreStmt {
     ForRange {
         index: String,
@@ -204,7 +204,7 @@ pub enum L2CoreStmt {
 }
 
 /// Event types emitted to typed Arrow builders.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub enum ArrowEventType {
     AppendValue {
         builder_id: String,
@@ -219,7 +219,7 @@ pub enum ArrowEventType {
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct OutputBuilderState {
     pub builder_id: String,
     pub arrow_type: L2DataType,
@@ -228,27 +228,27 @@ pub struct OutputBuilderState {
     pub emitted_events: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct InputRangeFact {
     pub capability_id: String,
     pub offset: u64,
     pub length: u64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct OutputSchemaFact {
     pub builder_id: String,
     pub arrow_type: L2DataType,
     pub nullable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct LoopBoundFact {
     pub loop_id: String,
     pub max_iterations: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum CapabilityFact {
     InputSlice {
         id: String,
@@ -267,7 +267,7 @@ pub enum CapabilityFact {
 }
 
 /// Stable verifier evidence emitted for later lowering preconditions.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct VerifiedArtifactFacts {
     pub artifact_version: u16,
     pub required_features: Vec<String>,

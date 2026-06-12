@@ -11,7 +11,7 @@ use crate::l2_core::{
     ResourceBudget, ScalarExpr, ScalarType, ScalarValue, VerifiedArtifactFacts,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum FullVerificationCode {
     MissingInputCapability,
     MissingOutputBuilder,
@@ -48,14 +48,14 @@ impl fmt::Display for FullVerificationCode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct FullVerificationDiagnostic {
     pub code: FullVerificationCode,
     pub path: String,
     pub message: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct ProofObligationTrace {
     pub id: String,
     pub layer: String,
@@ -63,7 +63,7 @@ pub struct ProofObligationTrace {
     pub constraint_ids: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct AbstractState {
     pub input_capabilities: HashMap<String, InputSliceCapability>,
     pub output_builders: HashMap<String, OutputBuilderState>,
@@ -121,7 +121,7 @@ impl AbstractState {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Default, PartialEq)]
 pub struct FullVerificationReport {
     diagnostics: Vec<FullVerificationDiagnostic>,
     proof_obligations: Vec<ProofObligationTrace>,

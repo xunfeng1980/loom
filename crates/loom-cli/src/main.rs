@@ -30,8 +30,13 @@ fn run() -> Result<(), String> {
             sidecar(&mode, args.collect())
         }
         "gen-ir" => {
-            let path = args.next().ok_or_else(|| "USAGE: loom gen-ir <output.l2ir>".to_string())?;
+            let path = args.next().ok_or_else(|| "USAGE: loom gen-ir <output.l2ir|output.ron>".to_string())?;
             gen_ir(&path)
+        }
+        "convert" => {
+            let input = args.next().ok_or_else(|| convert_usage())?;
+            let output = args.next().ok_or_else(|| convert_usage())?;
+            convert(&input, &output)
         }
         "verify-l2core" => {
             let mode = args.next().ok_or_else(usage)?;
@@ -54,7 +59,8 @@ fn usage() -> String {
     s.push_str("USAGE:\n");
     s.push_str("  loom sidecar embed <parquet_file> [ir_file]          Embed sidecar inline (dev only)\n");
     s.push_str("  loom sidecar embed-external <parquet_file> [ir_file] Write external .loomsidecar file\n");
-    s.push_str("  loom gen-ir <output.l2ir>                          Generate default L2Core IR file\n");
+    s.push_str("  loom gen-ir <output.l2ir|output.ron>                 Generate L2Core IR file (binary or RON)\n");
+    s.push_str("  loom convert <input> <output>                         Convert between .l2ir and .ron\n");
     s.push_str("  loom verify-l2core <mode>                            Verify an L2Core IR program\n");
     s.push_str("  loom help                                            Print this message\n");
     s
@@ -152,14 +158,56 @@ fn sidecar_embed_external(mut args: Vec<String>) -> Result<(), String> {
 }
 
 /// Generate a default L2Core IR program and write it to a file.
+/// Auto-detects format by extension: .l2ir = binary, .ron = RON text.
 fn gen_ir(path: &str) -> Result<(), String> {
     let program = default_sidecar_program();
-    let bytes = encode_l2core_program(&program);
-    fs::write(path, &bytes)
-        .map_err(|e| format!("failed to write IR file {path}: {e}"))?;
+    if path.ends_with(".ron") {
+        let text = ron::ser::to_string_pretty(&program, ron::ser::PrettyConfig::default())
+            .map_err(|e| format!("RON serialization failed: {e}"))?;
+        fs::write(path, &text)
+            .map_err(|e| format!("failed to write: {e}"))?;
+        println!("Wrote L2Core IR (RON): {path}");
+    } else {
+        let bytes = encode_l2core_program(&program);
+        fs::write(path, &bytes)
+            .map_err(|e| format!("failed to write: {e}"))?;
+        println!("Wrote L2Core IR (binary): {path}");
+    }
     let hash = program.content_hash();
-    println!("Wrote L2Core IR: {path}");
     println!("Content hash: {hash}");
+    Ok(())
+}
+
+fn convert_usage() -> String {
+    "USAGE: loom convert <input> <output>\n  input/output extensions: .l2ir (binary) or .ron (text)".to_string()
+}
+
+/// Convert between .l2ir and .ron formats.
+fn convert(input: &str, output: &str) -> Result<(), String> {
+    let program = if input.ends_with(".ron") {
+        let text = fs::read_to_string(input)
+            .map_err(|e| format!("read {input}: {e}"))?;
+        ron::from_str(&text)
+            .map_err(|e| format!("RON parse error in {input}: {e}"))?
+    } else {
+        let bytes = fs::read(input)
+            .map_err(|e| format!("read {input}: {e}"))?;
+        decode_l2core_program(&bytes)
+            .map_err(|e| format!("L2Core decode error in {input}: {e}"))?
+    };
+
+    if output.ends_with(".ron") {
+        let text = ron::ser::to_string_pretty(&program, ron::ser::PrettyConfig::default())
+            .map_err(|e| format!("RON serialization: {e}"))?;
+        fs::write(output, &text)
+            .map_err(|e| format!("write {output}: {e}"))?;
+        println!("Converted: {input} → {output} (RON)");
+    } else {
+        let bytes = encode_l2core_program(&program);
+        fs::write(output, &bytes)
+            .map_err(|e| format!("write {output}: {e}"))?;
+        println!("Converted: {input} → {output} (binary .l2ir)");
+    }
     Ok(())
 }
 

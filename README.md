@@ -38,8 +38,11 @@ cargo build --release -p loom-cli
 ### 2. Generate a sidecar (production path)
 
 ```bash
-# Generate default L2Core IR (or write your own)
-cargo run --release -p loom-cli -- gen-ir assets/quickstart.l2ir
+# Generate human-readable L2Core IR (RON format)
+cargo run --release -p loom-cli -- gen-ir assets/quickstart.ron
+
+# Convert to binary .l2ir (or embed directly from .ron)
+cargo run --release -p loom-cli -- convert assets/quickstart.ron assets/quickstart.l2ir
 
 # Embed as external sidecar (original file unchanged)
 cargo run --release -p loom-cli -- sidecar embed-external assets/data.parquet assets/quickstart.l2ir

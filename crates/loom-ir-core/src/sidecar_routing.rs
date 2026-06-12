@@ -31,7 +31,7 @@ use crate::sidecar::{ChunkBinding, HashVerificationResult, SidecarOverlay};
 // ---------------------------------------------------------------------------
 
 /// Input to the sidecar routing gate.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct SidecarRoutingInput {
     /// Whether the calling engine has integrated Loom scan.
     pub engine_integrated: bool,
@@ -54,7 +54,7 @@ pub struct SidecarRoutingInput {
 ///
 /// Every code path returns one of these two variants — there is no "maybe"
 /// or "partial" state. The decision is exhaustive and honest.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub enum SidecarRoutingDecision {
     /// Take the Loom verifiable-native track.
     LoomNative {
@@ -69,7 +69,7 @@ pub enum SidecarRoutingDecision {
 }
 
 /// Why the routing gate fell back to the host native reader.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum HostNativeReaderReason {
     /// The calling engine has not integrated Loom scan.
     EngineNotIntegrated,
@@ -98,7 +98,7 @@ impl fmt::Display for HostNativeReaderReason {
 // ---------------------------------------------------------------------------
 
 /// Stable diagnostic code — mirrors [`HostNativeReaderReason`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum SidecarDiagnosticCode {
     EngineNotIntegrated,
     NoSidecarPresent,
@@ -120,7 +120,7 @@ impl fmt::Display for SidecarDiagnosticCode {
 /// A stable, typed diagnostic produced by the routing gate.
 ///
 /// Every routing failure logs at least one diagnostic — no silent fallback.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct SidecarDiagnostic {
     pub code: SidecarDiagnosticCode,
     /// JSONPath-style location of the issue (e.g., `"$.engine"`,
