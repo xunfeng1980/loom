@@ -308,10 +308,12 @@ pub fn generate_decode_ir_from_parquet(
     // Generous fail-closed budget: a handful of steps + appends per row/column.
     let events = total_rows.saturating_mul(column_count);
     let resource_budget = ResourceBudget {
+        // Up to ~8 statements per row per column (Utf8 does reads + lets +
+        // append; nullable does reads + If + branch), plus loop overhead.
         max_steps: events
-            .saturating_mul(4)
-            .saturating_add(column_count.saturating_mul(4))
-            .saturating_add(32),
+            .saturating_mul(8)
+            .saturating_add(column_count.saturating_mul(8))
+            .saturating_add(64),
         max_input_bytes_read: offset,
         max_scratch_bytes: 0,
         max_builder_events: events.saturating_mul(2).saturating_add(column_count),

@@ -19,6 +19,17 @@ use loom_ffi::parquet::arrow::ArrowWriter;
 use loom_ir_core::full_verifier::verify_l2_core;
 use loom_ir_core::l2_core::Capability;
 
+fn write_parquet_with_props(
+    batch: &RecordBatch,
+    path: &std::path::Path,
+    props: Option<loom_ffi::parquet::file::properties::WriterProperties>,
+) {
+    let file = std::fs::File::create(path).expect("create parquet");
+    let mut writer = ArrowWriter::try_new(file, batch.schema(), props).expect("arrow writer");
+    writer.write(batch).expect("write batch");
+    writer.close().expect("close writer");
+}
+
 fn write_parquet(batch: &RecordBatch, path: &std::path::Path) {
     let file = std::fs::File::create(path).expect("create parquet");
     let mut writer = ArrowWriter::try_new(file, batch.schema(), None).expect("arrow writer");
@@ -109,6 +120,51 @@ fn tier1_mixed_fixed_width_roundtrip() {
     let dec_bool = BooleanArray::from(columns[4].data.clone());
     for (i, want) in bools.iter().enumerate() {
         assert_eq!(dec_bool.value(i), *want, "bool row {i}");
+    }
+}
+
+#[test]
+fn tier4_dictionary_encoded_input_decodes() {
+    // Tier 4: Parquet dictionary encoding is a *physical* encoding. With
+    // dictionary encoding explicitly enabled, the Arrow reader materializes the
+    // column to a plain StringArray, so a dict-encoded column decodes correctly
+    // through the existing (Tier 3) path. Producing a dictionary-*typed* Arrow
+    // output (DictionaryArray) is a representation optimization left as future
+    // work (needs an OutputBuilder::Dictionary variant + DuckDB materialization).
+    use loom_ffi::parquet::file::properties::WriterProperties;
+
+    let schema = Arc::new(Schema::new(vec![Field::new("kind", DataType::Utf8, false)]));
+    // Heavily repeated values → dictionary-beneficial.
+    let kinds: Vec<&str> = (0..30)
+        .map(|i| ["red", "green", "blue"][i % 3])
+        .collect();
+    let batch = RecordBatch::try_new(
+        schema,
+        vec![Arc::new(StringArray::from(kinds.clone()))],
+    )
+    .expect("batch");
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dict.parquet");
+    let props = WriterProperties::builder()
+        .set_dictionary_enabled(true)
+        .build();
+    write_parquet_with_props(&batch, &path, Some(props));
+
+    let program = generate_decode_ir_from_parquet(&path)
+        .expect("gen ir")
+        .expect("some program");
+    let report = verify_l2_core(&program);
+    assert!(report.is_ok(), "dict IR must verify: {:?}", report.diagnostics());
+
+    let host = parquet_to_raw_host(&path).expect("raw host");
+    let inputs = inputs_from_program(&program, &host);
+    let columns = interpret_l2core(&program, &inputs).expect("interpret ok");
+    assert_eq!(columns.len(), 1);
+    let dec = StringArray::from(columns[0].data.clone());
+    assert_eq!(dec.len(), 30);
+    for (i, want) in kinds.iter().enumerate() {
+        assert_eq!(dec.value(i), *want, "dict row {i}");
     }
 }
 
