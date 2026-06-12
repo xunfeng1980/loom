@@ -88,10 +88,13 @@ loom_sidecar_free_bytes    → free returned byte buffers
 
 ## Correctness Model
 
-**Three-layer differential verification** anchors Loom's correctness:
+**Three-layer differential verification** anchors Loom's correctness.
+Layers 1–2 run offline (build/CI time); layer 3 runs online (query time).
 
 ```
-L2Core IR program
+                     ── OFFLINE (build/CI) ──
+
+ L2Core IR program
     │
     ├──→ serialize to kloom.k syntax
     │      → krun (K formal semantics engine)
@@ -101,21 +104,35 @@ L2Core IR program
     │      → TracedBuilder records every append_value / append_null event
     │      → native trace
     │
-    └──→ compare
+    └──→ compare (offline gate)
            reference_trace == native_trace  → per-event diff
            output == reference              → final RecordBatch value diff
-           mismatch → NativeModelTraceMismatch → discard, fallback host-native
+           mismatch → interp bug, fail CI
+
+
+                     ── ONLINE (query time) ──
+
+ Host data + sidecar
+    │
+    ├──→ Rust interp (ground truth, offline-verified)
+    │      → produces RecordBatch output
+    │
+    ├──→ JIT (melior/LLVM)
+    │      → L2Core IR → MLIR → LLVM → native machine code
+    │      → produces RecordBatch output
+    │
+    └──→ compare (online gate, every query)
+           JIT trace == interp trace  → JIT result used
+           mismatch → NativeModelTraceMismatch
+                    → discard JIT output
+                    → fallback: interp result (always safe)
+                    → or fallback: host-native reader
 ```
 
-**JIT layer**: JIT output goes through the same model validation — JIT-produced
-Arrow columns are reconstructed into a RecordBatch and compared against the
-K trace and interp output event-by-event. This runs on every production route
-invocation (`production_arrow_semantic_route`).
-
-- **kloom** — 14 semantics tests, K framework spec-oracle, offline differential verification (14/14 passing)
-- **Rust interp** — pure-Rust L1/L2 decoder, TracedBuilder event stream verified against kloom
-- **JIT** — melior/LLVM compiles L2Core IR → native code, validated against interp + K trace online
-- **Lean** — formal classification of IR programs (planned)
+- **kloom** (offline) — 14 semantics tests, K framework spec-oracle, differential verification (14/14 passing)
+- **Rust interp** (offline-verified, online-executed) — pure-Rust L1/L2 decoder, TracedBuilder event stream verified against kloom
+- **JIT** (online) — melior/LLVM compiles L2Core IR → native code, validated against interp + K trace on every query
+- **Lean** (offline, planned) — formal classification of IR programs
 
 ## 4-Gate Routing
 
