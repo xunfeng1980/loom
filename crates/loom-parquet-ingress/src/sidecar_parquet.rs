@@ -221,15 +221,14 @@ pub fn embed_sidecar_into_parquet_file(
 // ---------------------------------------------------------------------------
 
 /// Generate per-column [`ChunkBinding`]s with real content hashes from a
-/// Parquet file's row data.
+/// Parquet file's raw bytes.
 ///
-/// Reads all row batches, concatenates each column's data/validity buffers,
-/// and computes an FNV-1a content hash via [`loom_ir_core::sidecar::compute_chunk_hash`].
-/// One binding is produced per column. The `ir_identity` is a fixed placeholder
-/// (the IR identity belongs to the L2Core program, not the host data).
+/// Reads the entire file and produces one binding whose content hash covers
+/// the full file. This ensures the hash can be verified by a consumer that
+/// also has access to the raw file bytes (e.g. the DuckDB extension).
 ///
-/// This function is used by the CLI to ensure sidecars carry real,
-/// verifiable bindings instead of empty `vec![]`.
+/// Future: per-column byte-range bindings using row group / column chunk
+/// metadata for fine-grained verification.
 pub fn chunk_bindings_from_parquet(
     path: &Path,
 ) -> Result<Vec<ChunkBinding>, SidecarCodecError> {
@@ -243,41 +242,20 @@ pub fn chunk_bindings_from_parquet(
         SidecarCodecError::Malformed(format!("parquet reader for {}: {e}", path.display()))
     })?;
     let schema = builder.schema().clone();
-    let reader = builder.build().map_err(|e| {
-        SidecarCodecError::Malformed(format!("build parquet reader for {}: {e}", path.display()))
-    })?;
 
-    let batches: Vec<_> = reader
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            SidecarCodecError::Malformed(format!("read parquet {}: {e}", path.display()))
-        })?;
+    // Hash the raw file bytes so the hash is verifiable by any consumer
+    // that has access to the file (e.g. the DuckDB extension).
+    let raw_bytes = std::fs::read(path).map_err(|e| {
+        SidecarCodecError::Malformed(format!("read raw file {}: {e}", path.display()))
+    })?;
+    let content_hash = loom_ir_core::sidecar::compute_chunk_hash(&raw_bytes);
 
     let mut bindings = Vec::with_capacity(schema.fields().len());
-    for (col_idx, field) in schema.fields().iter().enumerate() {
-        let mut data = Vec::new();
-        for batch in &batches {
-            let col = batch.column(col_idx);
-            let array_data = col.to_data();
-            for buf in array_data.buffers() {
-                data.extend_from_slice(&buf);
-            }
-            if let Some(nulls) = array_data.nulls() {
-                data.extend_from_slice(nulls.buffer().as_ref());
-            }
-        }
-
-        if data.is_empty() {
-            continue;
-        }
-
-        let content_hash = loom_ir_core::sidecar::compute_chunk_hash(&data);
-
+    for field in schema.fields() {
         bindings.push(ChunkBinding {
             granule_id: field.name().clone(),
-            host_data_range: (0, data.len() as u64),
-            content_hash,
+            host_data_range: (0, raw_bytes.len() as u64),
+            content_hash: content_hash.clone(),
             ir_identity: "blake3:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
         });
     }
