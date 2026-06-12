@@ -220,24 +220,83 @@ fn default_sidecar_program() -> L2CoreProgram {
             Capability::InputSlice(InputSliceCapability {
                 id: "input".to_string(),
                 offset: 0,
-                length: 20,
+                length: 1024,
             }),
             Capability::OutputBuilder(OutputBuilderCapability {
-                id: "output".to_string(),
+                id: "out_flag".to_string(),
+                arrow_type: L2DataType::Boolean,
+                nullable: false,
+                max_events: 5,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out_id".to_string(),
                 arrow_type: L2DataType::Int32,
                 nullable: false,
                 max_events: 5,
             }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out_count".to_string(),
+                arrow_type: L2DataType::Int64,
+                nullable: false,
+                max_events: 5,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out_ratio".to_string(),
+                arrow_type: L2DataType::Float32,
+                nullable: false,
+                max_events: 5,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out_score".to_string(),
+                arrow_type: L2DataType::Float64,
+                nullable: false,
+                max_events: 5,
+            }),
+            Capability::OutputBuilder(OutputBuilderCapability {
+                id: "out_name".to_string(),
+                arrow_type: L2DataType::Utf8,
+                nullable: false,
+                max_events: 5,
+            }),
         ],
-        resource_budget: ResourceBudget::bounded_rows(5),
+        resource_budget: ResourceBudget {
+            max_steps: 256,
+            max_input_bytes_read: 1024,
+            max_scratch_bytes: 0,
+            max_builder_events: 30,
+            max_rows: 5,
+            max_constraint_count: 64,
+        },
         body: vec![L2CoreStmt::ForRange {
             index: "i".to_string(),
             start: ScalarExpr::Const(ScalarValue::UInt64(0)),
             end: ScalarExpr::Const(ScalarValue::UInt64(5)),
-            body: vec![L2CoreStmt::AppendValue {
-                builder: "output".to_string(),
-                value: ScalarExpr::Const(ScalarValue::Int32(42)),
-            }],
+            body: vec![
+                L2CoreStmt::AppendValue {
+                    builder: "out_flag".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Bool(true)),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out_id".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Int32(42)),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out_count".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Int64(9999)),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out_ratio".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Float32Bits(3.14f32.to_bits())),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out_score".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Float64Bits(2.718f64.to_bits())),
+                },
+                L2CoreStmt::AppendValue {
+                    builder: "out_name".to_string(),
+                    value: ScalarExpr::Const(ScalarValue::Bytes(b"hello".to_vec())),
+                },
+            ],
         }],
     }
 }

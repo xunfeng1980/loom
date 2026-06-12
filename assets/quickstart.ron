@@ -6,20 +6,50 @@
         InputSlice((
             id: "input",
             offset: 0,
-            length: 20,
+            length: 1024,
         )),
         OutputBuilder((
-            id: "output",
+            id: "out_flag",
+            arrow_type: Boolean,
+            nullable: false,
+            max_events: 5,
+        )),
+        OutputBuilder((
+            id: "out_id",
             arrow_type: Int32,
+            nullable: false,
+            max_events: 5,
+        )),
+        OutputBuilder((
+            id: "out_count",
+            arrow_type: Int64,
+            nullable: false,
+            max_events: 5,
+        )),
+        OutputBuilder((
+            id: "out_ratio",
+            arrow_type: Float32,
+            nullable: false,
+            max_events: 5,
+        )),
+        OutputBuilder((
+            id: "out_score",
+            arrow_type: Float64,
+            nullable: false,
+            max_events: 5,
+        )),
+        OutputBuilder((
+            id: "out_name",
+            arrow_type: Utf8,
             nullable: false,
             max_events: 5,
         )),
     ],
     resource_budget: (
-        max_steps: 56,
-        max_input_bytes_read: 40,
+        max_steps: 256,
+        max_input_bytes_read: 1024,
         max_scratch_bytes: 0,
-        max_builder_events: 5,
+        max_builder_events: 30,
         max_rows: 5,
         max_constraint_count: 64,
     ),
@@ -30,8 +60,34 @@
             end: Const(UInt64(5)),
             body: [
                 AppendValue(
-                    builder: "output",
+                    builder: "out_flag",
+                    value: Const(Bool(true)),
+                ),
+                AppendValue(
+                    builder: "out_id",
                     value: Const(Int32(42)),
+                ),
+                AppendValue(
+                    builder: "out_count",
+                    value: Const(Int64(9999)),
+                ),
+                AppendValue(
+                    builder: "out_ratio",
+                    value: Const(Float32Bits(1078523331)),
+                ),
+                AppendValue(
+                    builder: "out_score",
+                    value: Const(Float64Bits(4613302810693613912)),
+                ),
+                AppendValue(
+                    builder: "out_name",
+                    value: Const(Bytes([
+                        104,
+                        101,
+                        108,
+                        108,
+                        111,
+                    ])),
                 ),
             ],
         ),
