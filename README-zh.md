@@ -87,13 +87,12 @@ Parquet / Lance / Vortex
         │
    ┌────┴────┐
    ▼         ▼
-Loom 原生    宿主原生
-  解码        回退
-(JIT 加速       │
- --features     │
-  melior)       │
-   │           │
-   └─────┬─────┘
+ Loom 原生    宿主原生
+   解码        回退
+(JIT 默认 →      │
+  LLVM 机器码)   │
+    │           │
+    └─────┬─────┘
          ▼
   DuckDB / Arrow 消费者
 ```
@@ -107,7 +106,7 @@ Loom 原生    宿主原生
 
 安全模型：每关都是 fail-closed。sidecar 可剥离 — 未知的 `loom.*` 键会被标准 reader 静默忽略。如果 Loom 失败，文件仍然是有效的 Parquet/Lance/Vortex。
 
-**JIT 加速：** Loom 原生解码将 L2Core IR → MLIR → LLVM → 本地机器码，通过 melior 编译执行以达到最高速度。JIT 编译失败或输出校验不匹配时回退到纯 Rust 解释器。
+**JIT 加速（默认）：** melior/LLVM 始终编译进二进制，无需 feature flag。Loom 原生解码默认将 L2Core IR → MLIR → LLVM → 本地机器码。JIT 编译失败或输出校验不匹配时回退到纯 Rust 解释器。
 
 ## 编码
 
