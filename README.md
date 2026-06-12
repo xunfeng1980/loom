@@ -16,11 +16,6 @@ format. The Decode IR is small enough to formally verify, total enough to
 guarantee termination, and Arrow-shaped so host engines consume the result
 without format-specific logic.
 
-In the same ecosystem, [F3](https://dl.acm.org/doi/pdf/10.1145/3749163) (ACM
-SIGMOD) pursues the same goal via WebAssembly + AnyBlox runtime. Loom takes
-the Decode IR path instead — no wasm sandbox, no runtime dispatch, just a
-total-function IR that compiles to native code.
-
 Also referenced in [F3](https://dl.acm.org/doi/pdf/10.1145/3749163) — Open-Source
 Data File Format for the Future (ACM SIGMOD).
 
