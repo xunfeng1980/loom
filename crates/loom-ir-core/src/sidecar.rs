@@ -17,9 +17,9 @@
 //!   [8]     offset          = u64 LE
 //!   [8]     length          = u64 LE
 //!   [1]     content_hash_len = u8
-//!   [..]    content_hash    = UTF-8 bytes ("l2ir:<hex>")
+//!   [..]    content_hash    = UTF-8 bytes ("blake3:<hex>")
 //!   [1]     ir_identity_len = u8
-//!   [..]    ir_identity     = UTF-8 bytes ("l2ir:<hex>")
+//!   [..]    ir_identity     = UTF-8 bytes ("blake3:<hex>")
 //! ```
 //!
 //! All multi-byte integers are little-endian. Field order is fixed by the struct
@@ -27,7 +27,6 @@
 //! produces identical bytes.
 
 use std::fmt;
-use std::hash::Hasher;
 
 use crate::l2core_codec;
 
@@ -55,7 +54,7 @@ pub struct ChunkBinding {
     pub granule_id: String,
     /// Byte range `(offset, length)` of the host data this binding covers.
     pub host_data_range: (u64, u64),
-    /// FNV-1a hash of the host data bytes, formatted as `"l2ir:<hex>"`.
+    /// FNV-1a hash of the host data bytes, formatted as `"blake3:<hex>"`.
     pub content_hash: String,
     /// The L2Core IR program hash (must match `l2core_program_hash` of the
     /// decoded `ir_bytes`).
@@ -73,7 +72,7 @@ pub enum SidecarCodecError {
     Malformed(String),
     /// Bytes end before the expected length.
     Truncated,
-    /// A hash field does not match the expected `l2ir:<hex>` format.
+    /// A hash field does not match the expected `blake3:<hex>` format.
     BadHashFormat(String),
 }
 
@@ -112,21 +111,14 @@ pub struct HashVerificationResult {
 // Content-hash computation
 // ---------------------------------------------------------------------------
 
-/// Compute the FNV-1a 64-bit content-hash of raw host data bytes.
+/// Compute the BLAKE3-256 content-hash of raw host data bytes.
 ///
-/// Uses the same FNV-1a algorithm as [`l2core_codec::l2core_program_hash`]
-/// but operates on raw data bytes directly (no L2Core IR encoding). The hash
-/// is formatted as `"l2ir:<hex>"` where hex is the lowercase 64-bit hash
-/// zero-padded to 16 characters.
-///
-/// This is a **non-cryptographic** hash (per RESEARCH.md A2): it provides
-/// content-hash identity for accidental-corruption detection. Cryptographic
-/// hashing (SHA-256) is deferred to a later phase.
+/// Uses BLAKE3 for tamper-resistant content-hash identity. The hash
+/// is formatted as `"blake3:<hex>"` where hex is the lowercase 256-bit
+/// (32-byte) hash zero-padded to 64 hexadecimal characters.
 pub fn compute_chunk_hash(data: &[u8]) -> String {
-    let mut hasher = fnv::FnvHasher::default();
-    hasher.write(data);
-    let hash = hasher.finish();
-    format!("l2ir:{hash:016x}")
+    let hash = blake3::hash(data);
+    format!("blake3:{hash}")
 }
 
 /// Verify a single [`ChunkBinding`] against actual host data bytes.
@@ -343,12 +335,12 @@ fn write_u8_len_str(buf: &mut Vec<u8>, s: &str) {
 // Hash format validation
 // ---------------------------------------------------------------------------
 
-/// Validate that a hash string follows the `l2ir:<hex>` format.
+/// Validate that a hash string follows the `blake3:<hex>` format.
 fn validate_hash_format(hash: &str, field_name: &str) -> Result<(), SidecarCodecError> {
     let rest = hash
-        .strip_prefix("l2ir:")
+        .strip_prefix("blake3:")
         .ok_or_else(|| SidecarCodecError::BadHashFormat(field_name.to_string()))?;
-    if rest.len() != 16 || !rest.chars().all(|c| c.is_ascii_hexdigit()) {
+    if rest.len() != 64 || !rest.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(SidecarCodecError::BadHashFormat(field_name.to_string()));
     }
     Ok(())
@@ -373,8 +365,8 @@ mod tests {
         ChunkBinding {
             granule_id: "col_int32".to_string(),
             host_data_range: (0, 1024),
-            content_hash: "l2ir:0000000000000001".to_string(),
-            ir_identity: "l2ir:abcdef0123456789".to_string(),
+            content_hash: "blake3:0000000000000000000000000000000000000000000000000000000000000001".to_string(),
+            ir_identity: "blake3:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789".to_string(),
         }
     }
 
@@ -393,14 +385,14 @@ mod tests {
         let b1 = ChunkBinding {
             granule_id: "col_a".to_string(),
             host_data_range: (0, 512),
-            content_hash: "l2ir:1111111111111111".to_string(),
-            ir_identity: "l2ir:aaaaaaaaaaaaaaaa".to_string(),
+            content_hash: "blake3:1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+            ir_identity: "blake3:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
         };
         let b2 = ChunkBinding {
             granule_id: "col_b".to_string(),
             host_data_range: (512, 1024),
-            content_hash: "l2ir:2222222222222222".to_string(),
-            ir_identity: "l2ir:bbbbbbbbbbbbbbbb".to_string(),
+            content_hash: "blake3:2222222222222222222222222222222222222222222222222222222222222222".to_string(),
+            ir_identity: "blake3:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
         };
         let original = make_overlay(vec![0x01, 0x02, 0x03], vec![b1, b2]);
         let encoded = original.encode();

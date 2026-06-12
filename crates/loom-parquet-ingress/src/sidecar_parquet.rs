@@ -301,14 +301,14 @@ mod tests {
                 ChunkBinding {
                     granule_id: "col_a".to_string(),
                     host_data_range: (0, 512),
-                    content_hash: "l2ir:1111111111111111".to_string(),
-                    ir_identity: "l2ir:aaaaaaaaaaaaaaaa".to_string(),
+                    content_hash: "blake3:1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+                    ir_identity: "blake3:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
                 },
                 ChunkBinding {
                     granule_id: "col_b".to_string(),
                     host_data_range: (512, 1024),
-                    content_hash: "l2ir:2222222222222222".to_string(),
-                    ir_identity: "l2ir:bbbbbbbbbbbbbbbb".to_string(),
+                    content_hash: "blake3:2222222222222222222222222222222222222222222222222222222222222222".to_string(),
+                    ir_identity: "blake3:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
                 },
             ],
         }

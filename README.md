@@ -111,10 +111,11 @@ Safety model: fail-closed at every gate. The sidecar is strippable — unknown
 `loom.*` keys are ignored by standard readers. If Loom fails, the file is still
 valid Parquet/Lance/Vortex.
 
-**JIT acceleration (default):** melior/LLVM is always compiled in — no feature flag
-needed. Loom-native decode compiles L2Core IR → MLIR → LLVM → native machine code
-by default. Falls back to the pure-Rust interpreter if JIT compilation fails or
-output validation mismatches.
+**JIT acceleration (planned):** JIT backend (melior/LLVM) is compiled in and validates
+against the interpreter online. The current sidecar ABI exposes extract/verify/route gate.
+Full sidecar decode integration (Loom-native decode → JIT → Arrow → DuckDB) is the next
+integration milestone. JIT output is always validated against the interpreter — mismatches
+are discarded and fall back to the host-native reader.
 
 ## Encodings
 

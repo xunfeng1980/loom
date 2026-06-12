@@ -252,12 +252,12 @@ mod tests {
             granule_id: granule_id.to_string(),
             host_data_range: (0, 1024),
             content_hash: content_hash.to_string(),
-            ir_identity: "l2ir:aaaaaaaaaaaaaaaa".to_string(),
+            ir_identity: "blake3:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
         };
         let recomputed_hash = if matches {
             content_hash.to_string()
         } else {
-            "l2ir:ffffffffffffffff".to_string()
+            "blake3:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string()
         };
         let hv = HashVerificationResult {
             granule_id: granule_id.to_string(),
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_all_gates_pass_loom_native() {
-        let (b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let (b1, hv1) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", true);
         let sidecar = make_sidecar();
         let input = make_input(true, Some(sidecar.clone()), vec![hv1], true);
 
@@ -331,9 +331,9 @@ mod tests {
 
     #[test]
     fn test_no_mismatches_multi_binding_loom_native() {
-        let (b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", true);
-        let (b2, hv2) = make_binding("col_b", "l2ir:2222222222222222", true);
-        let (b3, hv3) = make_binding("col_c", "l2ir:3333333333333333", true);
+        let (b1, hv1) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", true);
+        let (b2, hv2) = make_binding("col_b", "blake3:2222222222222222222222222222222222222222222222222222222222222222", true);
+        let (b3, hv3) = make_binding("col_c", "blake3:3333333333333333333333333333333333333333333333333333333333333333", true);
         let sidecar = make_sidecar();
         let input = make_input(true, Some(sidecar.clone()), vec![hv1, hv2, hv3], true);
 
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_engine_not_integrated_falls_back() {
-        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let (_b, hv) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", true);
         let input = make_input(false, Some(make_sidecar()), vec![hv], true);
 
         let decision = decide_sidecar_routing(input);
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_no_sidecar_falls_back() {
-        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let (_b, hv) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", true);
         let input = make_input(true, None, vec![hv], true);
 
         let decision = decide_sidecar_routing(input);
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_hash_mismatch_falls_back() {
-        let (_b, hv) = make_binding("col_x", "l2ir:expected_hash0001", false);
+        let (_b, hv) = make_binding("col_x", "blake3:expected_hash000100000000000000000000000000000000000000000000000000", false);
         let sidecar = make_sidecar();
         let input = make_input(true, Some(sidecar), vec![hv], true);
 
@@ -415,9 +415,9 @@ mod tests {
 
     #[test]
     fn test_multiple_hash_mismatches_all_diagnosed() {
-        let (_b1, hv1) = make_binding("col_a", "l2ir:1111111111111111", false);
-        let (_b2, hv2) = make_binding("col_b", "l2ir:2222222222222222", true);
-        let (_b3, hv3) = make_binding("col_c", "l2ir:3333333333333333", false);
+        let (_b1, hv1) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", false);
+        let (_b2, hv2) = make_binding("col_b", "blake3:2222222222222222222222222222222222222222222222222222222222222222", true);
+        let (_b3, hv3) = make_binding("col_c", "blake3:3333333333333333333333333333333333333333333333333333333333333333", false);
         let sidecar = make_sidecar();
         let input = make_input(true, Some(sidecar), vec![hv1, hv2, hv3], true);
 
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_encoding_unsupported_falls_back() {
-        let (_b, hv) = make_binding("col_a", "l2ir:1111111111111111", true);
+        let (_b, hv) = make_binding("col_a", "blake3:1111111111111111111111111111111111111111111111111111111111111111", true);
         let sidecar = make_sidecar();
         let input = make_input(true, Some(sidecar), vec![hv], false);
 

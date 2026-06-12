@@ -135,15 +135,15 @@ pub fn decode_l2core_program(bytes: &[u8]) -> Result<L2CoreProgram, L2CoreCodecE
     read_program(&mut cur)
 }
 
-/// Compute the FNV-1a 64-bit content-hash identity of a program.
+/// Compute the BLAKE3-256 content-hash identity of a program.
 ///
 /// The hash is taken over the **canonical encoded bytes** (including the magic
 /// and version header), so the same program always yields the same digest.
-/// The returned string is formatted as `l2ir:<hex>`.
+/// The returned string is formatted as `blake3:<hex>`.
 pub fn l2core_program_hash(program: &L2CoreProgram) -> String {
     let bytes = encode_l2core_program(program);
-    let hash = stable_fnv1a64(&bytes);
-    format!("l2ir:{hash:016x}")
+    let hash = blake3::hash(&bytes);
+    format!("blake3:{hash}")
 }
 
 // ---------------------------------------------------------------------------
@@ -671,19 +671,6 @@ fn read_stmt(cur: &mut Cursor<&[u8]>) -> Result<L2CoreStmt, L2CoreCodecError> {
 }
 
 // ---------------------------------------------------------------------------
-// Hash utility (shared FNV-1a pattern extracted from runtime_abi.rs)
-// ---------------------------------------------------------------------------
-
-fn stable_fnv1a64(bytes: &[u8]) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-    for byte in bytes {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -742,7 +729,7 @@ use crate::l2_core::L2DataType;
         let h1 = l2core_program_hash(&p);
         let h2 = l2core_program_hash(&p);
         assert_eq!(h1, h2, "same program must yield same hash");
-        assert!(h1.starts_with("l2ir:"));
+        assert!(h1.starts_with("blake3:"));
     }
 
     #[test]

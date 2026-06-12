@@ -6,3 +6,4 @@ description = "Independent Loom decode IR — L2Core codec, verifier, sidecar ov
 
 [dependencies]
 fnv = { workspace = true }
+blake3 = { workspace = true }

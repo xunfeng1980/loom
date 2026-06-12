@@ -258,7 +258,7 @@ pub unsafe extern "C" fn loom_sidecar_route(
                 let result = loom_ir_core::sidecar::HashVerificationResult {
                     granule_id: binding.granule_id.clone(),
                     binding: binding.clone(),
-                    recomputed_hash: "l2ir:0000000000000000".to_string(),
+                    recomputed_hash: "blake3:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
                     matches: false,
                 };
                 hash_results.push(result);

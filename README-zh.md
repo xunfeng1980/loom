@@ -106,7 +106,7 @@ Parquet / Lance / Vortex
 
 安全模型：每关都是 fail-closed。sidecar 可剥离 — 未知的 `loom.*` 键会被标准 reader 静默忽略。如果 Loom 失败，文件仍然是有效的 Parquet/Lance/Vortex。
 
-**JIT 加速（默认）：** melior/LLVM 始终编译进二进制，无需 feature flag。Loom 原生解码默认将 L2Core IR → MLIR → LLVM → 本地机器码。JIT 编译失败或输出校验不匹配时回退到纯 Rust 解释器。
+**JIT 加速（计划中）：** JIT 后端（melior/LLVM）已编译在内，并在线上与解释器对比验证。当前 sidecar ABI 暴露 extract/verify/route 关。完整的 sidecar decode 集成（Loom 原生解码 → JIT → Arrow → DuckDB）是下一里程碑。JIT 输出始终与解释器对比——不一致则丢弃并回退宿主原生 reader。
 
 ## 编码
 
