@@ -64,22 +64,19 @@ jobs:
             ${{ runner.os }}-cargo-
 
       # Step 4: Build the entire workspace in release mode.
-      # Zero warnings are required (ROADMAP criterion 4).
+      # --no-default-features excludes melior/LLVM (JIT is offline-only;
+      # the DuckDB extension uses the interpreter).
       - name: Build workspace (release)
-        run: cargo build --workspace --release
+        run: cargo build --workspace --release --no-default-features
 
       # Step 5: Clippy — deny warnings.
       # Applies to the whole workspace; any new warning fails the build.
       - name: Clippy
         run: cargo clippy --workspace -- -D warnings
 
-      # Step 5b: Run the FFI tests under the RELEASE profile (CR-01 prevention).
-      # The panic-safety test (panic_does_not_abort) must run under the same
-      # panic strategy the shipped staticlib uses. Running only the default
-      # (dev) profile previously gave false assurance when release was
-      # panic="abort". This step exercises the real shipped behavior.
-      - name: Test loom-ffi (release profile)
-        run: cargo test -p loom-ffi --release
+      # Step 5b: Run tests under release profile (no JIT — --no-default-features).
+      - name: Test loom-ffi (release, no JIT)
+        run: cargo test -p loom-ffi --release --no-default-features
 
       # Step 6: Run the CORE invariant script.
       # This is the gate referenced by ROADMAP criterion 5:
@@ -100,8 +97,8 @@ jobs:
       # the vendor/null.txt and vendor/append_metadata.cmake paths in CMakeLists.txt).
       - name: Build C++ extension
         run: |
-          cmake -S duckdb-ext -B duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build duckdb-ext/build
+          cmake -S contrib/duckdb-ext -B contrib/duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build contrib/duckdb-ext/build
 
       # Step 9: Download DuckDB v1.5.3 CLI for linux-amd64.
       - name: Download DuckDB CLI (linux-amd64)
@@ -147,14 +144,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      # Exclude melior/LLVM (JIT offline-only; extension uses interpreter).
       - name: Build Rust workspace (release)
-        run: cargo build --workspace --release
+        run: cargo build --workspace --release --no-default-features
 
       # CMake is pre-installed on macOS-14 GitHub-hosted runners.
       - name: Build C++ extension (macOS arm64)
         run: |
-          cmake -S duckdb-ext -B duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build duckdb-ext/build
+          cmake -S contrib/duckdb-ext -B contrib/duckdb-ext/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build contrib/duckdb-ext/build
 
       # Download the macOS arm64 CLI.
       - name: Download DuckDB CLI (osx-arm64)
@@ -195,7 +193,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build workspace (test profile)
-        run: cargo build --workspace
+        run: cargo build --workspace --no-default-features
 
       - name: Run full-verifier gate
         run: bash scripts/full-verifier-test.sh

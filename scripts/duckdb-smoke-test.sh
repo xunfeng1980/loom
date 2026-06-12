@@ -14,8 +14,8 @@ echo "=== Loom DuckDB Smoke Test ==="
 echo ""
 
 # 1. Build the Rust sidecar FFI staticlib
-info "Building libloom_ffi.a..."
-cargo build -p loom-ffi --release || fail "Rust build failed"
+info "Building libloom_ffi.a (no JIT — CI uses interpreter-only)..."
+cargo build -p loom-ffi --release --no-default-features || fail "Rust build failed"
 ok "libloom_ffi.a built"
 
 # 2. Build the DuckDB extension (CMake)
@@ -33,7 +33,7 @@ ok "Extension file: ${EXT_PATH}"
 
 # 4. Workspace tests
 info "Running workspace tests..."
-cargo test --workspace --exclude loom-vortex-ingress --exclude loom-lance-ingress || fail "Tests failed"
+cargo test --workspace --no-default-features --exclude loom-vortex-ingress --exclude loom-lance-ingress || fail "Tests failed"
 ok "Workspace tests passed"
 
 echo ""
