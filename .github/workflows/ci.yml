@@ -166,44 +166,28 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - name: Install K Framework
+      - name: Install K Framework (via kup)
         run: |
-          nix profile install nixpkgs#k 2>/dev/null || \
-          nix profile install nixpkgs#kframework 2>/dev/null || \
-          nix profile install nixpkgs#k-framework 2>/dev/null || \
-          echo "K Framework not available in nixpkgs — skipping kloom gate"
+          curl -sSL https://raw.githubusercontent.com/runtimeverification/k/master/kup | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Verify K tools
         run: |
-          kompile --version || echo "kompile not found — skipping"
-          krun --version || echo "krun not found — skipping"
+          kompile --version
+          krun --version
 
       - name: kompile kloom.k
         run: |
-          if command -v kompile >/dev/null 2>&1; then
-            cd contrib/kloom
-            kompile src/kloom.k --backend haskell -o .build
-          else
-            echo "kompile not found — skipping kompile step"
-          fi
+          cd contrib/kloom
+          kompile src/kloom.k --backend haskell -o .build
 
       - name: Run kloom semantics tests
         run: |
-          if command -v krun >/dev/null 2>&1; then
-            cd contrib/kloom
-            for test in tests/semantics/*.kloom; do
-              echo "=== $test ==="
-              krun "$test" --definition .build --output pretty
-            done
-          else
-            echo "krun not found — skipping semantics tests"
-          fi
+          cd contrib/kloom
+          for test in tests/semantics/*.kloom; do
+            echo "=== $test ==="
+            krun "$test" --definition .build --output pretty
+          done
 
-      # STRICT: when K is available, divergence fails CI.
       - name: Run kloom differential gate (K vs Rust)
-        run: |
-          if command -v krun >/dev/null 2>&1; then
-            bash contrib/kloom/scripts/kloom-diff.sh
-          else
-            echo "krun not found — skipping kloom diff gate"
-          fi
+        run: bash contrib/kloom/scripts/kloom-diff.sh
