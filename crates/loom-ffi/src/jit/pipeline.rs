@@ -2,7 +2,7 @@ use std::fs;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use loom_interp::arrow_buffer_lowering::{
+use crate::interp::arrow_buffer_lowering::{
     lower_arrow_raw_copy_to_standard_mlir, plan_arrow_buffers_from_decode_dialect,
 };
 

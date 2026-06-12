@@ -9,7 +9,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define LMC2_VERSION 1
+
 #define EXPECTED_MLIR_MAJOR 22
+
+typedef struct RuntimeAbiVersion RuntimeAbiVersion;
+
+
 
 /**
  * Extract the sidecar overlay from a host file.

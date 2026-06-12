@@ -6,10 +6,10 @@
 
 use std::fmt;
 
-use loom_interp::production_native_lowering::{
+use crate::interp::production_native_lowering::{
     ProductionLoweringBackend, ProductionLoweringFacts, ProductionNativeKernel,
 };
-use loom_interp::runtime_abi::{
+use crate::interp::runtime_abi::{
     RuntimeAbiVersion, RuntimeCacheKey, RuntimeExecutionDecision, RuntimePlan,
 };
 

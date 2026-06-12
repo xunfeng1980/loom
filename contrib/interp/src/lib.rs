@@ -1,43 +1,32 @@
-use arrow_schema::DataType;
-use loom_ir_core::l2_core::L2DataType;
+//! `loom-interp` — Loom offline verification interpreter.
+//!
+//! This crate is a thin re-export of the interpreter modules in `loom-ffi`.
+//! The source code lives in `crates/loom-ffi/src/interp/`; this crate exists
+//! so the interpreter can be referenced as a standalone dependency.
+//!
+//! Architecture:
+//!   - `loom-ffi` owns the interpreter source (shared types + execution)
+//!   - `loom-interp` re-exports from `loom-ffi` for standalone use
+//!   - Production path: `loom-ffi` only (JIT)
+//!   - Offline verification: `loom-interp` (or `loom-ffi::interp`)
 
-pub fn l2_to_arrow(dt: &L2DataType) -> DataType {
-    match dt {
-        L2DataType::Boolean => DataType::Boolean,
-        L2DataType::Int32 => DataType::Int32,
-        L2DataType::Int64 => DataType::Int64,
-        L2DataType::Float32 => DataType::Float32,
-        L2DataType::Float64 => DataType::Float64,
-        L2DataType::Utf8 => DataType::Utf8,
-    }
-}
+pub use loom_ffi::interp::alp_params;
+pub use loom_ffi::interp::arrow_buffer_lowering;
+pub use loom_ffi::interp::arrow_builder_output;
+pub use loom_ffi::interp::arrow_semantic;
+pub use loom_ffi::interp::arrow_semantic_codec;
+pub use loom_ffi::interp::arrow_semantic_verifier;
+pub use loom_ffi::interp::artifact_types;
+pub use loom_ffi::interp::decode_dialect;
+pub use loom_ffi::interp::fsst_params;
+pub use loom_ffi::interp::kloom_harness;
+pub use loom_ffi::interp::l1_model;
+pub use loom_ffi::interp::l2_kernel_registry;
+pub use loom_ffi::interp::native_arrow_semantic;
+pub use loom_ffi::interp::native_lowering;
+pub use loom_ffi::interp::production_native_lowering;
+pub use loom_ffi::interp::runtime_abi;
+pub use loom_ffi::interp::verify_layout_types;
 
-pub fn arrow_to_l2(dt: &DataType) -> Option<L2DataType> {
-    match dt {
-        DataType::Boolean => Some(L2DataType::Boolean),
-        DataType::Int32 => Some(L2DataType::Int32),
-        DataType::Int64 => Some(L2DataType::Int64),
-        DataType::Float32 => Some(L2DataType::Float32),
-        DataType::Float64 => Some(L2DataType::Float64),
-        DataType::Utf8 => Some(L2DataType::Utf8),
-        _ => None,
-    }
-}
-
-pub mod alp_params;
-pub mod arrow_buffer_lowering;
-pub mod arrow_builder_output;
-pub mod arrow_semantic;
-pub mod arrow_semantic_codec;
-pub mod arrow_semantic_verifier;
-pub mod artifact_types;
-pub mod decode_dialect;
-pub mod fsst_params;
-pub mod kloom_harness;
-pub mod l1_model;
-pub mod l2_kernel_registry;
-pub mod native_arrow_semantic;
-pub mod native_lowering;
-pub mod production_native_lowering;
-pub mod runtime_abi;
-pub mod verify_layout_types;
+pub use loom_ffi::l2_to_arrow;
+pub use loom_ffi::arrow_to_l2;
