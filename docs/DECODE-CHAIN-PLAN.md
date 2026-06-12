@@ -16,7 +16,9 @@
 >   - **Tier 3（非空 Utf8）**：复用既有 IR——offsets+data 双切片，按行读 lo/hi 偏移、Bitcast 为 Int32、动态宽 `ReadInput data[lo..hi]`、Bytes→Utf8 append。生成器读 batch 给 data 切片定长。
 >   - **Tier 4（字典）**：Parquet 字典是**物理编码**，Arrow 读取时已物化为普通列，故字典编码输入经 Tier 1–3 透明解码（测试强制开启字典验证）。产出 dictionary-**typed** Arrow（DictionaryArray）属表示优化，留作后续（需 OutputBuilder::Dictionary + DuckDB 字典物化）。
 > - **Plan 5 ✅**：README / README-zh 的"correctness model / 生产运行时"叙述据实修正——生产解码运行时＝L2Core **解释器**（接进 `loom_sidecar_decode`，产真实 Arrow，DuckDB `loom_scan` 物化为 typed 行）；JIT 为**离线验证、尚未接入生产 FFI**（扩展 `--no-default-features` 不含 LLVM）。
-> - **Plan 4 ⏳ 未完成（剩余前沿）**：当前 host 数据是**raw 列主序布局**（`parquet_to_raw_host` 从 Arrow 物化值打包），尚未绑定真实 Parquet **物理 column-chunk 字节**（`File::seek` 直读 + page header 解析 + 编码内解压）。即"自动 IR 读的是 raw 重排布局，而非原始 parquet 物理字节"。这是与生产零转码直读之间的最后一段。
+> - **Plan 4 ⏳ building block 完成 / 零转码直读待续**：
+>   - **已完成**：`read_column_chunk_physical_bytes`（`File::seek` + `byte_range` 直读 column-chunk 原始物理字节，无 Arrow 物化）+ `parquet_column_chunk_hash`（对物理字节算 BLAKE3，可用于 sidecar 绑定校验）。测试 [`physical_bytes.rs`](../crates/loom-parquet-ingress/tests/physical_bytes.rs)：直读确定性、列间字节/哈希相异、越界 fail-closed。这把原分析中 `bind_content_hash_to_parquet_data` 无操作 + "物理范围仅用于诊断" 的缺口落到了真实物理读。
+>   - **剩余前沿**：让自动 IR 直接**解码物理字节**（page header 解析 + 编码内解压：PLAIN/dict/RLE），从而省掉当前的 raw 重排（`parquet_to_raw_host` 经 Arrow 物化再打包）。这相当于在 L2Core IR 内重建 parquet 页解码，是与"生产零转码直读"之间的最后一段大工程。
 > 范围：把前次分析定位的五项未完成项收敛为一个 phase、拆成 5 个有依赖序的 plan。
 > **终态目标：全类型覆盖**——i32/i64/f32/f64/bool + nullable + Utf8 + 字典，端到端经 sidecar 路径解码出真实 Arrow。i32 只是第一个打通用纵切片，不是终点。
 

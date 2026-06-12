@@ -115,6 +115,72 @@ pub fn bind_content_hash_to_parquet_data(
     Ok(())
 }
 
+/// Error reading Parquet physical bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParquetPhysicalError(pub String);
+
+impl std::fmt::Display for ParquetPhysicalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "parquet physical read: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParquetPhysicalError {}
+
+/// Read the **raw physical bytes** of one Parquet column chunk by seeking to
+/// its `byte_range` and reading directly from the file — no Arrow
+/// materialization, no decode. These are the on-disk (encoded, possibly
+/// compressed) column-chunk bytes (page headers + data pages).
+///
+/// Plan 4 building block: binds a sidecar's content hash to real physical
+/// bytes rather than to Arrow-materialized values.
+pub fn read_column_chunk_physical_bytes(
+    path: &Path,
+    row_group: usize,
+    column: usize,
+) -> Result<Vec<u8>, ParquetPhysicalError> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    let file = File::open(path).map_err(|e| ParquetPhysicalError(format!("open: {e}")))?;
+    let handle_for_meta = file
+        .try_clone()
+        .map_err(|e| ParquetPhysicalError(format!("clone handle: {e}")))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(handle_for_meta)
+        .map_err(|e| ParquetPhysicalError(format!("reader: {e}")))?;
+    let metadata = builder.metadata();
+
+    let rg = metadata
+        .row_groups()
+        .get(row_group)
+        .ok_or_else(|| ParquetPhysicalError(format!("row group {row_group} out of range")))?;
+    let col = rg
+        .columns()
+        .get(column)
+        .ok_or_else(|| ParquetPhysicalError(format!("column {column} out of range")))?;
+
+    let (start, length) = col.byte_range();
+    let mut handle = file;
+    handle
+        .seek(SeekFrom::Start(start))
+        .map_err(|e| ParquetPhysicalError(format!("seek {start}: {e}")))?;
+    let mut buf = vec![0u8; length as usize];
+    handle
+        .read_exact(&mut buf)
+        .map_err(|e| ParquetPhysicalError(format!("read {length} bytes: {e}")))?;
+    Ok(buf)
+}
+
+/// Content-hash identity of a column chunk's raw physical bytes (same hash
+/// function the sidecar uses for chunk bindings).
+pub fn parquet_column_chunk_hash(
+    path: &Path,
+    row_group: usize,
+    column: usize,
+) -> Result<String, ParquetPhysicalError> {
+    let bytes = read_column_chunk_physical_bytes(path, row_group, column)?;
+    Ok(loom_ir_core::sidecar::compute_chunk_hash(&bytes))
+}
+
 /// Read a local Parquet file through the official Arrow scan path.
 ///
 /// This is source evidence only. Accepted Loom artifact bytes come from

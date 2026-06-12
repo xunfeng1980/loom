@@ -17,5 +17,8 @@ pub use decode_ir_gen::{generate_decode_ir_from_parquet, parquet_to_raw_host};
 pub use source_contract::{
     bind_content_hash_to_parquet_data,
     extract_sidecar_bytes_from_parquet_path,
+    parquet_column_chunk_hash,
     parquet_source_facts_from_path,
+    read_column_chunk_physical_bytes,
+    ParquetPhysicalError,
 };
